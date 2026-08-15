@@ -94,12 +94,29 @@ mod tests {
 
     fn ours() -> PathBuf { PathBuf::from(r"C:\Drake\loader") }
 
-    struct FakeReg(Option<String>);
+    /// Records every value passed to `write_debugger` (and whether
+    /// `delete_debugger` was called) so tests can assert the registry was
+    /// never touched, rather than just trusting a no-op stub to have been
+    /// a no-op.
+    struct FakeReg {
+        initial: Option<String>,
+        writes: std::cell::RefCell<Vec<String>>,
+    }
+
+    impl FakeReg {
+        fn holding(v: Option<String>) -> Self {
+            FakeReg { initial: v, writes: std::cell::RefCell::new(Vec::new()) }
+        }
+    }
+
     impl crate::slot::RegistryAccess for FakeReg {
         fn read_debugger(&self) -> Result<Option<String>, crate::slot::SlotError> {
-            Ok(self.0.clone())
+            Ok(self.initial.clone())
         }
-        fn write_debugger(&self, _v: &str) -> Result<(), crate::slot::SlotError> { Ok(()) }
+        fn write_debugger(&self, v: &str) -> Result<(), crate::slot::SlotError> {
+            self.writes.borrow_mut().push(v.to_string());
+            Ok(())
+        }
         fn delete_debugger(&self) -> Result<(), crate::slot::SlotError> { Ok(()) }
     }
 
@@ -110,7 +127,7 @@ mod tests {
         std::fs::create_dir_all(&foreign_loader).unwrap();
         let core = foreign_loader.join("core.dll");
 
-        let reg = FakeReg(Some(crate::slot::debugger_value(&core)));
+        let reg = FakeReg::holding(Some(crate::slot::debugger_value(&core)));
         let cfg = crate::configd::PluginConfig {
             token: "t".into(),
             port: 1,
@@ -120,6 +137,11 @@ mod tests {
         let mode = tick(&reg, &ours().join("core.dll"), &ours(), "console.log(1)", &cfg);
 
         assert_eq!(mode, Mode::Guest { host: "Other".into() });
+        assert!(
+            reg.writes.borrow().is_empty(),
+            "must never write to a foreign loader's registry slot, but wrote: {:?}",
+            reg.writes.borrow()
+        );
         assert!(crate::deploy::plugin_dir(&foreign_loader).join("index.js").is_file());
         assert!(crate::deploy::plugin_dir(&foreign_loader).join("config.json").is_file());
     }
