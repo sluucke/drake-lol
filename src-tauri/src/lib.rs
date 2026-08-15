@@ -1,4 +1,5 @@
 pub mod deploy;
+pub mod elevate;
 pub mod paths;
 pub mod slot;
 pub mod strings;
