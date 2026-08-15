@@ -39,8 +39,59 @@
     };
   }
 
+  // src/autoAccept.js
+  function shouldAccept(payload) {
+    if (!payload) return false;
+    return payload.state === "InProgress" && payload.playerResponse === "None";
+  }
+  function startAutoAccept({ enabled, lcu: lcu2, subscribe: subscribe2 }) {
+    if (!enabled) return () => {
+    };
+    return subscribe2("/lol-matchmaking/v1/ready-check", async (payload) => {
+      if (!shouldAccept(payload)) return;
+      await lcu2.post("/lol-matchmaking/v1/ready-check/accept");
+    });
+  }
+
+  // src/subscribe.js
+  var DEFAULT_POLL_INTERVAL_MS = 1e3;
+  function subscribe(route, handler, { fetchImpl = fetch, intervalMs = DEFAULT_POLL_INTERVAL_MS } = {}) {
+    if (typeof socket !== "undefined" && socket && typeof socket.observe === "function") {
+      const observer = (message) => handler(message && message.data);
+      socket.observe(route, observer);
+      return () => {
+        if (typeof socket !== "undefined" && socket && typeof socket.unobserve === "function") {
+          socket.unobserve(route, observer);
+        }
+      };
+    }
+    let stopped = false;
+    const tick = async () => {
+      if (stopped) return;
+      try {
+        const res = await fetchImpl(route);
+        if (!res.ok) return;
+        const payload = await res.json();
+        if (!stopped) handler(payload);
+      } catch {
+      }
+    };
+    const id = setInterval(tick, intervalMs);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
+  }
+
   // src/index.js
   var TAG = "[Drake]";
+  var lcu = {
+    post: (route) => fetch(route, { method: "POST" }),
+    get: (route) => fetch(route).then((r) => r.json())
+  };
+  function wireFeatures(cfg) {
+    startAutoAccept({ enabled: !!cfg.settings.auto_accept, lcu, subscribe });
+  }
   async function start() {
     const cfg = await loadConfig();
     if (!cfg) {
@@ -55,6 +106,7 @@
     const host = typeof Pengu !== "undefined" && Pengu.version ? `pengu ${Pengu.version}` : "unknown";
     const ok = await transport.checkIn(host);
     console.log(TAG, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
+    wireFeatures(cfg);
   }
   if (document.readyState === "complete") start();
   else window.addEventListener("load", start);
