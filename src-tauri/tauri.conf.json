@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Drake",
+  "version": "0.1.0",
+  "identifier": "com.drake.app",
+  "mainBinaryName": "Drake",
+  "build": {},
+  "app": {
+    "windows": [],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "David William",
+    "shortDescription": "Keeps the Drake plugin injected into the League client.",
+    "copyright": "Copyright © 2026 David William",
+    "category": "Utility",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"],
+    "windows": {
+      "nsis": { "installerIcon": "icons/icon.ico", "installMode": "perMachine" }
+    }
+  }
+}
