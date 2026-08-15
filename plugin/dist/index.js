@@ -2,7 +2,7 @@
   // src/config.js
   async function loadConfig(fetchImpl = fetch) {
     try {
-      const res = await fetchImpl(`config.json?t=${Date.now()}`);
+      const res = await fetchImpl(`https://plugins/Drake/config.json?t=${Date.now()}`);
       if (!res.ok) return null;
       return await res.json();
     } catch {
@@ -13,12 +13,11 @@
   // src/transport.js
   function makeTransport({ port, token, fetchImpl = fetch, dataStore = null }) {
     async function viaLocalhost(host) {
-      const res = await fetchImpl(`http://127.0.0.1:${port}/checkin`, {
+      return fetchImpl(`http://127.0.0.1:${port}/checkin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, host })
       });
-      return res.ok;
     }
     function viaDataStore(host) {
       if (!dataStore) return false;
@@ -27,11 +26,15 @@
     }
     return {
       async checkIn(host) {
+        let res;
         try {
-          if (await viaLocalhost(host)) return true;
+          res = await viaLocalhost(host);
         } catch {
+          return viaDataStore(host);
         }
-        return viaDataStore(host);
+        if (res.ok) return true;
+        console.log("[Drake] check-in rejected, status", res.status);
+        return false;
       }
     };
   }

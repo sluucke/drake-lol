@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { loadConfig } from '../src/config.js';
 
 describe('loadConfig', () => {
-  it('reads config.json relative to the plugin and busts the cache', async () => {
+  it('reads config.json via the absolute plugins:// URL and busts the cache', async () => {
     let seen;
     const fakeFetch = async (url) => {
       seen = url;
@@ -10,7 +10,7 @@ describe('loadConfig', () => {
     };
     const cfg = await loadConfig(fakeFetch);
     expect(cfg.token).toBe('t');
-    expect(seen).toMatch(/config\.json\?/);
+    expect(seen).toMatch(/^https:\/\/plugins\/Drake\/config\.json\?/);
   });
 
   it('returns null instead of throwing when the file is missing', async () => {
