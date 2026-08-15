@@ -171,16 +171,28 @@ esquema `https://plugins/` que o core já registra. Esse caminho não tem
 incógnita: é o mesmo mecanismo que serve o `index.js`, comprovado no teste de
 viabilidade. O cache-buster evita que o CEF sirva versão velha.
 
-**Escrita (plugin → tray): a validar, com fallback.** O caminho preferido é
-`fetch('http://127.0.0.1:<porta>/checkin')`. O Chromium trata `127.0.0.1` como
-origem potencialmente confiável, então em tese isso não conta como mixed
-content — mas isso é uma suposição sobre o CEF 108 embutido no client, e não
-foi medida. **A primeira tarefa do plano é validar isso com um plugin
-descartável**, exatamente como validamos o carregamento de terceiros.
+**Escrita (plugin → tray): `TRANSPORT = localhost`, medido em 2026-08-15.**
+`fetch('http://127.0.0.1:<porta>/checkin')` a partir da página `https://` do
+client **funciona**. O Chromium trata `127.0.0.1` como origem potencialmente
+confiável, então não conta como mixed content, e isso se confirma no CEF 108
+embutido no client.
 
-Se não funcionar, o fallback é sem rede nenhuma: o plugin escreve via
-`DataStore`, que o loader persiste em disco, e o `configd` observa esse
-arquivo. Mais lento e mais feio, mas sem incógnitas.
+A evidência é do lado do servidor, não do console do plugin — o listener
+descartável registrou o request chegando de dentro do client, o que descarta a
+possibilidade de um `fetch` que apenas não lançou exceção:
+
+```
+probe listening on 48151
+HIT POST /checkin {"host":"probe"}
+```
+
+O servidor precisa mandar `Access-Control-Allow-Origin`, já que a página do
+client é outra origem. Sem isso o CORS bloqueia.
+
+O fallback via `DataStore` continua implementado atrás da mesma interface, como
+seguro contra uma mudança futura de política do Chromium. O round-trip
+`set`/`get` do `DataStore` não foi exercitado nesta medição — só a presença da
+API foi confirmada, no spike de viabilidade.
 
 O transporte fica atrás de uma interface no plugin, para que a escolha entre
 os dois não vaze para a lógica das features.
