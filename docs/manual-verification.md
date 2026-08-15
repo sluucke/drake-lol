@@ -22,7 +22,14 @@ Two things worth keeping in mind while running this:
   from the elevated task. `%PROGRAMDATA%` is machine-wide and resolves the
   same way regardless of which account touches it, which is why `paths.rs`
   uses it for everything Drake writes at runtime (`loader\core.dll`,
-  `settings.json`).
+  `state\settings.json`).
+- **Only two directories under `%PROGRAMDATA%\Drake` are user-writable.**
+  `loader\core.dll` is named by a machine-wide `HKLM` value and executes
+  inside whichever user's session launches League, so it must not be
+  writable by a standard user. The installer places it, elevated, and grants
+  Users modify rights only on `loader\plugins\` (where the unelevated tray
+  deploys our plugin) and `state\` (where `settings.json` lives). Step A.0
+  below verifies this.
 - **"Reload client to apply" is only enabled when it can do something.**
   Changing the registry key or dropping a plugin file into `plugins\` has no
   effect on an *already running* client: the Debugger key is read once at
@@ -36,6 +43,31 @@ Two things worth keeping in mind while running this:
   always an explicit click.
 
 ## A. Taking a free slot
+
+0. **Right after installing, verify the ACLs.** This line is security-relevant
+   and cannot be unit-tested. In an elevated prompt, run:
+
+   ```
+   icacls "%PROGRAMDATA%\Drake"
+   icacls "%PROGRAMDATA%\Drake\loader\core.dll"
+   icacls "%PROGRAMDATA%\Drake\loader\plugins"
+   icacls "%PROGRAMDATA%\Drake\state"
+   ```
+
+   Record the full output. The required reading:
+   - `%PROGRAMDATA%\Drake` and `loader\core.dll` must show **no** entry
+     granting `BUILTIN\Users` (`S-1-5-32-545`) `M` or `F`. Users may appear
+     with read/execute only (inherited from `%PROGRAMDATA%`). If Users has
+     `(M)` on `core.dll`, stop: any standard user can then replace a DLL that
+     runs in an administrator's session.
+   - `loader\plugins` and `state` must each show
+     `BUILTIN\Users:(OI)(CI)(M)`.
+   - `core.dll` must exist even though Drake has never been started -- the
+     installer places it, the tray no longer can.
+
+   Then start Drake with `core.dll` deliberately renamed away and confirm the
+   tray reports an `Inactive` reason asking for a reinstall rather than
+   silently recreating the file or failing to start. Restore it afterwards.
 
 1. Ensure no loader is active: the IFEO key
    (`HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution
@@ -93,7 +125,7 @@ Two things worth keeping in mind while running this:
 
 ## F. Auto Accept end to end
 
-1. Enable `auto_accept` in `%PROGRAMDATA%\Drake\settings.json`, restart
+1. Enable `auto_accept` in `%PROGRAMDATA%\Drake\state\settings.json`, restart
    Drake.
 2. If the client was already running, click "Reload client to apply" from
    the tray menu once the item is enabled.
