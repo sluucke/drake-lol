@@ -19,7 +19,9 @@
 - Our plugin folder is always named `Drake`, deployed as `<loader>\plugins\Drake\`.
 - IFEO key: `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\LeagueClientUx.exe`, value `Debugger`, format `rundll32 "<path to core.dll>", #6000`.
 - **The scheduled task takes no arguments.** Its action is fixed. Passing the registry value as a parameter would be a local privilege-escalation hole.
-- **Never write the IFEO key when it points at a loader that is not ours.** No code may reference "Rose" or any specific third-party product by name.
+- **Never write the IFEO key when it points at a loader that is not ours.** No code may reference, by name, any specific third-party PRODUCT that competes for the injection slot — no branching on who else is installed, no special cases. Policy keys on registry state only.
+
+  This constraint does NOT forbid naming **Pengu Loader**, the upstream open-source engine this project vendors itself (Task 3). Its installation folder name is a published convention of the plugin ecosystem, so keying on it — in `host_label`, or in a test fixture path like `C:\Other\Pengu Loader\core.dll` — is keying on a format, not on a rival. Two reviewers have now flagged this as a violation; it is not one.
 - Code, comments, and commit messages in English. Tray strings in English, isolated in one module.
 - Loop interval: 2 seconds. Check-in tolerance window: 20 seconds.
 
