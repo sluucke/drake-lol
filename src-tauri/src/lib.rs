@@ -1,4 +1,5 @@
 pub mod paths;
+pub mod slot;
 pub mod strings;
 pub mod vendored;
 
