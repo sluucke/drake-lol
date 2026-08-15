@@ -153,8 +153,13 @@ git commit -m "docs: record measured plugin-to-tray transport decision"
 /target
 /src-tauri/target
 node_modules
-/plugin/dist
 ```
+
+`plugin/dist/index.js` is deliberately NOT ignored: Task 11 embeds it with
+`include_str!`, so ignoring it would leave a fresh clone unable to build. The
+alternative — invoking esbuild from `build.rs` — would make every Rust build
+require a Node toolchain, a worse trade for a small artifact that ships inside
+the binary regardless.
 
 - [ ] **Step 2: Generate the icon set from `quack.png`**
 
@@ -1120,9 +1125,10 @@ git commit -m "feat: elevate the slot write through a no-argument scheduled task
   - `configd::load() -> Settings`, `configd::save(&Settings) -> Result<(), ConfigError>`
   - `configd::PluginConfig { token: String, port: u16, settings: Settings }`
   - `configd::write_plugin_config(plugin_dir: &Path, cfg: &PluginConfig) -> Result<(), ConfigError>`
-  - `configd::CheckIn { host: String, at: std::time::Instant }`
+  - `configd::CheckInBody { token: String, host: String }` — the POST payload
+  - `configd::ConfigdState::record_checkin(&self, host: String)` and `effective(&self, client_running: bool) -> EffectiveState`
   - `configd::EffectiveState::{Injected { host: String }, NotInjected, Unknown}`
-  - `configd::serve(state: Arc<ConfigdState>, port: u16)` — async, binds `127.0.0.1` only
+  - `configd::serve(state: Arc<ConfigdState>)` — async, binds `127.0.0.1` only, port read from state
 
 - [ ] **Step 1: Write the failing tests**
 
