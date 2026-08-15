@@ -1,5 +1,6 @@
 pub mod paths;
 pub mod strings;
+pub mod vendored;
 
 use tauri::tray::TrayIconBuilder;
 

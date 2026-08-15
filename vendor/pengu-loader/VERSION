@@ -1,0 +1,27 @@
+project: PenguLoader/PenguLoader
+version: v1.1.6-main-ready.325.1   (prerelease — see note below)
+sha256:  3585477C9EBF7BA3B4300D748B582F61EF84F5C53D70C0A0A543ECAFF81B15C8
+source:  https://github.com/PenguLoader/PenguLoader/releases/download/v1.1.6-main-ready.325.1/pengu-v1.1.6-main-ready-windows.zip
+extracted: core.dll from inside that zip (456704 bytes)
+pinned:  2026-08-15
+license: MIT (see LICENSE in this folder)
+
+Why a prerelease: the last stable tag (v1.1.6, December 2024) predates the
+current League client, and the core hard-fails its CEF version check against a
+mismatched client without reporting an error. The 2026 maintenance build is the
+only artifact that matches the client we target.
+
+Upgrade procedure: replace core.dll, update version and sha256 here, then
+re-run the manual verification checklist in Task 11. The client's embedded
+Chromium changes with Riot patches, so this pin will need periodic bumps.
+
+Sanity check against a known-working third-party core.dll on the build machine
+(Rose, a different Pengu-based loader, provably injects into the current
+client):
+  reference path:   C:\Users\sluuc\AppData\Local\Rose\Pengu Loader\core.dll
+  reference size:   505464 bytes
+  reference sha256: 280C894F800D4C00AE2363CCF2F55E63456CD6DE67341AA7B2709C737487679A
+These differ from the pinned core above (different build), which is expected —
+the point of this comparison is to have both numbers on record, not to require
+a byte-for-byte match. The pinned core's actual injection behavior against the
+live client is UNVERIFIED until Task 11's manual checklist.
