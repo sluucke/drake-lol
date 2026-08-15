@@ -1,4 +1,5 @@
 use crate::slot::SlotState;
+use crate::{configd, deploy, elevate, slot::{self, RegistryAccess}};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,6 +52,40 @@ pub fn decide(slot: &SlotState, our_loader_dir: &Path) -> Plan {
     }
 }
 
+/// One iteration of the invariant loop. Idempotent by construction: it reads
+/// the world, decides, applies, and never carries partial state forward.
+pub fn tick<R: RegistryAccess>(
+    reg: &R,
+    our_core: &Path,
+    our_loader_dir: &Path,
+    index_js: &str,
+    cfg: &configd::PluginConfig,
+) -> Mode {
+    let raw = match reg.read_debugger() {
+        Ok(v) => v,
+        Err(e) => return Mode::Inactive { reason: format!("cannot read the injection slot: {e}") },
+    };
+
+    let plan = decide(&slot::classify(raw.as_deref(), our_core), our_loader_dir);
+
+    if plan.take_slot {
+        if let Err(e) = elevate::run_task() {
+            return Mode::Inactive { reason: format!("cannot claim the injection slot: {e}") };
+        }
+    }
+
+    if let Some(loader) = &plan.deploy_to {
+        if let Err(e) = deploy::ensure_plugin(loader, index_js) {
+            return Mode::Inactive { reason: format!("cannot install the plugin: {e}") };
+        }
+        if let Err(e) = configd::write_plugin_config(&deploy::plugin_dir(loader), cfg) {
+            return Mode::Inactive { reason: format!("cannot write the plugin config: {e}") };
+        }
+    }
+
+    plan.mode
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -58,6 +93,36 @@ mod tests {
     use std::path::PathBuf;
 
     fn ours() -> PathBuf { PathBuf::from(r"C:\Drake\loader") }
+
+    struct FakeReg(Option<String>);
+    impl crate::slot::RegistryAccess for FakeReg {
+        fn read_debugger(&self) -> Result<Option<String>, crate::slot::SlotError> {
+            Ok(self.0.clone())
+        }
+        fn write_debugger(&self, _v: &str) -> Result<(), crate::slot::SlotError> { Ok(()) }
+        fn delete_debugger(&self) -> Result<(), crate::slot::SlotError> { Ok(()) }
+    }
+
+    #[test]
+    fn tick_deploys_into_a_foreign_loader_without_touching_the_registry() {
+        let tmp = tempfile::tempdir().unwrap();
+        let foreign_loader = tmp.path().join("Other").join("Pengu Loader");
+        std::fs::create_dir_all(&foreign_loader).unwrap();
+        let core = foreign_loader.join("core.dll");
+
+        let reg = FakeReg(Some(crate::slot::debugger_value(&core)));
+        let cfg = crate::configd::PluginConfig {
+            token: "t".into(),
+            port: 1,
+            settings: Default::default(),
+        };
+
+        let mode = tick(&reg, &ours().join("core.dll"), &ours(), "console.log(1)", &cfg);
+
+        assert_eq!(mode, Mode::Guest { host: "Other".into() });
+        assert!(crate::deploy::plugin_dir(&foreign_loader).join("index.js").is_file());
+        assert!(crate::deploy::plugin_dir(&foreign_loader).join("config.json").is_file());
+    }
 
     #[test]
     fn absent_slot_is_taken_and_deployed_to_our_loader() {
