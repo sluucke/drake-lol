@@ -72,9 +72,16 @@ Mecanismo puro, sem política:
   que exige privilégio). Fica atrás de um trait de acesso ao registro, para
   ser testável sem tocar no registro real.
 - **`deploy`** — dado o caminho de um loader qualquer, garante que
-  `<loader>/plugins/Drake/index.js` existe e corresponde ao bundle, comparando
-  hash. Recalcula hash apenas quando o mtime mudou. Não conhece registro nem
-  política.
+  `<loader>/plugins/Drake/index.js` existe e corresponde ao bundle, comparando o
+  conteúdo diretamente. Não conhece registro nem política.
+
+  *Nota de implementação (2026-08-15):* esta seção dizia antes "comparando hash,
+  recalculado apenas quando o mtime mudou". Isso foi descartado na implementação,
+  deliberadamente. `ensure_plugin` é uma função sem estado; guardar hash ou mtime
+  entre chamadas exigiria estado escondido só para evitar reler alguns KB a cada
+  2 segundos — complexidade real em troca de um ganho não mensurável. Comparar
+  conteúdo é também estritamente mais correto que comparar hash, por não ter
+  superfície de colisão.
 
 Política e superfície:
 
