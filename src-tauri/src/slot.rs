@@ -59,8 +59,13 @@ pub fn debugger_value(core_dll: &Path) -> String {
 pub fn parse_core_path(raw: &str) -> Option<PathBuf> {
     let start = raw.find('"')? + 1;
     let end = raw[start..].find('"')? + start;
-    let candidate = &raw[start..end];
-    if candidate.is_empty() { None } else { Some(PathBuf::from(candidate)) }
+    let candidate = raw[start..end].trim();
+    if candidate.is_empty() { return None; }
+    // Validate that the extracted path ends with .dll (case-insensitive)
+    if !candidate.to_lowercase().ends_with(".dll") {
+        return None;
+    }
+    Some(PathBuf::from(candidate))
 }
 
 pub fn host_label(core_dll: &Path) -> String {
@@ -80,8 +85,15 @@ pub fn host_label(core_dll: &Path) -> String {
     }
 }
 
+fn normalize_path_for_comparison(p: &Path) -> String {
+    p.to_string_lossy()
+        .trim()
+        .replace('/', "\\")
+        .to_lowercase()
+}
+
 fn same_path(a: &Path, b: &Path) -> bool {
-    a.to_string_lossy().to_lowercase() == b.to_string_lossy().to_lowercase()
+    normalize_path_for_comparison(a) == normalize_path_for_comparison(b)
 }
 
 pub fn classify(raw: Option<&str>, our_core: &Path) -> SlotState {
@@ -156,5 +168,36 @@ mod tests {
     fn debugger_value_round_trips_through_the_parser() {
         let v = debugger_value(&ours());
         assert_eq!(parse_core_path(&v).unwrap(), ours());
+    }
+
+    #[test]
+    fn recognises_own_path_with_forward_slashes() {
+        let raw = r#"rundll32 "C:/Users/x/AppData/Local/Drake/loader/core.dll", #6000"#;
+        assert_eq!(classify(Some(raw), &ours()), SlotState::Ours);
+    }
+
+    #[test]
+    fn recognises_own_path_with_trailing_whitespace() {
+        let raw = r#"rundll32 "C:\Users\x\AppData\Local\Drake\loader\core.dll  ", #6000"#;
+        assert_eq!(classify(Some(raw), &ours()), SlotState::Ours);
+    }
+
+    #[test]
+    fn rejects_quoted_string_that_is_not_a_dll() {
+        let raw = r#"rundll32 "C:\some\executable.exe", #6000"#;
+        match classify(Some(raw), &ours()) {
+            SlotState::Unparsable { .. } => {}
+            other => panic!("expected Unparsable for non-DLL path, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_multi_quote_value_where_first_quoted_token_is_not_a_dll() {
+        // A malformed value with multiple quoted tokens where first is not a DLL
+        let raw = r#"rundll32 "C:\malicious.exe" then "C:\Users\x\AppData\Local\Rose\Pengu Loader\core.dll", #6000"#;
+        match classify(Some(raw), &ours()) {
+            SlotState::Unparsable { .. } => {}
+            other => panic!("expected Unparsable, got {other:?}"),
+        }
     }
 }
