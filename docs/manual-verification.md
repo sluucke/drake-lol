@@ -46,6 +46,12 @@ Two things worth keeping in mind while running this:
    (or the plugin's equivalent check-in log line) appears.
 5. Confirm the tray's "Reload client to apply" item is disabled once the
    check-in has landed (client running + `Injected`).
+6. Leave the client idle, untouched, for at least **one minute**, then look
+   at the tray menu again. "Reload client to apply" must still be disabled.
+   This step is deliberately longer than the 20-second check-in tolerance:
+   evaluated inside that window it would pass even if the plugin checked in
+   only once at load, which is exactly the bug it exists to catch. A healthy
+   session must never start offering a reload on its own.
 
 ## B. Guest mode
 

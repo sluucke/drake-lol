@@ -83,6 +83,26 @@
     };
   }
 
+  // src/heartbeat.js
+  var HEARTBEAT_INTERVAL_MS = 5e3;
+  async function startHeartbeat({
+    checkIn,
+    host,
+    intervalMs = HEARTBEAT_INTERVAL_MS,
+    setIntervalImpl = setInterval
+  }) {
+    const beat = async () => {
+      try {
+        return await checkIn(host);
+      } catch {
+        return false;
+      }
+    };
+    const first = await beat();
+    setIntervalImpl(beat, intervalMs);
+    return first;
+  }
+
   // src/index.js
   var TAG = "[Drake]";
   var lcu = {
@@ -104,7 +124,7 @@
       dataStore: typeof DataStore !== "undefined" ? DataStore : null
     });
     const host = typeof Pengu !== "undefined" && Pengu.version ? `pengu ${Pengu.version}` : "unknown";
-    const ok = await transport.checkIn(host);
+    const ok = await startHeartbeat({ checkIn: transport.checkIn, host });
     console.log(TAG, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
     wireFeatures(cfg);
   }

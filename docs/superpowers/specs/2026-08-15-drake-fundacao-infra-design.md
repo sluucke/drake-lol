@@ -144,6 +144,18 @@ nenhum check-in chegou dentro de uma janela de tolerância, o efetivo é "não
 injetado", e a bandeja oferece *recarregar o client para aplicar*, que executa
 `POST /riotclient/kill-and-restart-ux`.
 
+O check-in é **repetido**, não único: um *heartbeat* de 5 s, começando com uma
+chamada imediata no carregamento. Isso não é detalhe de implementação — é o
+que torna a janela de tolerância coerente. Com um único check-in no
+carregamento, qualquer janela de tolerância finita expira em uma sessão
+perfeitamente saudável, e a bandeja passa a oferecer *recarregar o client*
+para sempre, para um problema que não existe. O intervalo (5 s) fica
+confortavelmente dentro da tolerância (20 s, `configd::CHECKIN_TOLERANCE`), de
+modo que várias batidas podem se perder sem falso negativo. Um check-in que
+falha ou lança nunca interrompe as batidas seguintes: o tray reiniciando no
+meio da sessão rejeita o token antigo, e desistir ali deixaria a bandeja cega
+pelo resto da sessão.
+
 O supervisor **nunca** reinicia o client por conta própria. É sempre ação
 explícita do usuário.
 
