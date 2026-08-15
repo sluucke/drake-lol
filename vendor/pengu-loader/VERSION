@@ -21,7 +21,8 @@ client):
   reference path:   C:\Users\sluuc\AppData\Local\Rose\Pengu Loader\core.dll
   reference size:   505464 bytes
   reference sha256: 280C894F800D4C00AE2363CCF2F55E63456CD6DE67341AA7B2709C737487679A
-These differ from the pinned core above (different build), which is expected —
-the point of this comparison is to have both numbers on record, not to require
-a byte-for-byte match. The pinned core's actual injection behavior against the
-live client is UNVERIFIED until Task 11's manual checklist.
+The reference core is 48760 bytes larger than the pinned one (505464 vs
+456704, about 10%) and hashes differently. Both numbers are on record here;
+what the difference means is not known. The pinned core's actual injection
+behavior against the live client is UNVERIFIED until Task 11's manual
+checklist.

@@ -1,3 +1,7 @@
 /target
 /src-tauri/target
 node_modules
+# tauri-build output, regenerated on every build. Upstream Tauri's own
+# template ignores it; tracking it turned every tauri.conf.json edit into a
+# 4,500-line diff.
+/src-tauri/gen/schemas

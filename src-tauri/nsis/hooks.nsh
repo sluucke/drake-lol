@@ -33,7 +33,6 @@
   ; If the copy fails (most plausibly: core.dll is mapped by a client running
   ; under our own loader during an upgrade), the tray notices the mismatch on
   ; its next tick and reports it as an Inactive reason asking for a reinstall.
-  SetOverwrite try
   CopyFiles /SILENT "$INSTDIR\vendor\pengu-loader\core.dll" "$%PROGRAMDATA%\Drake\loader\core.dll"
 
   ; S-1-5-32-545 is the well-known Users SID. Do not use the name "Users" —
