@@ -41,11 +41,66 @@ pub fn run_task() -> Result<(), ElevateError> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ActivationOutcome {
+    /// The slot was free (or already ours) and now names our core.dll.
+    Wrote,
+    /// Somebody else's value was in the slot. Left exactly as it was.
+    Declined,
+}
+
+/// Claims the injection slot, but *only* when it is free or already ours.
+///
+/// This runs as SYSTEM, so it is the last line of defence for the product's
+/// central invariant: never take a slot that belongs to someone else. Two
+/// concrete reasons it cannot simply write:
+///
+/// - `schtasks /Run` is fire-and-forget. The supervisor observed `Absent`
+///   hundreds of milliseconds (or seconds) before this code runs; a competing
+///   loader may have claimed the slot in between.
+/// - The design deliberately lets an unelevated process trigger the task, so
+///   *any* local process can pull this trigger at any moment.
+///
+/// Re-reading here costs nothing (we are elevated) and closes both.
+pub fn activate(
+    registry: &impl crate::slot::RegistryAccess,
+    our_core: &Path,
+) -> Result<ActivationOutcome, crate::slot::SlotError> {
+    use crate::slot::SlotState;
+    let raw = registry.read_debugger()?;
+    match crate::slot::classify(raw.as_deref(), our_core) {
+        SlotState::Absent | SlotState::Ours => {
+            registry.write_debugger(&crate::slot::debugger_value(our_core))?;
+            Ok(ActivationOutcome::Wrote)
+        }
+        // Foreign: someone else owns the mechanism. Unparsable: we do not
+        // understand the value, so we cannot know it is free. Both are
+        // no-ops that succeed -- declining is the correct outcome, not a
+        // failure to report.
+        SlotState::Foreign { .. } | SlotState::Unparsable { .. } => Ok(ActivationOutcome::Declined),
+    }
+}
+
+/// The one thing the supervisor asks of the elevated path: claim the slot.
+/// Behind a trait so `supervisor::tick`'s take-slot branch can be tested
+/// without a scheduled task existing on the machine running the tests.
+pub trait SlotClaimer {
+    fn claim(&self) -> Result<(), ElevateError>;
+}
+
+/// The real one: triggers the scheduled task created by the installer.
+pub struct ScheduledTaskClaimer;
+
+impl SlotClaimer for ScheduledTaskClaimer {
+    fn claim(&self) -> Result<(), ElevateError> {
+        run_task()
+    }
+}
+
 /// Runs elevated, from the scheduled task only. Writes the fixed value.
 pub fn perform_activation() -> Result<(), Box<dyn std::error::Error>> {
-    use crate::{paths, slot, slot::RegistryAccess};
-    let value = slot::debugger_value(&paths::our_core_dll());
-    slot::WindowsRegistry.write_debugger(&value)?;
+    use crate::{paths, slot};
+    activate(&slot::WindowsRegistry, &paths::our_core_dll())?;
     Ok(())
 }
 
@@ -113,14 +168,23 @@ mod tests {
     struct FakeRegistry {
         value: RefCell<Option<String>>,
         deleted: Cell<bool>,
+        writes: RefCell<Vec<String>>,
     }
 
     impl FakeRegistry {
         fn holding(value: &str) -> Self {
-            FakeRegistry { value: RefCell::new(Some(value.to_string())), deleted: Cell::new(false) }
+            FakeRegistry {
+                value: RefCell::new(Some(value.to_string())),
+                deleted: Cell::new(false),
+                writes: RefCell::new(Vec::new()),
+            }
         }
         fn empty() -> Self {
-            FakeRegistry { value: RefCell::new(None), deleted: Cell::new(false) }
+            FakeRegistry {
+                value: RefCell::new(None),
+                deleted: Cell::new(false),
+                writes: RefCell::new(Vec::new()),
+            }
         }
     }
 
@@ -129,6 +193,7 @@ mod tests {
             Ok(self.value.borrow().clone())
         }
         fn write_debugger(&self, value: &str) -> Result<(), SlotError> {
+            self.writes.borrow_mut().push(value.to_string());
             *self.value.borrow_mut() = Some(value.to_string());
             Ok(())
         }
@@ -140,6 +205,59 @@ mod tests {
     }
 
     fn ours() -> PathBuf { PathBuf::from(r"C:\ProgramData\Drake\loader\core.dll") }
+
+    // --- activate(): the elevated writer must honour the same invariant ---
+
+    #[test]
+    fn activate_writes_when_the_slot_is_absent() {
+        let registry = FakeRegistry::empty();
+        assert_eq!(activate(&registry, &ours()).unwrap(), ActivationOutcome::Wrote);
+        assert_eq!(
+            registry.writes.borrow().as_slice(),
+            &[crate::slot::debugger_value(&ours())]
+        );
+    }
+
+    #[test]
+    fn activate_rewrites_when_the_slot_is_already_ours() {
+        // Idempotent: writing the identical value we already hold is harmless
+        // and keeps the elevated path a single, unconditional code path for
+        // the two states where writing is legitimate.
+        let registry = FakeRegistry::holding(&crate::slot::debugger_value(&ours()));
+        assert_eq!(activate(&registry, &ours()).unwrap(), ActivationOutcome::Wrote);
+        assert_eq!(
+            registry.writes.borrow().as_slice(),
+            &[crate::slot::debugger_value(&ours())]
+        );
+    }
+
+    #[test]
+    fn activate_never_overwrites_a_foreign_slot() {
+        // The TOCTOU case: `tick` saw Absent, fired the task, and a competing
+        // loader claimed the slot before this ran. Overwriting here would
+        // silently break a stranger's software.
+        let theirs = crate::slot::debugger_value(&PathBuf::from(r"C:\Other\Pengu Loader\core.dll"));
+        let registry = FakeRegistry::holding(&theirs);
+        assert_eq!(activate(&registry, &ours()).unwrap(), ActivationOutcome::Declined);
+        assert!(
+            registry.writes.borrow().is_empty(),
+            "must never take a slot that belongs to someone else, but wrote: {:?}",
+            registry.writes.borrow()
+        );
+        assert_eq!(registry.value.borrow().as_deref(), Some(theirs.as_str()));
+        assert!(!registry.deleted.get());
+    }
+
+    #[test]
+    fn activate_leaves_an_unparsable_slot_alone() {
+        let registry = FakeRegistry::holding("something we do not understand");
+        assert_eq!(activate(&registry, &ours()).unwrap(), ActivationOutcome::Declined);
+        assert!(registry.writes.borrow().is_empty());
+        assert_eq!(
+            registry.value.borrow().as_deref(),
+            Some("something we do not understand")
+        );
+    }
 
     #[test]
     fn deactivate_deletes_when_the_slot_is_ours() {

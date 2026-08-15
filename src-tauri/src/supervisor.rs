@@ -54,8 +54,9 @@ pub fn decide(slot: &SlotState, our_loader_dir: &Path) -> Plan {
 
 /// One iteration of the invariant loop. Idempotent by construction: it reads
 /// the world, decides, applies, and never carries partial state forward.
-pub fn tick<R: RegistryAccess>(
+pub fn tick<R: RegistryAccess, C: elevate::SlotClaimer>(
     reg: &R,
+    claimer: &C,
     our_core: &Path,
     our_loader_dir: &Path,
     index_js: &str,
@@ -69,7 +70,10 @@ pub fn tick<R: RegistryAccess>(
     let plan = decide(&slot::classify(raw.as_deref(), our_core), our_loader_dir);
 
     if plan.take_slot {
-        if let Err(e) = elevate::run_task() {
+        // Fire-and-forget: the elevated task re-verifies the slot itself
+        // before writing (see `elevate::activate`), because it may run well
+        // after the read above.
+        if let Err(e) = claimer.claim() {
             return Mode::Inactive { reason: format!("cannot claim the injection slot: {e}") };
         }
     }
@@ -120,6 +124,98 @@ mod tests {
         fn delete_debugger(&self) -> Result<(), crate::slot::SlotError> { Ok(()) }
     }
 
+    /// Counts claim attempts so the take-slot branch can be exercised without
+    /// a scheduled task existing on the machine running the tests.
+    struct FakeClaimer {
+        calls: std::cell::Cell<usize>,
+        fail: bool,
+    }
+
+    impl FakeClaimer {
+        fn ok() -> Self { FakeClaimer { calls: std::cell::Cell::new(0), fail: false } }
+        fn failing() -> Self { FakeClaimer { calls: std::cell::Cell::new(0), fail: true } }
+    }
+
+    impl crate::elevate::SlotClaimer for FakeClaimer {
+        fn claim(&self) -> Result<(), crate::elevate::ElevateError> {
+            self.calls.set(self.calls.get() + 1);
+            if self.fail {
+                Err(crate::elevate::ElevateError::TaskMissing)
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    fn a_config() -> crate::configd::PluginConfig {
+        crate::configd::PluginConfig { token: "t".into(), port: 1, settings: Default::default() }
+    }
+
+    #[test]
+    fn tick_claims_the_slot_when_it_is_free_and_deploys_to_our_own_loader() {
+        let tmp = tempfile::tempdir().unwrap();
+        let our_loader = tmp.path().join("Drake").join("loader");
+        let reg = FakeReg::holding(None);
+        let claimer = FakeClaimer::ok();
+
+        let mode = tick(
+            &reg,
+            &claimer,
+            &our_loader.join("core.dll"),
+            &our_loader,
+            "console.log(1)",
+            &a_config(),
+        );
+
+        assert_eq!(mode, Mode::OwnLoader);
+        assert_eq!(claimer.calls.get(), 1, "a free slot must trigger the elevated claim");
+        // The unelevated tray never writes HKLM itself -- only the task does.
+        assert!(reg.writes.borrow().is_empty());
+        assert!(crate::deploy::plugin_dir(&our_loader).join("index.js").is_file());
+    }
+
+    #[test]
+    fn tick_reports_the_reason_when_the_claim_cannot_be_made() {
+        let tmp = tempfile::tempdir().unwrap();
+        let our_loader = tmp.path().join("Drake").join("loader");
+        let reg = FakeReg::holding(None);
+        let claimer = FakeClaimer::failing();
+
+        let mode = tick(
+            &reg,
+            &claimer,
+            &our_loader.join("core.dll"),
+            &our_loader,
+            "console.log(1)",
+            &a_config(),
+        );
+
+        match mode {
+            Mode::Inactive { reason } => {
+                assert_eq!(
+                    reason,
+                    "cannot claim the injection slot: the activation task is not installed"
+                );
+            }
+            other => panic!("expected Inactive, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn tick_does_not_claim_a_slot_that_belongs_to_someone_else() {
+        let tmp = tempfile::tempdir().unwrap();
+        let foreign_loader = tmp.path().join("Other").join("Pengu Loader");
+        std::fs::create_dir_all(&foreign_loader).unwrap();
+        let reg = FakeReg::holding(Some(crate::slot::debugger_value(
+            &foreign_loader.join("core.dll"),
+        )));
+        let claimer = FakeClaimer::ok();
+
+        tick(&reg, &claimer, &ours().join("core.dll"), &ours(), "x", &a_config());
+
+        assert_eq!(claimer.calls.get(), 0, "must never trigger a claim over a foreign slot");
+    }
+
     #[test]
     fn tick_deploys_into_a_foreign_loader_without_touching_the_registry() {
         let tmp = tempfile::tempdir().unwrap();
@@ -134,7 +230,14 @@ mod tests {
             settings: Default::default(),
         };
 
-        let mode = tick(&reg, &ours().join("core.dll"), &ours(), "console.log(1)", &cfg);
+        let mode = tick(
+            &reg,
+            &FakeClaimer::ok(),
+            &ours().join("core.dll"),
+            &ours(),
+            "console.log(1)",
+            &cfg,
+        );
 
         assert_eq!(mode, Mode::Guest { host: "Other".into() });
         assert!(
@@ -179,11 +282,13 @@ mod tests {
         assert!(!p.take_slot);
         assert_eq!(p.deploy_to, None);
         match p.mode {
-            Mode::Inactive { reason } => {
-                assert!(reason.contains("???"));
-                // Unparsable means we don't know what happened; never assert ownership by another program.
-                assert!(!reason.contains("another program"), "must not infer causes from unparsable values");
-            }
+            // Pinned exactly: the reason string is the text the tray shows.
+            // It must quote the value verbatim and say nothing about who put
+            // it there -- unparsable means we do not know.
+            Mode::Inactive { reason } => assert_eq!(
+                reason,
+                "the injection slot holds a value Drake could not parse: ???"
+            ),
             other => panic!("expected Inactive, got {other:?}"),
         }
     }

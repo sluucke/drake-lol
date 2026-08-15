@@ -120,6 +120,7 @@ pub fn run() {
                     // consumer is this tray's own status display.
                     let mode = supervisor::tick(
                         &slot::WindowsRegistry,
+                        &elevate::ScheduledTaskClaimer,
                         &paths::our_core_dll(),
                         &paths::our_loader_dir(),
                         INDEX_JS,
