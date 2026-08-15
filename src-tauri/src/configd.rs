@@ -65,6 +65,15 @@ pub fn write_plugin_config(plugin_dir: &Path, cfg: &PluginConfig) -> Result<(), 
         .map_err(|source| ConfigError::Write { path: plugin_dir.to_path_buf(), source })?;
     let path = plugin_dir.join("config.json");
     let raw = serde_json::to_string_pretty(cfg)?;
+    // Called every tick (every 2s). Within a run the token and settings are
+    // stable, so comparing first avoids rewriting unchanged bytes on every
+    // iteration -- which in guest mode would otherwise be a steady stream of
+    // needless writes into a third-party product's own directory.
+    if let Ok(existing) = std::fs::read_to_string(&path) {
+        if existing == raw {
+            return Ok(());
+        }
+    }
     std::fs::write(&path, raw).map_err(|source| ConfigError::Write { path, source })
 }
 
@@ -218,6 +227,32 @@ mod tests {
         let raw = std::fs::read_to_string(tmp.path().join("config.json")).unwrap();
         assert!(raw.contains("\"token\""));
         assert!(raw.contains("48151"));
+    }
+
+    #[test]
+    fn plugin_config_is_not_rewritten_when_unchanged() {
+        // Regression test: the tick loop calls this every 2 seconds with an
+        // unchanged config for the lifetime of a run. Make the file
+        // read-only after the first write -- if a second call with
+        // identical content attempted to write again, it would fail here.
+        let tmp = tempfile::tempdir().unwrap();
+        let cfg = PluginConfig { token: "abc".into(), port: 48151, settings: Settings::default() };
+        write_plugin_config(tmp.path(), &cfg).unwrap();
+
+        let path = tmp.path().join("config.json");
+        let mut perms = std::fs::metadata(&path).unwrap().permissions();
+        perms.set_readonly(true);
+        std::fs::set_permissions(&path, perms).unwrap();
+
+        let result = write_plugin_config(tmp.path(), &cfg);
+
+        // Restore write access so the tempdir can clean itself up regardless
+        // of the assertion outcome below.
+        let mut perms = std::fs::metadata(&path).unwrap().permissions();
+        perms.set_readonly(false);
+        std::fs::set_permissions(&path, perms).unwrap();
+
+        result.unwrap();
     }
 
     #[test]
