@@ -1,3 +1,4 @@
+pub mod configd;
 pub mod deploy;
 pub mod elevate;
 pub mod paths;
