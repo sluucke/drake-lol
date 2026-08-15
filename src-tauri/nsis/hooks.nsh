@@ -15,10 +15,22 @@
   nsExec::ExecToLog '"$SYSDIR\schtasks.exe" /Create /F /TN "Drake Slot Activation" /SC ONCE /ST 00:00 /RL HIGHEST /RU "SYSTEM" /TR "\"$INSTDIR\Drake.exe\" --activate-slot"'
 !macroend
 
-!macro NSIS_HOOK_POSTUNINSTALL
-  ; The uninstaller already runs elevated, so it can clear the IFEO value
-  ; directly. --deactivate-slot only removes it when it still points at our
-  ; own core.dll, leaving another product's value untouched.
+!macro NSIS_HOOK_PREUNINSTALL
+  ; Must run here, not in NSIS_HOOK_POSTUNINSTALL: by the time POSTUNINSTALL
+  ; fires, the bundler's own Section Uninstall has already deleted
+  ; "$INSTDIR\Drake.exe" and removed $INSTDIR itself, so calling the binary
+  ; there fails silently and leaves the stale IFEO value behind pointing at
+  ; a core.dll that no longer exists. PREUNINSTALL runs before any of that,
+  ; while $INSTDIR\Drake.exe still exists. Do not move this back to
+  ; POSTUNINSTALL. The uninstaller already runs elevated, so it can clear
+  ; the IFEO value directly. --deactivate-slot only removes it when it
+  ; still points at our own core.dll, leaving another product's value
+  ; untouched.
   nsExec::ExecToLog '"$INSTDIR\Drake.exe" --deactivate-slot'
+!macroend
+
+!macro NSIS_HOOK_POSTUNINSTALL
+  ; schtasks.exe lives in $SYSDIR and does not depend on $INSTDIR surviving,
+  ; so this is fine to run after the bundler has removed the install dir.
   nsExec::ExecToLog '"$SYSDIR\schtasks.exe" /Delete /F /TN "Drake Slot Activation"'
 !macroend
