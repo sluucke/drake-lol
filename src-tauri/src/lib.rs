@@ -2,6 +2,7 @@ pub mod deploy;
 pub mod paths;
 pub mod slot;
 pub mod strings;
+pub mod supervisor;
 pub mod vendored;
 
 use tauri::tray::TrayIconBuilder;
