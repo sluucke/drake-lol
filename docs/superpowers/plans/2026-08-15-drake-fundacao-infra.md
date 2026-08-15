@@ -358,17 +358,46 @@ We embed the official release binary rather than compiling the C++/CEF core. Bui
 **Interfaces:**
 - Produces: `vendored::core_dll_source(app: &tauri::AppHandle) -> Result<PathBuf, VendorError>` — absolute path to the bundled `core.dll` inside the installed app.
 
-- [ ] **Step 1: Download the pinned release and record its hash**
+- [ ] **Step 1: Download the pinned release and extract `core.dll`**
+
+`core.dll` is not a standalone release asset — it ships inside a zip. And the
+last *stable* release is `v1.1.6` from December 2024, which predates the current
+League client. The core performs a hard CEF version check and refuses to hook on
+a mismatch (`Client CEF version: 108, Expected: 108` in a working install), so a
+2024 core would very likely fail silently against a 2026 client. Pin the 2026
+maintenance prerelease instead.
 
 ```powershell
 New-Item -ItemType Directory -Force vendor\pengu-loader | Out-Null
-# Pin an explicit release tag; never track "latest".
-$tag = 'v2.0.0'
-Invoke-WebRequest "https://github.com/PenguLoader/PenguLoader/releases/download/$tag/core.dll" -OutFile vendor\pengu-loader\core.dll
+# Pin an explicit tag; never track "latest".
+$tag = 'v1.1.6-main-ready.325.1'
+$zip = "$env:TEMP\pengu.zip"
+Invoke-WebRequest "https://github.com/PenguLoader/PenguLoader/releases/download/$tag/pengu-v1.1.6-main-ready-windows.zip" -OutFile $zip
+Expand-Archive $zip -DestinationPath "$env:TEMP\pengu-extract" -Force
+Get-ChildItem "$env:TEMP\pengu-extract" -Recurse -Filter core.dll | Select-Object FullName, Length
+```
+
+Copy the `core.dll` you find to `vendor\pengu-loader\core.dll`, then record its hash:
+
+```powershell
 (Get-FileHash vendor\pengu-loader\core.dll -Algorithm SHA256).Hash
 ```
 
-If the release layout differs, download the release zip and extract `core.dll` from it. Record whatever path you actually used in `VERSION`.
+- [ ] **Step 1b: Sanity-check the pinned core against a known-working one**
+
+A core that fails the CEF check injects nothing and reports no error, so verify
+before trusting it. If another Pengu-based loader is installed on this machine,
+its `core.dll` is known to work against the current client — compare:
+
+```powershell
+Get-ChildItem vendor\pengu-loader\core.dll | Select-Object Length
+(Get-FileHash vendor\pengu-loader\core.dll -Algorithm SHA256).Hash
+```
+
+Record both in `VERSION`. If the pinned core turns out to be the wrong CEF
+generation, that surfaces in Task 11's manual checklist section A, where the
+plugin simply never checks in. Note in your report that this pin is unverified
+until then — do not claim it works.
 
 - [ ] **Step 2: Write `vendor/pengu-loader/VERSION`**
 
@@ -376,11 +405,17 @@ Fill in the real tag, hash, and date from Step 1.
 
 ```
 project: PenguLoader/PenguLoader
-version: v2.0.0
+version: v1.1.6-main-ready.325.1   (prerelease — see note below)
 sha256:  <hash from step 1>
-source:  https://github.com/PenguLoader/PenguLoader/releases/download/v2.0.0/core.dll
+source:  https://github.com/PenguLoader/PenguLoader/releases/download/v1.1.6-main-ready.325.1/pengu-v1.1.6-main-ready-windows.zip
+extracted: core.dll from inside that zip
 pinned:  2026-08-15
 license: MIT (see LICENSE in this folder)
+
+Why a prerelease: the last stable tag (v1.1.6, December 2024) predates the
+current League client, and the core hard-fails its CEF version check against a
+mismatched client without reporting an error. The 2026 maintenance build is the
+only artifact that matches the client we target.
 
 Upgrade procedure: replace core.dll, update version and sha256 here, then
 re-run the manual verification checklist in Task 11. The client's embedded
