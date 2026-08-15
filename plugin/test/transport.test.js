@@ -33,4 +33,28 @@ describe('transport', () => {
     });
     expect(await t.checkIn('Drake')).toBe(false);
   });
+
+  it('does not touch DataStore when localhost succeeds', async () => {
+    let dataStoreTouched = false;
+    const t = makeTransport({
+      port: 48151,
+      token: 'sekret',
+      fetchImpl: async () => ({ ok: true, status: 204 }),
+      dataStore: { set: () => { dataStoreTouched = true; } },
+    });
+    expect(await t.checkIn('Drake')).toBe(true);
+    expect(dataStoreTouched).toBe(false);
+  });
+
+  it('reports failure (not a fallback) when the tray rejects the token', async () => {
+    let dataStoreTouched = false;
+    const t = makeTransport({
+      port: 48151,
+      token: 'stale',
+      fetchImpl: async () => ({ ok: false, status: 401 }),
+      dataStore: { set: () => { dataStoreTouched = true; } },
+    });
+    expect(await t.checkIn('Drake')).toBe(false);
+    expect(dataStoreTouched).toBe(false);
+  });
 });
