@@ -14,8 +14,12 @@
 
 - Windows only. macOS activation uses a different mechanism and is explicitly out of scope.
 - Product name **Drake**. Identifier `com.drake.app`. Binary `Drake`.
-- App installs **per-machine** (elevated once, so the installer can create the scheduled task). Runtime data lives in `%LOCALAPPDATA%\Drake\`.
-- Vendored loader path: `%LOCALAPPDATA%\Drake\loader\` containing `core.dll` and `plugins\` as siblings — the convention the spike confirmed every loader follows.
+- App installs **per-machine** (elevated once, so the installer can create the scheduled task). Runtime data lives in `%PROGRAMDATA%\Drake\` (`C:\ProgramData\Drake`).
+- Vendored loader path: `%PROGRAMDATA%\Drake\loader\` containing `core.dll` and `plugins\` as siblings — the convention the spike confirmed every loader follows.
+
+  **Why `%PROGRAMDATA%` and not `%LOCALAPPDATA%` (corrected 2026-08-15):** the slot write is performed by a scheduled task running as **SYSTEM**, and `%LOCALAPPDATA%` resolves for SYSTEM to `C:\Windows\System32\config\systemprofile\AppData\Local` — not the interactive user's profile. Deriving the loader path from it would write a Debugger value pointing at a `core.dll` that does not exist, silently, and nothing would ever inject. `%PROGRAMDATA%` resolves identically for SYSTEM and for the user, which fixes this **without** giving the scheduled task any arguments.
+
+  Consequence: the installer must grant Users modify on `C:\ProgramData\Drake`, since the unelevated tray writes `plugins\` there. Use the well-known SID `S-1-5-32-545` rather than the name "Users", which is localized.
 - Our plugin folder is always named `Drake`, deployed as `<loader>\plugins\Drake\`.
 - IFEO key: `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\LeagueClientUx.exe`, value `Debugger`, format `rundll32 "<path to core.dll>", #6000`.
 - **The scheduled task takes no arguments.** Its action is fixed. Passing the registry value as a parameter would be a local privilege-escalation hole.
