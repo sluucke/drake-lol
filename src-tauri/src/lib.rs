@@ -1,3 +1,4 @@
+pub mod deploy;
 pub mod paths;
 pub mod slot;
 pub mod strings;
