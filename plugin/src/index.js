@@ -2,6 +2,7 @@ import { loadConfig } from './config.js';
 import { makeTransport } from './transport.js';
 import { startAutoAccept } from './autoAccept.js';
 import { subscribe } from './subscribe.js';
+import { startHeartbeat } from './heartbeat.js';
 
 const TAG = '[Drake]';
 
@@ -30,9 +31,11 @@ async function start() {
   });
 
   // The tray derives "effective state" from this, so it must happen before
-  // anything that can throw.
+  // anything that can throw. It also has to keep happening: the tray expires
+  // a check-in after 20 seconds, so one call at load would make a healthy
+  // session look uninjected shortly after it starts.
   const host = (typeof Pengu !== 'undefined' && Pengu.version) ? `pengu ${Pengu.version}` : 'unknown';
-  const ok = await transport.checkIn(host);
+  const ok = await startHeartbeat({ checkIn: transport.checkIn, host });
   console.log(TAG, 'check-in', ok ? 'ok' : 'failed', '| settings', JSON.stringify(cfg.settings));
 
   wireFeatures(cfg);
