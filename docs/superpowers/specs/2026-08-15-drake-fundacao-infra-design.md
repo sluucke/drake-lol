@@ -36,7 +36,7 @@ medidos e não inferidos:
    client, na UIKit real. Isso descarta do porte todo o CSS, fontes e SFX do
    app antigo, que existiam apenas para imitar o client.
 2. **O tray é a fonte da verdade das configurações**, persistidas em
-   `%PROGRAMDATA%\Drake\settings.json`, em pasta própria do Drake — de modo
+   `%PROGRAMDATA%\Drake\state\settings.json`, em pasta própria do Drake — de modo
    que sobrevivem à troca de loader hospedeiro. O `config.json` que o tray
    escreve junto do plugin é simultaneamente o canal de leitura e o cache:
    como fica em disco, o plugin continua operando com a última configuração
@@ -89,7 +89,7 @@ Política e superfície:
   uma função pura `estado → ação`, testável exaustivamente sem tocar no
   sistema. Publica o modo atual.
 - **`configd`** — serve as configurações ao plugin e as persiste em
-  `%PROGRAMDATA%\Drake\settings.json`. Recebe o check-in do plugin.
+  `%PROGRAMDATA%\Drake\state\settings.json`. Recebe o check-in do plugin.
 - **`tray`** — ícone, menu e texto de estado. Só consome o que o `supervisor`
   publica; não decide nada.
 - **`plugin`** — o `index.js` injetado. Neste spec é deliberadamente magro:
@@ -101,6 +101,25 @@ Artefato embutido:
 - **loader vendorizado** — Pengu Loader oficial (Rust, MIT), instalado em
   `%PROGRAMDATA%\Drake\loader\` com `core.dll` e `plugins/` irmãos, seguindo
   a mesma convenção que o Rose usa.
+
+  Quem coloca o `core.dll` ali é o **instalador**, elevado, a partir do
+  recurso embutido — nunca o tray. O motivo é de segurança e define o layout
+  de permissões da árvore inteira: o `core.dll` é apontado por um valor
+  `HKLM` de máquina e executa dentro da sessão de *qualquer* usuário que
+  abrir o League, inclusive a de um administrador. Se um usuário padrão
+  pudesse escrevê-lo, o usuário A trocaria o DLL e ele rodaria como o usuário
+  B. Portanto:
+
+  | caminho | ACL |
+  |---|---|
+  | `Drake\` | padrão (admin escreve, usuário lê) |
+  | `Drake\loader\core.dll` | padrão — só admin escreve |
+  | `Drake\loader\plugins\` | `Users:(OI)(CI)M` — o tray sem privilégio escreve o nosso plugin aqui |
+  | `Drake\state\` | `Users:(OI)(CI)M` — `settings.json` mora aqui |
+
+  O tray, ao subir, apenas **compara** o `core.dll` instalado com o recurso
+  embutido; divergência ou ausência viram `Inativo { motivo }` pedindo
+  reinstalação, nunca uma tentativa de escrita que ele não pode fazer.
 
 A fronteira que importa: se o mecanismo de injeção do Windows ou do client
 mudar, o estrago fica contido em `slot` e `deploy`.

@@ -8,6 +8,7 @@ pub mod strings;
 pub mod supervisor;
 pub mod vendored;
 
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
@@ -15,39 +16,40 @@ use tauri::tray::TrayIconBuilder;
 const CONFIGD_PORT: u16 = 48151;
 const INDEX_JS: &str = include_str!("../../plugin/dist/index.js");
 
-/// Installs the vendored `core.dll` into `%PROGRAMDATA%\Drake\loader`,
-/// skipping the write entirely when the destination already holds identical
-/// bytes. This matters for more than efficiency: while a League client is
-/// running under our loader, `core.dll` is mapped as a live image and
-/// cannot be opened for write, so an unconditional copy on every Drake
-/// restart would fail exactly when Drake is relaunched with the client
-/// still up -- not an edge case. Returns a human-readable error instead of
-/// propagating one, so a failure here degrades to an `Inactive` tray
-/// reason rather than aborting startup.
-fn ensure_vendored_loader_installed(app: &tauri::AppHandle) -> Result<(), String> {
+/// Reports whether the installed `core.dll` matches the bundled resource.
+///
+/// The tray deliberately cannot fix a mismatch: `%PROGRAMDATA%\Drake\loader`
+/// keeps an admin-only ACL, because `core.dll` is named by a machine-wide
+/// HKLM value and executes inside whichever user's session launches League.
+/// Letting the unelevated tray write it would let any standard user plant a
+/// DLL that runs in an administrator's session. The elevated installer places
+/// the file instead; all this can do is notice and say so.
+fn verify_installed_loader(src: &Path, dest: &Path) -> Result<(), String> {
+    let expected = std::fs::read(src).map_err(|e| format!("cannot read vendored loader: {e}"))?;
+    match std::fs::read(dest) {
+        Ok(actual) if actual == expected => Ok(()),
+        Ok(_) => Err(format!(
+            "{} does not match the version shipped with this build; reinstall Drake",
+            dest.display()
+        )),
+        Err(e) => Err(format!("{} is missing ({e}); reinstall Drake", dest.display())),
+    }
+}
+
+/// Non-fatal by construction: returns a human-readable reason instead of
+/// propagating, so a problem here degrades to an `Inactive` tray reason
+/// rather than aborting `setup`.
+fn check_vendored_loader(app: &tauri::AppHandle) -> Result<(), String> {
     let src = vendored::core_dll_source(app).map_err(|e| e.to_string())?;
-    let dest = paths::our_core_dll();
-    if let Some(dir) = dest.parent() {
-        std::fs::create_dir_all(dir)
-            .map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
-    }
-    let new_bytes = std::fs::read(&src).map_err(|e| format!("cannot read vendored loader: {e}"))?;
-    if let Ok(existing) = std::fs::read(&dest) {
-        if existing == new_bytes {
-            return Ok(());
-        }
-    }
-    std::fs::write(&dest, &new_bytes)
-        .map_err(|e| format!("cannot write {}: {e}", dest.display()))
+    verify_installed_loader(&src, &paths::our_core_dll())
 }
 
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            // Best-effort: a failure here (most commonly core.dll being
-            // locked by a running client under our own loader) must not
-            // crash startup. It is surfaced in the tray tooltip below.
-            let install_error = ensure_vendored_loader_installed(app.handle()).err();
+            // Best-effort: a mismatched or missing core.dll must not crash
+            // startup. It is surfaced in the tray tooltip below.
+            let install_error = check_vendored_loader(app.handle()).err();
 
             let state = Arc::new(configd::ConfigdState::new(CONFIGD_PORT));
 
@@ -137,7 +139,7 @@ pub fn run() {
                     let configd_err = configd_error.lock().unwrap().clone();
                     let mut text = mode_text;
                     if let Some(reason) = &install_error {
-                        text = format!("{text} ({}: cannot install the loader: {reason})", strings::MODE_INACTIVE);
+                        text = format!("{text} ({}: {reason})", strings::MODE_INACTIVE);
                     }
                     if let Some(err) = &configd_err {
                         text = format!("{text} ({}: check-in server: {err})", strings::MODE_INACTIVE);
@@ -172,4 +174,48 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running Drake");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::verify_installed_loader;
+
+    #[test]
+    fn a_matching_core_dll_is_reported_as_fine() {
+        let tmp = tempfile::tempdir().unwrap();
+        let src = tmp.path().join("src.dll");
+        let dest = tmp.path().join("dest.dll");
+        std::fs::write(&src, b"loader bytes").unwrap();
+        std::fs::write(&dest, b"loader bytes").unwrap();
+        assert!(verify_installed_loader(&src, &dest).is_ok());
+    }
+
+    #[test]
+    fn a_missing_core_dll_asks_for_a_reinstall_instead_of_writing_it() {
+        // The tray runs unelevated and the loader directory is admin-only by
+        // design, so "fix it yourself" is not an option here.
+        let tmp = tempfile::tempdir().unwrap();
+        let src = tmp.path().join("src.dll");
+        let dest = tmp.path().join("dest.dll");
+        std::fs::write(&src, b"loader bytes").unwrap();
+
+        let err = verify_installed_loader(&src, &dest).unwrap_err();
+
+        assert!(err.contains("reinstall"), "reason shown in the tray: {err}");
+        assert!(!dest.exists(), "must not attempt to place core.dll itself");
+    }
+
+    #[test]
+    fn a_stale_core_dll_asks_for_a_reinstall_and_leaves_it_alone() {
+        let tmp = tempfile::tempdir().unwrap();
+        let src = tmp.path().join("src.dll");
+        let dest = tmp.path().join("dest.dll");
+        std::fs::write(&src, b"new loader bytes").unwrap();
+        std::fs::write(&dest, b"old loader bytes").unwrap();
+
+        let err = verify_installed_loader(&src, &dest).unwrap_err();
+
+        assert!(err.contains("reinstall"), "reason shown in the tray: {err}");
+        assert_eq!(std::fs::read(&dest).unwrap(), b"old loader bytes");
+    }
 }
