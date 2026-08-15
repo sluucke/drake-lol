@@ -147,7 +147,7 @@ git commit -m "docs: record measured plugin-to-tray transport decision"
 
 **Interfaces:**
 - Produces:
-  - `paths::data_dir() -> PathBuf` — `%LOCALAPPDATA%\Drake`
+  - `paths::data_dir() -> PathBuf` — `%PROGRAMDATA%\Drake`
   - `paths::our_loader_dir() -> PathBuf` — `<data_dir>\loader`
   - `paths::our_core_dll() -> PathBuf` — `<our_loader_dir>\core.dll`
   - `paths::settings_file() -> PathBuf` — `<data_dir>\settings.json`
@@ -257,8 +257,8 @@ Create `src-tauri/src/paths.rs`:
 use std::path::PathBuf;
 
 pub fn data_dir() -> PathBuf {
-    let local = std::env::var("LOCALAPPDATA").expect("LOCALAPPDATA is always set on Windows");
-    PathBuf::from(local).join("Drake")
+    let root = std::env::var("PROGRAMDATA").expect("PROGRAMDATA is always set on Windows");
+    PathBuf::from(root).join("Drake")
 }
 
 pub fn our_loader_dir() -> PathBuf { data_dir().join("loader") }
@@ -1928,7 +1928,7 @@ const INDEX_JS: &str = include_str!("../../plugin/dist/index.js");
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            // Install the vendored loader into %LOCALAPPDATA%\Drake\loader.
+            // Install the vendored loader into %PROGRAMDATA%\Drake\loader.
             let src = vendored::core_dll_source(app.handle())?;
             std::fs::create_dir_all(paths::our_loader_dir())?;
             std::fs::copy(&src, paths::our_core_dll())?;
@@ -1994,7 +1994,7 @@ Run on Windows with League installed. Record the date and the result of each.
 ## A. Taking a free slot
 1. Ensure no loader is active: the IFEO key must be absent.
 2. Start Drake. Tray must read "Own loader active".
-3. Verify the key now points at `%LOCALAPPDATA%\Drake\loader\core.dll`.
+3. Verify the key now points at `%PROGRAMDATA%\Drake\loader\core.dll`.
 4. Start the League client. Open devtools and confirm `[Drake] check-in ok`.
 5. Confirm the tray no longer offers "Reload client to apply".
 
@@ -2017,7 +2017,7 @@ Run on Windows with League installed. Record the date and the result of each.
 2. Within one tick it must reappear. This simulates the host's updater.
 
 ## E. Auto Accept end to end
-1. Enable auto_accept in `%LOCALAPPDATA%\Drake\settings.json`, restart Drake.
+1. Enable auto_accept in `%PROGRAMDATA%\Drake\settings.json`, restart Drake.
 2. Reload the client UI from the tray menu.
 3. Queue up. The ready check must be accepted automatically.
 

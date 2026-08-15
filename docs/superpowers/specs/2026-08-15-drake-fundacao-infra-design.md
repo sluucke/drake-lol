@@ -36,7 +36,7 @@ medidos e não inferidos:
    client, na UIKit real. Isso descarta do porte todo o CSS, fontes e SFX do
    app antigo, que existiam apenas para imitar o client.
 2. **O tray é a fonte da verdade das configurações**, persistidas em
-   `%LOCALAPPDATA%\Drake\settings.json`, em pasta própria do Drake — de modo
+   `%PROGRAMDATA%\Drake\settings.json`, em pasta própria do Drake — de modo
    que sobrevivem à troca de loader hospedeiro. O `config.json` que o tray
    escreve junto do plugin é simultaneamente o canal de leitura e o cache:
    como fica em disco, o plugin continua operando com a última configuração
@@ -89,7 +89,7 @@ Política e superfície:
   uma função pura `estado → ação`, testável exaustivamente sem tocar no
   sistema. Publica o modo atual.
 - **`configd`** — serve as configurações ao plugin e as persiste em
-  `%LOCALAPPDATA%\Drake\settings.json`. Recebe o check-in do plugin.
+  `%PROGRAMDATA%\Drake\settings.json`. Recebe o check-in do plugin.
 - **`tray`** — ícone, menu e texto de estado. Só consome o que o `supervisor`
   publica; não decide nada.
 - **`plugin`** — o `index.js` injetado. Neste spec é deliberadamente magro:
@@ -99,7 +99,7 @@ Política e superfície:
 Artefato embutido:
 
 - **loader vendorizado** — Pengu Loader oficial (Rust, MIT), instalado em
-  `%LOCALAPPDATA%\Drake\loader\` com `core.dll` e `plugins/` irmãos, seguindo
+  `%PROGRAMDATA%\Drake\loader\` com `core.dll` e `plugins/` irmãos, seguindo
   a mesma convenção que o Rose usa.
 
 A fronteira que importa: se o mecanismo de injeção do Windows ou do client
