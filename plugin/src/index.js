@@ -1,7 +1,20 @@
 import { loadConfig } from './config.js';
 import { makeTransport } from './transport.js';
+import { startAutoAccept } from './autoAccept.js';
+import { subscribe } from './subscribe.js';
 
 const TAG = '[Drake]';
+
+// Same-origin inside the client: no lockfile, no port, no password. Measured
+// in the viability spike.
+const lcu = {
+  post: (route) => fetch(route, { method: 'POST' }),
+  get: (route) => fetch(route).then((r) => r.json()),
+};
+
+function wireFeatures(cfg) {
+  startAutoAccept({ enabled: !!cfg.settings.auto_accept, lcu, subscribe });
+}
 
 async function start() {
   const cfg = await loadConfig();
@@ -21,6 +34,8 @@ async function start() {
   const host = (typeof Pengu !== 'undefined' && Pengu.version) ? `pengu ${Pengu.version}` : 'unknown';
   const ok = await transport.checkIn(host);
   console.log(TAG, 'check-in', ok ? 'ok' : 'failed', '| settings', JSON.stringify(cfg.settings));
+
+  wireFeatures(cfg);
 }
 
 if (document.readyState === 'complete') start();
