@@ -15,6 +15,10 @@ pub enum ConfigError {
     Write { path: PathBuf, source: std::io::Error },
     #[error("could not serialise config: {0}")]
     Serialise(#[from] serde_json::Error),
+    #[error("could not bind 127.0.0.1:{port}: {source}")]
+    Bind { port: u16, source: std::io::Error },
+    #[error("check-in server failed: {0}")]
+    Serve(std::io::Error),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -85,10 +89,16 @@ pub struct ConfigdState {
 
 impl ConfigdState {
     pub fn new(port: u16) -> Self {
+        Self::new_with_settings(port, load())
+    }
+
+    /// Seam for tests: builds state from a given `Settings` instead of reading
+    /// `%PROGRAMDATA%\Drake\settings.json` from disk.
+    pub fn new_with_settings(port: u16, settings: Settings) -> Self {
         Self {
             token: generate_token(),
             port,
-            settings: Mutex::new(load()),
+            settings: Mutex::new(settings),
             last_checkin: Mutex::new(None),
         }
     }
@@ -135,8 +145,7 @@ async fn checkin(
     StatusCode::NO_CONTENT
 }
 
-pub async fn serve(state: Arc<ConfigdState>) {
-    let port = state.port;
+fn router(state: Arc<ConfigdState>) -> Router {
     // The client page that calls /checkin is served from a different origin
     // (https://plugins/... via the loader's own scheme), so the browser
     // enforces CORS on the response. Measured from inside the real client:
@@ -149,13 +158,20 @@ pub async fn serve(state: Arc<ConfigdState>) {
         .allow_origin(tower_http::cors::Any)
         .allow_methods([Method::POST])
         .allow_headers([axum::http::header::CONTENT_TYPE]);
-    let app = Router::new()
+    Router::new()
         .route("/checkin", post(checkin))
         .layer(cors)
-        .with_state(state);
+        .with_state(state)
+}
+
+pub async fn serve(state: Arc<ConfigdState>) -> Result<(), ConfigError> {
+    let port = state.port;
+    let app = router(state);
     // 127.0.0.1 only. Never 0.0.0.0 — this must not be reachable off-machine.
-    let listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", port))
+        .await
+        .map_err(|source| ConfigError::Bind { port, source })?;
+    axum::serve(listener, app).await.map_err(ConfigError::Serve)
 }
 
 #[cfg(test)]
@@ -212,7 +228,7 @@ mod tests {
 
     #[test]
     fn effective_state_is_not_injected_once_the_checkin_window_lapses() {
-        let st = ConfigdState::new(48151);
+        let st = ConfigdState::new_with_settings(48151, Settings::default());
         st.record_checkin("Drake".into());
         assert!(matches!(st.effective(true), EffectiveState::Injected { .. }));
         st.expire_checkin_for_test();
@@ -221,7 +237,123 @@ mod tests {
 
     #[test]
     fn effective_state_is_unknown_when_the_client_is_closed() {
-        let st = ConfigdState::new(48151);
+        let st = ConfigdState::new_with_settings(48151, Settings::default());
         assert!(matches!(st.effective(false), EffectiveState::Unknown));
+    }
+
+    // --- HTTP surface: router(), no real socket needed (tower::ServiceExt::oneshot) ---
+
+    use axum::body::Body;
+    use axum::http::Request;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn checkin_with_correct_token_returns_no_content_and_records_it() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let token = state.token.clone();
+        let app = router(state.clone());
+
+        let body = format!(r#"{{"token":"{token}","host":"Drake"}}"#);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/checkin")
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert!(matches!(state.effective(true), EffectiveState::Injected { .. }));
+    }
+
+    #[tokio::test]
+    async fn checkin_with_wrong_token_returns_unauthorized_and_does_not_record_it() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let app = router(state.clone());
+
+        let body = r#"{"token":"not-the-token","host":"Drake"}"#;
+        let req = Request::builder()
+            .method("POST")
+            .uri("/checkin")
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        assert!(matches!(state.effective(true), EffectiveState::NotInjected));
+    }
+
+    #[tokio::test]
+    async fn checkin_response_carries_permissive_cors_header() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let token = state.token.clone();
+        let app = router(state.clone());
+
+        let body = format!(r#"{{"token":"{token}","host":"Drake"}}"#);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/checkin")
+            .header("content-type", "application/json")
+            .header("origin", "https://plugins")
+            .body(Body::from(body))
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+
+        assert!(res.headers().contains_key("access-control-allow-origin"));
+    }
+
+    #[tokio::test]
+    async fn checkin_preflight_is_answered_with_matching_allow_headers() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let app = router(state);
+
+        let req = Request::builder()
+            .method("OPTIONS")
+            .uri("/checkin")
+            .header("origin", "https://plugins")
+            .header("access-control-request-method", "POST")
+            .header("access-control-request-headers", "content-type")
+            .body(Body::empty())
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert!(res.headers().contains_key("access-control-allow-origin"));
+        let allow_methods = res
+            .headers()
+            .get("access-control-allow-methods")
+            .expect("preflight response must list allowed methods")
+            .to_str()
+            .unwrap();
+        assert!(allow_methods.contains("POST"));
+        let allow_headers = res
+            .headers()
+            .get("access-control-allow-headers")
+            .expect("preflight response must list allowed headers")
+            .to_str()
+            .unwrap()
+            .to_ascii_lowercase();
+        assert!(allow_headers.contains("content-type"));
+    }
+
+    #[tokio::test]
+    async fn serve_reports_an_error_instead_of_panicking_when_the_port_is_taken() {
+        // A silent panic here would run inside a spawned task in a windows-subsystem
+        // binary with no console: the check-in server would vanish with no
+        // diagnostic. serve() must hand the failure back instead of unwrapping.
+        let blocker = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = blocker.local_addr().unwrap().port();
+
+        let state = Arc::new(ConfigdState::new_with_settings(port, Settings::default()));
+        let err = serve(state).await.unwrap_err();
+
+        let message = err.to_string();
+        assert!(
+            message.contains(&port.to_string()),
+            "error message should name the port that failed to bind: {message}"
+        );
+
+        drop(blocker);
     }
 }
