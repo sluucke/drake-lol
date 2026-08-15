@@ -10,6 +10,8 @@ pub enum LcuError {
     Malformed,
     #[error("request failed: {0}")]
     Request(#[from] reqwest::Error),
+    #[error("the client rejected the reload request with status {0}")]
+    Rejected(reqwest::StatusCode),
 }
 
 /// The running `LeagueClientUx.exe` process's own executable path, or `None`
@@ -76,11 +78,18 @@ pub async fn restart_ux() -> Result<(), LcuError> {
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .build()?;
-    client
+    let response = client
         .post(format!("https://127.0.0.1:{port}/riotclient/kill-and-restart-ux"))
         .basic_auth("riot", Some(password))
         .send()
         .await?;
+    // A response arriving is not the same as the request being accepted. A 401
+    // from a stale lockfile password, or a 404, would otherwise be reported as
+    // success while the user watches the menu item do nothing.
+    let status = response.status();
+    if !status.is_success() {
+        return Err(LcuError::Rejected(status));
+    }
     Ok(())
 }
 
@@ -107,6 +116,15 @@ mod tests {
     #[test]
     fn rejects_a_lockfile_with_too_few_fields() {
         assert!(matches!(parse_lockfile("only:two"), Err(LcuError::Malformed)));
+    }
+
+    #[test]
+    fn a_rejected_reload_names_the_status_it_got_back() {
+        // The failure mode this guards: a stale lockfile password yields 401,
+        // and reporting that as success leaves the user clicking a menu item
+        // that does nothing, with no explanation anywhere.
+        let e = LcuError::Rejected(reqwest::StatusCode::UNAUTHORIZED);
+        assert_eq!(e.to_string(), "the client rejected the reload request with status 401 Unauthorized");
     }
 
     #[test]
