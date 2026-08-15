@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 pub fn data_dir() -> PathBuf {
-    let local = std::env::var("LOCALAPPDATA").expect("LOCALAPPDATA is always set on Windows");
-    PathBuf::from(local).join("Drake")
+    let program_data = std::env::var("PROGRAMDATA").expect("PROGRAMDATA is always set on Windows");
+    PathBuf::from(program_data).join("Drake")
 }
 
 pub fn our_loader_dir() -> PathBuf { data_dir().join("loader") }
