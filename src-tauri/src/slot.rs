@@ -26,6 +26,7 @@ pub enum SlotState {
 pub trait RegistryAccess {
     fn read_debugger(&self) -> Result<Option<String>, SlotError>;
     fn write_debugger(&self, value: &str) -> Result<(), SlotError>;
+    fn delete_debugger(&self) -> Result<(), SlotError>;
 }
 
 pub struct WindowsRegistry;
@@ -49,6 +50,20 @@ impl RegistryAccess for WindowsRegistry {
         let (key, _) = hklm.create_subkey_with_flags(IFEO_KEY, KEY_WRITE)?;
         key.set_value(DEBUGGER_VALUE, &value.to_string())?;
         Ok(())
+    }
+
+    fn delete_debugger(&self) -> Result<(), SlotError> {
+        let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+        match hklm.open_subkey_with_flags(IFEO_KEY, KEY_WRITE) {
+            Ok(key) => match key.delete_value(DEBUGGER_VALUE) {
+                Ok(()) => Ok(()),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Err(e) => Err(SlotError::Registry(e)),
+            },
+            // A missing key means the value is already absent -- success.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(SlotError::Registry(e)),
+        }
     }
 }
 

@@ -9,5 +9,12 @@ fn main() {
         }
         return;
     }
+    if drake_lib::elevate::is_deactivation_invocation(&args) {
+        if let Err(e) = drake_lib::elevate::perform_deactivation() {
+            eprintln!("deactivation failed: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
     drake_lib::run()
 }
