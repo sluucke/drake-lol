@@ -137,3 +137,12 @@ Two things worth keeping in mind while running this:
    gone.
 2. Confirm the IFEO `Debugger` value is removed IF it pointed at us, and
    left completely untouched if another loader owned it at uninstall time.
+3. Confirm `%PROGRAMDATA%\Drake` no longer exists.
+4. **Uninstall from guest mode, and check the host's folder.** Run the
+   uninstall while a third-party loader owns the slot, then verify
+   `<that loader>\plugins\Drake\` is gone and every other folder in its
+   `plugins\` is untouched. Without this, our `index.js` keeps loading on
+   every client launch inside a stranger's product after Drake is gone,
+   failing its check-in against a port nobody is listening on.
+5. Start the client once more after uninstalling and confirm nothing of
+   Drake's runs: no `[Drake]` lines in devtools.

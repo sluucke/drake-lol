@@ -108,25 +108,45 @@ pub fn is_deactivation_invocation(args: &[String]) -> bool {
     args.iter().any(|a| a == DEACTIVATION_FLAG)
 }
 
-/// Clears the Debugger value only if it still points at our own core.dll.
-/// Absent, Foreign, and Unparsable values are left untouched -- deleting
-/// another product's value on our way out would be exactly the harm this
-/// design exists to avoid.
-pub fn deactivate(
+/// Everything the uninstaller has to undo, in the one order that works.
+///
+/// The `Debugger` value is the only pointer to where our plugin actually
+/// lives -- in guest mode it names a third party's loader, and our folder sits
+/// in its `plugins/`. So it is read *first*: clearing it before removing the
+/// plugin would lose the address. Leaving our plugin behind is not a cosmetic
+/// leak; it keeps loading on every client launch inside somebody else's
+/// product, checking in against a port nobody is listening on, long after
+/// Drake is gone.
+///
+/// Filesystem removals are best-effort by design: uninstalling twice, or
+/// after a manual cleanup, must succeed.
+pub fn uninstall(
     registry: &impl crate::slot::RegistryAccess,
     our_core: &Path,
+    data_dir: &Path,
 ) -> Result<(), crate::slot::SlotError> {
     let raw = registry.read_debugger()?;
+
+    // Whoever owns the slot -- us or a stranger -- our plugin folder is the
+    // one thing in there that is ours to remove, and nothing else is.
+    if let Some(core) = raw.as_deref().and_then(crate::slot::parse_core_path) {
+        if let Some(loader) = core.parent() {
+            let _ = std::fs::remove_dir_all(crate::deploy::plugin_dir(loader));
+        }
+    }
+
     if crate::slot::classify(raw.as_deref(), our_core) == crate::slot::SlotState::Ours {
         registry.delete_debugger()?;
     }
+
+    let _ = std::fs::remove_dir_all(data_dir);
     Ok(())
 }
 
 /// Runs elevated, from the uninstaller only.
 pub fn perform_deactivation() -> Result<(), Box<dyn std::error::Error>> {
     use crate::{paths, slot};
-    deactivate(&slot::WindowsRegistry, &paths::our_core_dll())?;
+    uninstall(&slot::WindowsRegistry, &paths::our_core_dll(), &paths::data_dir())?;
     Ok(())
 }
 
@@ -259,33 +279,81 @@ mod tests {
         );
     }
 
-    #[test]
-    fn deactivate_deletes_when_the_slot_is_ours() {
-        let raw = crate::slot::debugger_value(&ours());
-        let registry = FakeRegistry::holding(&raw);
-        deactivate(&registry, &ours()).unwrap();
-        assert!(registry.deleted.get(), "must clear our own value on the way out");
+    // --- uninstall: leave nothing of ours running inside anybody's loader ---
+
+    /// Builds `<loader>/plugins/Drake/index.js` plus a sibling plugin folder
+    /// belonging to somebody else, so tests can prove we remove exactly ours.
+    fn seed_loader(loader: &Path) {
+        let ours = crate::deploy::plugin_dir(loader);
+        std::fs::create_dir_all(&ours).unwrap();
+        std::fs::write(ours.join("index.js"), "drake").unwrap();
+        let theirs = loader.join("plugins").join("SomebodyElse");
+        std::fs::create_dir_all(&theirs).unwrap();
+        std::fs::write(theirs.join("index.js"), "not ours").unwrap();
+    }
+
+    fn survived(loader: &Path) -> bool {
+        loader.join("plugins").join("SomebodyElse").join("index.js").is_file()
     }
 
     #[test]
-    fn deactivate_leaves_a_foreign_value_untouched() {
-        let raw = crate::slot::debugger_value(&PathBuf::from(r"C:\Other\Pengu Loader\core.dll"));
+    fn uninstall_removes_our_plugin_from_a_third_party_loader() {
+        // Without this, Drake is uninstalled but our index.js keeps loading on
+        // every client launch inside a stranger's product, failing its
+        // check-in against a port nobody is listening on.
+        let tmp = tempfile::tempdir().unwrap();
+        let foreign = tmp.path().join("Other").join("Pengu Loader");
+        seed_loader(&foreign);
+        let data = tmp.path().join("Drake");
+        std::fs::create_dir_all(&data).unwrap();
+
+        let raw = crate::slot::debugger_value(&foreign.join("core.dll"));
         let registry = FakeRegistry::holding(&raw);
-        deactivate(&registry, &ours()).unwrap();
+
+        uninstall(&registry, &ours(), &data).unwrap();
+
+        assert!(!crate::deploy::plugin_dir(&foreign).exists(), "our plugin must be gone");
+        assert!(survived(&foreign), "must not touch anything else in their plugins folder");
         assert!(!registry.deleted.get(), "must never delete another product's value");
+        assert_eq!(registry.value.borrow().as_deref(), Some(raw.as_str()));
+        assert!(!data.exists(), "%PROGRAMDATA%\\Drake must be gone");
     }
 
     #[test]
-    fn deactivate_leaves_an_absent_value_untouched() {
-        let registry = FakeRegistry::empty();
-        deactivate(&registry, &ours()).unwrap();
-        assert!(!registry.deleted.get());
+    fn uninstall_removes_our_plugin_from_our_own_loader_and_clears_the_slot() {
+        let tmp = tempfile::tempdir().unwrap();
+        let data = tmp.path().join("Drake");
+        let our_loader = data.join("loader");
+        seed_loader(&our_loader);
+        let our_core = our_loader.join("core.dll");
+
+        let registry = FakeRegistry::holding(&crate::slot::debugger_value(&our_core));
+
+        uninstall(&registry, &our_core, &data).unwrap();
+
+        assert!(registry.deleted.get(), "must clear our own value on the way out");
+        assert!(!data.exists());
     }
 
     #[test]
-    fn deactivate_leaves_an_unparsable_value_untouched() {
+    fn uninstall_still_removes_our_data_when_the_slot_is_unparsable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let data = tmp.path().join("Drake");
+        std::fs::create_dir_all(data.join("state")).unwrap();
         let registry = FakeRegistry::holding("something we do not understand");
-        deactivate(&registry, &ours()).unwrap();
+
+        uninstall(&registry, &ours(), &data).unwrap();
+
         assert!(!registry.deleted.get());
+        assert!(!data.exists());
     }
+
+    #[test]
+    fn uninstall_succeeds_when_there_is_nothing_left_to_remove() {
+        // Uninstalling twice, or after a manual cleanup, must not fail.
+        let tmp = tempfile::tempdir().unwrap();
+        let registry = FakeRegistry::empty();
+        uninstall(&registry, &ours(), &tmp.path().join("gone")).unwrap();
+    }
+
 }
