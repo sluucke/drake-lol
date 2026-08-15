@@ -45,7 +45,7 @@ pub fn decide(slot: &SlotState, our_loader_dir: &Path) -> Plan {
             take_slot: false,
             deploy_to: None,
             mode: Mode::Inactive {
-                reason: format!("another program owns the injection slot: {raw}"),
+                reason: format!("the injection slot holds a value Drake could not parse: {raw}"),
             },
         },
     }
@@ -92,7 +92,11 @@ mod tests {
         assert!(!p.take_slot);
         assert_eq!(p.deploy_to, None);
         match p.mode {
-            Mode::Inactive { reason } => assert!(reason.contains("???")),
+            Mode::Inactive { reason } => {
+                assert!(reason.contains("???"));
+                // Unparsable means we don't know what happened; never assert ownership by another program.
+                assert!(!reason.contains("another program"), "must not infer causes from unparsable values");
+            }
             other => panic!("expected Inactive, got {other:?}"),
         }
     }
@@ -107,6 +111,8 @@ mod tests {
 
     #[test]
     fn handoff_in_both_directions_settles_without_fighting() {
+        // decide() is stateless: each call is independent.
+        // This test documents the intended behavior sequence, not an actual stateful transition.
         // Foreign loader starts: we yield.
         let foreign = SlotState::Foreign {
             core_dll: PathBuf::from(r"C:\Other\Pengu Loader\core.dll"),
