@@ -69,14 +69,25 @@ pub fn tick<R: RegistryAccess, C: elevate::SlotClaimer>(
 
     let plan = decide(&slot::classify(raw.as_deref(), our_core), our_loader_dir);
 
-    if plan.take_slot {
+    // A failed claim must NOT skip the deployment below. The two are
+    // independent: claiming decides *whether the client loads any loader at
+    // all*, deploying decides *what that loader finds when it does*. Bailing
+    // out here would mean a machine whose slot claim fails (a missing task, a
+    // denied trigger) also ends up with no plugin on disk -- so the moment the
+    // claim later succeeds, the client would launch into an empty plugins
+    // folder and the next tick would be needed to fix it. Recorded and
+    // reported after the deploy instead.
+    let claim_error = if plan.take_slot {
         // Fire-and-forget: the elevated task re-verifies the slot itself
         // before writing (see `elevate::activate`), because it may run well
         // after the read above.
-        if let Err(e) = claimer.claim() {
-            return Mode::Inactive { reason: format!("cannot claim the injection slot: {e}") };
-        }
-    }
+        claimer
+            .claim()
+            .err()
+            .map(|e| format!("cannot claim the injection slot: {e}"))
+    } else {
+        None
+    };
 
     if let Some(loader) = &plan.deploy_to {
         if let Err(e) = deploy::ensure_plugin(loader, index_js) {
@@ -85,6 +96,10 @@ pub fn tick<R: RegistryAccess, C: elevate::SlotClaimer>(
         if let Err(e) = configd::write_plugin_config(&deploy::plugin_dir(loader), cfg) {
             return Mode::Inactive { reason: format!("cannot write the plugin config: {e}") };
         }
+    }
+
+    if let Some(reason) = claim_error {
+        return Mode::Inactive { reason };
     }
 
     plan.mode
@@ -199,6 +214,39 @@ mod tests {
             }
             other => panic!("expected Inactive, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn tick_still_deploys_the_plugin_when_the_claim_fails() {
+        // Measured on a real install: the installer's scheduled task was not
+        // runnable by the unelevated tray, so every claim failed -- and the
+        // old early return meant the plugins folder stayed empty too. Claiming
+        // and deploying are independent; a machine that cannot claim today
+        // must still have the plugin in place for the moment it can.
+        let tmp = tempfile::tempdir().unwrap();
+        let our_loader = tmp.path().join("Drake").join("loader");
+        let reg = FakeReg::holding(None);
+        let claimer = FakeClaimer::failing();
+
+        let mode = tick(
+            &reg,
+            &claimer,
+            &our_loader.join("core.dll"),
+            &our_loader,
+            "console.log(1)",
+            &a_config(),
+        );
+
+        assert!(
+            matches!(mode, Mode::Inactive { .. }),
+            "the claim failure must still be reported, got {mode:?}"
+        );
+        let plugin = crate::deploy::plugin_dir(&our_loader);
+        assert_eq!(
+            std::fs::read_to_string(plugin.join("index.js")).unwrap(),
+            "console.log(1)"
+        );
+        assert!(plugin.join("config.json").is_file(), "config.json must be written too");
     }
 
     #[test]
