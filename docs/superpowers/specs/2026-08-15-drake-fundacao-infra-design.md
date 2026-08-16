@@ -311,3 +311,26 @@ diretório `legacy/`.
   materialmente; a injeção em si é o que sobe de categoria. Decisão consciente.
 - **Transporte de escrita não validado.** Mitigado por ser a primeira tarefa do
   plano e por ter fallback conhecido.
+
+### Residuais adiados na revisão final (não corrigidos de propósito)
+
+- **Reinstalar pela opção "desinstalar antes de instalar" apaga
+  `state\settings.json`.** O uninstaller remove `%PROGRAMDATA%\Drake` inteiro. A
+  reinstalação normal, no lugar, preserva. É uma escolha visível do usuário na
+  página de reinstalação, então vira item de checklist (G.6) em vez de código.
+- **Plugin órfão fora do dono atual do slot.** O uninstall limpa só o loader
+  apontado pelo `Debugger` no momento. Se o Drake rodou como convidado no loader
+  X, X soltou o slot depois, e só então o Drake foi desinstalado,
+  `X\plugins\Drake\` fica para trás. Rastrear todo loader onde já fomos hóspede
+  exigiria estado persistente que não existe hoje; o dano é um `index.js` inerte
+  que falha check-in.
+- **Log repetido de check-in rejeitado.** Com o heartbeat de 5s, um token velho
+  loga a cada batida em vez de uma vez. Desistir cegaria a bandeja, então o
+  barulho no devtools é o preço certo.
+- **`install_error` calculado uma vez no `setup`.** O tooltip "reinstale o Drake"
+  persiste pela vida do processo mesmo depois de uma reinstalação com o Drake
+  aberto. Mesma classe do erro de bind, que já retenta; unificar os dois é
+  trabalho de uma tarefa futura.
+- **`Rejected` do `restart_ux` só sai por `eprintln!`.** O binário de release é
+  `windows_subsystem = "windows"`, então ninguém lê. A falha ainda aparece
+  indiretamente: o item de reload continua habilitado no tick seguinte.

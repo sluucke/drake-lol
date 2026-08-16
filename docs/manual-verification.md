@@ -146,3 +146,9 @@ Two things worth keeping in mind while running this:
    failing its check-in against a port nobody is listening on.
 5. Start the client once more after uninstalling and confirm nothing of
    Drake's runs: no `[Drake]` lines in devtools.
+6. **Reinstall over an existing install and check your settings survived.**
+   The installer's reinstall page offers "uninstall before installing"; that
+   path runs the old uninstaller, which deletes `%PROGRAMDATA%\Drake`
+   including `state\settings.json`. Confirm the plain in-place reinstall
+   keeps the settings file, and know that the uninstall-first option does
+   not.
