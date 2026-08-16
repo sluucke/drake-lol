@@ -11,8 +11,8 @@ pub enum ElevateError {
     Spawn(#[from] std::io::Error),
     #[error("the activation task is not installed")]
     TaskMissing,
-    #[error("the activation task failed with status {0}")]
-    TaskFailed(i32),
+    #[error("the activation task could not be triggered (status {code}): {detail}")]
+    TaskFailed { code: i32, detail: String },
 }
 
 pub fn is_activation_invocation(args: &[String]) -> bool {
@@ -27,18 +27,27 @@ pub fn task_exists() -> bool {
         .unwrap_or(false)
 }
 
+/// Triggers the elevated task.
+///
+/// Deliberately does NOT pre-check with `task_exists()`. That check runs
+/// `schtasks /Query`, which fails with "Access denied" -- not "not found" --
+/// whenever the task's DACL does not grant the calling user read access. The
+/// pre-check therefore reported "the activation task is not installed" for a
+/// task that was installed and merely unreadable, which is the single most
+/// misleading thing this code could say. `/Run` alone tells us what actually
+/// happened, and schtasks writes the real reason to stderr; surface it.
 pub fn run_task() -> Result<(), ElevateError> {
-    if !task_exists() {
-        return Err(ElevateError::TaskMissing);
-    }
-    let status = Command::new("schtasks")
+    let out = Command::new("schtasks")
         .args(["/Run", "/TN", TASK_NAME])
-        .status()?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(ElevateError::TaskFailed(status.code().unwrap_or(-1)))
+        .output()?;
+    if out.status.success() {
+        return Ok(());
     }
+    let detail = String::from_utf8_lossy(&out.stderr).trim().to_string();
+    Err(ElevateError::TaskFailed {
+        code: out.status.code().unwrap_or(-1),
+        detail: if detail.is_empty() { "no detail reported".into() } else { detail },
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
