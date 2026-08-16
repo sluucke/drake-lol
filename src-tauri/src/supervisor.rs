@@ -1,6 +1,7 @@
 use crate::slot::SlotState;
 use crate::{configd, deploy, elevate, slot::{self, RegistryAccess}};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mode {
@@ -50,6 +51,34 @@ pub fn decide(slot: &SlotState, our_loader_dir: &Path) -> Plan {
             },
         },
     }
+}
+
+/// How long Drake must have been running before it is allowed to conclude a
+/// client is uninjected.
+///
+/// An injected client reports `NotInjected` until its first check-in arrives,
+/// and the plugin's heartbeat runs every 5 seconds, so anything shorter than
+/// that would mistake a healthy session for a broken one. Comfortably longer
+/// than one heartbeat, comfortably shorter than a user's patience.
+pub const AUTO_RELOAD_GRACE: Duration = Duration::from_secs(10);
+
+/// Whether to restart the client UI once, on the user's behalf, because they
+/// asked Drake to do that when it opens.
+///
+/// Pure, and separate from the loop that calls it, because every one of these
+/// conditions exists to stop Drake doing something intrusive -- restarting a
+/// client that was fine, or restarting one over and over. That is worth
+/// testing directly rather than inferring from an async loop's behaviour.
+pub fn should_auto_reload(
+    enabled: bool,
+    effective: &configd::EffectiveState,
+    drake_uptime: Duration,
+    already_fired: bool,
+) -> bool {
+    enabled
+        && !already_fired
+        && drake_uptime >= AUTO_RELOAD_GRACE
+        && matches!(effective, configd::EffectiveState::NotInjected)
 }
 
 /// One iteration of the invariant loop. Idempotent by construction: it reads
@@ -108,8 +137,79 @@ pub fn tick<R: RegistryAccess, C: elevate::SlotClaimer>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::configd::EffectiveState;
     use crate::slot::SlotState;
     use std::path::PathBuf;
+    use std::time::Duration;
+
+    fn injected() -> EffectiveState {
+        EffectiveState::Injected { host: "pengu 2.0.0".into() }
+    }
+
+    // --- auto-reload-on-open policy ---
+
+    #[test]
+    fn auto_reload_fires_for_a_running_client_that_is_not_injected() {
+        assert!(should_auto_reload(
+            true,
+            &EffectiveState::NotInjected,
+            AUTO_RELOAD_GRACE,
+            false
+        ));
+    }
+
+    #[test]
+    fn auto_reload_does_not_fire_when_the_setting_is_off() {
+        assert!(!should_auto_reload(
+            false,
+            &EffectiveState::NotInjected,
+            AUTO_RELOAD_GRACE,
+            false
+        ));
+    }
+
+    #[test]
+    fn auto_reload_waits_out_the_grace_window_before_judging() {
+        // The whole feature turns hostile without this. A perfectly injected
+        // client still reads NotInjected until its first check-in lands, so
+        // judging immediately would restart every healthy client on every
+        // Drake launch -- the exact opposite of what the setting is for.
+        assert!(!should_auto_reload(
+            true,
+            &EffectiveState::NotInjected,
+            AUTO_RELOAD_GRACE - Duration::from_millis(1),
+            false
+        ));
+    }
+
+    #[test]
+    fn auto_reload_does_not_fire_when_the_plugin_already_checked_in() {
+        assert!(!should_auto_reload(true, &injected(), AUTO_RELOAD_GRACE, false));
+    }
+
+    #[test]
+    fn auto_reload_does_not_fire_when_the_client_is_not_running() {
+        // Nothing to reload, and restarting a client the user has not opened
+        // would mean launching League for them.
+        assert!(!should_auto_reload(
+            true,
+            &EffectiveState::Unknown,
+            AUTO_RELOAD_GRACE,
+            false
+        ));
+    }
+
+    #[test]
+    fn auto_reload_happens_at_most_once_per_drake_run() {
+        // "when Drake opens", not "every two seconds forever". Without this a
+        // client that fails to inject would be restarted endlessly.
+        assert!(!should_auto_reload(
+            true,
+            &EffectiveState::NotInjected,
+            AUTO_RELOAD_GRACE,
+            true
+        ));
+    }
 
     fn ours() -> PathBuf { PathBuf::from(r"C:\Drake\loader") }
 

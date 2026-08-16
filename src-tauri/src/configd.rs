@@ -21,14 +21,40 @@ pub enum ConfigError {
     Serve(std::io::Error),
 }
 
+/// Every field carries `#[serde(default = ...)]` so a `settings.json` written
+/// by an older Drake -- which has only the fields that existed then -- still
+/// loads with the user's choices intact. Without it, `load_from` would fail to
+/// deserialise and fall back to `Default`, silently discarding settings the
+/// user had deliberately turned on.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
+    #[serde(default = "off")]
     pub auto_accept: bool,
+    #[serde(default = "on")]
+    pub run_at_startup: bool,
+    #[serde(default = "off")]
+    pub auto_reload_on_open: bool,
+}
+
+fn on() -> bool {
+    true
+}
+fn off() -> bool {
+    false
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { auto_accept: false }
+        Self {
+            auto_accept: off(),
+            // Starting with Windows is what keeps the slot claimed and the
+            // plugin deployed *before* the client launches, which is the only
+            // reason "Reload client to apply" is rare rather than routine.
+            run_at_startup: on(),
+            // Restarting a client the user did not ask us to touch is
+            // intrusive. Opt-in only.
+            auto_reload_on_open: off(),
+        }
     }
 }
 
@@ -195,9 +221,33 @@ mod tests {
 
     #[test]
     fn settings_round_trip_through_json() {
-        let s = Settings { auto_accept: true };
+        let s = Settings { auto_accept: true, ..Default::default() };
         let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
         assert_eq!(back, s);
+    }
+
+    #[test]
+    fn drake_starts_with_windows_by_default_but_never_reloads_unasked() {
+        // Starting at login is what keeps the client injected before it ever
+        // launches, so it is on. Restarting somebody's client is intrusive
+        // enough that it stays off until they ask for it.
+        assert_eq!(Settings::default().run_at_startup, true);
+        assert_eq!(Settings::default().auto_reload_on_open, false);
+    }
+
+    #[test]
+    fn a_settings_file_written_before_these_options_existed_still_loads() {
+        // Upgrading must not silently reset auto_accept to false just because
+        // the file predates the two newer fields.
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("settings.json");
+        std::fs::write(&p, r#"{"auto_accept": true}"#).unwrap();
+
+        let s = load_from(&p);
+
+        assert_eq!(s.auto_accept, true, "the setting they had must survive");
+        assert_eq!(s.run_at_startup, true);
+        assert_eq!(s.auto_reload_on_open, false);
     }
 
     #[test]
@@ -221,7 +271,7 @@ mod tests {
         let cfg = PluginConfig {
             token: "abc".into(),
             port: 48151,
-            settings: Settings { auto_accept: true },
+            settings: Settings { auto_accept: true, ..Default::default() },
         };
         write_plugin_config(tmp.path(), &cfg).unwrap();
         let raw = std::fs::read_to_string(tmp.path().join("config.json")).unwrap();

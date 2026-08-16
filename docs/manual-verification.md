@@ -131,6 +131,33 @@ Two things worth keeping in mind while running this:
    the tray menu once the item is enabled.
 3. Queue up. The ready check must be accepted automatically.
 
+## F2. Start with Windows, and auto-reload on open
+
+1. **The scheduled task must be triggerable by the unelevated user.** From a
+   normal (non-admin) PowerShell, run
+   `schtasks /Run /TN "Drake Slot Activation"`. It must print success. If it
+   says "Access denied", the installer's SDDL grant did not apply and Drake
+   can never claim the slot on its own -- this exact failure shipped once and
+   made the product completely non-functional while looking installed.
+2. Clear the IFEO `Debugger` value by hand, then just wait. Within a few
+   seconds Drake must claim it back with no clicking. This is the end-to-end
+   proof of step 1 through the product rather than through schtasks.
+3. Open the tray menu. "Start with Windows" is checked on a fresh install;
+   "Reload client when Drake opens" is not.
+4. Confirm `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` has a `Drake`
+   value holding the **quoted** exe path. Unquoted, Windows would run
+   `C:\Program` and Drake would silently never start at login.
+5. Uncheck "Start with Windows" and confirm the value disappears within one
+   tick; re-check it and confirm it comes back.
+6. **Auto-reload does not touch a healthy client.** With the client running
+   and injected, enable "Reload client when Drake opens", quit Drake, and
+   start it again. The client must NOT restart -- it is already injected.
+7. **Auto-reload fires once when it should.** With the setting on, kill the
+   client's injection (clear the slot, restart the client so it runs
+   uninjected, restore the slot), then restart Drake. It must reload the
+   client exactly once, roughly 10 seconds in -- not immediately, and not
+   repeatedly every two seconds.
+
 ## G. Uninstall
 
 1. Uninstall Drake. Confirm the scheduled task (`Drake Slot Activation`) is

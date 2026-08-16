@@ -331,6 +331,15 @@ diretório `legacy/`.
   persiste pela vida do processo mesmo depois de uma reinstalação com o Drake
   aberto. Mesma classe do erro de bind, que já retenta; unificar os dois é
   trabalho de uma tarefa futura.
+- **Desinstalar deixa a entrada `Run` do HKCU para trás.** O desinstalador roda
+  elevado e não alcança de forma confiável o `HKCU` do usuário que instalou,
+  muito menos o dos outros. A entrada aponta para um exe que não existe mais e
+  o Windows a ignora em silêncio, então o dano é lixo, não falha. Consertar
+  direito exigiria uma etapa de desinstalação por usuário.
+- **Reiniciar o client durante o campeão select.** O `auto_reload_on_open`
+  dispara assim que a janela de carência passa, sem olhar em que tela o
+  usuário está. Decisão consciente do usuário depois de eu levantar o risco:
+  mantém a lógica simples e previsível.
 - **`Rejected` do `restart_ux` só sai por `eprintln!`.** O binário de release é
   `windows_subsystem = "windows"`, então ninguém lê. A falha ainda aparece
   indiretamente: o item de reload continua habilitado no tick seguinte.

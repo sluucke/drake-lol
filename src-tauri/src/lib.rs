@@ -4,13 +4,14 @@ pub mod elevate;
 pub mod lcu;
 pub mod paths;
 pub mod slot;
+pub mod startup;
 pub mod strings;
 pub mod supervisor;
 pub mod vendored;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 
 const CONFIGD_PORT: u16 = 48151;
@@ -56,8 +57,30 @@ pub fn run() {
             // Starts disabled: the first tick (within 2s) enables it once we
             // actually know the client is running without our plugin loaded.
             let reload = MenuItem::with_id(app, "reload", strings::MENU_RELOAD_CLIENT, false, None::<&str>)?;
+
+            // The tray is the settings surface. The in-client settings UI does
+            // not exist yet, and the tray is already the source of truth for
+            // settings, so these live here rather than waiting for it.
+            let initial = state.settings.lock().unwrap().clone();
+            let startup_item = CheckMenuItem::with_id(
+                app,
+                "run_at_startup",
+                strings::MENU_RUN_AT_STARTUP,
+                true,
+                initial.run_at_startup,
+                None::<&str>,
+            )?;
+            let auto_reload_item = CheckMenuItem::with_id(
+                app,
+                "auto_reload_on_open",
+                strings::MENU_AUTO_RELOAD,
+                true,
+                initial.auto_reload_on_open,
+                None::<&str>,
+            )?;
+
             let quit = MenuItem::with_id(app, "quit", strings::MENU_QUIT, true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&reload, &quit])?;
+            let menu = Menu::with_items(app, &[&startup_item, &auto_reload_item, &reload, &quit])?;
 
             let tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
@@ -65,9 +88,29 @@ pub fn run() {
                 .menu(&menu)
                 .build(app)?;
 
+            let menu_state = state.clone();
+            let startup_check = startup_item.clone();
+            let auto_reload_check = auto_reload_item.clone();
             app.on_menu_event(move |_app, event| {
                 if event.id() == "quit" {
                     std::process::exit(0);
+                } else if event.id() == "run_at_startup" || event.id() == "auto_reload_on_open" {
+                    // Read the checkbox back rather than assuming it flipped:
+                    // the item's own state is what the user is looking at, so
+                    // that is the value we must persist.
+                    let mut settings = menu_state.settings.lock().unwrap();
+                    if event.id() == "run_at_startup" {
+                        settings.run_at_startup = startup_check.is_checked().unwrap_or(false);
+                    } else {
+                        settings.auto_reload_on_open =
+                            auto_reload_check.is_checked().unwrap_or(false);
+                    }
+                    // The Run key itself is not touched here. The supervisor
+                    // loop reconciles it every tick from this value, so there
+                    // is exactly one place that writes it.
+                    if let Err(e) = configd::save(&settings) {
+                        eprintln!("[Drake] could not save settings: {e}");
+                    }
                 } else if event.id() == "reload" {
                     // Reload is only ever triggered by an explicit click here.
                     // The supervisor loop must never call this on its own --
@@ -108,12 +151,31 @@ pub fn run() {
 
             let loop_state = state.clone();
             tauri::async_runtime::spawn(async move {
+                let started = std::time::Instant::now();
+                let mut auto_reload_fired = false;
+                let exe = std::env::current_exe().ok();
+
                 loop {
+                    let settings = loop_state.settings.lock().unwrap().clone();
                     let cfg = configd::PluginConfig {
                         token: loop_state.token.clone(),
                         port: loop_state.port,
-                        settings: loop_state.settings.lock().unwrap().clone(),
+                        settings: settings.clone(),
                     };
+
+                    // Reconciled here rather than in the click handler so the
+                    // Run key has exactly one writer, and so a stale entry
+                    // left by a move or reinstall gets repaired even if the
+                    // user never opens the menu.
+                    if let Some(exe) = &exe {
+                        if let Err(e) = startup::reconcile(
+                            &startup::WindowsRunKey,
+                            exe,
+                            settings.run_at_startup,
+                        ) {
+                            eprintln!("[Drake] start-with-Windows: {e}");
+                        }
+                    }
                     // Always runs: claiming the slot and deploying the
                     // plugin + config.json has nothing to do with whether
                     // the check-in server could bind its port. The plugin
@@ -154,17 +216,37 @@ pub fn run() {
                     // Without a working check-in server we cannot know
                     // whether the plugin is effectively injected, so offering
                     // "reload" in that case would be a guess -- keep it off.
-                    let can_reload = if configd_err.is_some() {
-                        false
+                    let effective = if configd_err.is_some() {
+                        // Without a check-in server we cannot know, and
+                        // guessing would mean acting on a guess.
+                        None
                     } else {
-                        let client_running = lcu::client_running();
-                        client_running
-                            && matches!(
-                                loop_state.effective(client_running),
-                                configd::EffectiveState::NotInjected
-                            )
+                        Some(loop_state.effective(lcu::client_running()))
                     };
+
+                    let can_reload = matches!(
+                        effective,
+                        Some(configd::EffectiveState::NotInjected)
+                    );
                     let _ = reload.set_enabled(can_reload);
+
+                    // The user asked Drake to do this for them on open. Fires
+                    // once per run, and only after the grace window, so a
+                    // healthy client that simply has not checked in yet is
+                    // never restarted. See supervisor::should_auto_reload.
+                    if let Some(eff) = &effective {
+                        if supervisor::should_auto_reload(
+                            settings.auto_reload_on_open,
+                            eff,
+                            started.elapsed(),
+                            auto_reload_fired,
+                        ) {
+                            auto_reload_fired = true;
+                            if let Err(e) = lcu::restart_ux().await {
+                                eprintln!("[Drake] auto-reload failed: {e}");
+                            }
+                        }
+                    }
 
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 }
