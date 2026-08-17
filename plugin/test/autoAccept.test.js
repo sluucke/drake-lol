@@ -47,4 +47,70 @@ describe('startAutoAccept', () => {
     expect(subscribe).not.toHaveBeenCalled();
     expect(lcu.post).not.toHaveBeenCalled();
   });
+
+  it('waits the configured delay before accepting', async () => {
+    const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
+    let handler;
+    const subscribe = (_route, fn) => { handler = fn; return () => {}; };
+    const timers = [];
+    const setTimeoutImpl = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
+
+    startAutoAccept({ enabled: true, delayMs: 3000, lcu, subscribe, setTimeoutImpl });
+    await handler({ state: 'InProgress', playerResponse: 'None' });
+
+    expect(lcu.post).not.toHaveBeenCalled();
+    expect(timers[0].ms).toBe(3000);
+    timers[0].fn();
+    expect(lcu.post).toHaveBeenCalledWith('/lol-matchmaking/v1/ready-check/accept');
+  });
+
+  it('does not stack timers when the same check reports repeatedly', async () => {
+    // The ready-check route emits on every poll tick, so a naive delay would
+    // queue one accept per tick and fire a burst of them.
+    const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
+    let handler;
+    const subscribe = (_route, fn) => { handler = fn; return () => {}; };
+    const timers = [];
+    const setTimeoutImpl = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
+
+    startAutoAccept({ enabled: true, delayMs: 3000, lcu, subscribe, setTimeoutImpl });
+    await handler({ state: 'InProgress', playerResponse: 'None' });
+    await handler({ state: 'InProgress', playerResponse: 'None' });
+    await handler({ state: 'InProgress', playerResponse: 'None' });
+
+    expect(timers).toHaveLength(1);
+  });
+
+  it('cancels a pending accept when the check goes away', async () => {
+    // The user declined by hand, or the check expired, during our delay.
+    // Firing anyway would accept a check the user deliberately dropped.
+    const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
+    let handler;
+    const subscribe = (_route, fn) => { handler = fn; return () => {}; };
+    const cleared = [];
+    const setTimeoutImpl = () => 42;
+    const clearTimeoutImpl = (id) => cleared.push(id);
+
+    startAutoAccept({
+      enabled: true, delayMs: 3000, lcu, subscribe, setTimeoutImpl, clearTimeoutImpl,
+    });
+    await handler({ state: 'InProgress', playerResponse: 'None' });
+    await handler({ state: 'Invalid', playerResponse: 'None' });
+
+    expect(cleared).toContain(42);
+    expect(lcu.post).not.toHaveBeenCalled();
+  });
+
+  it('accepts immediately when the delay is zero', async () => {
+    const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
+    let handler;
+    const subscribe = (_route, fn) => { handler = fn; return () => {}; };
+    const setTimeoutImpl = vi.fn();
+
+    startAutoAccept({ enabled: true, delayMs: 0, lcu, subscribe, setTimeoutImpl });
+    await handler({ state: 'InProgress', playerResponse: 'None' });
+
+    expect(setTimeoutImpl).not.toHaveBeenCalled();
+    expect(lcu.post).toHaveBeenCalledWith('/lol-matchmaking/v1/ready-check/accept');
+  });
 });

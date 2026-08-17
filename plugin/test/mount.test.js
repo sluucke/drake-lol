@@ -1,0 +1,164 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { mountUI, HOST_ID } from '../src/ui/mount.js';
+
+/// A DOM small enough to reason about, real enough to exercise the guards:
+/// element identity, parent/child links, and a MutationObserver that actually
+/// reports removals. jsdom is not installed and pulling it in for three
+/// behaviours is not worth the dependency.
+function fakeDom({ withBody = true } = {}) {
+  const listeners = {};
+  const makeEl = (tag) => {
+    const el = {
+      tagName: tag.toUpperCase(),
+      id: '',
+      style: { cssText: '' },
+      children: [],
+      parentNode: null,
+      shadow: null,
+      attachShadow() {
+        this.shadow = { innerHTML: '', host: this, getElementById: () => null };
+        return this.shadow;
+      },
+      appendChild(child) {
+        child.parentNode = this;
+        this.children.push(child);
+        doc._notify();
+        return child;
+      },
+      removeChild(child) {
+        this.children = this.children.filter((c) => c !== child);
+        child.parentNode = null;
+        doc._notify();
+        return child;
+      },
+    };
+    return el;
+  };
+
+  const doc = {
+    body: withBody ? makeEl('body') : null,
+    documentElement: makeEl('html'),
+    createElement: (tag) => makeEl(tag),
+    addEventListener: (type, fn) => {
+      (listeners[type] ||= []).push(fn);
+    },
+    _observers: [],
+    _notify() {
+      for (const cb of this._observers) cb();
+    },
+    fire(type) {
+      for (const fn of listeners[type] || []) fn();
+    },
+  };
+  return doc;
+}
+
+function fakeWindow() {
+  const listeners = {};
+  return {
+    addEventListener: (type, fn, opts) => {
+      (listeners[type] ||= []).push({ fn, opts });
+    },
+    dispatch(type, event) {
+      for (const { fn } of listeners[type] || []) fn(event);
+    },
+    listenerCount: (type) => (listeners[type] || []).length,
+  };
+}
+
+/// Stands in for the browser's MutationObserver: fires whatever callback was
+/// registered whenever the fake DOM mutates.
+function installObserver(doc) {
+  return class {
+    constructor(cb) {
+      this.cb = cb;
+    }
+    observe() {
+      doc._observers.push(() => this.cb());
+    }
+    disconnect() {}
+  };
+}
+
+let doc, win;
+beforeEach(() => {
+  doc = fakeDom();
+  win = fakeWindow();
+  globalThis.MutationObserver = installObserver(doc);
+});
+
+describe('mountUI', () => {
+  it('attaches the host to documentElement, not body', () => {
+    // body is the node the client swaps out from under us; documentElement is
+    // the one that survives.
+    mountUI({ doc, win, render: () => '<div></div>' });
+
+    expect(doc.documentElement.children.map((c) => c.id)).toContain(HOST_ID);
+    expect(doc.body.children).toHaveLength(0);
+  });
+
+  it('mounts only once when the plugin is evaluated twice', () => {
+    // Measured: plugin evaluation is not guaranteed to happen exactly once.
+    // A second host would mean two panels and two keydown listeners.
+    mountUI({ doc, win, render: () => '<div></div>' });
+    mountUI({ doc, win, render: () => '<div></div>' });
+
+    const hosts = doc.documentElement.children.filter((c) => c.id === HOST_ID);
+    expect(hosts).toHaveLength(1);
+    expect(win.listenerCount('keydown')).toBe(1);
+  });
+
+  it('re-attaches the host when the client removes it', () => {
+    // The client owns the DOM and owes us no permanence.
+    mountUI({ doc, win, render: () => '<div></div>' });
+    const host = doc.documentElement.children.find((c) => c.id === HOST_ID);
+
+    doc.documentElement.removeChild(host);
+
+    const after = doc.documentElement.children.filter((c) => c.id === HOST_ID);
+    expect(after).toHaveLength(1);
+  });
+
+  it('waits for load when body does not exist yet', () => {
+    // Measured: document.body is null when index.js is evaluated. This killed
+    // the first probe outright.
+    const early = fakeDom({ withBody: false });
+    globalThis.MutationObserver = installObserver(early);
+
+    mountUI({ doc: early, win, render: () => '<div></div>' });
+    expect(early.documentElement.children.filter((c) => c.id === HOST_ID)).toHaveLength(0);
+
+    early.fire('load');
+    expect(early.documentElement.children.filter((c) => c.id === HOST_ID)).toHaveLength(1);
+  });
+
+  it('reports open state through the toggle callback', () => {
+    const onOpenChange = vi.fn();
+    const ui = mountUI({ doc, win, render: () => '<div></div>', onOpenChange });
+
+    ui.toggle();
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+    ui.toggle();
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('opens on Ctrl+D and closes on Escape', () => {
+    const ui = mountUI({ doc, win, render: () => '<div></div>' });
+
+    win.dispatch('keydown', { ctrlKey: true, key: 'd', preventDefault() {} });
+    expect(ui.isOpen()).toBe(true);
+
+    win.dispatch('keydown', { key: 'Escape', preventDefault() {} });
+    expect(ui.isOpen()).toBe(false);
+  });
+
+  it('does not preventDefault on keys it does not handle', () => {
+    // Swallowing unrelated keystrokes would break the client's own shortcuts.
+    mountUI({ doc, win, render: () => '<div></div>' });
+    const preventDefault = vi.fn();
+
+    win.dispatch('keydown', { ctrlKey: true, key: 'k', preventDefault });
+
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+});

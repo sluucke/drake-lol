@@ -1,3 +1,4 @@
+pub mod browser;
 pub mod configd;
 pub mod deploy;
 pub mod elevate;
@@ -157,6 +158,14 @@ pub fn run() {
 
                 loop {
                     let settings = loop_state.settings.lock().unwrap().clone();
+
+                    // The in-client panel writes settings too, so the tray's
+                    // own checkboxes have to follow rather than only lead.
+                    // set_checked on an unchanged value is a no-op, so this is
+                    // safe to run every tick.
+                    let _ = startup_item.set_checked(settings.run_at_startup);
+                    let _ = auto_reload_item.set_checked(settings.auto_reload_on_open);
+
                     let cfg = configd::PluginConfig {
                         token: loop_state.token.clone(),
                         port: loop_state.port,

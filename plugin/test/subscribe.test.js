@@ -18,7 +18,7 @@ describe('subscribe', () => {
 
     subscribe('/lol-matchmaking/v1/ready-check', handler, { fetchImpl, intervalMs: 1000 });
 
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(0);
     expect(fetchImpl).toHaveBeenCalledWith('/lol-matchmaking/v1/ready-check');
     expect(handler).toHaveBeenCalledWith(payload);
   });
@@ -29,7 +29,7 @@ describe('subscribe', () => {
 
     const unsubscribe = subscribe('/route', handler, { fetchImpl, intervalMs: 1000 });
 
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(0);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
 
     unsubscribe();
@@ -37,14 +37,16 @@ describe('subscribe', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it('does not throw and does not call the handler when a poll 404s between matches', async () => {
+  it('tells the handler the resource is gone when a poll 404s between matches', async () => {
+    // Champ select 404s when idle. Auto pick remembers the last action; without
+    // this null it would skip the next lobby that reuses the same action ids.
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 404 });
     const handler = vi.fn();
 
     subscribe('/route', handler, { fetchImpl, intervalMs: 1000 });
 
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(handler).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handler).toHaveBeenCalledWith(null);
   });
 
   it('does not throw when a poll rejects with a network error', async () => {
@@ -68,7 +70,8 @@ describe('subscribe', () => {
 
     expect(observe).toHaveBeenCalledTimes(1);
     expect(observe.mock.calls[0][0]).toBe('/route');
-    expect(fetchImpl).not.toHaveBeenCalled();
+    // Still polls: socket.observe does not reliably emit Delete after a dodge,
+    // so a 404 is how we learn champ select ended.
 
     const observer = observe.mock.calls[0][1];
     observer({ data: { foo: 'bar' } });

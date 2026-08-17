@@ -1,0 +1,524 @@
+import { CSS } from './styles.js';
+import { DRAKE_ICON } from './assets.js';
+import { PROVIDERS } from '../features/reveal.js';
+import { iconUrl } from '../features/champions.js';
+import { TIERS, DIVISIONS, QUEUES, CRYSTALS } from '../features/presence.js';
+import { RANK_ICONS, HASHTAG } from './assets.js';
+import { visibleWindow } from './virtualGrid.js';
+
+export const SCREENS = [
+  { id: 'auto-accept', label: 'Auto Accept' },
+  { id: 'auto-pick', label: 'Auto Pick' },
+  { id: 'auto-ban', label: 'Auto Ban' },
+  { id: 'queue', label: 'Queue' },
+  { id: 'status', label: 'Status' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'friends', label: 'Friends' },
+  { id: 'settings', label: 'Settings' },
+];
+
+/// The shell's markup. A string rather than a framework: this is injected into
+/// somebody else's page, so every kilobyte and every global is a liability,
+/// and two screens do not justify a renderer.
+export function renderShell() {
+  const nav = SCREENS.map(
+    (s, i) =>
+      `<button class="navitem" role="tab" data-screen="${s.id}" aria-selected="${i === 0}">${s.label}</button>`,
+  ).join('');
+
+  return `
+    <style>${CSS}</style>
+
+    <!-- Lives outside the modal: it has to be usable while the panel is shut,
+         because a ready check is exactly when nobody wants to open a menu. -->
+    <div class="cancel-dock" id="cancel-dock" hidden>
+      <button class="hextech-btn hextech-btn-danger" id="cancel-queue">Cancel Queue</button>
+    </div>
+
+    <div class="scrim" id="scrim">
+      <div class="window" role="dialog" aria-label="Drake">
+        <div class="titlebar">
+          <img class="mark" src="${DRAKE_ICON}" alt="" aria-hidden="true">
+          <div class="title">Drake</div>
+          <div class="hint">Ctrl + D</div>
+          <button class="close" id="close" aria-label="Close">✕</button>
+        </div>
+
+        <div class="body">
+          <div class="nav" role="tablist">${nav}</div>
+          <div class="content" id="content"></div>
+        </div>
+
+        <div class="footer">
+          <span id="host-label">—</span>
+          <span id="status">—</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+/// One checkbox row, matching the client's own hextech checkbox sprite.
+export function renderCheckRow({ id, label, help, checked, disabled }) {
+  return `
+    <button class="check-row" data-setting="${id}" ${disabled ? 'disabled' : ''}>
+      <span class="check" data-checked="${checked}"></span>
+      <span class="check-label">${label}</span>
+    </button>
+    ${help ? `<p class="check-help">${help}</p>` : ''}`;
+}
+
+export function formatDelay(ms) {
+  return ms === 0 ? 'Instant' : `${(ms / 1000).toFixed(1)}s`;
+}
+
+export function renderAutoAccept(settings, { disabled, maxDelayMs }) {
+  const delay = settings.auto_accept_delay_ms || 0;
+  return `
+    <h2 class="screen-title">Auto Accept</h2>
+    <p class="screen-sub">Accepts the ready check for you the moment it appears.</p>
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'auto_accept',
+      label: 'Accept ready checks automatically',
+      checked: !!settings.auto_accept,
+      disabled,
+    })}
+
+    <div class="field ${settings.auto_accept ? '' : 'field-off'}">
+      <div class="field-head">
+        <label class="field-label" for="delay">Accept after</label>
+        <span class="field-value" id="delay-value">${formatDelay(delay)}</span>
+      </div>
+      <input class="slider" type="range" id="delay" name="delay"
+             min="0" max="${maxDelayMs}" step="500" value="${delay}"
+             ${disabled || !settings.auto_accept ? 'disabled' : ''}>
+      <p class="check-help" style="margin-left:0">
+        A short wait leaves you a window to decline by hand, and looks less
+        mechanical than accepting the instant the prompt renders.
+      </p>
+    </div>`;
+}
+
+export function renderQueue({ provider }) {
+  const options = PROVIDERS.map(
+    (p) =>
+      `<button class="pill" data-provider="${p.id}" aria-selected="${p.id === provider}">${p.label}</button>`,
+  ).join('');
+
+  return `
+    <h2 class="screen-title">Queue</h2>
+    <p class="screen-sub">Tools for champ select.</p>
+    <div class="rule"></div>
+
+    <div class="field-head">
+      <span class="field-label">Lobby reveal</span>
+    </div>
+    <p class="check-help" style="margin:0 0 10px">
+      Looks your whole team up on a scouting site. Only works while you are in
+      champ select, because that is when the names exist.
+    </p>
+    <div class="pill-row">${options}</div>
+    <div class="status-actions">
+      <button class="hextech-btn" id="reveal">Reveal Lobby</button>
+    </div>
+
+    <div class="rule"></div>
+
+    <div class="field-head">
+      <span class="field-label">Dodge</span>
+    </div>
+    <p class="check-help" style="margin:0 0 10px">
+      Leaves champ select. Costs you the usual dodge penalty — Drake does not
+      confirm first, so only press it if you mean it.
+    </p>
+    <div class="status-actions">
+      <button class="hextech-btn hextech-btn-danger" id="dodge">Dodge</button>
+    </div>`;
+}
+
+/// A champion grid with a search box. Icons come from the client's own asset
+/// route, so there is no external request and no version skew.
+export function renderChampionPicker({ id, list, query, selectedId, compact }) {
+  const cells = list
+    .map(
+      (c) => `
+      <button class="champ ${c.id === selectedId ? 'champ-on' : ''}"
+              data-champ="${c.id}" data-for="${id}" title="${c.name}">
+        <img src="${iconUrl(c.id)}" alt="" loading="lazy">
+      </button>`,
+    )
+    .join('');
+
+  return `
+    <input class="hextech-input" type="search" data-search="${id}"
+           value="${String(query || '').replace(/"/g, '&quot;')}"
+           placeholder="Search champions...">
+    <div class="champ-grid${compact ? ' champ-grid-sm' : ''}">${cells || '<p class="check-help">No champions match.</p>'}</div>`;
+}
+
+export function championName(list, id) {
+  const found = list.find((c) => c.id === id);
+  return found ? found.name : 'none chosen';
+}
+
+export function renderAutoPick(settings, { disabled, list, query, list2, query2 }) {
+  return `
+    <h2 class="screen-title">Auto Pick</h2>
+    <p class="screen-sub">Chooses your champion when your turn comes round. If the first is banned or taken, the second is used.</p>
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'auto_pick',
+      label: 'Pick a champion automatically',
+      checked: !!settings.auto_pick,
+      disabled,
+    })}
+
+    ${renderCheckRow({
+      id: 'insta_lock',
+      label: 'Insta Lock',
+      help: 'Locks the champion in the instant the pick opens, instead of only hovering it. Nobody can take it from you, and you cannot change your mind.',
+      checked: !!settings.insta_lock,
+      disabled: disabled || !settings.auto_pick,
+    })}
+
+    <div class="field ${settings.auto_pick ? '' : 'field-off'}">
+      <div class="field-head">
+        <span class="field-label">First pick</span>
+        <span class="field-value">${championName(list, settings.auto_pick_champion_id)}</span>
+      </div>
+      ${renderChampionPicker({
+        id: 'auto_pick_champion_id',
+        list,
+        query,
+        selectedId: settings.auto_pick_champion_id,
+        compact: true,
+      })}
+    </div>
+
+    <div class="field ${settings.auto_pick ? '' : 'field-off'}">
+      <div class="field-head">
+        <span class="field-label">Second pick</span>
+        <span class="field-value">${championName(list2 || list, settings.auto_pick_champion_id_2)}</span>
+      </div>
+      <p class="check-help">Used if the first champion is banned or already taken.</p>
+      ${renderChampionPicker({
+        id: 'auto_pick_champion_id_2',
+        list: list2 || list,
+        query: query2,
+        selectedId: settings.auto_pick_champion_id_2,
+        compact: true,
+      })}
+    </div>`;
+}
+
+export function renderAutoBan(settings, { disabled, list, query }) {
+  return `
+    <h2 class="screen-title">Auto Ban</h2>
+    <p class="screen-sub">Bans a champion for you when the ban phase reaches your turn.</p>
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'auto_ban',
+      label: 'Ban a champion automatically',
+      help: 'A ban is always locked in — hovering a ban bans nothing.',
+      checked: !!settings.auto_ban,
+      disabled,
+    })}
+
+    <div class="field ${settings.auto_ban ? '' : 'field-off'}">
+      <div class="field-head">
+        <span class="field-label">Champion</span>
+        <span class="field-value">${championName(list, settings.auto_ban_champion_id)}</span>
+      </div>
+      ${renderChampionPicker({
+        id: 'auto_ban_champion_id',
+        list,
+        query,
+        selectedId: settings.auto_ban_champion_id,
+      })}
+    </div>`;
+}
+
+export function renderStatus(text) {
+  // Escaped, not interpolated raw: this string comes back from the client and
+  // is written straight into innerHTML.
+  const safe = String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  return `
+    <h2 class="screen-title">Status Message</h2>
+    <p class="screen-sub">
+      Your chat presence. Line breaks work here — the client's own field is a
+      single-line input and cannot hold them.
+    </p>
+    <div class="rule"></div>
+
+    <textarea class="status-box" id="status-text" spellcheck="false"
+              placeholder="Type or paste your status. ASCII art welcome.">${safe}</textarea>
+
+    <div class="status-actions">
+      <span class="status-count" id="status-count"></span>
+      <span class="status-actions-spacer"></span>
+      <button class="hextech-btn hextech-btn-muted" id="status-clear">Clear</button>
+      <button class="hextech-btn" id="status-save">Save</button>
+    </div>`;
+}
+
+export function describeStatus(text) {
+  const t = String(text ?? '');
+  const lines = t === '' ? 0 : t.split('\n').length;
+  return `${t.length} chars · ${lines} line${lines === 1 ? '' : 's'}`;
+}
+
+function options(list, selected) {
+  return list
+    .map(
+      (o) =>
+        `<option value="${o.id ?? o}" ${(o.id ?? o) === selected ? 'selected' : ''}>${o.label ?? o}</option>`,
+    )
+    .join('');
+}
+
+export const PROFILE_TABS = [
+  { id: 'rank', label: 'Rank' },
+  { id: 'banner', label: 'Banner' },
+  { id: 'riot-id', label: 'Riot ID' },
+];
+
+/// A real <select>, dressed as the client's own control.
+///
+/// The arrows are decoration, not the mechanism: clicking anywhere opens the
+/// native dropdown, so a long list (nine crystal tiers) stays one click away
+/// instead of nine. `appearance: none` removes the Windows chrome; the arrow
+/// glyph is drawn by CSS on the wrapper.
+function renderSelect(id, list, selected) {
+  const opts = list
+    .map((o) => {
+      const value = o.id ?? o;
+      const label = o.label ?? o;
+      return `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`;
+    })
+    .join('');
+
+  return `
+    <span class="select-wrap">
+      <select class="select-field" id="${id}">${opts}</select>
+      <span class="select-arrows" aria-hidden="true">
+        <span>▲</span><span>▼</span>
+      </span>
+    </span>`;
+}
+
+function renderRankTab(lol) {
+  const tier = lol.rankedLeagueTier || '';
+  const tiles = TIERS.map(
+    (t) => `
+    <button class="rank ${t === tier ? 'rank-on' : ''}" data-tier="${t}">
+      <img src="${RANK_ICONS[t] || RANK_ICONS.UNRANKED}" alt="">
+      <span>${t.charAt(0) + t.slice(1).toLowerCase()}</span>
+    </button>`,
+  ).join('');
+
+  return `
+    <div class="rank-grid">${tiles}</div>
+
+    <div class="row">
+      <span class="field-label" style="min-width:72px">Division</span>
+      ${renderSelect('rank-div', DIVISIONS, lol.rankedLeagueDivision || 'I')}
+    </div>
+    <div class="row">
+      <span class="field-label" style="min-width:72px">Queue</span>
+      ${renderSelect('rank-queue', QUEUES, lol.rankedLeagueQueue || QUEUES[0].id)}
+    </div>
+
+    <div class="rule"></div>
+
+    <div class="row">
+      <span class="field-label" style="min-width:72px">Crystal</span>
+      ${renderSelect('crystal', CRYSTALS, lol.challengeCrystalLevel || 'IRON')}
+    </div>
+
+    <div class="status-actions">
+      <span class="status-count">Shown next to your name in chat. Your real rank is unchanged.</span>
+      <span class="status-actions-spacer"></span>
+      <button class="hextech-btn hextech-btn-muted" id="rank-clear">Reset</button>
+      <button class="hextech-btn" id="rank-save">Apply</button>
+    </div>`;
+}
+
+export const SKIN_TILE = { perRow: 5, rowHeight: 92, viewportHeight: 300 };
+
+export function renderSkinCells(skins, selectedId, win) {
+  return skins
+    .slice(win.start, win.end)
+    .map(
+      (s) => `
+      <button class="skin ${s.id === selectedId ? 'skin-on' : ''}" data-skin="${s.id}" title="${escapeHtml(s.name)}">
+        <img src="${s.tile}" alt="" loading="lazy">
+        <span>${escapeHtml(s.name)}</span>
+      </button>`,
+    )
+    .join('');
+}
+
+export function skinWindow(total, scrollTop) {
+  return visibleWindow({
+    total,
+    perRow: SKIN_TILE.perRow,
+    rowHeight: SKIN_TILE.rowHeight,
+    viewportHeight: SKIN_TILE.viewportHeight,
+    scrollTop: scrollTop || 0,
+  });
+}
+
+/// Renders the shell of the virtual list ONCE. Scrolling then updates only the
+/// inner grid, never this markup -- replacing the scroll container mid-scroll
+/// resets its scrollTop, and restoring it by hand fights the browser's own
+/// scrolling, which is what made the list flicker and jump.
+function renderBannerTab({ skins, query, selectedId, scrollTop }) {
+  const win = skinWindow(skins.length, scrollTop);
+
+  const body = skins.length
+    ? `<div class="skin-spacer" id="skin-spacer" style="height:${win.totalHeight}px">
+         <div class="skin-grid" id="skin-grid" style="transform:translateY(${win.offsetY}px)">
+           ${renderSkinCells(skins, selectedId, win)}
+         </div>
+       </div>`
+    : '<p class="check-help">No skins match.</p>';
+
+  return `
+    <input class="hextech-input" type="search" data-search="skins"
+           value="${String(query || '').replace(/"/g, '&quot;')}"
+           placeholder="Search ${skins.length} skins...">
+    <div class="skin-viewport" id="skin-viewport">${body}</div>`;
+}
+
+function renderRiotIdTab() {
+  // Mirrors the client's own player-name-input__split-inputs-wrapper: two
+  // fields sharing one border with the # sitting between them.
+  return `
+    <p class="check-help" style="margin:0 0 12px">
+      Renaming is rate-limited by Riot, not by Drake. If it refuses, that is
+      their cooldown talking.
+    </p>
+    <div class="split-input">
+      <input class="split-name" id="riot-name" placeholder="Name" spellcheck="false">
+      <img class="split-hash" src="${HASHTAG}" alt="#">
+      <input class="split-tag" id="riot-tag" placeholder="TAG" maxlength="5" spellcheck="false">
+    </div>
+    <div class="status-actions">
+      <span class="status-actions-spacer"></span>
+      <button class="hextech-btn" id="riot-id-save">Save ID</button>
+    </div>`;
+}
+
+export function renderProfile({ tab, lol, skins, skinQuery, backgroundId, skinScroll }) {
+  const tabs = PROFILE_TABS.map(
+    (t) =>
+      `<button class="pill" data-ptab="${t.id}" aria-selected="${t.id === tab}">${t.label}</button>`,
+  ).join('');
+
+  const body =
+    tab === 'banner'
+      ? renderBannerTab({ skins, query: skinQuery, selectedId: backgroundId, scrollTop: skinScroll })
+      : tab === 'riot-id'
+        ? renderRiotIdTab()
+        : renderRankTab(lol);
+
+  return `
+    <h2 class="screen-title">Profile</h2>
+    <p class="screen-sub">What other players see. None of this changes your account.</p>
+    <div class="pill-row">${tabs}</div>
+    <div class="rule"></div>
+    ${body}`;
+}
+
+export function renderFriends(list) {
+  if (list.length === 0) {
+    return `
+      <h2 class="screen-title">Friends</h2>
+      <p class="screen-sub">Nobody on the list, or the client has not shared it yet.</p>`;
+  }
+
+  const rows = list
+    .map(
+      (f) => `
+      <div class="friend">
+        <span class="dot ${f.online ? 'dot-on' : ''}"></span>
+        <span class="friend-name">${escapeHtml(f.riotId)}</span>
+        <span class="friend-note">${escapeHtml(f.note || f.statusMessage || '')}</span>
+      </div>`,
+    )
+    .join('');
+
+  const online = list.filter((f) => f.online).length;
+  return `
+    <h2 class="screen-title">Friends</h2>
+    <p class="screen-sub">${online} online of ${list.length}. Notes are the ones you set in the client.</p>
+    <div class="rule"></div>
+    <div class="friend-list">${rows}</div>
+    <div class="status-actions">
+      <span class="status-count">Removing everyone cannot be undone from Drake.</span>
+      <span class="status-actions-spacer"></span>
+      <button class="hextech-btn hextech-btn-danger" id="friends-remove-all">Remove all</button>
+    </div>`;
+}
+
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+export function renderSettings(settings, { disabled }) {
+  return `
+    <h2 class="screen-title">Settings</h2>
+    <p class="screen-sub">How Drake itself behaves.</p>
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'run_at_startup',
+      label: 'Start Drake with Windows',
+      help: 'Keeps the client injected before it launches, so this panel is always available.',
+      checked: !!settings.run_at_startup,
+      disabled,
+    })}
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'auto_reload_on_open',
+      label: 'Reload the client when Drake starts',
+      help: 'Only used when Drake finds the client already running without Drake loaded.',
+      checked: !!settings.auto_reload_on_open,
+      disabled,
+    })}
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'unlock_status_message',
+      label: 'Unlock the status message field',
+      help: "Removes the client's 25-character cap on your own status message and gives the field room to breathe. Takes effect on the next client reload.",
+      checked: !!settings.unlock_status_message,
+      disabled,
+    })}
+
+    <div class="rule"></div>
+
+    <div class="field-head">
+      <span class="field-label">Client</span>
+    </div>
+    <p class="check-help" style="margin:0 0 10px">
+      Reloads the League client UI. Use this when Drake injected while the
+      client was already open, or after a change that only applies on a reload.
+    </p>
+    <div class="status-actions">
+      <button class="hextech-btn" id="restart-client">Restart client</button>
+    </div>`;
+}
