@@ -34,6 +34,41 @@ pub struct Settings {
     pub run_at_startup: bool,
     #[serde(default = "off")]
     pub auto_reload_on_open: bool,
+    /// How long to wait before accepting. Lets the accept look human, and
+    /// leaves a window in which the user can still decline by hand.
+    #[serde(default = "no_delay")]
+    pub auto_accept_delay_ms: u32,
+    /// Lifts the 25-character cap on the client's own status-message input.
+    #[serde(default = "on")]
+    pub unlock_status_message: bool,
+    #[serde(default = "off")]
+    pub auto_pick: bool,
+    /// Champion the pick phase should choose. 0 means none chosen.
+    #[serde(default = "no_champion")]
+    pub auto_pick_champion_id: u32,
+    /// Fallback if the first champion is banned or already taken. 0 means none.
+    #[serde(default = "no_champion")]
+    pub auto_pick_champion_id_2: u32,
+    /// Lock the pick outright instead of only hovering it.
+    #[serde(default = "off")]
+    pub insta_lock: bool,
+    #[serde(default = "off")]
+    pub auto_ban: bool,
+    #[serde(default = "no_champion")]
+    pub auto_ban_champion_id: u32,
+}
+
+fn no_champion() -> u32 {
+    0
+}
+
+/// The client's ready check expires on its own, so a delay past that would
+/// mean Drake "accepting" a check that no longer exists. Well under the real
+/// timeout, which we do not control and Riot may change.
+pub const MAX_ACCEPT_DELAY_MS: u32 = 8_000;
+
+fn no_delay() -> u32 {
+    0
 }
 
 fn on() -> bool {
@@ -54,6 +89,16 @@ impl Default for Settings {
             // Restarting a client the user did not ask us to touch is
             // intrusive. Opt-in only.
             auto_reload_on_open: off(),
+            auto_accept_delay_ms: no_delay(),
+            // Purely permissive: it removes a restriction on a field the user
+            // already owns, and changes nothing until they type in it.
+            unlock_status_message: on(),
+            auto_pick: off(),
+            auto_pick_champion_id: no_champion(),
+            auto_pick_champion_id_2: no_champion(),
+            insta_lock: off(),
+            auto_ban: off(),
+            auto_ban_champion_id: no_champion(),
         }
     }
 }
@@ -115,11 +160,17 @@ pub enum EffectiveState {
     Unknown,
 }
 
+/// How settings reach disk. Behind a boxed fn so tests can assert that a
+/// rejected write leaves memory untouched, without writing to the real
+/// `%PROGRAMDATA%\Drake\state\settings.json` of whoever runs the suite.
+type Persist = Box<dyn Fn(&Settings) -> Result<(), ConfigError> + Send + Sync>;
+
 pub struct ConfigdState {
     pub token: String,
     pub port: u16,
     pub settings: Mutex<Settings>,
     last_checkin: Mutex<Option<(String, Instant)>>,
+    persist: Mutex<Persist>,
 }
 
 impl ConfigdState {
@@ -135,7 +186,27 @@ impl ConfigdState {
             port,
             settings: Mutex::new(settings),
             last_checkin: Mutex::new(None),
+            persist: Mutex::new(Box::new(save)),
         }
+    }
+
+    #[cfg(test)]
+    pub fn set_persist(
+        &self,
+        f: impl Fn(&Settings) -> Result<(), ConfigError> + Send + Sync + 'static,
+    ) {
+        *self.persist.lock().unwrap() = Box::new(f);
+    }
+
+    /// Persists first, applies second.
+    ///
+    /// The order is the whole point: if the write fails and we had already
+    /// applied, the UI would show a setting that silently disappears on the
+    /// next tray restart. Reporting the failure is better than drifting.
+    pub fn apply_settings(&self, next: Settings) -> Result<(), ConfigError> {
+        (self.persist.lock().unwrap())(&next)?;
+        *self.settings.lock().unwrap() = next;
+        Ok(())
     }
 
     pub fn record_checkin(&self, host: String) {
@@ -180,6 +251,135 @@ async fn checkin(
     StatusCode::NO_CONTENT
 }
 
+/// A partial update. Every field optional so the UI can send only what the
+/// user actually changed, and a field nobody mentioned keeps its current value
+/// instead of silently snapping back to its default.
+#[derive(Deserialize, Default)]
+pub struct SettingsPatch {
+    pub auto_accept: Option<bool>,
+    pub run_at_startup: Option<bool>,
+    pub auto_reload_on_open: Option<bool>,
+    pub auto_accept_delay_ms: Option<u32>,
+    pub unlock_status_message: Option<bool>,
+    pub auto_pick: Option<bool>,
+    pub auto_pick_champion_id: Option<u32>,
+    pub auto_pick_champion_id_2: Option<u32>,
+    pub insta_lock: Option<bool>,
+    pub auto_ban: Option<bool>,
+    pub auto_ban_champion_id: Option<u32>,
+}
+
+impl SettingsPatch {
+    pub fn apply_to(&self, base: &Settings) -> Settings {
+        Settings {
+            auto_accept: self.auto_accept.unwrap_or(base.auto_accept),
+            run_at_startup: self.run_at_startup.unwrap_or(base.run_at_startup),
+            auto_reload_on_open: self.auto_reload_on_open.unwrap_or(base.auto_reload_on_open),
+            // Clamped here rather than trusted: this arrives over HTTP from a
+            // page running inside somebody else's client.
+            auto_accept_delay_ms: self
+                .auto_accept_delay_ms
+                .unwrap_or(base.auto_accept_delay_ms)
+                .min(MAX_ACCEPT_DELAY_MS),
+            unlock_status_message: self
+                .unlock_status_message
+                .unwrap_or(base.unlock_status_message),
+            auto_pick: self.auto_pick.unwrap_or(base.auto_pick),
+            auto_pick_champion_id: self
+                .auto_pick_champion_id
+                .unwrap_or(base.auto_pick_champion_id),
+            auto_pick_champion_id_2: self
+                .auto_pick_champion_id_2
+                .unwrap_or(base.auto_pick_champion_id_2),
+            insta_lock: self.insta_lock.unwrap_or(base.insta_lock),
+            auto_ban: self.auto_ban.unwrap_or(base.auto_ban),
+            auto_ban_champion_id: self
+                .auto_ban_champion_id
+                .unwrap_or(base.auto_ban_champion_id),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct SettingsBody {
+    pub token: String,
+    pub settings: SettingsPatch,
+}
+
+async fn put_settings(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<SettingsBody>,
+) -> StatusCode {
+    if body.token != state.token {
+        return StatusCode::UNAUTHORIZED;
+    }
+    let next = {
+        let current = state.settings.lock().unwrap();
+        body.settings.apply_to(&current)
+    };
+    match state.apply_settings(next) {
+        Ok(()) => StatusCode::NO_CONTENT,
+        Err(e) => {
+            eprintln!("[Drake] could not persist settings from the UI: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+}
+
+/// Hosts the lobby-reveal feature is allowed to open.
+///
+/// Deliberately an allow-list, not a scheme check. This endpoint hands a URL
+/// to the operating system, and anything running in the client's page can
+/// reach it -- so "open any https URL" would turn Drake into a general
+/// launcher for whatever ends up executing in there.
+const OPENABLE_HOSTS: [&str; 3] = ["porofessor.gg", "www.op.gg", "op.gg"];
+
+pub fn is_openable(raw: &str) -> bool {
+    // Parsed rather than pattern-matched: `https://porofessor.gg.evil.com/`
+    // and `https://evil.com/?x=https://porofessor.gg/` both contain the
+    // allowed text, and neither is the allowed host.
+    let Some(rest) = raw.strip_prefix("https://") else {
+        return false;
+    };
+    let host = rest
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or("")
+        .split('@')
+        .next_back()
+        .unwrap_or("")
+        .split(':')
+        .next()
+        .unwrap_or("");
+    OPENABLE_HOSTS.contains(&host)
+}
+
+#[derive(Deserialize)]
+pub struct OpenUrlBody {
+    pub token: String,
+    pub url: String,
+}
+
+async fn open_url(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<OpenUrlBody>,
+) -> StatusCode {
+    if body.token != state.token {
+        return StatusCode::UNAUTHORIZED;
+    }
+    if !is_openable(&body.url) {
+        eprintln!("[Drake] refused to open {}", body.url);
+        return StatusCode::FORBIDDEN;
+    }
+    match crate::browser::open(&body.url) {
+        Ok(()) => StatusCode::NO_CONTENT,
+        Err(e) => {
+            eprintln!("[Drake] could not open the browser: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+}
+
 fn router(state: Arc<ConfigdState>) -> Router {
     // The client page that calls /checkin is served from a different origin
     // (https://plugins/... via the loader's own scheme), so the browser
@@ -195,6 +395,8 @@ fn router(state: Arc<ConfigdState>) -> Router {
         .allow_headers([axum::http::header::CONTENT_TYPE]);
     Router::new()
         .route("/checkin", post(checkin))
+        .route("/settings", post(put_settings))
+        .route("/open-url", post(open_url))
         .layer(cors)
         .with_state(state)
 }
@@ -227,6 +429,22 @@ mod tests {
     }
 
     #[test]
+    fn the_accept_delay_starts_at_zero_and_survives_a_round_trip() {
+        assert_eq!(Settings::default().auto_accept_delay_ms, 0);
+        let s = Settings { auto_accept_delay_ms: 2500, ..Settings::default() };
+        let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+        assert_eq!(back.auto_accept_delay_ms, 2500);
+    }
+
+    #[test]
+    fn an_absurd_accept_delay_is_clamped_rather_than_trusted() {
+        // The ready check itself expires; a delay longer than that would mean
+        // Drake "accepting" a check that is already gone.
+        let patch = SettingsPatch { auto_accept_delay_ms: Some(999_999), ..Default::default() };
+        assert_eq!(patch.apply_to(&Settings::default()).auto_accept_delay_ms, MAX_ACCEPT_DELAY_MS);
+    }
+
+    #[test]
     fn drake_starts_with_windows_by_default_but_never_reloads_unasked() {
         // Starting at login is what keeps the client injected before it ever
         // launches, so it is on. Restarting somebody's client is intrusive
@@ -248,6 +466,7 @@ mod tests {
         assert_eq!(s.auto_accept, true, "the setting they had must survive");
         assert_eq!(s.run_at_startup, true);
         assert_eq!(s.auto_reload_on_open, false);
+        assert_eq!(s.auto_pick_champion_id_2, 0);
     }
 
     #[test]
@@ -331,6 +550,136 @@ mod tests {
     use axum::body::Body;
     use axum::http::Request;
     use tower::ServiceExt;
+
+    // --- POST /open-url: strictly limited to the scouting sites ---
+
+    #[test]
+    fn only_the_scouting_sites_can_be_opened() {
+        // This endpoint hands a URL to the OS. Anything running in the client's
+        // page could call it, so it is an allow-list of two hosts rather than a
+        // general "open whatever" service.
+        assert!(is_openable("https://porofessor.gg/pregame/br/x/soloqueue/season"));
+        assert!(is_openable("https://www.op.gg/multisearch/br?summoners=x"));
+    }
+
+    #[test]
+    fn anything_outside_the_allow_list_is_refused() {
+        assert!(!is_openable("https://example.com/"));
+        assert!(!is_openable("http://porofessor.gg/x"), "plain http must be refused");
+        assert!(!is_openable("file:///C:/Windows/System32/calc.exe"));
+        assert!(!is_openable("javascript:alert(1)"));
+        assert!(!is_openable(""));
+    }
+
+    #[test]
+    fn a_lookalike_host_does_not_pass() {
+        // Substring matching would accept both of these. The check is on the
+        // host component, not on the URL text.
+        assert!(!is_openable("https://porofessor.gg.evil.com/x"));
+        assert!(!is_openable("https://evil.com/?x=https://porofessor.gg/"));
+    }
+
+    // --- POST /settings: the UI's only write path ---
+
+    fn settings_request(token: &str, body_settings: &str) -> Request<Body> {
+        let body = format!(r#"{{"token":"{token}","settings":{body_settings}}}"#);
+        Request::builder()
+            .method("POST")
+            .uri("/settings")
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn posting_settings_applies_and_persists_them() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let saved: Arc<Mutex<Vec<Settings>>> = Arc::new(Mutex::new(Vec::new()));
+        let sink = saved.clone();
+        state.set_persist(move |s| {
+            sink.lock().unwrap().push(s.clone());
+            Ok(())
+        });
+        let token = state.token.clone();
+
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"auto_accept":true}"#))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.settings.lock().unwrap().auto_accept, true);
+        assert_eq!(saved.lock().unwrap().len(), 1, "must persist, not just apply in memory");
+        assert_eq!(saved.lock().unwrap()[0].auto_accept, true);
+    }
+
+    #[tokio::test]
+    async fn posting_settings_with_a_bad_token_changes_nothing() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let saved: Arc<Mutex<Vec<Settings>>> = Arc::new(Mutex::new(Vec::new()));
+        let sink = saved.clone();
+        state.set_persist(move |s| {
+            sink.lock().unwrap().push(s.clone());
+            Ok(())
+        });
+
+        let res = router(state.clone())
+            .oneshot(settings_request("not-the-token", r#"{"auto_accept":true}"#))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(state.settings.lock().unwrap().auto_accept, false);
+        assert!(saved.lock().unwrap().is_empty(), "must not persist on a rejected token");
+    }
+
+    #[tokio::test]
+    async fn settings_that_cannot_be_persisted_are_not_applied_in_memory() {
+        // Otherwise the UI would show a setting that silently vanishes on the
+        // next tray restart -- worse than reporting the failure.
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        state.set_persist(|_| {
+            Err(ConfigError::Write {
+                path: PathBuf::from("nope"),
+                source: std::io::Error::other("disk on fire"),
+            })
+        });
+        let token = state.token.clone();
+
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"auto_accept":true}"#))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            state.settings.lock().unwrap().auto_accept,
+            false,
+            "memory must not drift from disk"
+        );
+    }
+
+    #[tokio::test]
+    async fn posting_partial_settings_keeps_the_fields_not_mentioned() {
+        // The UI sends whole objects today, but a partial body must not silently
+        // reset run_at_startup to its default.
+        let state = Arc::new(ConfigdState::new_with_settings(
+            48151,
+            Settings { run_at_startup: false, ..Settings::default() },
+        ));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"auto_accept":true}"#))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        let s = state.settings.lock().unwrap();
+        assert_eq!(s.auto_accept, true);
+        assert_eq!(s.run_at_startup, false, "an unmentioned field must not be reset");
+    }
 
     #[tokio::test]
     async fn checkin_with_correct_token_returns_no_content_and_records_it() {
