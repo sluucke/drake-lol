@@ -31,8 +31,8 @@ describe('normaliseSkins', () => {
   });
 
   it('accepts the object map the client actually returns', () => {
-    // skins.json is keyed by id, not an array -- an Array.isArray guard alone
-    // would silently produce an empty picker.
+
+
     expect(normaliseSkins(raw).length).toBe(3);
   });
 

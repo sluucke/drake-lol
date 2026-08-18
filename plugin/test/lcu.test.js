@@ -5,9 +5,9 @@ import { actionRoute } from '../src/features/champSelect.js';
 
 describe('makeLcu', () => {
   it('provides every method the features call', () => {
-    // The bug this exists for: `patch` was missing from the real object while
-    // every champ-select test passed, because they all mocked it. Auto Pick
-    // failed live with "lcu.patch is not a function".
+
+
+
     const lcu = makeLcu(vi.fn());
     for (const m of METHODS) {
       expect(typeof lcu[m], `lcu.${m} must exist`).toBe('function');
@@ -36,7 +36,7 @@ describe('makeLcu', () => {
   });
 
   it('omits the body entirely when there is none', async () => {
-    // A POST with a JSON content-type and no body is rejected by some routes.
+
     const fetchImpl = vi.fn().mockResolvedValue({ ok: true });
     await makeLcu(fetchImpl).post('/whatever');
 

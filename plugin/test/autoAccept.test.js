@@ -33,13 +33,13 @@ describe('startAutoAccept', () => {
     expect(lcu.post).toHaveBeenCalledWith('/lol-matchmaking/v1/ready-check/accept');
   });
 
-  // NOTE: the brief's version of this test assigned `handler` only inside
-  // `subscribe`, then awaited it unconditionally. Since `enabled: false`
-  // must short-circuit before `subscribe` is ever called (the strongest
-  // form of "does nothing at all" — no listener is even registered), that
-  // left `handler` undefined and the test threw regardless of a correct
-  // implementation. Rewritten to assert the actual constraint: neither
-  // `subscribe` nor `lcu.post` is ever invoked when disabled.
+
+
+
+
+
+
+
   it('does nothing at all when disabled', () => {
     const lcu = { post: vi.fn() };
     const subscribe = vi.fn();
@@ -65,8 +65,8 @@ describe('startAutoAccept', () => {
   });
 
   it('does not stack timers when the same check reports repeatedly', async () => {
-    // The ready-check route emits on every poll tick, so a naive delay would
-    // queue one accept per tick and fire a burst of them.
+
+
     const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
     let handler;
     const subscribe = (_route, fn) => { handler = fn; return () => {}; };
@@ -82,8 +82,8 @@ describe('startAutoAccept', () => {
   });
 
   it('cancels a pending accept when the check goes away', async () => {
-    // The user declined by hand, or the check expired, during our delay.
-    // Firing anyway would accept a check the user deliberately dropped.
+
+
     const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
     let handler;
     const subscribe = (_route, fn) => { handler = fn; return () => {}; };

@@ -1,12 +1,12 @@
-// Profile background art.
-//
-// This is what the old app called "banner": the splash behind your profile,
-// set by skin id. `bannerIdSelected` in chat presence is a different, much
-// smaller thing (an accent number) with no published id list, so the skin
-// route is the one that can actually be driven from a picker.
-//
-// Both the list and the artwork come from the client itself, same-origin --
-// 2146 skins, no CDN, no version skew.
+
+
+
+
+
+
+
+
+
 
 export const SKINS_ROUTE = '/lol-game-data/assets/v1/skins.json';
 export const PROFILE_ROUTE = '/lol-summoner/v1/current-summoner/summoner-profile';
@@ -19,8 +19,6 @@ function fold(s) {
 }
 
 export function normaliseSkins(raw) {
-  // skins.json is an object keyed by id, not an array. An Array.isArray guard
-  // alone would quietly produce an empty picker.
   if (!raw || typeof raw !== 'object') return [];
   return Object.values(raw)
     .filter((s) => s && s.id && s.name && s.tilePath)
@@ -46,7 +44,7 @@ export function makeBackground({ lcu }) {
   return {
     async set(skinId) {
       try {
-        // Number, not string: the client rejects a quoted id.
+        
         const res = await lcu.post(PROFILE_ROUTE, {
           key: 'backgroundSkinId',
           value: Number(skinId),

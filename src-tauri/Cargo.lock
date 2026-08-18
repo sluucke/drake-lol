@@ -759,7 +759,7 @@ dependencies = [
 
 [[package]]
 name = "drake"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "axum",
  "rand",
@@ -774,6 +774,7 @@ dependencies = [
  "tokio",
  "tower",
  "tower-http",
+ "windows-sys 0.59.0",
  "winreg 0.52.0",
 ]
 

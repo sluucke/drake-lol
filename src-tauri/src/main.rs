@@ -16,5 +16,8 @@ fn main() {
         }
         return;
     }
+    if !drake_lib::single_instance::acquire_or_alert() {
+        std::process::exit(0);
+    }
     drake_lib::run()
 }

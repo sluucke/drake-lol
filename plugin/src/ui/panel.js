@@ -17,9 +17,9 @@ export const SCREENS = [
   { id: 'settings', label: 'Settings' },
 ];
 
-/// The shell's markup. A string rather than a framework: this is injected into
-/// somebody else's page, so every kilobyte and every global is a liability,
-/// and two screens do not justify a renderer.
+
+
+
 export function renderShell() {
   const nav = SCREENS.map(
     (s, i) =>
@@ -29,10 +29,14 @@ export function renderShell() {
   return `
     <style>${CSS}</style>
 
-    <!-- Lives outside the modal: it has to be usable while the panel is shut,
-         because a ready check is exactly when nobody wants to open a menu. -->
+    
     <div class="cancel-dock" id="cancel-dock" hidden>
       <button class="hextech-btn hextech-btn-danger" id="cancel-queue">Cancel Queue</button>
+    </div>
+
+    
+    <div class="dodge-dock" id="dodge-dock" hidden>
+      <button class="hextech-btn hextech-btn-danger" id="dodge-champ-select">Dodge</button>
     </div>
 
     <div class="scrim" id="scrim">
@@ -57,7 +61,6 @@ export function renderShell() {
     </div>`;
 }
 
-/// One checkbox row, matching the client's own hextech checkbox sprite.
 export function renderCheckRow({ id, label, help, checked, disabled }) {
   return `
     <button class="check-row" data-setting="${id}" ${disabled ? 'disabled' : ''}>
@@ -137,8 +140,6 @@ export function renderQueue({ provider }) {
     </div>`;
 }
 
-/// A champion grid with a search box. Icons come from the client's own asset
-/// route, so there is no external request and no version skew.
 export function renderChampionPicker({ id, list, query, selectedId, compact }) {
   const cells = list
     .map(
@@ -162,7 +163,78 @@ export function championName(list, id) {
   return found ? found.name : 'none chosen';
 }
 
-export function renderAutoPick(settings, { disabled, list, query, list2, query2 }) {
+export function autoPickOrder(settings) {
+  const first = Number(settings.auto_pick_champion_id) || 0;
+  const second = Number(settings.auto_pick_champion_id_2) || 0;
+  return [first, second].filter((id) => id > 0);
+}
+
+export function toggleAutoPickChampion(settings, championId) {
+  const id = Number(championId) || 0;
+  if (!id) return settings;
+
+  let first = Number(settings.auto_pick_champion_id) || 0;
+  let second = Number(settings.auto_pick_champion_id_2) || 0;
+
+  if (first === id) {
+    return { ...settings, auto_pick_champion_id: second, auto_pick_champion_id_2: 0 };
+  }
+  if (second === id) {
+    return { ...settings, auto_pick_champion_id_2: 0 };
+  }
+  if (!first) {
+    return { ...settings, auto_pick_champion_id: id };
+  }
+  if (!second) {
+    return { ...settings, auto_pick_champion_id_2: id };
+  }
+  return { ...settings, auto_pick_champion_id_2: id };
+}
+
+function renderPickOrderSummary(list, pickIds) {
+  if (pickIds.length === 0) {
+    return '<p class="pick-order pick-order-empty">Click up to 2 champions — first is your pick, second is the backup.</p>';
+  }
+
+  const items = pickIds
+    .map(
+      (id, index) => `
+      <span class="pick-order-item">
+        <span class="pick-order-num">${index + 1}</span>
+        <img class="pick-order-icon" src="${iconUrl(id)}" alt="">
+        ${championName(list, id)}
+      </span>`,
+    )
+    .join('');
+
+  return `<div class="pick-order">${items}</div>`;
+}
+
+export function renderOrderedChampionPicker({ list, query, pickIds, compact }) {
+  const order = new Map(pickIds.map((id, index) => [id, index + 1]));
+  const cells = list
+    .map((c) => {
+      const slot = order.get(c.id);
+      return `
+      <button class="champ ${slot ? 'champ-on' : ''}"
+              data-champ="${c.id}" data-for="auto_pick" title="${c.name}">
+        <img src="${iconUrl(c.id)}" alt="" loading="lazy">
+        ${slot ? `<span class="champ-slot">${slot}</span>` : ''}
+      </button>`;
+    })
+    .join('');
+
+  return `
+    <input class="hextech-input" type="search" data-search="auto_pick_champion_id"
+           value="${String(query || '').replace(/"/g, '&quot;')}"
+           placeholder="Search champions...">
+    <div class="champ-grid${compact ? ' champ-grid-sm' : ''}">${cells || '<p class="check-help">No champions match.</p>'}</div>`;
+}
+
+export function renderAutoPick(settings, { disabled, list, allList, query }) {
+  const pickIds = autoPickOrder(settings);
+  const names = allList || list;
+
   return `
     <h2 class="screen-title">Auto Pick</h2>
     <p class="screen-sub">Chooses your champion when your turn comes round. If the first is banned or taken, the second is used.</p>
@@ -185,31 +257,11 @@ export function renderAutoPick(settings, { disabled, list, query, list2, query2 
 
     <div class="field ${settings.auto_pick ? '' : 'field-off'}">
       <div class="field-head">
-        <span class="field-label">First pick</span>
-        <span class="field-value">${championName(list, settings.auto_pick_champion_id)}</span>
+        <span class="field-label">Champions</span>
+        <span class="field-value">${pickIds.length ? `${pickIds.length} selected` : 'none chosen'}</span>
       </div>
-      ${renderChampionPicker({
-        id: 'auto_pick_champion_id',
-        list,
-        query,
-        selectedId: settings.auto_pick_champion_id,
-        compact: true,
-      })}
-    </div>
-
-    <div class="field ${settings.auto_pick ? '' : 'field-off'}">
-      <div class="field-head">
-        <span class="field-label">Second pick</span>
-        <span class="field-value">${championName(list2 || list, settings.auto_pick_champion_id_2)}</span>
-      </div>
-      <p class="check-help">Used if the first champion is banned or already taken.</p>
-      ${renderChampionPicker({
-        id: 'auto_pick_champion_id_2',
-        list: list2 || list,
-        query: query2,
-        selectedId: settings.auto_pick_champion_id_2,
-        compact: true,
-      })}
+      ${renderPickOrderSummary(names, pickIds)}
+      ${renderOrderedChampionPicker({ list, query, pickIds, compact: true })}
     </div>`;
 }
 
@@ -242,8 +294,8 @@ export function renderAutoBan(settings, { disabled, list, query }) {
 }
 
 export function renderStatus(text) {
-  // Escaped, not interpolated raw: this string comes back from the client and
-  // is written straight into innerHTML.
+  
+  
   const safe = String(text ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -289,12 +341,12 @@ export const PROFILE_TABS = [
   { id: 'riot-id', label: 'Riot ID' },
 ];
 
-/// A real <select>, dressed as the client's own control.
-///
-/// The arrows are decoration, not the mechanism: clicking anywhere opens the
-/// native dropdown, so a long list (nine crystal tiers) stays one click away
-/// instead of nine. `appearance: none` removes the Windows chrome; the arrow
-/// glyph is drawn by CSS on the wrapper.
+
+
+
+
+
+
 function renderSelect(id, list, selected) {
   const opts = list
     .map((o) => {
@@ -375,10 +427,6 @@ export function skinWindow(total, scrollTop) {
   });
 }
 
-/// Renders the shell of the virtual list ONCE. Scrolling then updates only the
-/// inner grid, never this markup -- replacing the scroll container mid-scroll
-/// resets its scrollTop, and restoring it by hand fights the browser's own
-/// scrolling, which is what made the list flicker and jump.
 function renderBannerTab({ skins, query, selectedId, scrollTop }) {
   const win = skinWindow(skins.length, scrollTop);
 
@@ -398,8 +446,6 @@ function renderBannerTab({ skins, query, selectedId, scrollTop }) {
 }
 
 function renderRiotIdTab() {
-  // Mirrors the client's own player-name-input__split-inputs-wrapper: two
-  // fields sharing one border with the # sitting between them.
   return `
     <p class="check-help" style="margin:0 0 12px">
       Renaming is rate-limited by Riot, not by Drake. If it refuses, that is
@@ -475,7 +521,26 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
-export function renderSettings(settings, { disabled }) {
+export function renderSettings(settings, { disabled, version, update }) {
+  const u = update || { phase: 'idle' };
+  const checking = u.phase === 'checking';
+  const checkLabel = checking ? 'Checking…' : 'Check for updates';
+
+  let updateNote = '';
+  if (u.phase === 'current') {
+    updateNote = '<p class="check-help">Drake is up to date.</p>';
+  } else if (u.phase === 'available') {
+    updateNote = `
+      <p class="check-help">${escapeHtml(u.version)} is available.</p>
+      <div class="status-actions">
+        <button class="hextech-btn" id="install-update" ${disabled || checking ? 'disabled' : ''}>Install now</button>
+      </div>`;
+  } else if (u.phase === 'no_installer') {
+    updateNote = `<p class="check-help">${escapeHtml(u.version)} is on GitHub but has no Windows installer yet.</p>`;
+  } else if (u.phase === 'error') {
+    updateNote = `<p class="check-help">${escapeHtml(u.message || 'Could not check for updates.')}</p>`;
+  }
+
   return `
     <h2 class="screen-title">Settings</h2>
     <p class="screen-sub">How Drake itself behaves.</p>
@@ -498,6 +563,25 @@ export function renderSettings(settings, { disabled }) {
       checked: !!settings.auto_reload_on_open,
       disabled,
     })}
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'auto_update',
+      label: 'Install updates automatically',
+      help: 'Downloads the latest GitHub release and runs the installer. Windows will ask for permission because Drake lives in Program Files.',
+      checked: settings.auto_update !== false,
+      disabled,
+    })}
+
+    <div class="field-head">
+      <span class="field-label">Updates</span>
+      <span class="field-value">v${escapeHtml(version || '?')}</span>
+    </div>
+    <div class="status-actions">
+      <button class="hextech-btn" id="check-updates" ${disabled || checking ? 'disabled' : ''}>${checkLabel}</button>
+    </div>
+    ${updateNote}
 
     <div class="rule"></div>
 

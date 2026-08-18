@@ -3,8 +3,8 @@ import { makeStatus, STATUS_ROUTE, normalise } from '../src/features/status.js';
 
 describe('normalise', () => {
   it('keeps line breaks, which is the whole point', () => {
-    // Measured against the live LCU: newlines survive the round trip and the
-    // client renders them as real lines in the social panel.
+
+
     expect(normalise('a\nb\nc')).toBe('a\nb\nc');
   });
 

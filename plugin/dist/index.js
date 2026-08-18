@@ -34,15 +34,17 @@
     token,
     fetchImpl = fetch,
     dataStore = null,
-    reloadConfig = null
+    reloadConfig = null,
+    pluginBuild = ""
   }) {
     let currentToken = token;
     let refreshed = false;
+    const loadedBuild = pluginBuild;
     async function viaLocalhost(host) {
       return fetchImpl(`http://127.0.0.1:${port}/checkin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: currentToken, host })
+        body: JSON.stringify({ token: currentToken, host, plugin_build: loadedBuild })
       });
     }
     function viaDataStore(host) {
@@ -87,6 +89,9 @@
       return null;
     }
   }
+
+  // src/buildId.js
+  var PLUGIN_BUILD = "__DRAKE_BUILD__";
 
   // src/autoAccept.js
   var ACCEPT_ROUTE = "/lol-matchmaking/v1/ready-check/accept";
@@ -309,11 +314,10 @@
   var CSS = `
 :host, * { box-sizing: border-box; }
 
-/* Scrollbars ---------------------------------------------------------- */
 
-/* The default CEF scrollbar is a light-grey Windows bar with stepper arrows,
-   which reads as a browser widget sitting inside the client. The client's own
-   bars are narrow, square, and bronze on near-black, with no steppers. */
+
+
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -327,7 +331,7 @@
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, #785a28, #463714);
   border: 1px solid #010a13;
-  /* Square, not rounded: nothing in the client's chrome has a radius. */
+  
   border-radius: 0;
 }
 
@@ -339,10 +343,8 @@
   background: #c8aa6e;
 }
 
-/* Kills the stepper arrows -- pure browser furniture, and the client has
-   nothing like them. The RESIZER is deliberately kept (and restyled below):
-   auto-sizing handles the common case, but dragging is still the fastest way
-   to give a tall piece of art more room. */
+
+
 ::-webkit-scrollbar-button,
 ::-webkit-scrollbar-corner {
   display: none;
@@ -350,8 +352,8 @@
   height: 0;
 }
 
-/* Three bronze diagonals, drawn rather than imported, so the grip reads as
-   part of the panel instead of a grey Windows notch. */
+
+
 ::-webkit-resizer {
   background:
     linear-gradient(135deg, transparent 0 42%, #785a28 42% 52%, transparent 52% 66%),
@@ -366,10 +368,8 @@
   display: grid;
   place-items: center;
   font-family: ${BODY};
-  /* The host is pointer-events:none so the closed overlay never eats clicks
-     meant for the client. Anything the user is supposed to interact with has
-     to opt back in -- without this the panel renders and is completely dead
-     to the mouse. */
+
+
   pointer-events: auto;
 }
 
@@ -389,7 +389,7 @@
   box-shadow: 0 0 32px rgba(0, 0, 0, 0.8);
 }
 
-/* Header ------------------------------------------------------------- */
+
 
 .titlebar {
   display: flex;
@@ -437,7 +437,7 @@
 }
 .close:hover { color: #f0e6d2; border-color: #c8aa6e; }
 
-/* Body --------------------------------------------------------------- */
+
 
 .body {
   display: flex;
@@ -506,7 +506,7 @@
   margin: 18px 0;
 }
 
-/* Checkbox \u2014 the client's own hextech sprite ------------------------- */
+
 
 .check-row {
   display: flex;
@@ -545,7 +545,7 @@
   max-width: 46ch;
 }
 
-/* Footer ------------------------------------------------------------- */
+
 
 .footer {
   padding: 10px 18px;
@@ -558,7 +558,7 @@
   gap: 12px;
 }
 
-/* Hover and press feedback, at the client's own weight of motion. */
+
 .hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-wrap {
   transition: filter 90ms ease, color 90ms ease, border-color 90ms ease,
     box-shadow 90ms ease, background 90ms ease, transform 60ms ease;
@@ -574,7 +574,7 @@
 .status-bad { color: #c33c3c; }
 .status-good { color: #0acbe6; }
 
-/* Slider ------------------------------------------------------------- */
+
 
 .field { margin-top: 16px; }
 .field-off { opacity: 0.45; }
@@ -611,8 +611,8 @@
 }
 .slider:disabled { cursor: default; }
 
-/* The handle is a rotated square: the client uses that diamond motif for
-   its own sliders and radio pips. */
+
+
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -625,11 +625,10 @@
 }
 .slider:disabled::-webkit-slider-thumb { background: #5c5b57; cursor: default; }
 
-/* Cancel dock -------------------------------------------------------- */
 
-/* Anchored to the viewport rather than injected into the client's own
-   ready-check markup: that markup is Riot's and changes without notice, and a
-   selector that silently stops matching would take the button with it. */
+
+
+
 .cancel-dock {
   position: fixed;
   left: 50%;
@@ -639,6 +638,17 @@
   z-index: 1;
 }
 .cancel-dock[hidden] { display: none; }
+
+
+
+
+
+.dodge-dock {
+  position: fixed;
+  pointer-events: auto;
+  z-index: 2;
+}
+.dodge-dock[hidden] { display: none; }
 
 .hextech-btn {
   display: inline-flex;
@@ -667,7 +677,7 @@
   background: linear-gradient(to bottom, #1e2328, #433d2b);
 }
 
-/* Status box ---------------------------------------------------------- */
+
 
 .status-box {
   display: block;
@@ -680,11 +690,11 @@
   border: thin solid #785a28;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset;
   outline: none;
-  /* Auto-sized by autoSize() until the user drags the grip, after which their
-     height wins -- see markManual(). */
+
+
   resize: vertical;
-  /* Monospace and pre-wrap are what make block art line up. A proportional
-     font turns box-drawing characters into a ragged mess. */
+
+
   font-family: Consolas, 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.15;
@@ -755,6 +765,7 @@
 }
 
 .champ {
+  position: relative;
   padding: 0;
   background: none;
   border: 2px solid transparent;
@@ -768,6 +779,63 @@
   filter: none;
   border-color: #c8aa6e;
   box-shadow: 0 0 8px rgba(200, 170, 110, 0.5);
+}
+.champ-slot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: #010a13;
+  background: linear-gradient(to bottom, #c8aa6e, #785a28);
+  border: 1px solid #c8aa6e;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.pick-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.pick-order-empty {
+  margin: 0 0 10px;
+  color: #a09b8c;
+  font-size: 12px;
+}
+.pick-order-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #f0e6d2;
+  background: rgba(1, 10, 19, 0.55);
+  border: 1px solid #785a28;
+  border-radius: 4px;
+}
+.pick-order-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #010a13;
+  background: linear-gradient(to bottom, #c8aa6e, #785a28);
+  border-radius: 50%;
+}
+.pick-order-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
 }
 
 .hextech-input {
@@ -832,7 +900,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   white-space: nowrap;
 }
 
-/* Rank tiles ---------------------------------------------------------- */
+
 
 .rank-grid {
   display: grid;
@@ -873,7 +941,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   background: linear-gradient(to bottom, rgba(200, 170, 110, 0.16), transparent);
 }
 
-/* Select \u2014 a real dropdown wearing the client's clothes ---------------- */
+
 
 .select-wrap {
   position: relative;
@@ -890,9 +958,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
 .select-field {
   flex: 1;
-  /* Strips the Windows dropdown chrome; the glyphs beside it are ours. The
-     control still opens natively on click -- the arrows are identification,
-     not the mechanism. */
+
+
   -webkit-appearance: none;
   appearance: none;
   padding: 0 26px 0 8px;
@@ -929,7 +996,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   color: #c8aa6e;
   font-size: 6px;
   line-height: 1.3;
-  /* Decoration only: clicks fall through to the select underneath. */
+  
   pointer-events: none;
 }
 .select-wrap:hover .select-arrows { color: #f0e6d2; }
@@ -937,10 +1004,10 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
 .select-field:focus + .select-arrows { color: #f0e6d2; }
 
-/* Skin grid ----------------------------------------------------------- */
 
-/* Virtualised: the viewport scrolls, the spacer holds the full height, and
-   the grid inside it is translated to the visible rows. */
+
+
+
 .skin-viewport {
   height: 300px;
   overflow-y: auto;
@@ -957,10 +1024,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   align-content: start;
 }
 
-/* Every tile is exactly one row tall. The virtual window multiplies a FIXED
-   row height to place its slice, so a tile that sizes itself to its image
-   would drift the whole grid out of alignment -- splash tiles are not all the
-   same aspect ratio. */
+
+
 .skin {
   display: flex;
   flex-direction: column;
@@ -980,8 +1045,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   height: 62px;
   flex: none;
   display: block;
-  /* cover, not contain: the tiles differ in aspect ratio and letterboxing
-     them would leave ragged gaps down the grid. */
+
+
   object-fit: cover;
 }
 .skin span {
@@ -996,7 +1061,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 .skin:hover { filter: none; border-color: #785a28; color: #f0e6d2; }
 .skin-on { filter: none; border-color: #c8aa6e; color: #f0e6d2; }
 
-/* Split Riot ID input, mirroring the client's own ---------------------- */
+
 
 .split-input {
   display: flex;
@@ -1007,8 +1072,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 }
 .split-input:focus-within {
   border-image: linear-gradient(to bottom, #785a28, #c8aa6e) 1 stretch;
-  /* The client washes a focused field left-to-right rather than just
-     recolouring its border. */
+
+
   background: linear-gradient(to right, rgba(32, 39, 44, 0.9), rgba(7, 16, 25, 0.7));
 }
 
@@ -1043,20 +1108,100 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 }
 `;
 
+  // src/features/champSelectPuuid.js
+  var CHAMP_SELECT_PUUID_MASK = [
+    129,
+    112,
+    118,
+    169,
+    244,
+    81,
+    80,
+    155,
+    149,
+    152,
+    104,
+    19,
+    206,
+    145,
+    23,
+    231
+  ];
+  var UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  function deobfuscateChampSelectPuuid(obfuscatedPuuid) {
+    const normalized = String(obfuscatedPuuid || "").trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalized)) return "";
+    const sourceHex = normalized.replace(/-/g, "");
+    let resultHex = "";
+    for (let index = 0; index < CHAMP_SELECT_PUUID_MASK.length; index += 1) {
+      const sourceByte = Number.parseInt(sourceHex.slice(index * 2, index * 2 + 2), 16);
+      resultHex += (sourceByte ^ CHAMP_SELECT_PUUID_MASK[index]).toString(16).padStart(2, "0");
+    }
+    return [
+      resultHex.slice(0, 8),
+      resultHex.slice(8, 12),
+      resultHex.slice(12, 16),
+      resultHex.slice(16, 20),
+      resultHex.slice(20)
+    ].join("-");
+  }
+  function resolveChampSelectPuuid(player) {
+    if (!player) return "";
+    if (player.puuid) return player.puuid;
+    if (player.nameVisibilityType !== "HIDDEN" || !player.obfuscatedPuuid) return "";
+    return deobfuscateChampSelectPuuid(player.obfuscatedPuuid);
+  }
+
   // src/features/reveal.js
   var CHAMP_SELECT_ROUTE = "/lol-champ-select/v1/session";
+  var SUMMONER_BY_PUUID_ROUTE = (puuid) => `/lol-summoner/v2/summoners/puuid/${puuid}`;
+  var SUMMONER_BY_ID_ROUTE = (summonerId) => `/lol-summoner/v1/summoners/${summonerId}`;
   var PROVIDERS = [
     { id: "porofessor", label: "Porofessor" },
     { id: "opgg", label: "OP.GG" }
   ];
-  function collectNames(players) {
-    if (!Array.isArray(players)) return [];
+  function formatRiotId({ gameName, tagLine } = {}) {
+    const name = (gameName || "").trim();
+    if (!name) return "";
+    const tag = (tagLine || "").trim();
+    return tag ? `${name}#${tag}` : name;
+  }
+  function lobbyPlayers(session) {
+    if (!session) return [];
+    return [...session.myTeam || [], ...session.theirTeam || []].filter(
+      (p) => p && (formatRiotId(p) || p.puuid || p.obfuscatedPuuid || p.summonerId)
+    );
+  }
+  async function resolvePlayerName(player, lcu2) {
+    const direct = formatRiotId(player);
+    if (direct) return direct;
+    const puuid = resolveChampSelectPuuid(player);
+    if (puuid) {
+      try {
+        const summoner = await lcu2.get(SUMMONER_BY_PUUID_ROUTE(puuid));
+        const resolved = formatRiotId(summoner);
+        if (resolved) return resolved;
+      } catch {
+      }
+    }
+    if (player.summonerId) {
+      try {
+        const summoner = await lcu2.get(SUMMONER_BY_ID_ROUTE(player.summonerId));
+        return formatRiotId(summoner);
+      } catch {
+        return "";
+      }
+    }
+    return "";
+  }
+  async function resolveLobbyNames(session, lcu2) {
     const names = [];
-    for (const p of players) {
-      const gameName = p && p.gameName || "";
-      if (!gameName) continue;
-      const tag = p && p.tagLine || "";
-      names.push(tag ? `${gameName}#${tag}` : gameName);
+    const seen = /* @__PURE__ */ new Set();
+    for (const player of lobbyPlayers(session)) {
+      const name = await resolvePlayerName(player, lcu2);
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      names.push(name);
     }
     return names;
   }
@@ -1077,7 +1222,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         } catch {
           return { ok: false, reason: "you have to be in champ select to reveal a lobby" };
         }
-        const names = collectNames(session && session.myTeam);
+        const names = await resolveLobbyNames(session, lcu2);
         if (names.length === 0) {
           return { ok: false, reason: "you have to be in champ select to reveal a lobby" };
         }
@@ -1183,8 +1328,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           rankedLeagueQueue: queue
         });
       },
-      /// Empty strings, not deleted keys: the client stops overriding when the
-      /// fields are present and blank. Removing them leaves the last override.
       clearRank() {
         return merge({
           rankedLeagueTier: "",
@@ -1246,10 +1389,14 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     return `
     <style>${CSS}</style>
 
-    <!-- Lives outside the modal: it has to be usable while the panel is shut,
-         because a ready check is exactly when nobody wants to open a menu. -->
+    
     <div class="cancel-dock" id="cancel-dock" hidden>
       <button class="hextech-btn hextech-btn-danger" id="cancel-queue">Cancel Queue</button>
+    </div>
+
+    
+    <div class="dodge-dock" id="dodge-dock" hidden>
+      <button class="hextech-btn hextech-btn-danger" id="dodge-champ-select">Dodge</button>
     </div>
 
     <div class="scrim" id="scrim">
@@ -1364,7 +1511,64 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     const found = list.find((c) => c.id === id);
     return found ? found.name : "none chosen";
   }
-  function renderAutoPick(settings, { disabled, list, query, list2, query2 }) {
+  function autoPickOrder(settings) {
+    const first = Number(settings.auto_pick_champion_id) || 0;
+    const second = Number(settings.auto_pick_champion_id_2) || 0;
+    return [first, second].filter((id) => id > 0);
+  }
+  function toggleAutoPickChampion(settings, championId) {
+    const id = Number(championId) || 0;
+    if (!id) return settings;
+    let first = Number(settings.auto_pick_champion_id) || 0;
+    let second = Number(settings.auto_pick_champion_id_2) || 0;
+    if (first === id) {
+      return { ...settings, auto_pick_champion_id: second, auto_pick_champion_id_2: 0 };
+    }
+    if (second === id) {
+      return { ...settings, auto_pick_champion_id_2: 0 };
+    }
+    if (!first) {
+      return { ...settings, auto_pick_champion_id: id };
+    }
+    if (!second) {
+      return { ...settings, auto_pick_champion_id_2: id };
+    }
+    return { ...settings, auto_pick_champion_id_2: id };
+  }
+  function renderPickOrderSummary(list, pickIds) {
+    if (pickIds.length === 0) {
+      return '<p class="pick-order pick-order-empty">Click up to 2 champions \u2014 first is your pick, second is the backup.</p>';
+    }
+    const items = pickIds.map(
+      (id, index) => `
+      <span class="pick-order-item">
+        <span class="pick-order-num">${index + 1}</span>
+        <img class="pick-order-icon" src="${iconUrl(id)}" alt="">
+        ${championName(list, id)}
+      </span>`
+    ).join("");
+    return `<div class="pick-order">${items}</div>`;
+  }
+  function renderOrderedChampionPicker({ list, query, pickIds, compact }) {
+    const order = new Map(pickIds.map((id, index) => [id, index + 1]));
+    const cells = list.map((c) => {
+      const slot = order.get(c.id);
+      return `
+      <button class="champ ${slot ? "champ-on" : ""}"
+              data-champ="${c.id}" data-for="auto_pick" title="${c.name}">
+        <img src="${iconUrl(c.id)}" alt="" loading="lazy">
+        ${slot ? `<span class="champ-slot">${slot}</span>` : ""}
+      </button>`;
+    }).join("");
+    return `
+    <input class="hextech-input" type="search" data-search="auto_pick_champion_id"
+           value="${String(query || "").replace(/"/g, "&quot;")}"
+           placeholder="Search champions...">
+    <div class="champ-grid${compact ? " champ-grid-sm" : ""}">${cells || '<p class="check-help">No champions match.</p>'}</div>`;
+  }
+  function renderAutoPick(settings, { disabled, list, allList, query }) {
+    const pickIds = autoPickOrder(settings);
+    const names = allList || list;
     return `
     <h2 class="screen-title">Auto Pick</h2>
     <p class="screen-sub">Chooses your champion when your turn comes round. If the first is banned or taken, the second is used.</p>
@@ -1387,31 +1591,11 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
     <div class="field ${settings.auto_pick ? "" : "field-off"}">
       <div class="field-head">
-        <span class="field-label">First pick</span>
-        <span class="field-value">${championName(list, settings.auto_pick_champion_id)}</span>
+        <span class="field-label">Champions</span>
+        <span class="field-value">${pickIds.length ? `${pickIds.length} selected` : "none chosen"}</span>
       </div>
-      ${renderChampionPicker({
-      id: "auto_pick_champion_id",
-      list,
-      query,
-      selectedId: settings.auto_pick_champion_id,
-      compact: true
-    })}
-    </div>
-
-    <div class="field ${settings.auto_pick ? "" : "field-off"}">
-      <div class="field-head">
-        <span class="field-label">Second pick</span>
-        <span class="field-value">${championName(list2 || list, settings.auto_pick_champion_id_2)}</span>
-      </div>
-      <p class="check-help">Used if the first champion is banned or already taken.</p>
-      ${renderChampionPicker({
-      id: "auto_pick_champion_id_2",
-      list: list2 || list,
-      query: query2,
-      selectedId: settings.auto_pick_champion_id_2,
-      compact: true
-    })}
+      ${renderPickOrderSummary(names, pickIds)}
+      ${renderOrderedChampionPicker({ list, query, pickIds, compact: true })}
     </div>`;
   }
   function renderAutoBan(settings, { disabled, list, query }) {
@@ -1609,7 +1793,24 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   function escapeHtml(s) {
     return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
-  function renderSettings(settings, { disabled }) {
+  function renderSettings(settings, { disabled, version, update }) {
+    const u = update || { phase: "idle" };
+    const checking = u.phase === "checking";
+    const checkLabel = checking ? "Checking\u2026" : "Check for updates";
+    let updateNote = "";
+    if (u.phase === "current") {
+      updateNote = '<p class="check-help">Drake is up to date.</p>';
+    } else if (u.phase === "available") {
+      updateNote = `
+      <p class="check-help">${escapeHtml(u.version)} is available.</p>
+      <div class="status-actions">
+        <button class="hextech-btn" id="install-update" ${disabled || checking ? "disabled" : ""}>Install now</button>
+      </div>`;
+    } else if (u.phase === "no_installer") {
+      updateNote = `<p class="check-help">${escapeHtml(u.version)} is on GitHub but has no Windows installer yet.</p>`;
+    } else if (u.phase === "error") {
+      updateNote = `<p class="check-help">${escapeHtml(u.message || "Could not check for updates.")}</p>`;
+    }
     return `
     <h2 class="screen-title">Settings</h2>
     <p class="screen-sub">How Drake itself behaves.</p>
@@ -1632,6 +1833,25 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       checked: !!settings.auto_reload_on_open,
       disabled
     })}
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: "auto_update",
+      label: "Install updates automatically",
+      help: "Downloads the latest GitHub release and runs the installer. Windows will ask for permission because Drake lives in Program Files.",
+      checked: settings.auto_update !== false,
+      disabled
+    })}
+
+    <div class="field-head">
+      <span class="field-label">Updates</span>
+      <span class="field-value">v${escapeHtml(version || "?")}</span>
+    </div>
+    <div class="status-actions">
+      <button class="hextech-btn" id="check-updates" ${disabled || checking ? "disabled" : ""}>${checkLabel}</button>
+    </div>
+    ${updateNote}
 
     <div class="rule"></div>
 
@@ -1689,35 +1909,263 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     };
   }
 
+  // src/features/champSelect.js
+  var SESSION_ROUTE = "/lol-champ-select/v1/session";
+  function actionRoute(actionId) {
+    return `/lol-champ-select/v1/session/actions/${actionId}`;
+  }
+  function eachAction(session) {
+    const phases = session && session.actions || [];
+    return phases.flat ? phases.flat() : [].concat(...phases);
+  }
+  function findMyAction(session, type) {
+    if (!session || session.localPlayerCellId === void 0) return null;
+    for (const a of eachAction(session)) {
+      if (a.type !== type) continue;
+      if (a.actorCellId !== session.localPlayerCellId) continue;
+      if (a.completed) continue;
+      if (!a.isInProgress) continue;
+      return a;
+    }
+    return null;
+  }
+  function unavailableChampionIds(session) {
+    const ids = /* @__PURE__ */ new Set();
+    if (!session) return ids;
+    const bans = session.bans || {};
+    for (const id of bans.myTeamBans || []) if (id) ids.add(id);
+    for (const id of bans.theirTeamBans || []) if (id) ids.add(id);
+    for (const a of eachAction(session)) {
+      if (a.completed && a.championId) ids.add(a.championId);
+    }
+    return ids;
+  }
+  function makeChampSelect({ lcu: lcu2 }) {
+    return {
+      async commit(actionId, championId, completed) {
+        try {
+          const res = await lcu2.patch(actionRoute(actionId), { championId, completed });
+          if (res && res.ok === false) {
+            return { ok: false, reason: `the client refused it (${res.status})` };
+          }
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, reason: `could not reach the client (${e.message})` };
+        }
+      }
+    };
+  }
+
   // src/features/dodge.js
-  var DODGE_ROUTE = "/lol-login/v1/session/invoke?destination=lcdsServiceProxy&method=call&args=%5B%22%22%2C%22teambuilder-draft%22%2C%22quitV2%22%2C%22%22%5D";
+  var GAMEFLOW_DODGE_ROUTE = "/lol-gameflow/v1/session/dodge";
+  var GAMEFLOW_SESSION_ROUTE = "/lol-gameflow/v1/session";
+  var GAMEFLOW_PHASE_ROUTE = "/lol-gameflow/v1/gameflow-phase";
+  var LCDS_DODGE_BODY = ["", "teambuilder-draft", "quitV2", "{}"];
+  var LCDS_DODGE_BODY_LEGACY = ["", "teambuilder-draft", "quitV2", ""];
+  var DODGE_POST_TIMEOUT_MS = 4e3;
+  var DODGE_VERIFY_DELAY_MS = 400;
+  var DODGE_VERIFY_ATTEMPTS = 16;
+  var DODGE_VERIFY_INTERVAL_MS = 300;
+  var DODGE_VERIFY_STABLE_READS = 2;
+  var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  function withTimeout(promise, ms, message = "timed out") {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(message)), ms);
+      Promise.resolve(promise).then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+        }
+      );
+    });
+  }
   var DODGE_ATTEMPTS = 5;
   var DEFAULT_DELAY_MS = 250;
-  var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  function retryable(status) {
-    return status !== 404 && status !== 400;
+  function lcdsDodgeRoute(body = LCDS_DODGE_BODY) {
+    const params = new URLSearchParams({
+      destination: "lcdsServiceProxy",
+      method: "call",
+      args: JSON.stringify(body)
+    });
+    return `/lol-login/v1/session/invoke?${params.toString()}`;
   }
+  var DODGE_ROUTE = lcdsDodgeRoute();
   function explain(status) {
     if (status === 404 || status === 400) {
       return "you have to be in champ select to dodge";
     }
     return `the client refused (${status})`;
   }
-  function makeDodge({ lcu: lcu2, attempts = DODGE_ATTEMPTS, delayMs = DEFAULT_DELAY_MS }) {
+  async function readJson(res) {
+    if (!res || typeof res.json !== "function") return null;
+    try {
+      return await withTimeout(res.json(), 500, "json timed out");
+    } catch {
+      return null;
+    }
+  }
+  async function hasChampSelectSession(fetchImpl = fetch) {
+    try {
+      const res = await fetchImpl(SESSION_ROUTE);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+  async function readGameflowPhase(fetchImpl = fetch) {
+    try {
+      const res = await fetchImpl(GAMEFLOW_PHASE_ROUTE);
+      if (!res.ok) return null;
+      const body = await readJson(res);
+      if (typeof body === "string") return body;
+      return body?.phase ?? null;
+    } catch {
+      return null;
+    }
+  }
+  async function readGameflowSession(fetchImpl = fetch) {
+    try {
+      const res = await fetchImpl(GAMEFLOW_SESSION_ROUTE);
+      if (!res.ok) return null;
+      return readJson(res);
+    } catch {
+      return null;
+    }
+  }
+  function buildGameflowDodgeBody(session) {
+    const dodge = session?.gameDodge;
+    if (!dodge || typeof dodge !== "object") return null;
+    return {
+      dodgeData: dodge,
+      state: dodge.state ?? "Invalid",
+      dodgeIds: dodge.dodgeIds ?? [],
+      phase: session.phase ?? dodge.phase ?? "ChampSelect"
+    };
+  }
+  async function leftChampSelect(fetchImpl = fetch) {
+    if (await hasChampSelectSession(fetchImpl)) return false;
+    const phase = await readGameflowPhase(fetchImpl);
+    if (!phase) return true;
+    return phase !== "ChampSelect" && phase !== "ReadyCheck";
+  }
+  async function waitForChampSelectExit(fetchImpl = fetch, {
+    attempts = DODGE_VERIFY_ATTEMPTS,
+    delayMs = DODGE_VERIFY_INTERVAL_MS,
+    stableReads = DODGE_VERIFY_STABLE_READS
+  } = {}) {
+    let stable = 0;
+    for (let i = 0; i < attempts; i += 1) {
+      if (await leftChampSelect(fetchImpl)) {
+        stable += 1;
+        if (stable >= stableReads) return true;
+      } else {
+        stable = 0;
+      }
+      if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
+    }
+    return false;
+  }
+  function postAccepted(res) {
+    return !res || res.ok !== false;
+  }
+  async function readResponseHint(res) {
+    if (!res || typeof res.text !== "function") return "";
+    try {
+      const text = await withTimeout(res.text(), 500, "");
+      if (!text) return "";
+      return text.length > 120 ? `${text.slice(0, 120)}\u2026` : text;
+    } catch {
+      return "";
+    }
+  }
+  function postLcdsDodge(fetchImpl = fetch, body = LCDS_DODGE_BODY) {
+    return fetchImpl(lcdsDodgeRoute(body), {
+      method: "POST",
+      body: JSON.stringify(body)
+    });
+  }
+  async function postGameflowDodge(fetchImpl = fetch) {
+    const session = await readGameflowSession(fetchImpl);
+    const payload = buildGameflowDodgeBody(session);
+    if (!payload) return null;
+    return fetchImpl(GAMEFLOW_DODGE_ROUTE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }
+  function dodgeSteps(fetchImpl = fetch) {
+    return [
+      {
+        name: "lcds",
+        run: () => postLcdsDodge(fetchImpl, LCDS_DODGE_BODY)
+      },
+      {
+        name: "gameflow",
+        run: async () => {
+          const res = await postGameflowDodge(fetchImpl);
+          if (res) return res;
+          return { ok: false, status: 400 };
+        }
+      },
+      {
+        name: "lcds-legacy",
+        run: () => postLcdsDodge(fetchImpl, LCDS_DODGE_BODY_LEGACY)
+      }
+    ];
+  }
+  function makeDodge({
+    fetchImpl = fetch,
+    steps = dodgeSteps(fetchImpl),
+    attempts = DODGE_ATTEMPTS,
+    delayMs = DEFAULT_DELAY_MS,
+    postTimeoutMs = DODGE_POST_TIMEOUT_MS,
+    onStatus = () => {
+    }
+  }) {
     return {
       async dodge() {
-        let reason = "the client did not respond";
+        let reason = "still in champ select";
         for (let i = 0; i < attempts; i += 1) {
-          try {
-            const res = await lcu2.post(DODGE_ROUTE);
-            if (!res || res.ok !== false) return { ok: true };
-            reason = explain(res.status);
-            if (!retryable(res.status)) return { ok: false, reason };
-          } catch (e) {
-            reason = `could not reach the client (${e.message})`;
+          let accepted = false;
+          for (const step of steps) {
+            try {
+              onStatus(`attempt ${i + 1}: ${step.name}\u2026`);
+              const res = await withTimeout(step.run(), postTimeoutMs, "post timed out");
+              const httpStatus = res?.status || 0;
+              const hint = await readResponseHint(res);
+              if (!postAccepted(res)) {
+                reason = explain(httpStatus);
+                onStatus(`attempt ${i + 1}: ${step.name} HTTP ${httpStatus}${hint ? ` (${hint})` : ""}`);
+                continue;
+              }
+              accepted = true;
+              onStatus(
+                `attempt ${i + 1}: ${step.name} HTTP ${httpStatus || 200}${hint ? ` (${hint})` : ""}`
+              );
+            } catch (e) {
+              reason = e.message === "post timed out" ? "the client did not respond in time" : `could not reach the client (${e.message})`;
+              onStatus(`attempt ${i + 1}: ${step.name} ${reason}`);
+            }
           }
+          if (!accepted) {
+            if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
+            continue;
+          }
+          onStatus(`attempt ${i + 1}: waiting\u2026`);
+          if (DODGE_VERIFY_DELAY_MS > 0) await sleep(DODGE_VERIFY_DELAY_MS);
+          if (await waitForChampSelectExit(fetchImpl)) {
+            return { ok: true, detail: `left on attempt ${i + 1}` };
+          }
+          reason = "still in champ select after the dodge call";
+          onStatus(`attempt ${i + 1}: still in champ select`);
           if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
         }
+        onStatus(`failed: ${reason}`);
         return { ok: false, reason };
       }
     };
@@ -1990,25 +2438,165 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     };
   }
 
+  // src/features/update.js
+  var TRAY_DOWN2 = "the Drake tray is not running";
+  function makeUpdater({ port, token, fetchImpl = fetch, reloadConfig }) {
+    let currentToken = token;
+    async function post(path) {
+      return fetchImpl(`http://127.0.0.1:${port}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: currentToken })
+      });
+    }
+    async function withRetry(run) {
+      let res;
+      try {
+        res = await run();
+      } catch {
+        return { ok: false, reason: TRAY_DOWN2 };
+      }
+      if (res.status !== 401 || !reloadConfig) {
+        return { res };
+      }
+      const cfg = await reloadConfig();
+      if (!cfg?.token) {
+        return { res };
+      }
+      currentToken = cfg.token;
+      try {
+        return { res: await run() };
+      } catch {
+        return { ok: false, reason: TRAY_DOWN2 };
+      }
+    }
+    return {
+      async check() {
+        const out = await withRetry(() => post("/update/check"));
+        if (out.ok === false) return out;
+        const { res } = out;
+        if (res.status === 409) {
+          return { ok: false, reason: "an update is already in progress" };
+        }
+        if (!res.ok) {
+          return { ok: false, reason: `could not check for updates (${res.status})` };
+        }
+        const body = await res.json();
+        return { ok: true, ...body };
+      },
+      async apply() {
+        const out = await withRetry(() => post("/update/apply"));
+        if (out.ok === false) return out;
+        const { res } = out;
+        if (res.status === 409) {
+          return { ok: false, reason: "an update is already in progress" };
+        }
+        if (res.status === 204 || res.ok) {
+          return { ok: true, installing: true };
+        }
+        return { ok: false, reason: `could not install the update (${res.status})` };
+      }
+    };
+  }
+
+  // src/ui/dodgeDock.js
+  var ROSE_BUTTON_SELECTOR = ".rose-custom-wheel-button";
+  var CHAMP_SELECT_BUTTONS = ".bottom-right-buttons";
+  var DOCK_GAP_PX = 8;
+  function inChampSelect(session) {
+    return session != null;
+  }
+  function isVisible(el) {
+    if (!el || typeof el.getBoundingClientRect !== "function") return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+  function findAnchor(doc) {
+    const rose = doc.querySelector(ROSE_BUTTON_SELECTOR);
+    if (isVisible(rose)) return rose;
+    const stack = doc.querySelector(CHAMP_SELECT_BUTTONS);
+    if (isVisible(stack)) return stack;
+    return null;
+  }
+  function layoutKey(dockEl, anchor, win) {
+    if (!anchor) return "fallback";
+    const rect = anchor.getBoundingClientRect();
+    return `${Math.round(rect.left)}:${Math.round(rect.top)}:${Math.round(rect.width)}:${Math.round(rect.height)}:${win.innerHeight}`;
+  }
+  function layoutDock(dockEl, anchor, win) {
+    if (!dockEl) return false;
+    const key = layoutKey(dockEl, anchor, win);
+    if (dockEl.dataset.layoutKey === key) return true;
+    dockEl.dataset.layoutKey = key;
+    if (!anchor) {
+      dockEl.style.left = "auto";
+      dockEl.style.right = "24px";
+      dockEl.style.bottom = "120px";
+      dockEl.style.transform = "none";
+      return true;
+    }
+    const rect = anchor.getBoundingClientRect();
+    dockEl.style.right = "auto";
+    dockEl.style.left = `${rect.left + rect.width / 2}px`;
+    dockEl.style.bottom = `${win.innerHeight - rect.top + DOCK_GAP_PX}px`;
+    dockEl.style.transform = "translateX(-50%)";
+    return true;
+  }
+  function watchAnchor(doc, win, cb) {
+    let frame = 0;
+    let intervalId = 0;
+    const tick = () => {
+      if (frame) return;
+      frame = win.requestAnimationFrame(() => {
+        frame = 0;
+        cb();
+      });
+    };
+    win.addEventListener("resize", tick);
+    const mo = new MutationObserver(tick);
+    mo.observe(doc.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "data-hidden"]
+    });
+    intervalId = win.setInterval(tick, 1500);
+    tick();
+    return () => {
+      if (frame) win.cancelAnimationFrame(frame);
+      win.clearInterval(intervalId);
+      win.removeEventListener("resize", tick);
+      mo.disconnect();
+    };
+  }
+
   // src/ui/index.js
   var TAG = "[Drake]";
   var MAX_DELAY_MS = 8e3;
   function startUI({ cfg, onSettingsChanged, lcu: lcu2 }) {
     let settings = { ...cfg.settings };
+    let appVersion = cfg.version || "0.0.0";
+    let updateUi = { phase: "idle" };
     let trayDown = false;
     let screen = "auto-accept";
     let shadowRoot = null;
+    let stopDodgeReposition = null;
+    let dodgeBusy = false;
+    let champSelectActive = false;
     let statusText = "";
     let provider = "porofessor";
     let champions = [];
     const queries = {
       auto_pick_champion_id: "",
-      auto_pick_champion_id_2: "",
       auto_ban_champion_id: "",
       skins: ""
     };
     const status = makeStatus({ lcu: lcu2 });
-    const dodger = makeDodge({ lcu: lcu2 });
+    let dodgeStatus = (detail) => console.log(TAG, "dodge", detail);
+    let say = (text, good) => console.log(TAG, text, good ? "ok" : "err");
+    const dodger = makeDodge({
+      onStatus: (detail) => dodgeStatus(detail)
+    });
     const restarter = makeRestartUx({ lcu: lcu2 });
     const opener = makeOpener({ port: cfg.port, token: cfg.token });
     const presence = makePresence({ lcu: lcu2 });
@@ -2028,6 +2616,11 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       token: cfg.token,
       reloadConfig: loadConfig
     });
+    const updater = makeUpdater({
+      port: cfg.port,
+      token: cfg.token,
+      reloadConfig: loadConfig
+    });
     const ui2 = mountUI({
       doc: document,
       win: window,
@@ -2042,22 +2635,96 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       if (!shadowRoot) return;
       shadowRoot.getElementById("cancel-dock").hidden = !canCancel(payload);
     }
+    function resetDodgeUi({ keepLabel = false } = {}) {
+      dodgeBusy = false;
+      if (!shadowRoot) return;
+      for (const id of ["dodge-champ-select", "dodge"]) {
+        const el = shadowRoot.getElementById(id);
+        if (!el) continue;
+        el.disabled = false;
+        if (!keepLabel) el.textContent = "Dodge";
+      }
+    }
+    function startDodgeReposition() {
+      if (!shadowRoot || !champSelectActive) return;
+      const dock = shadowRoot.getElementById("dodge-dock");
+      const reposition = () => {
+        if (dodgeBusy) return;
+        layoutDock(dock, findAnchor(document), window);
+      };
+      reposition();
+      stopDodgeReposition = watchAnchor(document, window, reposition);
+    }
+    function setChampSelect(session) {
+      if (!shadowRoot) return;
+      const dock = shadowRoot.getElementById("dodge-dock");
+      champSelectActive = inChampSelect(session);
+      dock.hidden = !champSelectActive;
+      if (stopDodgeReposition) {
+        stopDodgeReposition();
+        stopDodgeReposition = null;
+      }
+      if (!champSelectActive) {
+        resetDodgeUi();
+        return;
+      }
+      resetDodgeUi();
+      startDodgeReposition();
+    }
+    async function runDodge(btn) {
+      if (!btn || dodgeBusy || btn.disabled) {
+        console.log(TAG, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
+        return;
+      }
+      dodgeBusy = true;
+      btn.disabled = true;
+      btn.textContent = "Dodging\u2026";
+      say("Dodging\u2026", true);
+      console.log(TAG, "dodge click", btn.id);
+      if (stopDodgeReposition) {
+        stopDodgeReposition();
+        stopDodgeReposition = null;
+      }
+      try {
+        const result = await dodger.dodge();
+        console.log(TAG, "dodge result", result);
+        const msg = result.ok ? `Dodged champ select${result.detail ? ` (${result.detail})` : ""}` : result.reason;
+        say(msg, result.ok);
+        btn.textContent = result.ok ? "Dodged!" : "Failed";
+      } finally {
+        resetDodgeUi({ keepLabel: true });
+        if (champSelectActive) startDodgeReposition();
+        window.setTimeout(() => resetDodgeUi(), 2500);
+      }
+    }
     function wire(shadow, api) {
       shadowRoot = shadow;
       const content = shadow.getElementById("content");
       const statusEl = shadow.getElementById("status");
+      function sayUi(text, good) {
+        statusEl.textContent = text;
+        statusEl.className = good ? "status-good" : "status-bad";
+      }
+      say = sayUi;
+      dodgeStatus = (detail) => {
+        sayUi(detail, true);
+        console.log(TAG, "dodge", detail);
+      };
       shadow.getElementById("scrim").style.display = "none";
       shadow.getElementById("host-label").textContent = typeof Pengu !== "undefined" && Pengu.version ? `loader ${Pengu.version}` : "in client";
       function paint() {
         if (screen === "settings") {
-          content.innerHTML = renderSettings(settings, { disabled: trayDown });
+          content.innerHTML = renderSettings(settings, {
+            disabled: trayDown,
+            version: appVersion,
+            update: updateUi
+          });
         } else if (screen === "auto-pick") {
           content.innerHTML = renderAutoPick(settings, {
             disabled: trayDown,
             list: searchChampions(champions, queries.auto_pick_champion_id),
-            query: queries.auto_pick_champion_id,
-            list2: searchChampions(champions, queries.auto_pick_champion_id_2),
-            query2: queries.auto_pick_champion_id_2
+            allList: champions,
+            query: queries.auto_pick_champion_id
           });
         } else if (screen === "auto-ban") {
           content.innerHTML = renderAutoBan(settings, {
@@ -2098,6 +2765,26 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         for (const item of shadow.querySelectorAll("[data-screen]")) {
           item.setAttribute("aria-selected", String(item.dataset.screen === screen));
         }
+      }
+      function applyUpdateStatus(body) {
+        if (body.status === "current") updateUi = { phase: "current" };
+        else if (body.status === "available") {
+          updateUi = { phase: "available", version: body.version };
+        } else if (body.status === "no_installer") {
+          updateUi = { phase: "no_installer", version: body.version };
+        }
+      }
+      async function runUpdateCheck() {
+        updateUi = { phase: "checking" };
+        paint();
+        const result = await updater.check();
+        if (!result.ok) {
+          trayDown = result.reason.includes("not running");
+          updateUi = { phase: "error", message: result.reason };
+        } else {
+          applyUpdateStatus(result);
+        }
+        paint();
       }
       async function commit(patch, revert) {
         const result = await client.save(patch);
@@ -2141,6 +2828,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           if (profileTab === "banner" && skins.length === 0) skins = await loadSkins(lcu2);
         }
         if (screen === "friends") friends = await loadFriends(lcu2);
+        if (screen === "settings" && updateUi.phase === "idle") runUpdateCheck();
         paint();
       });
       content.addEventListener("input", (e) => {
@@ -2154,10 +2842,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         const inGrip = e.offsetX > box.clientWidth - GRIP && e.offsetY > box.clientHeight - GRIP;
         if (inGrip) markManual(box);
       });
-      function say(text, good) {
-        statusEl.textContent = text;
-        statusEl.className = good ? "status-good" : "status-bad";
-      }
       function updateSkinGrid() {
         const viewport = shadow.getElementById("skin-viewport");
         const gridEl = shadow.getElementById("skin-grid");
@@ -2200,6 +2884,24 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         if (champ) {
           const key = champ.dataset.for;
           const id = Number(champ.dataset.champ);
+          if (key === "auto_pick") {
+            const previous2 = {
+              auto_pick_champion_id: settings.auto_pick_champion_id,
+              auto_pick_champion_id_2: settings.auto_pick_champion_id_2
+            };
+            settings = toggleAutoPickChampion(settings, id);
+            paint();
+            commit(
+              {
+                auto_pick_champion_id: settings.auto_pick_champion_id,
+                auto_pick_champion_id_2: settings.auto_pick_champion_id_2
+              },
+              () => {
+                settings = { ...settings, ...previous2 };
+              }
+            );
+            return;
+          }
           const previous = settings[key];
           settings = { ...settings, [key]: previous === id ? 0 : id };
           paint();
@@ -2234,12 +2936,10 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           say(result2.ok ? `Looking up ${result2.count} summoners` : result2.reason, result2.ok);
           return;
         }
-        if (e.target.id === "dodge") {
-          const btn2 = e.target;
-          btn2.disabled = true;
-          const result2 = await dodger.dodge();
-          btn2.disabled = false;
-          say(result2.ok ? "Dodged champ select" : result2.reason, result2.ok);
+        const dodgeBtn = e.target.closest("#dodge");
+        if (dodgeBtn) {
+          e.stopPropagation();
+          void runDodge(dodgeBtn);
           return;
         }
         if (e.target.id === "restart-client") {
@@ -2248,6 +2948,28 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           const result2 = await restarter.restart();
           btn2.disabled = false;
           say(result2.ok ? "Restarting the client\u2026" : result2.reason, result2.ok);
+          return;
+        }
+        if (e.target.id === "check-updates") {
+          await runUpdateCheck();
+          return;
+        }
+        if (e.target.id === "install-update") {
+          const btn2 = e.target;
+          btn2.disabled = true;
+          say("Downloading and installing the update\u2026", true);
+          const result2 = await updater.apply();
+          if (result2.ok && result2.installing) {
+            say("Installing update\u2026", true);
+            return;
+          }
+          btn2.disabled = false;
+          if (!result2.ok) {
+            trayDown = result2.reason.includes("not running");
+            updateUi = { phase: "error", message: result2.reason };
+            paint();
+          }
+          say(result2.ok ? "Drake is already up to date" : result2.reason, result2.ok);
           return;
         }
         const ptab = e.target.closest("[data-ptab]");
@@ -2295,11 +3017,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
             division: steps["rank-div"],
             queue: steps["rank-queue"]
           }).then(
-            (r) => (
-              // The crystal lives on the same screen, so Apply writes both --
-              // two round trips would let one succeed and the other fail.
-              r.ok ? presence.setBadges({ crystal: steps.crystal }) : r
-            )
+            (r) => r.ok ? presence.setBadges({ crystal: steps.crystal }) : r
           ),
           "rank-clear": () => presence.clearRank(),
           "riot-id-save": () => riotId.save(
@@ -2365,6 +3083,10 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           console.log(TAG, "could not cancel the queue");
         }
       });
+      shadow.getElementById("dodge-champ-select").addEventListener("click", (e) => {
+        e.stopPropagation();
+        void runDodge(e.currentTarget);
+      });
       const INTERACTIVE = ".navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .select-field, .slider";
       shadow.addEventListener(
         "mouseover",
@@ -2402,20 +3124,14 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       });
       paint();
     }
-    return { ...ui2, setReadyCheck };
+    return { ...ui2, setReadyCheck, setChampSelect };
   }
 
   // src/features/unlockFields.js
   var UNLOCKS = {
     statusMessage: {
-      // Measured 2026-08-16 in the live client (pt_BR):
-      //   placeholder "Mensagem de status personalizada", maxlength 25, 30px tall
       selector: "input.social-status-change-input",
       measuredMaxLength: 25,
-      // Left at the client's own height on purpose. Making a single-line <input>
-      // taller just centres one line in a tall box -- it cannot show a second
-      // line, so the extra height reads as a bug. Multiline lives in Drake's own
-      // Status screen, which writes through the LCU.
       height: null
     }
   };
@@ -2467,55 +3183,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     return () => observer.disconnect();
   }
 
-  // src/features/champSelect.js
-  var SESSION_ROUTE = "/lol-champ-select/v1/session";
-  function actionRoute(actionId) {
-    return `/lol-champ-select/v1/session/actions/${actionId}`;
-  }
-  function eachAction(session) {
-    const phases = session && session.actions || [];
-    return phases.flat ? phases.flat() : [].concat(...phases);
-  }
-  function findMyAction(session, type) {
-    if (!session || session.localPlayerCellId === void 0) return null;
-    for (const a of eachAction(session)) {
-      if (a.type !== type) continue;
-      if (a.actorCellId !== session.localPlayerCellId) continue;
-      if (a.completed) continue;
-      if (!a.isInProgress) continue;
-      return a;
-    }
-    return null;
-  }
-  function unavailableChampionIds(session) {
-    const ids = /* @__PURE__ */ new Set();
-    if (!session) return ids;
-    const bans = session.bans || {};
-    for (const id of bans.myTeamBans || []) if (id) ids.add(id);
-    for (const id of bans.theirTeamBans || []) if (id) ids.add(id);
-    for (const a of eachAction(session)) {
-      if (a.completed && a.championId) ids.add(a.championId);
-    }
-    return ids;
-  }
-  function makeChampSelect({ lcu: lcu2 }) {
-    return {
-      /// `completed: false` hovers (visible to the team, still reversible);
-      /// `true` locks it in.
-      async commit(actionId, championId, completed) {
-        try {
-          const res = await lcu2.patch(actionRoute(actionId), { championId, completed });
-          if (res && res.ok === false) {
-            return { ok: false, reason: `the client refused it (${res.status})` };
-          }
-          return { ok: true };
-        } catch (e) {
-          return { ok: false, reason: `could not reach the client (${e.message})` };
-        }
-      }
-    };
-  }
-
   // src/features/autoPick.js
   function pickCandidates(settings) {
     const ids = [];
@@ -2548,8 +3215,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       return {
         actionId: pick.id,
         championId,
-        // Insta Lock is the difference between "show them what I am taking" and
-        // "take it before anyone else can".
         completed: !!settings.insta_lock,
         kind: "pick"
       };
@@ -2559,13 +3224,14 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   function decisionKey(decision) {
     return `${decision.kind}:${decision.actionId}:${decision.championId}:${decision.completed ? "lock" : "hover"}`;
   }
-  function startChampSelectAutomation({ getSettings, champSelect, subscribe: subscribe2, onResult }) {
+  function startChampSelectAutomation({ getSettings, champSelect, subscribe: subscribe2, onResult, onSession }) {
     let pending = null;
     let echoed = false;
     let lastSession = null;
     let skipped = /* @__PURE__ */ new Set();
     const apply = async (session) => {
       lastSession = session;
+      if (onSession) onSession(session);
       if (!session) {
         pending = null;
         echoed = false;
@@ -2618,9 +3284,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     };
     const unsubscribe = subscribe2(SESSION_ROUTE, apply);
     return {
-      // Settings can change while the session is quiet (nobody else hovering).
-      // Re-run the last payload so a new champion or Insta Lock takes effect
-      // without waiting for the next teammate event.
       refresh: () => apply(lastSession),
       stop: () => {
         pending = null;
@@ -2648,8 +3311,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       delayMs: settings.auto_accept_delay_ms || 0,
       lcu,
       subscribe,
-      // Always subscribed, even with auto-accept off: the cancel button needs
-      // ready-check state to know when to appear.
       onState: (payload) => ui && ui.setReadyCheck(payload)
     });
     if (!champSelectCtl) {
@@ -2657,15 +3318,14 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         getSettings: () => currentSettings,
         champSelect: makeChampSelect({ lcu }),
         subscribe,
-        onResult: (d, r) => console.log(TAG2, d.kind, d.championId, r.ok ? "ok" : "failed: " + r.reason)
+        onResult: (d, r) => console.log(TAG2, d.kind, d.championId, r.ok ? "ok" : "failed: " + r.reason),
+        onSession: (session) => ui && ui.setChampSelect(session)
       });
     } else {
       champSelectCtl.refresh();
     }
     const stopUnlocks = startUnlocks({
       enabled: !!settings.unlock_status_message,
-      // The selector points into Riot's own markup, so say out loud when it
-      // works. Silence after a client patch is how we learn it stopped matching.
       onFirstUnlock: (n) => console.log(TAG2, "unlocked the status message input", n > 1 ? n : "")
     });
     stopFeatures = () => {
@@ -2684,8 +3344,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       port: cfg.port,
       token: cfg.token,
       dataStore: typeof DataStore !== "undefined" ? DataStore : null,
-      // Recovers on its own when the tray restarts and regenerates its token.
-      reloadConfig: loadConfig
+      reloadConfig: loadConfig,
+      pluginBuild: PLUGIN_BUILD
     });
     const host = typeof Pengu !== "undefined" && Pengu.version ? `pengu ${Pengu.version}` : "unknown";
     const ok = await startHeartbeat({ checkIn: transport.checkIn, host });

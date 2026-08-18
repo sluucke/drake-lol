@@ -38,8 +38,8 @@ describe('subscribe', () => {
   });
 
   it('tells the handler the resource is gone when a poll 404s between matches', async () => {
-    // Champ select 404s when idle. Auto pick remembers the last action; without
-    // this null it would skip the next lobby that reuses the same action ids.
+
+
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 404 });
     const handler = vi.fn();
 
@@ -70,8 +70,8 @@ describe('subscribe', () => {
 
     expect(observe).toHaveBeenCalledTimes(1);
     expect(observe.mock.calls[0][0]).toBe('/route');
-    // Still polls: socket.observe does not reliably emit Delete after a dodge,
-    // so a 404 is how we learn champ select ended.
+
+
 
     const observer = observe.mock.calls[0][1];
     observer({ data: { foo: 'bar' } });

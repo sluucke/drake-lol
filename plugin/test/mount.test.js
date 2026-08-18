@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mountUI, HOST_ID } from '../src/ui/mount.js';
 
-/// A DOM small enough to reason about, real enough to exercise the guards:
-/// element identity, parent/child links, and a MutationObserver that actually
-/// reports removals. jsdom is not installed and pulling it in for three
-/// behaviours is not worth the dependency.
 function fakeDom({ withBody = true } = {}) {
   const listeners = {};
   const makeEl = (tag) => {
@@ -66,8 +62,6 @@ function fakeWindow() {
   };
 }
 
-/// Stands in for the browser's MutationObserver: fires whatever callback was
-/// registered whenever the fake DOM mutates.
 function installObserver(doc) {
   return class {
     constructor(cb) {
@@ -89,8 +83,8 @@ beforeEach(() => {
 
 describe('mountUI', () => {
   it('attaches the host to documentElement, not body', () => {
-    // body is the node the client swaps out from under us; documentElement is
-    // the one that survives.
+
+
     mountUI({ doc, win, render: () => '<div></div>' });
 
     expect(doc.documentElement.children.map((c) => c.id)).toContain(HOST_ID);
@@ -98,8 +92,8 @@ describe('mountUI', () => {
   });
 
   it('mounts only once when the plugin is evaluated twice', () => {
-    // Measured: plugin evaluation is not guaranteed to happen exactly once.
-    // A second host would mean two panels and two keydown listeners.
+
+
     mountUI({ doc, win, render: () => '<div></div>' });
     mountUI({ doc, win, render: () => '<div></div>' });
 
@@ -109,7 +103,7 @@ describe('mountUI', () => {
   });
 
   it('re-attaches the host when the client removes it', () => {
-    // The client owns the DOM and owes us no permanence.
+
     mountUI({ doc, win, render: () => '<div></div>' });
     const host = doc.documentElement.children.find((c) => c.id === HOST_ID);
 
@@ -120,8 +114,8 @@ describe('mountUI', () => {
   });
 
   it('waits for load when body does not exist yet', () => {
-    // Measured: document.body is null when index.js is evaluated. This killed
-    // the first probe outright.
+
+
     const early = fakeDom({ withBody: false });
     globalThis.MutationObserver = installObserver(early);
 
@@ -153,7 +147,7 @@ describe('mountUI', () => {
   });
 
   it('does not preventDefault on keys it does not handle', () => {
-    // Swallowing unrelated keystrokes would break the client's own shortcuts.
+
     mountUI({ doc, win, render: () => '<div></div>' });
     const preventDefault = vi.fn();
 

@@ -13,9 +13,9 @@ Open the overlay in the client with **Ctrl + D**.
 * Insta Lock, dodge, and lobby reveal
 * Status message, rank, and banner skins
 * Riot ID and friends tools
-* Settings for start with Windows and auto reload
+* Settings for start with Windows, auto reload, and automatic updates
 
-The tray is the source of truth for settings. The overlay reads and writes them through the tray, so they survive a client restart.
+The tray is the source of truth for settings. The overlay reads and writes them through the tray, so they survive a client restart. With automatic updates on, Drake checks GitHub for a newer release, downloads the installer, and runs it. Windows will ask for permission because the app lives in Program Files.
 
 ## Requirements
 

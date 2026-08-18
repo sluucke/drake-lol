@@ -75,10 +75,14 @@ pub fn should_auto_reload(
     drake_uptime: Duration,
     already_fired: bool,
 ) -> bool {
-    enabled
-        && !already_fired
-        && drake_uptime >= AUTO_RELOAD_GRACE
-        && matches!(effective, configd::EffectiveState::NotInjected)
+    if already_fired || drake_uptime < AUTO_RELOAD_GRACE {
+        return false;
+    }
+    match effective {
+        configd::EffectiveState::Stale { .. } => true,
+        configd::EffectiveState::NotInjected => enabled,
+        _ => false,
+    }
 }
 
 /// One iteration of the invariant loop. Idempotent by construction: it reads
@@ -211,6 +215,16 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn auto_reload_fires_when_the_client_runs_a_stale_plugin_build() {
+        assert!(should_auto_reload(
+            false,
+            &EffectiveState::Stale { host: "pengu 2.0.0".into() },
+            AUTO_RELOAD_GRACE,
+            false
+        ));
+    }
+
     fn ours() -> PathBuf { PathBuf::from(r"C:\Drake\loader") }
 
     /// Records every value passed to `write_debugger` (and whether
@@ -263,7 +277,12 @@ mod tests {
     }
 
     fn a_config() -> crate::configd::PluginConfig {
-        crate::configd::PluginConfig { token: "t".into(), port: 1, settings: Default::default() }
+        crate::configd::PluginConfig {
+            token: "t".into(),
+            port: 1,
+            version: "0.1.0".into(),
+            settings: Default::default(),
+        }
     }
 
     #[test]
@@ -375,6 +394,7 @@ mod tests {
         let cfg = crate::configd::PluginConfig {
             token: "t".into(),
             port: 1,
+            version: "0.1.0".into(),
             settings: Default::default(),
         };
 

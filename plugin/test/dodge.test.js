@@ -1,98 +1,232 @@
-import { describe, it, expect, vi } from 'vitest';
-import { makeDodge, DODGE_ROUTE, DODGE_ATTEMPTS } from '../src/features/dodge.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { SESSION_ROUTE } from '../src/features/champSelect.js';
+import {
+  makeDodge,
+  lcdsDodgeRoute,
+  LCDS_DODGE_BODY,
+  LCDS_DODGE_BODY_LEGACY,
+  GAMEFLOW_DODGE_ROUTE,
+  GAMEFLOW_PHASE_ROUTE,
+  GAMEFLOW_SESSION_ROUTE,
+  DODGE_ATTEMPTS,
+  DODGE_VERIFY_DELAY_MS,
+  withTimeout,
+  hasChampSelectSession,
+  waitForChampSelectExit,
+  leftChampSelect,
+  postAccepted,
+  postLcdsDodge,
+  buildGameflowDodgeBody,
+  dodgeSteps,
+} from '../src/features/dodge.js';
+
+function response({ ok = true, status = 200, text = '', json = null } = {}) {
+  return {
+    ok,
+    status,
+    text: async () => text,
+    json: async () => json,
+  };
+}
+
+describe('buildGameflowDodgeBody', () => {
+  it('maps gameflow session fields into the dodge payload', () => {
+    expect(
+      buildGameflowDodgeBody({
+        phase: 'ChampSelect',
+        gameDodge: { state: 'Invalid', dodgeIds: [1], phase: 'ChampSelect' },
+      }),
+    ).toEqual({
+      dodgeData: { state: 'Invalid', dodgeIds: [1], phase: 'ChampSelect' },
+      state: 'Invalid',
+      dodgeIds: [1],
+      phase: 'ChampSelect',
+    });
+  });
+
+  it('returns null when gameDodge is missing', () => {
+    expect(buildGameflowDodgeBody({ phase: 'ChampSelect' })).toBeNull();
+  });
+});
+
+describe('postLcdsDodge', () => {
+  it('posts the invoke route with the lcds body', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(response());
+    await postLcdsDodge(fetchImpl);
+
+    expect(fetchImpl).toHaveBeenCalledWith(lcdsDodgeRoute(), {
+      method: 'POST',
+      body: JSON.stringify(LCDS_DODGE_BODY),
+    });
+    expect(LCDS_DODGE_BODY[3]).toBe('{}');
+  });
+});
+
+describe('leftChampSelect', () => {
+  it('requires both session exit and a non-champ-select phase', async () => {
+    const fetchImpl = vi.fn(async (route) => {
+      if (route === SESSION_ROUTE) return response({ ok: false, status: 404 });
+      if (route === GAMEFLOW_PHASE_ROUTE) return response({ json: 'Lobby' });
+      return response();
+    });
+    await expect(leftChampSelect(fetchImpl)).resolves.toBe(true);
+  });
+});
+
+describe('dodgeSteps', () => {
+  it('tries lcds, gameflow, then legacy lcds', () => {
+    expect(dodgeSteps(fetch).map((step) => step.name)).toEqual(['lcds', 'gameflow', 'lcds-legacy']);
+  });
+});
 
 describe('makeDodge', () => {
-  it('quits champ select', async () => {
-    const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
-
-    const result = await makeDodge({ lcu }).dodge();
-
-    expect(result.ok).toBe(true);
-    expect(lcu.post).toHaveBeenCalledWith(DODGE_ROUTE);
+  beforeEach(() => {
+    vi.useFakeTimers();
   });
 
-  it('retries, because the client rejects the call for a moment after a pick', async () => {
-    // Carried over from the old app, which retried five times for this exact
-    // reason: a single attempt lands on a transient rejection often enough to
-    // leave the user stuck in a lobby they meant to leave.
-    const lcu = {
-      post: vi
-        .fn()
-        .mockResolvedValueOnce({ ok: false, status: 500 })
-        .mockResolvedValueOnce({ ok: false, status: 500 })
-        .mockResolvedValueOnce({ ok: true }),
-    };
-
-    const result = await makeDodge({ lcu, delayMs: 0 }).dodge();
-
-    expect(result.ok).toBe(true);
-    expect(lcu.post).toHaveBeenCalledTimes(3);
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('gives up after a bounded number of attempts', async () => {
-    const lcu = { post: vi.fn().mockResolvedValue({ ok: false, status: 500 }) };
+  function exitAfterDodge(fetchImpl) {
+    let checks = 0;
+    return vi.fn(async (route) => {
+      if (route === SESSION_ROUTE) {
+        checks += 1;
+        return response({ ok: checks < 2, status: checks < 2 ? 200 : 404 });
+      }
+      if (route === GAMEFLOW_PHASE_ROUTE) {
+        return response({ json: checks < 2 ? 'ChampSelect' : 'Lobby' });
+      }
+      if (route === GAMEFLOW_SESSION_ROUTE) {
+        return response({
+          json: { phase: 'ChampSelect', gameDodge: { state: 'Invalid', dodgeIds: [] } },
+        });
+      }
+      return response();
+    });
+  }
 
-    const result = await makeDodge({ lcu, delayMs: 0 }).dodge();
+  it('succeeds only after champ select ends', async () => {
+    const fetchImpl = exitAfterDodge(vi.fn());
 
-    expect(result.ok).toBe(false);
-    expect(lcu.post).toHaveBeenCalledTimes(DODGE_ATTEMPTS);
-    expect(result.reason).toContain('500');
+    const pending = makeDodge({
+      fetchImpl,
+      attempts: 1,
+      delayMs: 0,
+      onStatus: () => {},
+    }).dodge();
+
+    await vi.advanceTimersByTimeAsync(DODGE_VERIFY_DELAY_MS + 1200);
+    await expect(pending).resolves.toEqual({
+      ok: true,
+      detail: 'left on attempt 1',
+    });
   });
 
-  it('keeps retrying when the call throws outright', async () => {
-    const lcu = {
-      post: vi
-        .fn()
-        .mockRejectedValueOnce(new Error('socket hiccup'))
-        .mockResolvedValueOnce({ ok: true }),
-    };
+  it('falls back to legacy lcds and gameflow when needed', async () => {
+    const fetchImpl = exitAfterDodge(vi.fn());
 
-    const result = await makeDodge({ lcu, delayMs: 0 }).dodge();
+    const pending = makeDodge({
+      fetchImpl,
+      attempts: 1,
+      delayMs: 0,
+      onStatus: () => {},
+    }).dodge();
 
-    expect(result.ok).toBe(true);
-    expect(lcu.post).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(DODGE_VERIFY_DELAY_MS + 1200);
+    await pending;
+
+    expect(fetchImpl).toHaveBeenCalledWith(lcdsDodgeRoute(), expect.any(Object));
+    expect(fetchImpl).toHaveBeenCalledWith(GAMEFLOW_DODGE_ROUTE, expect.objectContaining({
+      method: 'POST',
+      body: expect.stringContaining('dodgeData'),
+    }));
+    expect(fetchImpl).toHaveBeenCalledWith(lcdsDodgeRoute(LCDS_DODGE_BODY_LEGACY), expect.any(Object));
   });
 
-  it('reports the failure rather than throwing into the client', async () => {
-    const lcu = { post: vi.fn().mockRejectedValue(new Error('client closed')) };
+  it('retries when practice-style exits are slow', async () => {
+    let posts = 0;
+    const fetchImpl = vi.fn(async (route) => {
+      if (route.startsWith('/lol-login/v1/session/invoke')) {
+        posts += 1;
+        return response();
+      }
+      if (route === SESSION_ROUTE) {
+        return response({ ok: posts < 3, status: posts < 3 ? 200 : 404 });
+      }
+      if (route === GAMEFLOW_PHASE_ROUTE) {
+        return response({ json: posts < 3 ? 'ChampSelect' : 'Lobby' });
+      }
+      return response();
+    });
 
-    const result = await makeDodge({ lcu, delayMs: 0 }).dodge();
+    const pending = makeDodge({
+      fetchImpl,
+      steps: [{ name: 'lcds', run: () => postLcdsDodge(fetchImpl) }],
+      attempts: 5,
+      delayMs: 0,
+      onStatus: () => {},
+    }).dodge();
 
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBeTruthy();
+    await vi.advanceTimersByTimeAsync(15000);
+    await expect(pending).resolves.toEqual({
+      ok: true,
+      detail: 'left on attempt 3',
+    });
+  }, 10000);
+});
+
+describe('withTimeout', () => {
+  it('rejects when the promise takes too long', async () => {
+    vi.useFakeTimers();
+    const pending = withTimeout(new Promise(() => {}), 500, 'slow');
+    const settled = pending.catch((e) => e.message);
+    await vi.advanceTimersByTimeAsync(500);
+    await expect(settled).resolves.toBe('slow');
+    vi.useRealTimers();
+  });
+});
+
+describe('postAccepted', () => {
+  it('accepts a missing or successful response', () => {
+    expect(postAccepted(undefined)).toBe(true);
+    expect(postAccepted(response())).toBe(true);
+    expect(postAccepted(response({ ok: false, status: 500 }))).toBe(false);
+  });
+});
+
+describe('hasChampSelectSession', () => {
+  it('returns true while the session route responds', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(response());
+    expect(await hasChampSelectSession(fetchImpl)).toBe(true);
+  });
+});
+
+describe('waitForChampSelectExit', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
   });
 
-  it('does not retry a 404, and says what it actually means', async () => {
-    // Observed live: pressing Dodge from the Practice Tool returned 404 five
-    // times over. There is no champ select to quit there, so retrying is pure
-    // delay and "the client refused (404)" tells the user nothing.
-    const lcu = { post: vi.fn().mockResolvedValue({ ok: false, status: 404 }) };
-
-    const result = await makeDodge({ lcu, delayMs: 0 }).dodge();
-
-    expect(result.ok).toBe(false);
-    expect(lcu.post).toHaveBeenCalledTimes(1);
-    expect(result.reason).toMatch(/champ select/i);
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('does not retry a 400 either', async () => {
-    const lcu = { post: vi.fn().mockResolvedValue({ ok: false, status: 400 }) };
+  it('waits for stable exit reads', async () => {
+    let checks = 0;
+    const fetchImpl = vi.fn(async (route) => {
+      if (route === SESSION_ROUTE) {
+        checks += 1;
+        return response({ ok: checks < 3, status: checks < 3 ? 200 : 404 });
+      }
+      if (route === GAMEFLOW_PHASE_ROUTE) {
+        return response({ json: checks < 3 ? 'ChampSelect' : 'Lobby' });
+      }
+      return response();
+    });
 
-    const result = await makeDodge({ lcu, delayMs: 0 }).dodge();
-
-    expect(lcu.post).toHaveBeenCalledTimes(1);
-    expect(result.ok).toBe(false);
-  });
-
-  it('uses the LCDS quit call the old app used, not the lobby route', async () => {
-    // /lol-lobby/v2/lobby/matchmaking/quit-dodge was a guess and 404s.
-    const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
-
-    await makeDodge({ lcu }).dodge();
-
-    const route = lcu.post.mock.calls[0][0];
-    expect(route).toContain('/lol-login/v1/session/invoke');
-    expect(route).toContain('teambuilder-draft');
-    expect(route).toContain('quitV2');
+    const pending = waitForChampSelectExit(fetchImpl, { attempts: 6, delayMs: 100, stableReads: 2 });
+    await vi.advanceTimersByTimeAsync(500);
+    await expect(pending).resolves.toBe(true);
   });
 });

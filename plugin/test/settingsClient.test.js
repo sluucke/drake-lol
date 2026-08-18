@@ -21,8 +21,8 @@ describe('makeSettingsClient', () => {
   });
 
   it('reports failure instead of throwing when the tray is not running', async () => {
-    // The panel must be able to say "the tray is not running" rather than
-    // dying inside the client.
+
+
     const fetchImpl = vi.fn(() => Promise.reject(new Error('connection refused')));
     const client = makeSettingsClient({ port: 48151, token: 'abc', fetchImpl });
 
@@ -33,8 +33,8 @@ describe('makeSettingsClient', () => {
   });
 
   it('refreshes the token once on 401 and retries', async () => {
-    // The token is generated per tray process, so a tray restart invalidates
-    // it. config.json on disk always holds the current one.
+
+
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce({ ok: false, status: 401 })

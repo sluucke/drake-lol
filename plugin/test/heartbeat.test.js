@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { startHeartbeat, HEARTBEAT_INTERVAL_MS } from '../src/heartbeat.js';
 
-/// A stand-in for setInterval that lets a test drive time by hand.
 function fakeClock() {
   const scheduled = [];
   return {
@@ -29,9 +28,9 @@ describe('heartbeat', () => {
   });
 
   it('keeps checking in, so the tray never times the session out', async () => {
-    // The tray treats a check-in as stale after 20s (configd::CHECKIN_TOLERANCE).
-    // A single check-in at load would flip a perfectly healthy session to
-    // "not injected" 20 seconds in, permanently offering a pointless reload.
+
+
+
     const hosts = [];
     const clock = fakeClock();
     await startHeartbeat({
@@ -52,14 +51,14 @@ describe('heartbeat', () => {
       setIntervalImpl: clock.setIntervalImpl,
     });
     expect(clock.scheduled[0].ms).toBe(HEARTBEAT_INTERVAL_MS);
-    // Room for several missed beats before the 20s window lapses.
+
     expect(HEARTBEAT_INTERVAL_MS).toBeLessThanOrEqual(20000 / 3);
   });
 
   it('keeps beating after a failed check-in', async () => {
-    // The tray restarting mid-session rejects the old token with a 401. The
-    // next beat must still happen: giving up would leave the tray blind for
-    // the rest of the session.
+
+
+
     let calls = 0;
     const clock = fakeClock();
     await startHeartbeat({

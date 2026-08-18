@@ -56,6 +56,8 @@ pub struct Settings {
     pub auto_ban: bool,
     #[serde(default = "no_champion")]
     pub auto_ban_champion_id: u32,
+    #[serde(default = "on")]
+    pub auto_update: bool,
 }
 
 fn no_champion() -> u32 {
@@ -99,6 +101,7 @@ impl Default for Settings {
             insta_lock: off(),
             auto_ban: off(),
             auto_ban_champion_id: no_champion(),
+            auto_update: on(),
         }
     }
 }
@@ -128,6 +131,7 @@ pub fn save(s: &Settings) -> Result<(), ConfigError> {
 pub struct PluginConfig {
     pub token: String,
     pub port: u16,
+    pub version: String,
     pub settings: Settings,
 }
 
@@ -156,6 +160,7 @@ pub fn generate_token() -> String {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EffectiveState {
     Injected { host: String },
+    Stale { host: String },
     NotInjected,
     Unknown,
 }
@@ -169,11 +174,25 @@ pub struct ConfigdState {
     pub token: String,
     pub port: u16,
     pub settings: Mutex<Settings>,
-    last_checkin: Mutex<Option<(String, Instant)>>,
+    last_checkin: Mutex<Option<(String, Instant, Option<String>)>>,
     persist: Mutex<Persist>,
+    update_busy: Mutex<bool>,
 }
 
 impl ConfigdState {
+    pub fn try_begin_update(&self) -> bool {
+        let mut busy = self.update_busy.lock().unwrap();
+        if *busy {
+            return false;
+        }
+        *busy = true;
+        true
+    }
+
+    pub fn end_update(&self) {
+        *self.update_busy.lock().unwrap() = false;
+    }
+
     pub fn new(port: u16) -> Self {
         Self::new_with_settings(port, load())
     }
@@ -187,6 +206,7 @@ impl ConfigdState {
             settings: Mutex::new(settings),
             last_checkin: Mutex::new(None),
             persist: Mutex::new(Box::new(save)),
+            update_busy: Mutex::new(false),
         }
     }
 
@@ -209,25 +229,37 @@ impl ConfigdState {
         Ok(())
     }
 
-    pub fn record_checkin(&self, host: String) {
-        *self.last_checkin.lock().unwrap() = Some((host, Instant::now()));
+    pub fn record_checkin(&self, host: String, plugin_build: Option<String>) {
+        *self.last_checkin.lock().unwrap() = Some((host, Instant::now(), plugin_build));
+    }
+
+    #[cfg(test)]
+    pub fn record_checkin_for_test(&self, host: &str, plugin_build: Option<&str>) {
+        self.record_checkin(
+            host.into(),
+            plugin_build.map(str::to_string),
+        );
     }
 
     #[cfg(test)]
     pub fn expire_checkin_for_test(&self) {
         let mut g = self.last_checkin.lock().unwrap();
-        if let Some((host, _)) = g.clone() {
-            *g = Some((host, Instant::now() - CHECKIN_TOLERANCE - Duration::from_secs(1)));
+        if let Some((host, _, build)) = g.clone() {
+            *g = Some((host, Instant::now() - CHECKIN_TOLERANCE - Duration::from_secs(1), build));
         }
     }
 
-    pub fn effective(&self, client_running: bool) -> EffectiveState {
+    pub fn effective(&self, client_running: bool, expected_build: &str) -> EffectiveState {
         if !client_running {
             return EffectiveState::Unknown;
         }
         match self.last_checkin.lock().unwrap().clone() {
-            Some((host, at)) if at.elapsed() <= CHECKIN_TOLERANCE => {
-                EffectiveState::Injected { host }
+            Some((host, at, build)) if at.elapsed() <= CHECKIN_TOLERANCE => {
+                if expected_build.is_empty() || build.as_deref() == Some(expected_build) {
+                    EffectiveState::Injected { host }
+                } else {
+                    EffectiveState::Stale { host }
+                }
             }
             _ => EffectiveState::NotInjected,
         }
@@ -238,6 +270,8 @@ impl ConfigdState {
 pub struct CheckInBody {
     pub token: String,
     pub host: String,
+    #[serde(default)]
+    pub plugin_build: Option<String>,
 }
 
 async fn checkin(
@@ -247,7 +281,7 @@ async fn checkin(
     if body.token != state.token {
         return StatusCode::UNAUTHORIZED;
     }
-    state.record_checkin(body.host);
+    state.record_checkin(body.host, body.plugin_build);
     StatusCode::NO_CONTENT
 }
 
@@ -267,6 +301,7 @@ pub struct SettingsPatch {
     pub insta_lock: Option<bool>,
     pub auto_ban: Option<bool>,
     pub auto_ban_champion_id: Option<u32>,
+    pub auto_update: Option<bool>,
 }
 
 impl SettingsPatch {
@@ -296,6 +331,7 @@ impl SettingsPatch {
             auto_ban_champion_id: self
                 .auto_ban_champion_id
                 .unwrap_or(base.auto_ban_champion_id),
+            auto_update: self.auto_update.unwrap_or(base.auto_update),
         }
     }
 }
@@ -380,6 +416,67 @@ async fn open_url(
     }
 }
 
+#[derive(Deserialize)]
+pub struct TokenBody {
+    pub token: String,
+}
+
+async fn check_update(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<TokenBody>,
+) -> Result<Json<crate::update::UpdateStatus>, StatusCode> {
+    if body.token != state.token {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    if !state.try_begin_update() {
+        return Err(StatusCode::CONFLICT);
+    }
+    let current = env!("CARGO_PKG_VERSION").to_string();
+    let result = crate::update::check_for_update(&current).await;
+    state.end_update();
+    match result {
+        Ok(status) => Ok(Json(status)),
+        Err(e) => {
+            eprintln!("[Drake] update check failed: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+async fn apply_update(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<TokenBody>,
+) -> StatusCode {
+    if body.token != state.token {
+        return StatusCode::UNAUTHORIZED;
+    }
+    if !state.try_begin_update() {
+        return StatusCode::CONFLICT;
+    }
+    let relaunch = match std::env::current_exe() {
+        Ok(p) => p,
+        Err(e) => {
+            state.end_update();
+            eprintln!("[Drake] cannot resolve own path: {e}");
+            return StatusCode::INTERNAL_SERVER_ERROR;
+        }
+    };
+    match crate::update::apply_if_newer(env!("CARGO_PKG_VERSION"), &relaunch).await {
+        Ok(true) => {
+            std::process::exit(0);
+        }
+        Ok(false) => {
+            state.end_update();
+            StatusCode::NO_CONTENT
+        }
+        Err(e) => {
+            state.end_update();
+            eprintln!("[Drake] update apply failed: {e}");
+            StatusCode::BAD_GATEWAY
+        }
+    }
+}
+
 fn router(state: Arc<ConfigdState>) -> Router {
     // The client page that calls /checkin is served from a different origin
     // (https://plugins/... via the loader's own scheme), so the browser
@@ -397,6 +494,8 @@ fn router(state: Arc<ConfigdState>) -> Router {
         .route("/checkin", post(checkin))
         .route("/settings", post(put_settings))
         .route("/open-url", post(open_url))
+        .route("/update/check", post(check_update))
+        .route("/update/apply", post(apply_update))
         .layer(cors)
         .with_state(state)
 }
@@ -451,6 +550,7 @@ mod tests {
         // enough that it stays off until they ask for it.
         assert_eq!(Settings::default().run_at_startup, true);
         assert_eq!(Settings::default().auto_reload_on_open, false);
+        assert_eq!(Settings::default().auto_update, true);
     }
 
     #[test]
@@ -467,6 +567,7 @@ mod tests {
         assert_eq!(s.run_at_startup, true);
         assert_eq!(s.auto_reload_on_open, false);
         assert_eq!(s.auto_pick_champion_id_2, 0);
+        assert_eq!(s.auto_update, true);
     }
 
     #[test]
@@ -490,6 +591,7 @@ mod tests {
         let cfg = PluginConfig {
             token: "abc".into(),
             port: 48151,
+            version: "0.1.0".into(),
             settings: Settings { auto_accept: true, ..Default::default() },
         };
         write_plugin_config(tmp.path(), &cfg).unwrap();
@@ -505,7 +607,12 @@ mod tests {
         // read-only after the first write -- if a second call with
         // identical content attempted to write again, it would fail here.
         let tmp = tempfile::tempdir().unwrap();
-        let cfg = PluginConfig { token: "abc".into(), port: 48151, settings: Settings::default() };
+        let cfg = PluginConfig {
+            token: "abc".into(),
+            port: 48151,
+            version: "0.1.0".into(),
+            settings: Settings::default(),
+        };
         write_plugin_config(tmp.path(), &cfg).unwrap();
 
         let path = tmp.path().join("config.json");
@@ -533,16 +640,23 @@ mod tests {
     #[test]
     fn effective_state_is_not_injected_once_the_checkin_window_lapses() {
         let st = ConfigdState::new_with_settings(48151, Settings::default());
-        st.record_checkin("Drake".into());
-        assert!(matches!(st.effective(true), EffectiveState::Injected { .. }));
+        st.record_checkin_for_test("Drake", Some("build-a"));
+        assert!(matches!(st.effective(true, "build-a"), EffectiveState::Injected { .. }));
         st.expire_checkin_for_test();
-        assert!(matches!(st.effective(true), EffectiveState::NotInjected));
+        assert!(matches!(st.effective(true, "build-a"), EffectiveState::NotInjected));
+    }
+
+    #[test]
+    fn effective_state_is_stale_when_the_plugin_build_does_not_match() {
+        let st = ConfigdState::new_with_settings(48151, Settings::default());
+        st.record_checkin_for_test("Drake", Some("old-build"));
+        assert!(matches!(st.effective(true, "new-build"), EffectiveState::Stale { .. }));
     }
 
     #[test]
     fn effective_state_is_unknown_when_the_client_is_closed() {
         let st = ConfigdState::new_with_settings(48151, Settings::default());
-        assert!(matches!(st.effective(false), EffectiveState::Unknown));
+        assert!(matches!(st.effective(false, "build-a"), EffectiveState::Unknown));
     }
 
     // --- HTTP surface: router(), no real socket needed (tower::ServiceExt::oneshot) ---
@@ -633,6 +747,28 @@ mod tests {
         assert!(saved.lock().unwrap().is_empty(), "must not persist on a rejected token");
     }
 
+    fn token_request(path: &str, token: &str) -> Request<Body> {
+        let body = format!(r#"{{"token":"{token}"}}"#);
+        Request::builder()
+            .method("POST")
+            .uri(path)
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn update_check_with_a_bad_token_is_rejected() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+
+        let res = router(state)
+            .oneshot(token_request("/update/check", "not-the-token"))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    }
+
     #[tokio::test]
     async fn settings_that_cannot_be_persisted_are_not_applied_in_memory() {
         // Otherwise the UI would show a setting that silently vanishes on the
@@ -697,7 +833,45 @@ mod tests {
         let res = app.oneshot(req).await.unwrap();
 
         assert_eq!(res.status(), StatusCode::NO_CONTENT);
-        assert!(matches!(state.effective(true), EffectiveState::Injected { .. }));
+        assert!(matches!(state.effective(true, ""), EffectiveState::Injected { .. }));
+    }
+
+    #[tokio::test]
+    async fn checkin_with_a_matching_plugin_build_is_injected() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let token = state.token.clone();
+        let app = router(state.clone());
+
+        let body = format!(r#"{{"token":"{token}","host":"Drake","plugin_build":"build-a"}}"#);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/checkin")
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert!(matches!(state.effective(true, "build-a"), EffectiveState::Injected { .. }));
+    }
+
+    #[tokio::test]
+    async fn checkin_with_a_stale_plugin_build_is_not_treated_as_current() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let token = state.token.clone();
+        let app = router(state.clone());
+
+        let body = format!(r#"{{"token":"{token}","host":"Drake","plugin_build":"old-build"}}"#);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/checkin")
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert!(matches!(state.effective(true, "new-build"), EffectiveState::Stale { .. }));
     }
 
     #[tokio::test]
@@ -715,7 +889,7 @@ mod tests {
         let res = app.oneshot(req).await.unwrap();
 
         assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
-        assert!(matches!(state.effective(true), EffectiveState::NotInjected));
+        assert!(matches!(state.effective(true, "build-a"), EffectiveState::NotInjected));
     }
 
     #[tokio::test]
