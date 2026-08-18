@@ -13,8 +13,8 @@ const grid = (over = {}) => ({
 
 describe('visibleWindow', () => {
   it('renders only what fits, plus overscan, not all 2146 skins', () => {
-    // The whole point: 2146 tiles each pulling a splash image would build a
-    // huge DOM and hammer the client.
+
+
     const w = visibleWindow(grid());
     expect(w.end - w.start).toBeLessThan(60);
   });
@@ -24,13 +24,13 @@ describe('visibleWindow', () => {
   });
 
   it('reports the full height so the scrollbar matches the real list', () => {
-    // 2146 items / 5 per row = 430 rows.
+
     expect(visibleWindow(grid()).totalHeight).toBe(430 * 90);
   });
 
   it('offsets the rendered slice so it sits where it belongs', () => {
     const w = visibleWindow(grid({ scrollTop: 900 }));
-    // 900 / 90 = row 10, minus 2 overscan rows = row 8 -> 8 * 5 = item 40.
+
     expect(w.start).toBe(40);
     expect(w.offsetY).toBe(8 * 90);
   });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { decideAction, startChampSelectAutomation } from '../src/features/autoPick.js';
-import { renderAutoPick } from '../src/ui/panel.js';
+import { renderAutoPick, autoPickOrder, toggleAutoPickChampion } from '../src/ui/panel.js';
 
 const act = (over = {}) => ({
   id: 1,
@@ -29,8 +29,8 @@ describe('decideAction', () => {
   });
 
   it('hovers the pick when auto pick is on and insta lock is off', () => {
-    // Hover, not lock: it shows the team your intent while leaving you free to
-    // change your mind, which is what most people want from "auto pick".
+
+
     const d = decideAction(
       session([act({ id: 5 })]),
       settings({ auto_pick: true, auto_pick_champion_id: 103 }),
@@ -55,7 +55,7 @@ describe('decideAction', () => {
   });
 
   it('bans before it picks when both are pending', () => {
-    // Ban phase comes first, and acting on the pick during it is rejected.
+
     const d = decideAction(
       session([act({ id: 8, type: 'ban' }), act({ id: 9, type: 'pick' })]),
       settings({
@@ -69,7 +69,7 @@ describe('decideAction', () => {
   });
 
   it('ignores a feature with no champion chosen', () => {
-    // Champion id 0 is "none". Sending it would blank the hover.
+
     expect(
       decideAction(session([act()]), settings({ auto_pick: true, auto_pick_champion_id: 0 })),
     ).toBe(null);
@@ -152,8 +152,8 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('does not fire twice for the same action', async () => {
-    // The session route emits on every change, and champ select changes
-    // constantly. Without this every teammate's hover would re-send our pick.
+
+
     const h = harness({ auto_pick: true, auto_pick_champion_id: 103 });
     await h.fire(session([act({ id: 5 })]));
     await h.fire(session([act({ id: 5 })]));
@@ -174,8 +174,8 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('forgets what it did once champ select ends', async () => {
-    // Action ids restart, so remembering across sessions would make the next
-    // game's action look already handled.
+
+
     const h = harness({ auto_pick: true, auto_pick_champion_id: 103 });
     await h.fire(session([act({ id: 5 })]));
     await h.fire(null);
@@ -184,9 +184,9 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('replaces the hover when the champion is changed mid-select', async () => {
-    // The panel can change the pick while the clock is still running. The next
-    // look at the session (or a refresh with no new event) must send the new
-    // champion, not keep the one it already hovered.
+
+
+
     let current = settings({ auto_pick: true, auto_pick_champion_id: 103 });
     const commit = vi.fn().mockResolvedValue({ ok: true });
     let handler;
@@ -229,9 +229,9 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('picks again after a dodge even if the empty session never arrived', async () => {
-    // Practice Tool dodge often jumps straight into a new session. Action ids
-    // restart, the champion is the same, and the Delete/404 can be missed —
-    // remembering the last action would skip the new game's pick.
+
+
+
     const h = harness({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true });
     await h.fire(session([act({ id: 5, championId: 0 })]));
     await h.fire(session([act({ id: 5, championId: 103, completed: true, isInProgress: false })]));
@@ -240,8 +240,8 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('retries after a refusal rather than giving up on the action', async () => {
-    // A ban can be refused because somebody banned it a moment earlier; a pick
-    // can be refused mid-transition. The phase is still open, so try again.
+
+
     const commit = vi
       .fn()
       .mockResolvedValueOnce({ ok: false, reason: 'refused (409)' })
@@ -260,9 +260,9 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('tries the second pick after the client refuses the first', async () => {
-    // 409 lands before the session has the ban listed, so availability has
-    // to remember the refusal rather than wait for an update that may not
-    // arrive before the clock runs out.
+
+
+
     const commit = vi
       .fn()
       .mockResolvedValueOnce({ ok: false, reason: 'refused (409)' })
@@ -287,7 +287,12 @@ describe('startChampSelectAutomation', () => {
 });
 
 describe('renderAutoPick', () => {
-  it('offers first and second pick slots', () => {
+  const champs = [
+    { id: 103, name: 'Ahri' },
+    { id: 64, name: 'Lee Sin' },
+  ];
+
+  it('shows one list with pick order', () => {
     const html = renderAutoPick(
       {
         auto_pick: true,
@@ -297,15 +302,38 @@ describe('renderAutoPick', () => {
       },
       {
         disabled: false,
-        list: [{ id: 103, name: 'Ahri' }],
+        list: champs,
+        allList: champs,
         query: '',
-        list2: [{ id: 64, name: 'Lee Sin' }],
-        query2: '',
       },
     );
-    expect(html).toContain('First pick');
-    expect(html).toContain('Second pick');
-    expect(html).toContain('data-for="auto_pick_champion_id"');
-    expect(html).toContain('data-for="auto_pick_champion_id_2"');
+    expect(html).toContain('pick-order-item');
+    expect(html).toContain('Ahri');
+    expect(html).toContain('Lee Sin');
+    expect(html).toContain('champ-slot');
+    expect(html).toContain('data-for="auto_pick"');
+    expect(html).not.toContain('data-for="auto_pick_champion_id_2"');
+  });
+});
+
+describe('toggleAutoPickChampion', () => {
+  const base = { auto_pick_champion_id: 0, auto_pick_champion_id_2: 0 };
+
+  it('adds first and second picks in order', () => {
+    let s = toggleAutoPickChampion(base, 103);
+    expect(autoPickOrder(s)).toEqual([103]);
+    s = toggleAutoPickChampion(s, 64);
+    expect(autoPickOrder(s)).toEqual([103, 64]);
+  });
+
+  it('removes picks and compacts order', () => {
+    const s = { auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 };
+    expect(autoPickOrder(toggleAutoPickChampion(s, 103))).toEqual([64]);
+    expect(autoPickOrder(toggleAutoPickChampion(s, 64))).toEqual([103]);
+  });
+
+  it('replaces the backup when a third champion is chosen', () => {
+    const s = { auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 };
+    expect(autoPickOrder(toggleAutoPickChampion(s, 157))).toEqual([103, 157]);
   });
 });

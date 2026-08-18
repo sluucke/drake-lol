@@ -4,10 +4,12 @@ pub mod deploy;
 pub mod elevate;
 pub mod lcu;
 pub mod paths;
+pub mod single_instance;
 pub mod slot;
 pub mod startup;
 pub mod strings;
 pub mod supervisor;
+pub mod update;
 pub mod vendored;
 
 use std::path::Path;
@@ -17,6 +19,7 @@ use tauri::tray::TrayIconBuilder;
 
 const CONFIGD_PORT: u16 = 48151;
 const INDEX_JS: &str = include_str!("../../plugin/dist/index.js");
+const PLUGIN_BUILD: &str = include_str!("../../plugin/.build-id");
 
 /// Reports whether the installed `core.dll` matches the bundled resource.
 ///
@@ -44,6 +47,45 @@ fn verify_installed_loader(src: &Path, dest: &Path) -> Result<(), String> {
 fn check_vendored_loader(app: &tauri::AppHandle) -> Result<(), String> {
     let src = vendored::core_dll_source(app).map_err(|e| e.to_string())?;
     verify_installed_loader(&src, &paths::our_core_dll())
+}
+
+async fn try_apply_update(
+    state: &Arc<configd::ConfigdState>,
+    note: Arc<Mutex<Option<String>>>,
+    announce_current: bool,
+) {
+    if !state.try_begin_update() {
+        return;
+    }
+    *note.lock().unwrap() = Some("Checking for updates".into());
+    let relaunch = match std::env::current_exe() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("[Drake] cannot resolve own path: {e}");
+            *note.lock().unwrap() = Some(format!("Update failed: {e}"));
+            state.end_update();
+            return;
+        }
+    };
+    match update::apply_if_newer(env!("CARGO_PKG_VERSION"), &relaunch).await {
+        Ok(true) => {
+            *note.lock().unwrap() = Some("Installing update".into());
+            std::process::exit(0);
+        }
+        Ok(false) => {
+            *note.lock().unwrap() = if announce_current {
+                Some("Drake is up to date".into())
+            } else {
+                None
+            };
+            state.end_update();
+        }
+        Err(e) => {
+            eprintln!("[Drake] update failed: {e}");
+            *note.lock().unwrap() = Some(format!("Update failed: {e}"));
+            state.end_update();
+        }
+    }
 }
 
 pub fn run() {
@@ -79,9 +121,34 @@ pub fn run() {
                 initial.auto_reload_on_open,
                 None::<&str>,
             )?;
+            let auto_update_item = CheckMenuItem::with_id(
+                app,
+                "auto_update",
+                strings::MENU_AUTO_UPDATE,
+                true,
+                initial.auto_update,
+                None::<&str>,
+            )?;
+            let check_updates = MenuItem::with_id(
+                app,
+                "check_updates",
+                strings::MENU_CHECK_UPDATES,
+                true,
+                None::<&str>,
+            )?;
 
             let quit = MenuItem::with_id(app, "quit", strings::MENU_QUIT, true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&startup_item, &auto_reload_item, &reload, &quit])?;
+            let menu = Menu::with_items(
+                app,
+                &[
+                    &startup_item,
+                    &auto_reload_item,
+                    &auto_update_item,
+                    &check_updates,
+                    &reload,
+                    &quit,
+                ],
+            )?;
 
             let tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
@@ -92,26 +159,34 @@ pub fn run() {
             let menu_state = state.clone();
             let startup_check = startup_item.clone();
             let auto_reload_check = auto_reload_item.clone();
+            let auto_update_check = auto_update_item.clone();
+            let update_note: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+            let menu_note = update_note.clone();
             app.on_menu_event(move |_app, event| {
                 if event.id() == "quit" {
                     std::process::exit(0);
-                } else if event.id() == "run_at_startup" || event.id() == "auto_reload_on_open" {
-                    // Read the checkbox back rather than assuming it flipped:
-                    // the item's own state is what the user is looking at, so
-                    // that is the value we must persist.
+                } else if event.id() == "run_at_startup"
+                    || event.id() == "auto_reload_on_open"
+                    || event.id() == "auto_update"
+                {
                     let mut settings = menu_state.settings.lock().unwrap();
                     if event.id() == "run_at_startup" {
                         settings.run_at_startup = startup_check.is_checked().unwrap_or(false);
-                    } else {
+                    } else if event.id() == "auto_reload_on_open" {
                         settings.auto_reload_on_open =
                             auto_reload_check.is_checked().unwrap_or(false);
+                    } else {
+                        settings.auto_update = auto_update_check.is_checked().unwrap_or(false);
                     }
-                    // The Run key itself is not touched here. The supervisor
-                    // loop reconciles it every tick from this value, so there
-                    // is exactly one place that writes it.
                     if let Err(e) = configd::save(&settings) {
                         eprintln!("[Drake] could not save settings: {e}");
                     }
+                } else if event.id() == "check_updates" {
+                    let tray = menu_state.clone();
+                    let note = menu_note.clone();
+                    tauri::async_runtime::spawn(async move {
+                        try_apply_update(&tray, note, true).await;
+                    });
                 } else if event.id() == "reload" {
                     // Reload is only ever triggered by an explicit click here.
                     // The supervisor loop must never call this on its own --
@@ -151,6 +226,7 @@ pub fn run() {
             });
 
             let loop_state = state.clone();
+            let loop_note = update_note.clone();
             tauri::async_runtime::spawn(async move {
                 let started = std::time::Instant::now();
                 let mut auto_reload_fired = false;
@@ -165,10 +241,12 @@ pub fn run() {
                     // safe to run every tick.
                     let _ = startup_item.set_checked(settings.run_at_startup);
                     let _ = auto_reload_item.set_checked(settings.auto_reload_on_open);
+                    let _ = auto_update_item.set_checked(settings.auto_update);
 
                     let cfg = configd::PluginConfig {
                         token: loop_state.token.clone(),
                         port: loop_state.port,
+                        version: env!("CARGO_PKG_VERSION").to_string(),
                         settings: settings.clone(),
                     };
 
@@ -215,6 +293,9 @@ pub fn run() {
                     if let Some(err) = &configd_err {
                         text = format!("{text} ({}: check-in server: {err})", strings::MODE_INACTIVE);
                     }
+                    if let Some(update) = loop_note.lock().unwrap().clone() {
+                        text = format!("{text}\n{update}");
+                    }
                     let _ = tray.set_tooltip(Some(&format!("{}\n{text}", strings::TRAY_TOOLTIP)));
 
                     // "Reload client to apply" only helps when the client is
@@ -230,12 +311,13 @@ pub fn run() {
                         // guessing would mean acting on a guess.
                         None
                     } else {
-                        Some(loop_state.effective(lcu::client_running()))
+                        Some(loop_state.effective(lcu::client_running(), PLUGIN_BUILD))
                     };
 
                     let can_reload = matches!(
                         effective,
                         Some(configd::EffectiveState::NotInjected)
+                            | Some(configd::EffectiveState::Stale { .. })
                     );
                     let _ = reload.set_enabled(can_reload);
 
@@ -258,6 +340,19 @@ pub fn run() {
                     }
 
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                }
+            });
+
+            let periodic_state = state.clone();
+            let periodic_note = update_note.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(update::FIRST_CHECK_AFTER).await;
+                loop {
+                    let enabled = periodic_state.settings.lock().unwrap().auto_update;
+                    if enabled {
+                        try_apply_update(&periodic_state, periodic_note.clone(), false).await;
+                    }
+                    tokio::time::sleep(update::CHECK_EVERY).await;
                 }
             });
 

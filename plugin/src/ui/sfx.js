@@ -1,15 +1,15 @@
-// The client's own interface sounds.
-//
-// Served by the client at /fe/lol-static-assets/sounds/, measured from inside
-// the page: 200, content-type audio/ogg, and the bytes begin with "OggS" --
-// and the sizes match the files the old app had extracted (48363 for the gold
-// click, 13607 for the hover), so these are the same assets. Playing them by
-// URL costs nothing, where bundling them would have added ~137KB of base64.
-//
-// Names are the ones that actually live at that path (CommunityDragon's
-// rcp-fe-lol-static-assets listing). Invented ones like checkbox-click 404.
-// `play` is silent about a missing or refused sound -- a UI click must never
-// fail because a sound did.
+
+
+
+
+
+
+
+
+
+
+
+
 
 const BASE = '/fe/lol-static-assets/sounds';
 
@@ -36,8 +36,8 @@ export const SFX = {
 
 const KNOWN = new Set(Object.values(SFX));
 
-/// Pick the Rose/UIKit pair for a control, so a checkbox does not clang
-/// like Play and a close button does not share the gold confirm.
+
+
 export function sfxFor(el) {
   const has = (c) => !!el?.classList?.contains(c);
 
@@ -57,8 +57,8 @@ export function sfxFor(el) {
 }
 
 export function makeSfx({ AudioImpl = typeof Audio !== 'undefined' ? Audio : null, enabled = true, volume = 0.35 } = {}) {
-  // One element per sound, reused. Hover fires constantly, and a fresh Audio
-  // per event would pile up decoded buffers inside somebody else's client.
+  
+  
   const players = new Map();
   let on = enabled;
 
@@ -76,14 +76,14 @@ export function makeSfx({ AudioImpl = typeof Audio !== 'undefined' ? Audio : nul
         audio.volume = volume;
         players.set(name, audio);
       } else {
-        // Rewind so rapid clicks retrigger instead of being swallowed while
-        // the previous one is still playing.
+        
+        
         audio.pause();
         audio.currentTime = 0;
       }
 
-      // Autoplay policy, a file that moved in a client patch, a codec change:
-      // none of that should surface as an error at the call site.
+      
+      
       const played = audio.play();
       if (played && typeof played.catch === 'function') played.catch(() => {});
     },

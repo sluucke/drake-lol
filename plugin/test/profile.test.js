@@ -58,7 +58,7 @@ describe('makeRiotId', () => {
   });
 
   it('passes the client\'s refusal through, since it owns the real rules', async () => {
-    // Availability, cooldowns and banned words are Riot's to enforce.
+
     const lcu = { post: vi.fn().mockResolvedValue({ ok: false, status: 409 }) };
 
     const result = await makeRiotId({ lcu }).save('Taken#BR1');
@@ -76,9 +76,9 @@ describe('normaliseFriends', () => {
   ];
 
   it('sorts online friends before offline ones, alphabetically within each', () => {
-    // An alphabetical list alone buries the people you can actually play with.
-    // 'B' (chat) and 'Legacy' (dnd) are both online, so they sort by name;
-    // 'A' is offline and goes last despite being first alphabetically.
+
+
+
     expect(normaliseFriends(raw).map((f) => f.name)).toEqual(['B', 'Legacy', 'A']);
   });
 
@@ -138,8 +138,8 @@ describe('removeAllFriends', () => {
   });
 
   it('keeps going when one deletion fails, and reports the count', async () => {
-    // Stopping at the first failure would leave the list half-cleared with no
-    // indication of how far it got.
+
+
     const lcu = {
       delete: vi
         .fn()

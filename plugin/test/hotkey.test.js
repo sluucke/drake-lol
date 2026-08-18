@@ -26,8 +26,8 @@ describe('matchesToggle', () => {
   });
 
   it('does not steal the key while the user types in an input', () => {
-    // The client has chat and search fields. Swallowing a keystroke there
-    // would look like the client dropping input.
+
+
     const target = { tagName: 'INPUT', isContentEditable: false };
     expect(matchesToggle(ev({ ctrlKey: true, key: 'd', target }))).toBe(false);
   });

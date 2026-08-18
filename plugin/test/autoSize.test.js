@@ -7,7 +7,7 @@ describe('fittedHeight', () => {
   });
 
   it('never shrinks below the resting size', () => {
-    // An empty box collapsing to nothing would be worse than a small one.
+
     expect(fittedHeight({ scrollHeight: 20, min: 120, max: 400 })).toBe(120);
   });
 
@@ -18,8 +18,8 @@ describe('fittedHeight', () => {
 
 describe('autoSize', () => {
   it('measures from scratch rather than from its own last result', () => {
-    // Reading scrollHeight while the old height is still applied reports the
-    // OLD height for shrinking content, so the box would only ever grow.
+
+
     const seen = [];
     const el = {
       scrollHeight: 200,
@@ -44,8 +44,8 @@ describe('autoSize', () => {
   });
 
   it('stops auto-sizing once the user has dragged the grip', () => {
-    // Otherwise the next keystroke would snap the box back to the fitted
-    // height and undo the size they just chose.
+
+
     const el = { scrollHeight: 200, style: { height: '' }, dataset: { manualHeight: '1' } };
 
     autoSize(el, { min: 120, max: 400 });

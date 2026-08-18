@@ -1,11 +1,11 @@
-// Opens an external URL through the tray, not through the client.
-//
-// `window.open` inside the client's CEF is unreliable: it can be swallowed
-// with no error at all, so the user just sees nothing happen. The tray is a
-// normal Windows process and can hand the URL to the shell.
-//
-// The tray refuses anything outside its allow-list (configd::is_openable), so
-// this cannot be used as a general launcher.
+
+
+
+
+
+
+
+
 
 export function makeOpener({ port, token, fetchImpl = fetch }) {
   return {

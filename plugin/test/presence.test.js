@@ -14,9 +14,9 @@ describe('readLol', () => {
   });
 
   it('parses the lol block when the client hands it back as a JSON string', () => {
-    // The old app handled both shapes for a reason: this field comes back
-    // stringified in some client states, and treating it as an object then
-    // wipes every existing key on the next write.
+
+
+
     expect(readLol({ lol: '{"level":"88"}' })).toEqual({ level: '88' });
   });
 
@@ -40,8 +40,8 @@ describe('makePresence', () => {
   }
 
   it('merges into the existing presence instead of replacing it', async () => {
-    // A bare write drops level, banner, challenge points and everything else
-    // the client is broadcasting, so the profile visibly breaks.
+
+
     const h = harness();
 
     await h.presence.setRank({ tier: 'CHALLENGER', division: 'I', queue: 'RANKED_SOLO_5x5' });
@@ -76,8 +76,8 @@ describe('makePresence', () => {
   });
 
   it('clears the rank override back to the real one', async () => {
-    // An empty string is how the client is told to stop overriding; deleting
-    // the keys leaves the last override in place.
+
+
     const h = harness({ rankedLeagueTier: 'CHALLENGER', rankedLeagueDivision: 'I' });
 
     await h.presence.clearRank();
@@ -98,7 +98,7 @@ describe('makePresence', () => {
   });
 
   it('does not write at all when the current presence cannot be read', async () => {
-    // Writing a merge built on nothing would blank the whole presence.
+
     const lcu = {
       get: vi.fn().mockRejectedValue(new Error('offline')),
       put: vi.fn(),

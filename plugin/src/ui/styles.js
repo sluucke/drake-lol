@@ -1,27 +1,26 @@
 import { CHECKBOX_SPRITE } from './assets.js';
 
-// The palette and the component treatments are lifted from lol-profiler-tool,
-// which already matched the client's look. Everything lives inside our shadow
-// root, so none of it can leak into the client's own styling -- and the
-// client's global CSS cannot reach in and restyle us.
-//
-// Fonts are the client's own. `@font-face` rules are document-global, so
-// Riot's faces are already available inside our shadow root at no cost -- the
-// same thing other loader plugins do. `--font-display` / `--font-body` are the
-// client's own custom properties, and custom properties inherit through a
-// shadow boundary; the literal names are the fallback for when they do not
-// resolve, and generic serif/sans-serif is the last resort.
+
+
+
+
+
+
+
+
+
+
+
 const DISPLAY = `var(--font-display, 'Beaufort for LOL'), serif`;
 const BODY = `var(--font-body, 'Spiegel'), 'Segoe UI', system-ui, sans-serif`;
 
 export const CSS = `
 :host, * { box-sizing: border-box; }
 
-/* Scrollbars ---------------------------------------------------------- */
 
-/* The default CEF scrollbar is a light-grey Windows bar with stepper arrows,
-   which reads as a browser widget sitting inside the client. The client's own
-   bars are narrow, square, and bronze on near-black, with no steppers. */
+
+
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -35,7 +34,7 @@ export const CSS = `
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, #785a28, #463714);
   border: 1px solid #010a13;
-  /* Square, not rounded: nothing in the client's chrome has a radius. */
+  
   border-radius: 0;
 }
 
@@ -47,10 +46,8 @@ export const CSS = `
   background: #c8aa6e;
 }
 
-/* Kills the stepper arrows -- pure browser furniture, and the client has
-   nothing like them. The RESIZER is deliberately kept (and restyled below):
-   auto-sizing handles the common case, but dragging is still the fastest way
-   to give a tall piece of art more room. */
+
+
 ::-webkit-scrollbar-button,
 ::-webkit-scrollbar-corner {
   display: none;
@@ -58,8 +55,8 @@ export const CSS = `
   height: 0;
 }
 
-/* Three bronze diagonals, drawn rather than imported, so the grip reads as
-   part of the panel instead of a grey Windows notch. */
+
+
 ::-webkit-resizer {
   background:
     linear-gradient(135deg, transparent 0 42%, #785a28 42% 52%, transparent 52% 66%),
@@ -74,10 +71,8 @@ export const CSS = `
   display: grid;
   place-items: center;
   font-family: ${BODY};
-  /* The host is pointer-events:none so the closed overlay never eats clicks
-     meant for the client. Anything the user is supposed to interact with has
-     to opt back in -- without this the panel renders and is completely dead
-     to the mouse. */
+
+
   pointer-events: auto;
 }
 
@@ -97,7 +92,7 @@ export const CSS = `
   box-shadow: 0 0 32px rgba(0, 0, 0, 0.8);
 }
 
-/* Header ------------------------------------------------------------- */
+
 
 .titlebar {
   display: flex;
@@ -145,7 +140,7 @@ export const CSS = `
 }
 .close:hover { color: #f0e6d2; border-color: #c8aa6e; }
 
-/* Body --------------------------------------------------------------- */
+
 
 .body {
   display: flex;
@@ -214,7 +209,7 @@ export const CSS = `
   margin: 18px 0;
 }
 
-/* Checkbox — the client's own hextech sprite ------------------------- */
+
 
 .check-row {
   display: flex;
@@ -253,7 +248,7 @@ export const CSS = `
   max-width: 46ch;
 }
 
-/* Footer ------------------------------------------------------------- */
+
 
 .footer {
   padding: 10px 18px;
@@ -266,7 +261,7 @@ export const CSS = `
   gap: 12px;
 }
 
-/* Hover and press feedback, at the client's own weight of motion. */
+
 .hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-wrap {
   transition: filter 90ms ease, color 90ms ease, border-color 90ms ease,
     box-shadow 90ms ease, background 90ms ease, transform 60ms ease;
@@ -282,7 +277,7 @@ export const CSS = `
 .status-bad { color: #c33c3c; }
 .status-good { color: #0acbe6; }
 
-/* Slider ------------------------------------------------------------- */
+
 
 .field { margin-top: 16px; }
 .field-off { opacity: 0.45; }
@@ -319,8 +314,8 @@ export const CSS = `
 }
 .slider:disabled { cursor: default; }
 
-/* The handle is a rotated square: the client uses that diamond motif for
-   its own sliders and radio pips. */
+
+
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -333,11 +328,10 @@ export const CSS = `
 }
 .slider:disabled::-webkit-slider-thumb { background: #5c5b57; cursor: default; }
 
-/* Cancel dock -------------------------------------------------------- */
 
-/* Anchored to the viewport rather than injected into the client's own
-   ready-check markup: that markup is Riot's and changes without notice, and a
-   selector that silently stops matching would take the button with it. */
+
+
+
 .cancel-dock {
   position: fixed;
   left: 50%;
@@ -347,6 +341,17 @@ export const CSS = `
   z-index: 1;
 }
 .cancel-dock[hidden] { display: none; }
+
+
+
+
+
+.dodge-dock {
+  position: fixed;
+  pointer-events: auto;
+  z-index: 2;
+}
+.dodge-dock[hidden] { display: none; }
 
 .hextech-btn {
   display: inline-flex;
@@ -375,7 +380,7 @@ export const CSS = `
   background: linear-gradient(to bottom, #1e2328, #433d2b);
 }
 
-/* Status box ---------------------------------------------------------- */
+
 
 .status-box {
   display: block;
@@ -388,11 +393,11 @@ export const CSS = `
   border: thin solid #785a28;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset;
   outline: none;
-  /* Auto-sized by autoSize() until the user drags the grip, after which their
-     height wins -- see markManual(). */
+
+
   resize: vertical;
-  /* Monospace and pre-wrap are what make block art line up. A proportional
-     font turns box-drawing characters into a ragged mess. */
+
+
   font-family: Consolas, 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.15;
@@ -463,6 +468,7 @@ export const CSS = `
 }
 
 .champ {
+  position: relative;
   padding: 0;
   background: none;
   border: 2px solid transparent;
@@ -476,6 +482,63 @@ export const CSS = `
   filter: none;
   border-color: #c8aa6e;
   box-shadow: 0 0 8px rgba(200, 170, 110, 0.5);
+}
+.champ-slot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: #010a13;
+  background: linear-gradient(to bottom, #c8aa6e, #785a28);
+  border: 1px solid #c8aa6e;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.pick-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.pick-order-empty {
+  margin: 0 0 10px;
+  color: #a09b8c;
+  font-size: 12px;
+}
+.pick-order-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #f0e6d2;
+  background: rgba(1, 10, 19, 0.55);
+  border: 1px solid #785a28;
+  border-radius: 4px;
+}
+.pick-order-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #010a13;
+  background: linear-gradient(to bottom, #c8aa6e, #785a28);
+  border-radius: 50%;
+}
+.pick-order-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
 }
 
 .hextech-input {
@@ -540,7 +603,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   white-space: nowrap;
 }
 
-/* Rank tiles ---------------------------------------------------------- */
+
 
 .rank-grid {
   display: grid;
@@ -581,7 +644,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   background: linear-gradient(to bottom, rgba(200, 170, 110, 0.16), transparent);
 }
 
-/* Select — a real dropdown wearing the client's clothes ---------------- */
+
 
 .select-wrap {
   position: relative;
@@ -598,9 +661,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
 .select-field {
   flex: 1;
-  /* Strips the Windows dropdown chrome; the glyphs beside it are ours. The
-     control still opens natively on click -- the arrows are identification,
-     not the mechanism. */
+
+
   -webkit-appearance: none;
   appearance: none;
   padding: 0 26px 0 8px;
@@ -637,7 +699,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   color: #c8aa6e;
   font-size: 6px;
   line-height: 1.3;
-  /* Decoration only: clicks fall through to the select underneath. */
+  
   pointer-events: none;
 }
 .select-wrap:hover .select-arrows { color: #f0e6d2; }
@@ -645,10 +707,10 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
 .select-field:focus + .select-arrows { color: #f0e6d2; }
 
-/* Skin grid ----------------------------------------------------------- */
 
-/* Virtualised: the viewport scrolls, the spacer holds the full height, and
-   the grid inside it is translated to the visible rows. */
+
+
+
 .skin-viewport {
   height: 300px;
   overflow-y: auto;
@@ -665,10 +727,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   align-content: start;
 }
 
-/* Every tile is exactly one row tall. The virtual window multiplies a FIXED
-   row height to place its slice, so a tile that sizes itself to its image
-   would drift the whole grid out of alignment -- splash tiles are not all the
-   same aspect ratio. */
+
+
 .skin {
   display: flex;
   flex-direction: column;
@@ -688,8 +748,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   height: 62px;
   flex: none;
   display: block;
-  /* cover, not contain: the tiles differ in aspect ratio and letterboxing
-     them would leave ragged gaps down the grid. */
+
+
   object-fit: cover;
 }
 .skin span {
@@ -704,7 +764,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 .skin:hover { filter: none; border-color: #785a28; color: #f0e6d2; }
 .skin-on { filter: none; border-color: #c8aa6e; color: #f0e6d2; }
 
-/* Split Riot ID input, mirroring the client's own ---------------------- */
+
 
 .split-input {
   display: flex;
@@ -715,8 +775,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 }
 .split-input:focus-within {
   border-image: linear-gradient(to bottom, #785a28, #c8aa6e) 1 stretch;
-  /* The client washes a focused field left-to-right rather than just
-     recolouring its border. */
+
+
   background: linear-gradient(to right, rgba(32, 39, 44, 0.9), rgba(7, 16, 25, 0.7));
 }
 

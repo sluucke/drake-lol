@@ -8,9 +8,9 @@ describe('transport', () => {
       body = JSON.parse(init.body);
       return { ok: true, status: 204 };
     };
-    const t = makeTransport({ port: 48151, token: 'sekret', fetchImpl: fakeFetch });
+    const t = makeTransport({ port: 48151, token: 'sekret', fetchImpl: fakeFetch, pluginBuild: 'abc' });
     expect(await t.checkIn('Drake')).toBe(true);
-    expect(body).toEqual({ token: 'sekret', host: 'Drake' });
+    expect(body).toEqual({ token: 'sekret', host: 'Drake', plugin_build: 'abc' });
   });
 
   it('falls back to DataStore when localhost is unreachable', async () => {
@@ -59,10 +59,10 @@ describe('transport', () => {
   });
 
   it('picks up the new token when the tray has restarted', async () => {
-    // Observed live: restarting the tray regenerates its token, and the plugin
-    // kept posting the old one every 5s forever. The tray therefore believed
-    // the client was uninjected for the rest of the session, permanently
-    // lighting "Reload client to apply".
+
+
+
+
     const sent = [];
     const fetchImpl = async (_url, init) => {
       const { token } = JSON.parse(init.body);
@@ -81,7 +81,7 @@ describe('transport', () => {
   });
 
   it('keeps using the refreshed token on later beats', async () => {
-    // Otherwise every beat would pay a 401 plus a config re-read, forever.
+
     const sent = [];
     const fetchImpl = async (_url, init) => {
       const { token } = JSON.parse(init.body);

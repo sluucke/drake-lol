@@ -7,9 +7,6 @@ import {
   unavailableChampionIds,
 } from '../src/features/champSelect.js';
 
-/// Champ select's `actions` is an array of PHASES, each an array of actions.
-/// Bans are one phase, picks another, and every player's action for that phase
-/// sits in the same inner array.
 const session = ({ cell = 0, actions = [], ...extra } = {}) => ({
   localPlayerCellId: cell,
   actions,
@@ -33,8 +30,8 @@ describe('findMyAction', () => {
   });
 
   it('ignores actions belonging to other players', () => {
-    // Every player in the phase shares the inner array, so matching on type
-    // alone would lock a champion on somebody else's turn.
+
+
     const s = session({ actions: [[action({ id: 7, actorCellId: 3 })]] });
     expect(findMyAction(s, 'pick')).toBe(null);
   });
@@ -45,7 +42,7 @@ describe('findMyAction', () => {
   });
 
   it('ignores an action that has not started yet', () => {
-    // Picking into a phase that is not in progress is rejected by the client.
+
     const s = session({ actions: [[action({ isInProgress: false })]] });
     expect(findMyAction(s, 'pick')).toBe(null);
   });
@@ -102,7 +99,7 @@ describe('unavailableChampionIds', () => {
   });
 
   it('does not treat a mere hover as taken', () => {
-    // Two players can hover the same champion until someone locks.
+
     const ids = unavailableChampionIds(
       session({ actions: [[action({ championId: 64, completed: false })]] }),
     );
@@ -130,7 +127,7 @@ describe('makeChampSelect', () => {
   });
 
   it('hovers without locking when asked not to complete', async () => {
-    // Hovering shows teammates your intent but leaves the choice reversible.
+
     const lcu = { patch: vi.fn().mockResolvedValue({ ok: true }) };
 
     await makeChampSelect({ lcu }).commit(42, 103, false);
@@ -142,8 +139,8 @@ describe('makeChampSelect', () => {
   });
 
   it('reports a refusal instead of pretending it worked', async () => {
-    // Banning a champion somebody already banned, or picking one that is
-    // taken, comes back as a 4xx and the user needs to know.
+
+
     const lcu = { patch: vi.fn().mockResolvedValue({ ok: false, status: 409 }) };
 
     const result = await makeChampSelect({ lcu }).commit(42, 103, true);

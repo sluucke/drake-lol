@@ -1,12 +1,12 @@
-// Riot ID and friends.
+
 
 export const SAVE_ALIAS = '/lol-summoner/v1/save-alias';
 export const FRIENDS_ROUTE = '/lol-chat/v1/friends';
 
-/// Splits "Name#TAG" on the LAST hash.
-///
-/// Riot IDs allow a '#' inside the display name, so splitting on the first one
-/// would cut a legitimate name in half and save the wrong thing.
+
+
+
+
 export function splitRiotId(raw) {
   const text = String(raw ?? '').trim();
   const at = text.lastIndexOf('#');
@@ -27,8 +27,8 @@ export function makeRiotId({ lcu }) {
       try {
         const res = await lcu.post(SAVE_ALIAS, parts);
         if (res && res.ok === false) {
-          // Availability, cooldowns and banned words are Riot's rules to
-          // enforce, and their message is more accurate than a guess here.
+          
+          
           return { ok: false, reason: `the client refused it (${res.status})` };
         }
         return { ok: true };
@@ -59,17 +59,17 @@ export function normaliseFriends(raw) {
       };
     })
     .filter((f) => f.name)
-    // Online first: an alphabetical list buries the people you can actually
-    // play with under everyone who is not there.
+    
+    
     .sort((a, b) => (a.online === b.online ? a.name.localeCompare(b.name) : a.online ? -1 : 1));
 }
 
-/// Removes every friend, one call each -- the client has no bulk endpoint.
-///
-/// Keeps going after a failure rather than stopping at the first: aborting
-/// halfway would leave the list partly cleared with no indication of how far
-/// it got, and the caller could not tell the user what actually happened.
-/// Returns counts so the UI can report both.
+
+
+
+
+
+
 export async function removeAllFriends({ lcu, friends }) {
   let removed = 0;
   let failed = 0;

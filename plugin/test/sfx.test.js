@@ -22,8 +22,8 @@ function fakeAudio() {
 
 describe('soundUrl', () => {
   it("points at the client's own asset, so sounds cost no bundle size", () => {
-    // Measured inside the client: 200, audio/ogg, bytes start with "OggS",
-    // and 48363 bytes -- byte-identical to the file the old app shipped.
+
+
     expect(soundUrl(SFX.click)).toBe(
       '/fe/lol-static-assets/sounds/sfx-uikit-button-gold-click.ogg',
     );
@@ -39,8 +39,8 @@ describe('makeSfx', () => {
   });
 
   it('reuses one element per sound instead of leaking one per event', () => {
-    // Hover fires constantly; a fresh Audio each time would pile up decoded
-    // buffers inside somebody else's client.
+
+
     const { FakeAudio, made } = fakeAudio();
     const sfx = makeSfx({ AudioImpl: FakeAudio });
     sfx.play(SFX.hover);
@@ -77,8 +77,8 @@ describe('makeSfx', () => {
   });
 
   it('never throws when playback is refused', () => {
-    // Autoplay policy, or a file that moved in a client patch. A UI click must
-    // not fail because a sound did.
+
+
     class Hostile {
       play() {
         return Promise.reject(new Error('NotAllowedError'));
@@ -89,8 +89,8 @@ describe('makeSfx', () => {
   });
 
   it('ignores a sound name that was never confirmed to exist', () => {
-    // Invented names like checkbox-click 404 at this path; asking for one
-    // must be a no-op rather than a broken request every click.
+
+
     const { FakeAudio, made } = fakeAudio();
     expect(() => makeSfx({ AudioImpl: FakeAudio }).play('sfx-uikit-checkbox-click')).not.toThrow();
     expect(made).toHaveLength(0);

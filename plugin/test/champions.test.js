@@ -27,10 +27,10 @@ describe('normaliseChampions', () => {
   });
 
   it('drops the LoL Classic variants, which duplicate every name', () => {
-    // Measured in the live client: 63 entries at id >= 60000, aliased Jade_*,
-    // sharing display names with the real champions. Two "Master Yi" cells in
-    // the grid is confusing, and the variant id is not pickable in a normal
-    // game anyway.
+
+
+
+
     const withVariants = [
       { id: 11, name: 'Master Yi', alias: 'MasterYi' },
       { id: 60011, name: 'Master Yi', alias: 'Jade_MasterYi' },
@@ -41,7 +41,7 @@ describe('normaliseChampions', () => {
   });
 
   it('keeps the highest real champion id', () => {
-    // Real ids reach 950 today, so the cut cannot simply be "large id".
+
     expect(normaliseChampions([{ id: 950, name: 'Newest', alias: 'Newest' }])).toHaveLength(1);
   });
 });
@@ -67,8 +67,8 @@ describe('searchChampions', () => {
   });
 
   it('matches the alias too, since players use English names', () => {
-    // The client localises `name`, so a pt-BR client shows "Cão" where the
-    // player still types the English alias.
+
+
     const list2 = normaliseChampions([{ id: 5, name: 'Vil Mago', alias: 'Veigar' }]);
     expect(searchChampions(list2, 'veigar')).toHaveLength(1);
   });
@@ -76,7 +76,7 @@ describe('searchChampions', () => {
 
 describe('iconUrl', () => {
   it('points at the client\'s own asset, not an external CDN', () => {
-    // Same-origin: no network dependency, works offline, respects locale.
+
     expect(iconUrl(103)).toBe('/lol-game-data/assets/v1/champion-icons/103.png');
   });
 });

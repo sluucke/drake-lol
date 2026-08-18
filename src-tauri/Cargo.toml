@@ -1,6 +1,6 @@
 [package]
 name = "drake"
-version = "0.1.0"
+version = "0.2.0"
 description = "Keeps the Drake plugin injected into the League of Legends client."
 authors = ["David William"]
 license = "MIT"
@@ -25,6 +25,12 @@ winreg = "0.52"
 rand = "0.8"
 sysinfo = "0.33"
 reqwest = { version = "0.12", features = ["json", "native-tls"] }
+windows-sys = { version = "0.59", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_System_Threading",
+  "Win32_UI_WindowsAndMessaging",
+] }
 
 [dev-dependencies]
 tempfile = "3"
