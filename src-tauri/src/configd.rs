@@ -516,7 +516,13 @@ async fn apply_update(
             return StatusCode::INTERNAL_SERVER_ERROR;
         }
     };
-    match crate::update::apply_if_newer(env!("CARGO_PKG_VERSION"), &relaunch).await {
+    match crate::update::apply_if_newer(
+        env!("CARGO_PKG_VERSION"),
+        &relaunch,
+        crate::update::UpdateTrigger::Manual,
+    )
+    .await
+    {
         Ok(true) => {
             std::thread::sleep(crate::update::HANDOFF_START_GRACE);
             std::process::exit(0);

@@ -9,6 +9,61 @@ pub const RELEASES_LATEST: &str =
 pub const USER_AGENT: &str = "Drake (https://github.com/sluucke/drake-lol)";
 pub const CHECK_EVERY: std::time::Duration = std::time::Duration::from_secs(6 * 60 * 60);
 pub const HANDOFF_START_GRACE: std::time::Duration = std::time::Duration::from_millis(750);
+pub const RETRY_ATTEMPT_AFTER: std::time::Duration = std::time::Duration::from_secs(6 * 60 * 60);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpdateTrigger {
+    Automatic,
+    Manual,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AttemptLog {
+    pub version: String,
+    pub at_unix: u64,
+}
+
+pub fn now_unix() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+pub fn load_attempt(path: &Path) -> Option<AttemptLog> {
+    let raw = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str(&raw).ok()
+}
+
+pub fn save_attempt(path: &Path, log: &AttemptLog) -> std::io::Result<()> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let raw = serde_json::to_string(log).map_err(std::io::Error::other)?;
+    std::fs::write(path, raw)
+}
+
+/// Applying an update exits Drake, so a version that fails to install would be
+/// retried on every launch and the tray could never stay open. An automatic
+/// check therefore gets one attempt per version until the cooldown passes; the
+/// user asking by hand is always honoured.
+pub fn may_apply(
+    trigger: UpdateTrigger,
+    target: &str,
+    last: Option<&AttemptLog>,
+    now_unix: u64,
+) -> bool {
+    if trigger == UpdateTrigger::Manual {
+        return true;
+    }
+    let Some(last) = last else { return true };
+    if last.version != target {
+        return true;
+    }
+    now_unix
+        .checked_sub(last.at_unix)
+        .is_some_and(|elapsed| elapsed >= RETRY_ATTEMPT_AFTER.as_secs())
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpdateError {
@@ -263,7 +318,11 @@ pub fn spawn_handoff(installer: &Path, relaunch: &Path) -> Result<(), UpdateErro
     }
 }
 
-pub async fn apply_if_newer(current: &str, relaunch: &Path) -> Result<bool, UpdateError> {
+pub async fn apply_if_newer(
+    current: &str,
+    relaunch: &Path,
+    trigger: UpdateTrigger,
+) -> Result<bool, UpdateError> {
     let client = http_client()?;
     let release = fetch_latest(&client).await?;
     match plan_update(&release, current) {
@@ -273,9 +332,18 @@ pub async fn apply_if_newer(current: &str, relaunch: &Path) -> Result<bool, Upda
             Ok(false)
         }
         UpdatePlan::Newer { url, filename, version } => {
+            let record = crate::paths::update_attempt_file();
+            if !may_apply(trigger, &version, load_attempt(&record).as_ref(), now_unix()) {
+                eprintln!("[Drake] {version} was already attempted; staying open until the retry window");
+                return Ok(false);
+            }
             eprintln!("[Drake] downloading {version} ({filename})");
             let dest = std::env::temp_dir().join(&filename);
             download_installer(&client, &url, &dest).await?;
+            let log = AttemptLog { version: version.clone(), at_unix: now_unix() };
+            if let Err(e) = save_attempt(&record, &log) {
+                eprintln!("[Drake] could not record the {version} attempt: {e}");
+            }
             spawn_handoff(&dest, relaunch)?;
             Ok(true)
         }
@@ -294,6 +362,66 @@ mod tests {
                 .map(|(name, url)| ReleaseAsset { name: (*name).into(), browser_download_url: (*url).into() })
                 .collect(),
         }
+    }
+
+    fn attempt(version: &str, at_unix: u64) -> AttemptLog {
+        AttemptLog { version: version.into(), at_unix }
+    }
+
+    #[test]
+    fn a_version_that_was_never_attempted_is_applied() {
+        assert!(may_apply(UpdateTrigger::Automatic, "v0.3.8", None, 1_000));
+    }
+
+    #[test]
+    fn an_automatic_check_does_not_retry_a_version_it_just_failed_to_install() {
+        // Drake exits to hand off, so retrying the same failed version on every
+        // launch leaves a tray that cannot stay open. This is the loop.
+        let last = attempt("v0.3.8", 1_000);
+        assert!(!may_apply(UpdateTrigger::Automatic, "v0.3.8", Some(&last), 1_060));
+    }
+
+    #[test]
+    fn an_automatic_check_retries_the_same_version_once_the_cooldown_passes() {
+        let last = attempt("v0.3.8", 1_000);
+        let after = 1_000 + RETRY_ATTEMPT_AFTER.as_secs();
+        assert!(may_apply(UpdateTrigger::Automatic, "v0.3.8", Some(&last), after));
+    }
+
+    #[test]
+    fn a_version_newer_than_the_failed_one_is_applied_immediately() {
+        // A release that fixes the failure must not sit behind the cooldown.
+        let last = attempt("v0.3.8", 1_000);
+        assert!(may_apply(UpdateTrigger::Automatic, "v0.3.9", Some(&last), 1_060));
+    }
+
+    #[test]
+    fn a_clock_that_moved_backwards_does_not_reopen_the_loop() {
+        let last = attempt("v0.3.8", 5_000);
+        assert!(!may_apply(UpdateTrigger::Automatic, "v0.3.8", Some(&last), 1_000));
+    }
+
+    #[test]
+    fn asking_for_an_update_by_hand_ignores_the_cooldown() {
+        let last = attempt("v0.3.8", 1_000);
+        assert!(may_apply(UpdateTrigger::Manual, "v0.3.8", Some(&last), 1_060));
+    }
+
+    #[test]
+    fn an_attempt_survives_the_restart_it_is_meant_to_guard() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("nested").join("update-attempt.json");
+        save_attempt(&path, &attempt("v0.3.8", 1_000)).unwrap();
+        assert_eq!(load_attempt(&path), Some(attempt("v0.3.8", 1_000)));
+    }
+
+    #[test]
+    fn an_unreadable_attempt_record_is_treated_as_no_attempt() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("update-attempt.json");
+        std::fs::write(&path, b"not json").unwrap();
+        assert_eq!(load_attempt(&path), None);
+        assert_eq!(load_attempt(&tmp.path().join("missing.json")), None);
     }
 
     #[test]
