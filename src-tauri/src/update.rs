@@ -112,24 +112,45 @@ fn ps_literal(s: &str) -> String {
     format!("'{}'", s.replace('\'', "''"))
 }
 
-pub fn handoff_script(installer: &Path, relaunch: &Path) -> String {
+/// Drake has already exited by the time this runs, so the relaunch sits outside
+/// the try/catch and after it: a declined UAC prompt or a failed install must
+/// still leave the user with a tray. Never reintroduce an early exit above it.
+pub fn handoff_script(installer: &Path, relaunch: &Path, log: &Path) -> String {
     format!(
         r#"$ErrorActionPreference = 'Stop'
 $installer = {installer}
 $relaunch = {relaunch}
+$log = {log}
+function Write-Step($message) {{
+  "{{0}} {{1}}" -f (Get-Date -Format o), $message | Out-File -FilePath $log -Append -Encoding utf8
+}}
 while (Get-Process -Name Drake -ErrorAction SilentlyContinue) {{
   Start-Sleep -Milliseconds 200
 }}
-$proc = Start-Process -FilePath $installer -ArgumentList '/S' -Verb RunAs -Wait -PassThru
-if ($null -eq $proc -or $proc.ExitCode -ne 0) {{
-  exit 1
+try {{
+  Write-Step 'running the installer'
+  $proc = Start-Process -FilePath $installer -ArgumentList '/S' -Verb RunAs -Wait -PassThru
+  $code = if ($null -eq $proc) {{ $null }} else {{ $proc.ExitCode }}
+  if ($null -ne $code -and $code -ne 0) {{
+    Write-Step "the installer exited with $code"
+  }} else {{
+    Write-Step 'the installer finished'
+  }}
+}} catch {{
+  Write-Step "the installer could not start: $($_.Exception.Message)"
 }}
-if (Test-Path -LiteralPath $relaunch) {{
+if (Get-Process -Name Drake -ErrorAction SilentlyContinue) {{
+  Write-Step 'Drake is already running again'
+}} elseif (Test-Path -LiteralPath $relaunch) {{
+  Write-Step 'relaunching Drake'
   Start-Process -FilePath $relaunch
+}} else {{
+  Write-Step 'nothing left to relaunch'
 }}
 "#,
         installer = ps_literal(&installer.to_string_lossy()),
         relaunch = ps_literal(&relaunch.to_string_lossy()),
+        log = ps_literal(&log.to_string_lossy()),
     )
 }
 
@@ -164,7 +185,8 @@ pub async fn download_installer(
 }
 
 pub fn spawn_handoff(installer: &Path, relaunch: &Path) -> Result<(), UpdateError> {
-    let script = handoff_script(installer, relaunch);
+    let log: PathBuf = std::env::temp_dir().join("drake-update.log");
+    let script = handoff_script(installer, relaunch, &log);
     let ps1: PathBuf = std::env::temp_dir().join("drake-update.ps1");
     std::fs::write(&ps1, script).map_err(UpdateError::Write)?;
 
@@ -288,12 +310,17 @@ mod tests {
         assert!(matches!(plan_update(&rel, "0.1.0"), UpdatePlan::Newer { .. }));
     }
 
-    #[test]
-    fn the_handoff_waits_for_drake_then_runs_the_installer_silently() {
-        let script = handoff_script(
+    fn a_handoff() -> String {
+        handoff_script(
             Path::new(r"C:\Temp\Drake_0.2.0_x64-setup.exe"),
             Path::new(r"C:\Program Files\Drake\Drake.exe"),
-        );
+            Path::new(r"C:\Temp\drake-update.log"),
+        )
+    }
+
+    #[test]
+    fn the_handoff_waits_for_drake_then_runs_the_installer_silently() {
+        let script = a_handoff();
         assert!(script.contains("Get-Process -Name Drake"));
         assert!(script.contains("-Verb RunAs"));
         assert!(script.contains("/S"));
@@ -301,6 +328,46 @@ mod tests {
         assert!(script.contains("ExitCode"));
         assert!(script.contains(r"C:\Temp\Drake_0.2.0_x64-setup.exe"));
         assert!(script.contains(r"C:\Program Files\Drake\Drake.exe"));
+    }
+
+    #[test]
+    fn the_handoff_relaunches_drake_even_when_the_installer_cannot_start() {
+        // Declining the UAC prompt makes Start-Process throw. Leaving the user
+        // with no tray at all is never an acceptable outcome of an update.
+        let script = a_handoff();
+
+        assert!(script.contains("catch"), "must not die on a throw: {script}");
+        assert!(
+            !script.contains("exit 1"),
+            "an early exit skips the relaunch: {script}"
+        );
+
+        let catch_at = script.find("catch").expect("catch block");
+        let relaunch_at = script
+            .rfind("Start-Process -FilePath $relaunch")
+            .expect("relaunch call");
+        assert!(
+            relaunch_at > catch_at,
+            "relaunch must run after the failure is handled: {script}"
+        );
+    }
+
+    #[test]
+    fn an_unknown_exit_code_is_not_reported_as_a_failed_install() {
+        // Start-Process -Verb RunAs -PassThru can hand back a null ExitCode even
+        // when the install succeeded, and `$null -ne 0` would call that a failure.
+        let script = a_handoff();
+        assert!(
+            script.contains("$null -ne $code"),
+            "must only fail on an explicit non-zero code: {script}"
+        );
+    }
+
+    #[test]
+    fn the_handoff_records_each_step_so_a_silent_failure_is_visible() {
+        let script = a_handoff();
+        assert!(script.contains(r"C:\Temp\drake-update.log"));
+        assert!(script.contains("Out-File"));
     }
 
     #[test]
