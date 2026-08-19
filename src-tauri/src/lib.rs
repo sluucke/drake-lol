@@ -71,6 +71,7 @@ async fn try_apply_update(
     match update::apply_if_newer(env!("CARGO_PKG_VERSION"), &relaunch).await {
         Ok(true) => {
             *note.lock().unwrap() = Some("Installing update".into());
+            std::thread::sleep(update::HANDOFF_START_GRACE);
             std::process::exit(0);
         }
         Ok(false) => {
@@ -369,7 +370,6 @@ pub fn run() {
             let periodic_note = update_note.clone();
             let periodic_shutdown = shutting_down.clone();
             tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(update::FIRST_CHECK_AFTER).await;
                 loop {
                     if periodic_shutdown.load(Ordering::SeqCst) {
                         break;
