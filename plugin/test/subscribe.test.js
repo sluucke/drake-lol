@@ -80,4 +80,15 @@ describe('subscribe', () => {
     unsubscribe();
     expect(unobserve).toHaveBeenCalledWith('/route', observer);
   });
+
+  it('tells the handler the resource is gone on a delete event', () => {
+    const observe = vi.fn();
+    globalThis.socket = { observe, unobserve: vi.fn() };
+    const handler = vi.fn();
+
+    subscribe('/lol-champ-select/v1/session', handler, { fetchImpl: vi.fn() });
+    const observer = observe.mock.calls[0][1];
+    observer({ eventType: 'Delete', data: { myTeam: [{ cellId: 0 }] } });
+    expect(handler).toHaveBeenCalledWith(null);
+  });
 });

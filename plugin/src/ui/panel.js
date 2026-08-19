@@ -103,7 +103,7 @@ export function renderAutoAccept(settings, { disabled, maxDelayMs }) {
     </div>`;
 }
 
-export function renderQueue({ provider }) {
+export function renderQueue({ provider, settings = {}, disabled }) {
   const options = PROVIDERS.map(
     (p) =>
       `<button class="pill" data-provider="${p.id}" aria-selected="${p.id === provider}">${p.label}</button>`,
@@ -125,6 +125,16 @@ export function renderQueue({ provider }) {
     <div class="status-actions">
       <button class="hextech-btn" id="reveal">Reveal Lobby</button>
     </div>
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'queue_team_reveal_in_client',
+      label: 'Reveal my team in-client',
+      help: 'Rewrites ally rows and enables the Ctrl+Shift+D cards overlay while in champ select.',
+      checked: !!settings.queue_team_reveal_in_client,
+      disabled,
+    })}
 
     <div class="rule"></div>
 
@@ -203,6 +213,7 @@ function renderPickOrderSummary(list, pickIds) {
         <span class="pick-order-num">${index + 1}</span>
         <img class="pick-order-icon" src="${iconUrl(id)}" alt="">
         ${championName(list, id)}
+        <button class="close pick-order-remove" type="button" data-remove-pick="${id}" aria-label="Remove">✕</button>
       </span>`,
     )
     .join('');
@@ -399,6 +410,18 @@ function renderRankTab(lol) {
       <span class="status-actions-spacer"></span>
       <button class="hextech-btn hextech-btn-muted" id="rank-clear">Reset</button>
       <button class="hextech-btn" id="rank-save">Apply</button>
+    </div>
+
+    <div class="rule"></div>
+    <div class="field-head">
+      <span class="field-label">Challenge badges</span>
+    </div>
+    <p class="check-help" style="margin:0 0 10px">
+      The three tokens on your profile. Clone copies the first into all three slots.
+    </p>
+    <div class="status-actions">
+      <button class="hextech-btn hextech-btn-muted" id="badges-remove">Remove badges</button>
+      <button class="hextech-btn" id="badges-clone">Clone first to all 3</button>
     </div>`;
 }
 

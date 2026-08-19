@@ -9,10 +9,14 @@ import { startUI } from './ui/index.js';
 import { startUnlocks } from './features/startUnlocks.js';
 import { startChampSelectAutomation } from './features/autoPick.js';
 import { makeChampSelect } from './features/champSelect.js';
+import { startInGameIdle } from './features/inGameIdle.js';
+import { makePresence } from './features/presence.js';
+import { startProfileRankRefresh } from './features/profileRank.js';
 
 const TAG = '[Drake]';
 
 const lcu = makeLcu();
+const presence = makePresence({ lcu });
 
 
 
@@ -20,13 +24,31 @@ const lcu = makeLcu();
 
 
 let stopFeatures = () => {};
+let stopProfileRank = () => {};
 let champSelectCtl = null;
 let ui = null;
 let currentSettings = {};
+let idleInGame = false;
+
+function sleepPlugin() {
+  stopFeatures();
+  if (champSelectCtl) {
+    champSelectCtl.stop();
+    champSelectCtl = null;
+  }
+  if (ui) ui.setIdle(true);
+}
+
+function wakePlugin() {
+  if (ui) ui.setIdle(false);
+  wireFeatures(currentSettings);
+}
 
 function wireFeatures(settings) {
   currentSettings = settings;
   stopFeatures();
+  stopProfileRank();
+  if (idleInGame) return;
   const stopAutoAccept = startAutoAccept({
     enabled: !!settings.auto_accept,
     delayMs: settings.auto_accept_delay_ms || 0,
@@ -43,6 +65,7 @@ function wireFeatures(settings) {
       getSettings: () => currentSettings,
       champSelect: makeChampSelect({ lcu }),
       subscribe,
+      getSession: () => lcu.get('/lol-champ-select/v1/session'),
       onResult: (d, r) =>
         console.log(TAG, d.kind, d.championId, r.ok ? 'ok' : 'failed: ' + r.reason),
       onSession: (session) => ui && ui.setChampSelect(session),
@@ -57,7 +80,14 @@ function wireFeatures(settings) {
     
     onFirstUnlock: (n) => console.log(TAG, 'unlocked the status message input', n > 1 ? n : ''),
   });
+  stopProfileRank = startProfileRankRefresh({
+    subscribe,
+    getSettings: () => currentSettings,
+    presence,
+    lcu,
+  });
   stopFeatures = () => {
+    stopProfileRank();
     if (typeof stopAutoAccept === 'function') stopAutoAccept();
     stopUnlocks();
   };
@@ -92,6 +122,15 @@ async function start() {
 
   ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
   wireFeatures(cfg.settings);
+  startInGameIdle({
+    subscribe,
+    onChange(idle) {
+      idleInGame = idle;
+      console.log(TAG, idle ? 'idle in game' : 'active in client');
+      if (idle) sleepPlugin();
+      else wakePlugin();
+    },
+  });
   console.log(TAG, 'UI ready — press Ctrl+D');
 }
 

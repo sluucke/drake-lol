@@ -146,6 +146,56 @@ describe('mountUI', () => {
     expect(ui.isOpen()).toBe(false);
   });
 
+  it('calls team reveal cards toggle on Ctrl+Shift+D only', () => {
+    const onTeamRevealCardsToggle = vi.fn();
+    const ui = mountUI({ doc, win, render: () => '<div></div>', onTeamRevealCardsToggle });
+
+    win.dispatch('keydown', {
+      ctrlKey: true,
+      shiftKey: true,
+      key: 'D',
+      code: 'KeyD',
+      target: { tagName: 'BODY', isContentEditable: false },
+      preventDefault() {},
+    });
+
+    expect(onTeamRevealCardsToggle).toHaveBeenCalledTimes(1);
+    expect(ui.isOpen()).toBe(false);
+  });
+
+  it('does not toggle team reveal cards on Ctrl+D', () => {
+    const onTeamRevealCardsToggle = vi.fn();
+    const ui = mountUI({ doc, win, render: () => '<div></div>', onTeamRevealCardsToggle });
+
+    win.dispatch('keydown', {
+      ctrlKey: true,
+      shiftKey: false,
+      key: 'd',
+      code: 'KeyD',
+      target: { tagName: 'BODY', isContentEditable: false },
+      preventDefault() {},
+    });
+
+    expect(onTeamRevealCardsToggle).not.toHaveBeenCalled();
+    expect(ui.isOpen()).toBe(true);
+  });
+
+  it('toggles team reveal cards while typing in inputs', () => {
+    const onTeamRevealCardsToggle = vi.fn();
+    mountUI({ doc, win, render: () => '<div></div>', onTeamRevealCardsToggle });
+
+    win.dispatch('keydown', {
+      ctrlKey: true,
+      shiftKey: true,
+      key: 'D',
+      code: 'KeyD',
+      target: { tagName: 'INPUT', isContentEditable: false },
+      preventDefault() {},
+    });
+
+    expect(onTeamRevealCardsToggle).toHaveBeenCalledTimes(1);
+  });
+
   it('does not preventDefault on keys it does not handle', () => {
 
     mountUI({ doc, win, render: () => '<div></div>' });
@@ -154,5 +204,28 @@ describe('mountUI', () => {
     win.dispatch('keydown', { ctrlKey: true, key: 'k', preventDefault });
 
     expect(preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('ignores hotkeys while idle in game', () => {
+    const onTeamRevealCardsToggle = vi.fn();
+    const ui = mountUI({
+      doc,
+      win,
+      render: () => '<div></div>',
+      onTeamRevealCardsToggle,
+      isIdle: () => true,
+    });
+
+    win.dispatch('keydown', { ctrlKey: true, key: 'd', preventDefault() {} });
+    win.dispatch('keydown', {
+      ctrlKey: true,
+      shiftKey: true,
+      key: 'D',
+      code: 'KeyD',
+      preventDefault() {},
+    });
+
+    expect(ui.isOpen()).toBe(false);
+    expect(onTeamRevealCardsToggle).not.toHaveBeenCalled();
   });
 });

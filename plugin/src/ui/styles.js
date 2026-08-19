@@ -516,12 +516,19 @@ export const CSS = `
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 3px 4px 3px 10px;
   font-size: 12px;
   color: #f0e6d2;
   background: rgba(1, 10, 19, 0.55);
   border: 1px solid #785a28;
   border-radius: 4px;
+}
+.pick-order-remove.close {
+  width: 18px;
+  height: 18px;
+  border: none;
+  font-size: 11px;
+  flex-shrink: 0;
 }
 .pick-order-num {
   display: inline-flex;
@@ -797,6 +804,298 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   height: 9px;
   opacity: 0.55;
   flex-shrink: 0;
+}
+
+.team-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  pointer-events: auto;
+  z-index: 2147483646;
+  font-family: ${BODY};
+  color: #a09b8c;
+}
+.team-reveal-overlay[hidden] { display: none; }
+.team-reveal-status {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483645;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 7px 10px 10px;
+  overflow: hidden;
+  background: rgba(1, 10, 19, 0.78);
+  border: 1px solid rgba(200, 170, 109, 0.32);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color: #f0e6d2;
+  font-family: ${BODY};
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  pointer-events: auto;
+}
+.team-reveal-status-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: left center;
+  background: #c8aa6d;
+  pointer-events: none;
+}
+@keyframes team-reveal-status-shrink {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.team-reveal-status[hidden] { display: none; }
+.team-reveal-status-spinner {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  color: #c8aa6d;
+  flex-shrink: 0;
+}
+.team-reveal-spinner-svg {
+  display: block;
+  animation: team-reveal-spin 0.8s linear infinite;
+}
+@keyframes team-reveal-spin {
+  to { transform: rotate(360deg); }
+}
+.team-reveal-status-text {
+  line-height: 1.25;
+}
+.team-reveal-status-open {
+  appearance: none;
+  border: 1px solid rgba(200, 170, 109, 0.55);
+  background: rgba(200, 170, 109, 0.12);
+  color: #c8aa6d;
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.team-reveal-status-open:hover {
+  background: rgba(200, 170, 109, 0.22);
+}
+.team-reveal-shell {
+  position: relative;
+  box-sizing: border-box;
+  width: min(980px, 94vw);
+  max-height: 86vh;
+  padding: 36px 16px 16px;
+  background:
+    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(8, 30, 60, 0.55) 0%, transparent 58%),
+    #010a13;
+  border: 2px solid transparent;
+  border-image: linear-gradient(to bottom, #c8aa6d, #7a5c29);
+  border-image-slice: 1;
+  box-shadow: 0 0 32px rgba(0, 0, 0, 0.8);
+}
+.team-reveal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  appearance: none;
+  border: 1px solid rgba(200, 170, 109, 0.4);
+  background: rgba(1, 10, 19, 0.65);
+  color: #c8aa6d;
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  cursor: pointer;
+  z-index: 2;
+}
+.team-reveal-close:hover {
+  background: rgba(200, 170, 109, 0.16);
+}
+.team-reveal-panel {
+  max-height: calc(86vh - 36px);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.team-reveal-card {
+  border: 1px solid #3c3c41;
+  background: linear-gradient(to bottom, rgba(30, 35, 40, 0.35), rgba(0, 0, 0, 0.45));
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.team-reveal-card.is-you {
+  border-color: #785a28;
+  box-shadow: inset 0 0 0 1px rgba(200, 170, 110, 0.18);
+}
+.team-reveal-card-head {
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1e2328;
+}
+.team-reveal-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-reveal-role-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  object-fit: contain;
+  opacity: 0.92;
+}
+.team-reveal-card-title {
+  color: #f0e6d2;
+  font-family: ${DISPLAY};
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.team-reveal-you {
+  color: #c8aa6e;
+  font-family: ${BODY};
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 600;
+}
+.team-reveal-ranks {
+  display: grid;
+  gap: 8px;
+}
+.team-reveal-rank-block {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid #1e2328;
+}
+.team-reveal-rank-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-reveal-rank-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.team-reveal-rank-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.team-reveal-rank-queue {
+  color: #5c5b57;
+  font-family: ${DISPLAY};
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.team-reveal-rank-tier {
+  color: #f0e6d2;
+  font-family: ${BODY};
+  font-size: 12px;
+  font-weight: 600;
+}
+.team-reveal-card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+  border-top: 1px solid #1e2328;
+}
+.team-reveal-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  margin-top: 4px;
+  gap: 10px;
+}
+.team-reveal-card-label {
+  color: #5c5b57;
+  flex-shrink: 0;
+  font-family: ${DISPLAY};
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.team-reveal-card-value {
+  color: #a09b8c;
+  text-align: right;
+  font-family: ${BODY};
+}
+.team-reveal-champ {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.team-reveal-champ-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.team-reveal-recent-games {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.team-reveal-recent-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 28px;
+}
+.team-reveal-recent-game .team-reveal-champ-icon {
+  width: 22px;
+  height: 22px;
+  box-shadow: 0 0 0 1px #1e2328;
+}
+.team-reveal-recent-game.is-win .team-reveal-champ-icon {
+  box-shadow: 0 0 0 1px #0acbe6;
+}
+.team-reveal-recent-game.is-loss .team-reveal-champ-icon {
+  box-shadow: 0 0 0 1px #c33c3c;
+}
+.team-reveal-recent-kda {
+  color: #a09b8c;
+  font-family: ${BODY};
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.team-reveal-recent-empty {
+  color: #5c5b57;
+}
+.wl-win { color: #0acbe6; }
+.wl-loss { color: #c33c3c; }
+.drake-reveal-name {
+  color: inherit;
+  display: block;
+  white-space: nowrap;
+}
+.drake-reveal-stats {
+  color: #a09b8c;
+  font-size: 10px;
+  display: block;
+  line-height: 1.05;
+  margin-top: 1px;
+  white-space: nowrap;
 }
 
 .hextech-btn-danger {

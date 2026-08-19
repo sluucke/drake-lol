@@ -1,4 +1,4 @@
-import { matchesToggle, matchesClose } from './hotkey.js';
+import { matchesToggle, matchesClose, matchesTeamRevealCardsToggle } from './hotkey.js';
 
 export const HOST_ID = 'drake-ui-host';
 
@@ -20,14 +20,14 @@ const SENTINEL = '__drakeUIMounted';
 
 
 
-export function mountUI({ doc, win, render, onOpenChange, onMount }) {
+export function mountUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle }) {
   if (win[SENTINEL]) return win[SENTINEL];
-  const ui = createUI({ doc, win, render, onOpenChange, onMount });
+  const ui = createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle });
   win[SENTINEL] = ui;
   return ui;
 }
 
-function createUI({ doc, win, render, onOpenChange, onMount }) {
+function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle }) {
   let host = null;
   let open = false;
 
@@ -79,9 +79,14 @@ function createUI({ doc, win, render, onOpenChange, onMount }) {
   win.addEventListener(
     'keydown',
     (event) => {
+      if (isIdle && isIdle()) return;
+      if (event.repeat) return;
       if (matchesToggle(event)) {
         event.preventDefault();
         api.toggle();
+      } else if (matchesTeamRevealCardsToggle(event)) {
+        event.preventDefault();
+        if (onTeamRevealCardsToggle) onTeamRevealCardsToggle();
       } else if (open && matchesClose(event)) {
         event.preventDefault();
         api.close();

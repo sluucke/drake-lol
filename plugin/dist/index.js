@@ -177,7 +177,17 @@
     let unobserve = () => {
     };
     if (push) {
-      const observer = (message) => handler(message && message.data);
+      const observer = (message) => {
+        if (stopped) return;
+        if (!message || message.eventType === "Delete" || message.data == null) {
+          idle = true;
+          handler(null);
+          return;
+        }
+        idle = false;
+        seen = true;
+        handler(message.data);
+      };
       socket.observe(route, observer);
       unobserve = () => {
         if (typeof socket !== "undefined" && socket && typeof socket.unobserve === "function") {
@@ -220,8 +230,15 @@
   }
   function matchesToggle(event) {
     if (!event.ctrlKey) return false;
+    if (event.shiftKey) return false;
     if (event.key !== "d" && event.key !== "D") return false;
     return !isTextEntry(event.target);
+  }
+  function matchesTeamRevealCardsToggle(event) {
+    if (!event.ctrlKey) return false;
+    if (!event.shiftKey) return false;
+    if (event.key !== "d" && event.key !== "D" && event.code !== "KeyD") return false;
+    return true;
   }
   function matchesClose(event) {
     return event.key === "Escape";
@@ -230,13 +247,13 @@
   // src/ui/mount.js
   var HOST_ID = "drake-ui-host";
   var SENTINEL = "__drakeUIMounted";
-  function mountUI({ doc, win, render, onOpenChange, onMount }) {
+  function mountUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle }) {
     if (win[SENTINEL]) return win[SENTINEL];
-    const ui2 = createUI({ doc, win, render, onOpenChange, onMount });
+    const ui2 = createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle });
     win[SENTINEL] = ui2;
     return ui2;
   }
-  function createUI({ doc, win, render, onOpenChange, onMount }) {
+  function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle }) {
     let host = null;
     let open = false;
     const api = {
@@ -275,9 +292,14 @@
     win.addEventListener(
       "keydown",
       (event) => {
+        if (isIdle && isIdle()) return;
+        if (event.repeat) return;
         if (matchesToggle(event)) {
           event.preventDefault();
           api.toggle();
+        } else if (matchesTeamRevealCardsToggle(event)) {
+          event.preventDefault();
+          if (onTeamRevealCardsToggle) onTeamRevealCardsToggle();
         } else if (open && matchesClose(event)) {
           event.preventDefault();
           api.close();
@@ -813,12 +835,19 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 3px 4px 3px 10px;
   font-size: 12px;
   color: #f0e6d2;
   background: rgba(1, 10, 19, 0.55);
   border: 1px solid #785a28;
   border-radius: 4px;
+}
+.pick-order-remove.close {
+  width: 18px;
+  height: 18px;
+  border: none;
+  font-size: 11px;
+  flex-shrink: 0;
 }
 .pick-order-num {
   display: inline-flex;
@@ -1094,6 +1123,298 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   height: 9px;
   opacity: 0.55;
   flex-shrink: 0;
+}
+
+.team-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  pointer-events: auto;
+  z-index: 2147483646;
+  font-family: ${BODY};
+  color: #a09b8c;
+}
+.team-reveal-overlay[hidden] { display: none; }
+.team-reveal-status {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483645;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 7px 10px 10px;
+  overflow: hidden;
+  background: rgba(1, 10, 19, 0.78);
+  border: 1px solid rgba(200, 170, 109, 0.32);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color: #f0e6d2;
+  font-family: ${BODY};
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  pointer-events: auto;
+}
+.team-reveal-status-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: left center;
+  background: #c8aa6d;
+  pointer-events: none;
+}
+@keyframes team-reveal-status-shrink {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.team-reveal-status[hidden] { display: none; }
+.team-reveal-status-spinner {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  color: #c8aa6d;
+  flex-shrink: 0;
+}
+.team-reveal-spinner-svg {
+  display: block;
+  animation: team-reveal-spin 0.8s linear infinite;
+}
+@keyframes team-reveal-spin {
+  to { transform: rotate(360deg); }
+}
+.team-reveal-status-text {
+  line-height: 1.25;
+}
+.team-reveal-status-open {
+  appearance: none;
+  border: 1px solid rgba(200, 170, 109, 0.55);
+  background: rgba(200, 170, 109, 0.12);
+  color: #c8aa6d;
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.team-reveal-status-open:hover {
+  background: rgba(200, 170, 109, 0.22);
+}
+.team-reveal-shell {
+  position: relative;
+  box-sizing: border-box;
+  width: min(980px, 94vw);
+  max-height: 86vh;
+  padding: 36px 16px 16px;
+  background:
+    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(8, 30, 60, 0.55) 0%, transparent 58%),
+    #010a13;
+  border: 2px solid transparent;
+  border-image: linear-gradient(to bottom, #c8aa6d, #7a5c29);
+  border-image-slice: 1;
+  box-shadow: 0 0 32px rgba(0, 0, 0, 0.8);
+}
+.team-reveal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  appearance: none;
+  border: 1px solid rgba(200, 170, 109, 0.4);
+  background: rgba(1, 10, 19, 0.65);
+  color: #c8aa6d;
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  cursor: pointer;
+  z-index: 2;
+}
+.team-reveal-close:hover {
+  background: rgba(200, 170, 109, 0.16);
+}
+.team-reveal-panel {
+  max-height: calc(86vh - 36px);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.team-reveal-card {
+  border: 1px solid #3c3c41;
+  background: linear-gradient(to bottom, rgba(30, 35, 40, 0.35), rgba(0, 0, 0, 0.45));
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.team-reveal-card.is-you {
+  border-color: #785a28;
+  box-shadow: inset 0 0 0 1px rgba(200, 170, 110, 0.18);
+}
+.team-reveal-card-head {
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1e2328;
+}
+.team-reveal-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-reveal-role-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  object-fit: contain;
+  opacity: 0.92;
+}
+.team-reveal-card-title {
+  color: #f0e6d2;
+  font-family: ${DISPLAY};
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.team-reveal-you {
+  color: #c8aa6e;
+  font-family: ${BODY};
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 600;
+}
+.team-reveal-ranks {
+  display: grid;
+  gap: 8px;
+}
+.team-reveal-rank-block {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid #1e2328;
+}
+.team-reveal-rank-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-reveal-rank-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.team-reveal-rank-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.team-reveal-rank-queue {
+  color: #5c5b57;
+  font-family: ${DISPLAY};
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.team-reveal-rank-tier {
+  color: #f0e6d2;
+  font-family: ${BODY};
+  font-size: 12px;
+  font-weight: 600;
+}
+.team-reveal-card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+  border-top: 1px solid #1e2328;
+}
+.team-reveal-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  margin-top: 4px;
+  gap: 10px;
+}
+.team-reveal-card-label {
+  color: #5c5b57;
+  flex-shrink: 0;
+  font-family: ${DISPLAY};
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.team-reveal-card-value {
+  color: #a09b8c;
+  text-align: right;
+  font-family: ${BODY};
+}
+.team-reveal-champ {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.team-reveal-champ-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.team-reveal-recent-games {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.team-reveal-recent-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 28px;
+}
+.team-reveal-recent-game .team-reveal-champ-icon {
+  width: 22px;
+  height: 22px;
+  box-shadow: 0 0 0 1px #1e2328;
+}
+.team-reveal-recent-game.is-win .team-reveal-champ-icon {
+  box-shadow: 0 0 0 1px #0acbe6;
+}
+.team-reveal-recent-game.is-loss .team-reveal-champ-icon {
+  box-shadow: 0 0 0 1px #c33c3c;
+}
+.team-reveal-recent-kda {
+  color: #a09b8c;
+  font-family: ${BODY};
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.team-reveal-recent-empty {
+  color: #5c5b57;
+}
+.wl-win { color: #0acbe6; }
+.wl-loss { color: #c33c3c; }
+.drake-reveal-name {
+  color: inherit;
+  display: block;
+  white-space: nowrap;
+}
+.drake-reveal-stats {
+  color: #a09b8c;
+  font-size: 10px;
+  display: block;
+  line-height: 1.05;
+  margin-top: 1px;
+  white-space: nowrap;
 }
 
 .hextech-btn-danger {
@@ -1459,7 +1780,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       </p>
     </div>`;
   }
-  function renderQueue({ provider }) {
+  function renderQueue({ provider, settings = {}, disabled }) {
     const options = PROVIDERS.map(
       (p) => `<button class="pill" data-provider="${p.id}" aria-selected="${p.id === provider}">${p.label}</button>`
     ).join("");
@@ -1479,6 +1800,16 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     <div class="status-actions">
       <button class="hextech-btn" id="reveal">Reveal Lobby</button>
     </div>
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: "queue_team_reveal_in_client",
+      label: "Reveal my team in-client",
+      help: "Rewrites ally rows and enables the Ctrl+Shift+D cards overlay while in champ select.",
+      checked: !!settings.queue_team_reveal_in_client,
+      disabled
+    })}
 
     <div class="rule"></div>
 
@@ -1545,6 +1876,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         <span class="pick-order-num">${index + 1}</span>
         <img class="pick-order-icon" src="${iconUrl(id)}" alt="">
         ${championName(list, id)}
+        <button class="close pick-order-remove" type="button" data-remove-pick="${id}" aria-label="Remove">\u2715</button>
       </span>`
     ).join("");
     return `<div class="pick-order">${items}</div>`;
@@ -1702,6 +2034,18 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       <span class="status-actions-spacer"></span>
       <button class="hextech-btn hextech-btn-muted" id="rank-clear">Reset</button>
       <button class="hextech-btn" id="rank-save">Apply</button>
+    </div>
+
+    <div class="rule"></div>
+    <div class="field-head">
+      <span class="field-label">Challenge badges</span>
+    </div>
+    <p class="check-help" style="margin:0 0 10px">
+      The three tokens on your profile. Clone copies the first into all three slots.
+    </p>
+    <div class="status-actions">
+      <button class="hextech-btn hextech-btn-muted" id="badges-remove">Remove badges</button>
+      <button class="hextech-btn" id="badges-clone">Clone first to all 3</button>
     </div>`;
   }
   var SKIN_TILE = { perRow: 5, rowHeight: 92, viewportHeight: 300 };
@@ -1914,20 +2258,30 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   function actionRoute(actionId) {
     return `/lol-champ-select/v1/session/actions/${actionId}`;
   }
+  function actionCompleteRoute(actionId) {
+    return `/lol-champ-select/v1/session/actions/${actionId}/complete`;
+  }
   function eachAction(session) {
     const phases = session && session.actions || [];
     return phases.flat ? phases.flat() : [].concat(...phases);
   }
-  function findMyAction(session, type) {
+  function findMyQueuedAction(session, type) {
     if (!session || session.localPlayerCellId === void 0) return null;
     for (const a of eachAction(session)) {
       if (a.type !== type) continue;
       if (a.actorCellId !== session.localPlayerCellId) continue;
       if (a.completed) continue;
-      if (!a.isInProgress) continue;
       return a;
     }
     return null;
+  }
+  function findMyAction(session, type) {
+    const action = findMyQueuedAction(session, type);
+    if (!action || !action.isInProgress) return null;
+    return action;
+  }
+  function isPlanningPhase(session) {
+    return String(session?.timer?.phase || "") === "PLANNING";
   }
   function unavailableChampionIds(session) {
     const ids = /* @__PURE__ */ new Set();
@@ -1940,13 +2294,30 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     }
     return ids;
   }
+  function accepted(res) {
+    if (!res) return true;
+    if (typeof res.ok === "boolean") return res.ok;
+    return res.ok !== false;
+  }
   function makeChampSelect({ lcu: lcu2 }) {
     return {
-      async commit(actionId, championId, completed) {
+      async getSession() {
+        return lcu2.get(SESSION_ROUTE);
+      },
+      async commit(actionId, championId, completed, type = "pick") {
         try {
-          const res = await lcu2.patch(actionRoute(actionId), { championId, completed });
-          if (res && res.ok === false) {
-            return { ok: false, reason: `the client refused it (${res.status})` };
+          const pick = await lcu2.patch(actionRoute(actionId), { championId });
+          if (!accepted(pick)) {
+            return { ok: false, reason: `the client refused it (${pick.status})` };
+          }
+          if (!completed) return { ok: true };
+          try {
+            await lcu2.post(actionCompleteRoute(actionId));
+          } catch {
+          }
+          const locked = await lcu2.patch(actionRoute(actionId), { championId, completed: true });
+          if (!accepted(locked)) {
+            return { ok: false, reason: `the client refused it (${locked.status})` };
           }
           return { ok: true };
         } catch (e) {
@@ -2131,7 +2502,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       async dodge() {
         let reason = "still in champ select";
         for (let i = 0; i < attempts; i += 1) {
-          let accepted = false;
+          let accepted3 = false;
           for (const step of steps) {
             try {
               onStatus(`attempt ${i + 1}: ${step.name}\u2026`);
@@ -2143,7 +2514,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
                 onStatus(`attempt ${i + 1}: ${step.name} HTTP ${httpStatus}${hint ? ` (${hint})` : ""}`);
                 continue;
               }
-              accepted = true;
+              accepted3 = true;
               onStatus(
                 `attempt ${i + 1}: ${step.name} HTTP ${httpStatus || 200}${hint ? ` (${hint})` : ""}`
               );
@@ -2152,7 +2523,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
               onStatus(`attempt ${i + 1}: ${step.name} ${reason}`);
             }
           }
-          if (!accepted) {
+          if (!accepted3) {
             if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
             continue;
           }
@@ -2207,6 +2578,162 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         }
       }
     };
+  }
+
+  // src/features/challenges.js
+  var CHALLENGE_PREFS_ROUTE = "/lol-challenges/v1/update-player-preferences";
+  var CHALLENGE_CLIENT_STATE_ROUTE = "/lol-challenges/v1/client-state";
+  var CHALLENGE_SUMMARY_ROUTE = "/lol-challenges/v1/summary-player-data/local-player";
+  var READ_ROUTES = [CHALLENGE_CLIENT_STATE_ROUTE, CHAT_ME, CHALLENGE_SUMMARY_ROUTE];
+  function readChallengeIdSlots(payload) {
+    if (!payload) return [];
+    const lol = payload?.lol ?? (payload?.challengeTokensSelected !== void 0 ? payload : null);
+    const tokenStr = (typeof lol === "object" && lol ? lol.challengeTokensSelected : void 0) ?? payload?.challengeTokensSelected;
+    if (typeof tokenStr === "string" && tokenStr.trim()) {
+      return tokenStr.split(",").map((part) => Number(part.trim()) || 0);
+    }
+    const ids = payload?.preferences?.challengeIds ?? payload?.playerPreferences?.challengeIds ?? payload?.challengeIds ?? [];
+    if (!Array.isArray(ids)) return [];
+    return ids.map((id) => {
+      const num = Number(id);
+      return Number.isFinite(num) ? num : 0;
+    });
+  }
+  function readFirstSlotChallengeId(payload) {
+    const first = readChallengeIdSlots(payload)[0];
+    return first > 0 ? first : 0;
+  }
+  function accepted2(res) {
+    return !res || res.ok !== false;
+  }
+  function makeChallenges({ lcu: lcu2 }) {
+    async function writeIds(ids) {
+      try {
+        const res = await lcu2.post(CHALLENGE_PREFS_ROUTE, { challengeIds: ids });
+        if (!accepted2(res)) {
+          return { ok: false, reason: `the client refused it (${res.status})` };
+        }
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, reason: `could not reach the client (${e.message})` };
+      }
+    }
+    async function readFirstBadgeId() {
+      for (const route of READ_ROUTES) {
+        try {
+          const raw = await lcu2.get(route);
+          const payload = route === CHAT_ME ? readLol(raw) : raw;
+          const first = readFirstSlotChallengeId(payload);
+          if (first) return first;
+        } catch {
+        }
+      }
+      return 0;
+    }
+    return {
+      removeBadges() {
+        return writeIds([]);
+      },
+      async cloneFirstBadge() {
+        try {
+          const first = await readFirstBadgeId();
+          if (!first) return { ok: false, reason: "no badge equipped in the first slot" };
+          return writeIds([first, first, first]);
+        } catch (e) {
+          return { ok: false, reason: `could not read your badges (${e.message})` };
+        }
+      }
+    };
+  }
+
+  // src/features/inGameIdle.js
+  var IN_GAME_PHASES = /* @__PURE__ */ new Set(["GameStart", "InProgress", "Reconnect"]);
+  function readGameflowPhase2(payload) {
+    if (payload == null) return "";
+    if (typeof payload === "string") return payload.replace(/^"+|"+$/g, "");
+    const raw = payload.phase ?? payload.data;
+    return typeof raw === "string" ? raw.replace(/^"+|"+$/g, "") : "";
+  }
+  function isInGamePhase(phase) {
+    return IN_GAME_PHASES.has(String(phase || "").trim());
+  }
+  function isChampSelectPhase(phase) {
+    return String(phase || "").trim() === "ChampSelect";
+  }
+  function startInGameIdle({ subscribe: subscribe2, onChange }) {
+    let idle = false;
+    const unsubscribe = subscribe2(GAMEFLOW_PHASE_ROUTE, (payload) => {
+      const phase = readGameflowPhase2(payload);
+      if (!phase) return;
+      const next = isInGamePhase(phase);
+      if (next === idle) return;
+      idle = next;
+      if (typeof onChange === "function") onChange(idle);
+    });
+    return {
+      stop() {
+        if (typeof unsubscribe === "function") unsubscribe();
+      }
+    };
+  }
+
+  // src/features/profileRank.js
+  function readProfileRank(settings) {
+    return {
+      tier: String(settings?.profile_rank_tier || "").trim(),
+      division: settings?.profile_rank_division || "I",
+      queue: settings?.profile_rank_queue || "RANKED_SOLO_5x5",
+      crystal: settings?.profile_rank_crystal || "IRON"
+    };
+  }
+  function profileRankPatch({ tier, division, queue, crystal }) {
+    return {
+      profile_rank_tier: tier,
+      profile_rank_division: division,
+      profile_rank_queue: queue,
+      profile_rank_crystal: crystal
+    };
+  }
+  function rankNeedsRefresh(lol, cfg) {
+    if (!cfg.tier) return false;
+    return lol.rankedLeagueTier !== cfg.tier || lol.rankedLeagueDivision !== cfg.division || lol.rankedLeagueQueue !== cfg.queue || lol.challengeCrystalLevel !== cfg.crystal;
+  }
+  async function applyProfileRank(presence2, cfg) {
+    if (!cfg.tier) return { ok: true };
+    const rank = await presence2.setRank({
+      tier: cfg.tier,
+      division: cfg.division,
+      queue: cfg.queue
+    });
+    if (!rank.ok) return rank;
+    return presence2.setBadges({ crystal: cfg.crystal });
+  }
+  function startProfileRankRefresh({ subscribe: subscribe2, getSettings, presence: presence2, lcu: lcu2 }) {
+    let refreshing = false;
+    async function refreshIfNeeded() {
+      if (refreshing) return;
+      const cfg = readProfileRank(getSettings());
+      if (!cfg.tier) return;
+      let lol;
+      try {
+        lol = readLol(await lcu2.get(CHAT_ME));
+      } catch {
+        return;
+      }
+      if (!rankNeedsRefresh(lol, cfg)) return;
+      refreshing = true;
+      try {
+        await applyProfileRank(presence2, cfg);
+      } finally {
+        refreshing = false;
+      }
+    }
+    void refreshIfNeeded();
+    return subscribe2(GAMEFLOW_PHASE_ROUTE, (payload) => {
+      const phase = readGameflowPhase2(payload);
+      if (!phase || isInGamePhase(phase)) return;
+      void refreshIfNeeded();
+    });
   }
 
   // src/features/profile.js
@@ -2570,6 +3097,1641 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     };
   }
 
+  // assets/drake-spritesheet.png
+  var drake_spritesheet_default = "data:image/png;base64,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";
+
+  // src/ui/socialToggle.js
+  var SOCIAL_BAR_SELECTOR = ".lol-social-version-bar";
+  var TOGGLE_SELECTOR = "button[data-drake-toggle]";
+  var STYLE_ID = "drake-social-toggle-style";
+  var BUG_BTN_SELECTOR = 'button[data-dd-action-name="button.social.report_bug"], button.bug-report-button:not([data-drake-toggle])';
+  function socialToggleCss() {
+    return `
+button.bug-report-button[data-drake-toggle] {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  margin: 0 0 0 4px;
+  padding: 0 !important;
+  border: none !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  background-color: transparent !important;
+  background-image: url("${drake_spritesheet_default}") !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 400% !important;
+  background-position: 0 0 !important;
+}
+button.bug-report-button[data-drake-toggle]:hover,
+button.bug-report-button[data-drake-toggle][aria-pressed="true"] {
+  background-position: 0 33.333% !important;
+}
+button.bug-report-button[data-drake-toggle]:active {
+  background-position: 0 66.666% !important;
+}
+button.bug-report-button[data-drake-toggle]:disabled {
+  background-position: 0 100% !important;
+}`;
+  }
+  function isVisible2(el) {
+    if (!el || typeof el.getBoundingClientRect !== "function") return null;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 ? el : null;
+  }
+  function searchSocialBar(root) {
+    if (!root?.querySelector) return null;
+    const bar = isVisible2(root.querySelector(SOCIAL_BAR_SELECTOR));
+    if (bar) return bar;
+    const bug = root.querySelector(BUG_BTN_SELECTOR);
+    if (bug?.parentElement) return isVisible2(bug.parentElement);
+    return null;
+  }
+  function searchIframes(doc) {
+    if (typeof doc.querySelectorAll !== "function") return null;
+    for (const iframe of doc.querySelectorAll("iframe")) {
+      try {
+        const found = searchSocialBar(iframe.contentDocument);
+        if (found) return found;
+      } catch {
+      }
+    }
+    return null;
+  }
+  function findSocialBar(doc) {
+    return searchSocialBar(doc) || searchIframes(doc);
+  }
+  function injectSocialToggleStyles(doc) {
+    if (!doc?.createElement) return;
+    if (typeof doc.getElementById === "function" && doc.getElementById(STYLE_ID)) return;
+    const style = doc.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = socialToggleCss();
+    (doc.head || doc.documentElement)?.appendChild(style);
+  }
+  function syncSocialToggle(doc, open) {
+    const bar = findSocialBar(doc);
+    const btn = bar?.querySelector?.("[data-drake-toggle]") || doc.querySelector?.(TOGGLE_SELECTOR);
+    if (!btn) return;
+    btn.setAttribute("aria-label", open ? "Close Drake" : "Open Drake");
+    btn.setAttribute("aria-pressed", String(open));
+  }
+  function mountSocialToggle(doc, { onToggle, isOpen }) {
+    const bar = findSocialBar(doc);
+    if (!bar) return false;
+    const owner = bar.ownerDocument || doc;
+    injectSocialToggleStyles(owner);
+    let btn = bar.querySelector("[data-drake-toggle]");
+    if (btn && btn.parentNode !== bar) {
+      bar.appendChild(btn);
+    }
+    if (!btn) {
+      btn = owner.createElement("button");
+      btn.type = "button";
+      btn.className = "bug-report-button";
+      btn.innerHTML = "";
+      btn.setAttribute("data-drake-toggle", "true");
+      btn.setAttribute("data-dd-action-name", "button.social.drake");
+      btn.setAttribute("title", "Drake");
+      btn.addEventListener(
+        "click",
+        (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          onToggle();
+        },
+        true
+      );
+      const bugBtn = bar.querySelector(BUG_BTN_SELECTOR);
+      if (bugBtn?.nextSibling) bar.insertBefore(btn, bugBtn.nextSibling);
+      else bar.appendChild(btn);
+    }
+    syncSocialToggle(doc, isOpen());
+    if (!mountSocialToggle.logged) {
+      mountSocialToggle.logged = true;
+      console.log("[Drake] social toggle mounted in", bar.className || SOCIAL_BAR_SELECTOR);
+    }
+    return true;
+  }
+  function watchSocialToggle(doc, win, cb) {
+    injectSocialToggleStyles(doc);
+    return watchAnchor(doc, win, cb);
+  }
+
+  // src/features/sgpMatchHistory.js
+  var ENTITLEMENTS_ROUTE = "/entitlements/v1/token";
+  var CHAT_ME_ROUTE = "/lol-chat/v1/me";
+  var SGP_SERVERS = {
+    TW2: { matchHistory: "https://apse1-red.pp.sgp.pvp.net" },
+    SG2: { matchHistory: "https://apse1-red.pp.sgp.pvp.net" },
+    PH2: { matchHistory: "https://apse1-red.pp.sgp.pvp.net" },
+    VN2: { matchHistory: "https://apse1-red.pp.sgp.pvp.net" },
+    TH2: { matchHistory: "https://apse1-red.pp.sgp.pvp.net" },
+    JP1: { matchHistory: "https://apne1-red.pp.sgp.pvp.net" },
+    KR: { matchHistory: "https://apne1-red.pp.sgp.pvp.net" },
+    NA1: { matchHistory: "https://usw2-red.pp.sgp.pvp.net" },
+    BR1: { matchHistory: "https://usw2-red.pp.sgp.pvp.net" },
+    LA1: { matchHistory: "https://usw2-red.pp.sgp.pvp.net" },
+    LA2: { matchHistory: "https://usw2-red.pp.sgp.pvp.net" },
+    OC1: { matchHistory: "https://apse1-red.pp.sgp.pvp.net" },
+    EUW: { matchHistory: "https://euc1-red.pp.sgp.pvp.net" },
+    EUN1: { matchHistory: "https://euc1-red.pp.sgp.pvp.net" },
+    TR1: { matchHistory: "https://euc1-red.pp.sgp.pvp.net" },
+    RU: { matchHistory: "https://euc1-red.pp.sgp.pvp.net" },
+    PBE: { matchHistory: "https://usw2-red.pp.sgp.pvp.net" },
+    EUC1: { matchHistory: "https://euc1-red.pp.sgp.pvp.net" },
+    USW2: { matchHistory: "https://usw2-red.pp.sgp.pvp.net" },
+    APSE1: { matchHistory: "https://apse1-red.pp.sgp.pvp.net" },
+    APNE1: { matchHistory: "https://apne1-red.pp.sgp.pvp.net" },
+    TENCENT_HN1: { matchHistory: "https://hn1-k8s-sgp.lol.qq.com:21019" },
+    TENCENT_HN10: { matchHistory: "https://hn10-k8s-sgp.lol.qq.com:21019" },
+    TENCENT_TJ100: { matchHistory: "https://tj100-sgp.lol.qq.com:21019" },
+    TENCENT_TJ101: { matchHistory: "https://tj101-sgp.lol.qq.com:21019" },
+    TENCENT_NJ100: { matchHistory: "https://nj100-sgp.lol.qq.com:21019" },
+    TENCENT_GZ100: { matchHistory: "https://gz100-sgp.lol.qq.com:21019" },
+    TENCENT_CQ100: { matchHistory: "https://cq100-sgp.lol.qq.com:21019" },
+    TENCENT_BGP2: { matchHistory: "https://bgp2-k8s-sgp.lol.qq.com:21019" },
+    TENCENT_PBE: { matchHistory: "https://pbe-sgp.lol.qq.com:21019" },
+    TENCENT_PREPBE: { matchHistory: "https://prepbe-sgp.lol.qq.com:21019" }
+  };
+  var PLATFORM_ID_TO_SGP_KEY = {
+    EUW1: "EUW",
+    EUN: "EUN1",
+    EUNE: "EUN1",
+    EUN1: "EUN1",
+    RU1: "RU",
+    NA: "NA1",
+    OCE: "OC1",
+    BR1: "BR1",
+    JP1: "JP1",
+    KR: "KR",
+    LA1: "LA1",
+    LA2: "LA2",
+    OC1: "OC1",
+    TR1: "TR1",
+    TW2: "TW2",
+    SG2: "SG2",
+    PH2: "PH2",
+    VN2: "VN2",
+    TH2: "TH2",
+    PBE: "PBE"
+  };
+  var TENCENT_PLATFORM_IDS = /* @__PURE__ */ new Set([
+    "HN1",
+    "HN2",
+    "HN3",
+    "HN4",
+    "HN5",
+    "HN6",
+    "HN7",
+    "HN8",
+    "HN9",
+    "HN10",
+    "HN11",
+    "HN12",
+    "HN13",
+    "HN14",
+    "HN15",
+    "HN16",
+    "HN17",
+    "HN18",
+    "HN19",
+    "WT1",
+    "WT2",
+    "WT3",
+    "WT4",
+    "WT5",
+    "WT6",
+    "WT7",
+    "EDU1",
+    "BGP1",
+    "BGP2",
+    "NJ100",
+    "GZ100",
+    "CQ100",
+    "TJ100",
+    "TJ101",
+    "PBE",
+    "PREPBE"
+  ]);
+  function queueIdToTag(queueId) {
+    const id = Number(queueId) || 0;
+    return id > 0 ? `q_${id}` : "";
+  }
+  function normalizeSgpServerKey(rawCode) {
+    const code = String(rawCode || "").toUpperCase();
+    const mapped = PLATFORM_ID_TO_SGP_KEY[code] || code;
+    return SGP_SERVERS[mapped] ? mapped : "";
+  }
+  function serverIdFromPlatformId(platformId) {
+    const id = String(platformId || "").toUpperCase();
+    if (!id) return "";
+    if (TENCENT_PLATFORM_IDS.has(id)) return normalizeSgpServerKey(`TENCENT_${id}`);
+    return normalizeSgpServerKey(id);
+  }
+  function serverIdFromIssuer(issuer) {
+    const value = String(issuer || "");
+    const tencentMatch = value.match(/https?:\/\/([a-z0-9]+)(?:-[a-z0-9]+)*\.lol\.qq\.com/i);
+    if (tencentMatch) return normalizeSgpServerKey(`TENCENT_${tencentMatch[1].toUpperCase()}`);
+    const externalMatch = value.match(/https?:\/\/([a-z0-9]+)-[a-z0-9]+\.lol\.sgp\.pvp\.net/i) || value.match(/https?:\/\/([a-z0-9]+)-[a-z0-9]+\.(?:lol\.)?sgp\.pvp\.net/i) || value.match(/https?:\/\/([a-z0-9]+)-/i);
+    if (externalMatch) return normalizeSgpServerKey(externalMatch[1].toUpperCase());
+    return "";
+  }
+  function resolveSgpServerId(chatMe, token) {
+    return serverIdFromPlatformId(chatMe?.platformId) || serverIdFromIssuer(token?.issuer) || "";
+  }
+  function sgpMatchHistoryUrl(serverId, puuid, { startIndex = 0, count = 100, tag = "" } = {}) {
+    const base = SGP_SERVERS[serverId]?.matchHistory;
+    if (!base || !puuid) return "";
+    const params = new URLSearchParams();
+    params.set("startIndex", String(startIndex));
+    params.set("count", String(count));
+    if (tag) params.set("tag", tag);
+    return `${base}/match-history-query/v1/products/lol/player/${puuid}/SUMMARY?${params}`;
+  }
+  function readPuuid(entry) {
+    return entry?.puuid || entry?.playerPuuid || entry?.summoner?.puuid || "";
+  }
+  function slimParticipant(participant) {
+    if (!participant) return null;
+    const stats = participant.stats && typeof participant.stats === "object" ? participant.stats : {};
+    const win = participant.win ?? stats.win;
+    const kills = participant.kills ?? stats.kills;
+    const deaths = participant.deaths ?? stats.deaths;
+    const assists = participant.assists ?? stats.assists;
+    return {
+      puuid: readPuuid(participant),
+      participantId: participant.participantId,
+      championId: participant.championId || participant.champion?.id || 0,
+      win,
+      kills,
+      deaths,
+      assists,
+      stats: { win, kills, deaths, assists }
+    };
+  }
+  function slimIdentity(identity) {
+    const player = identity?.player || {};
+    return {
+      participantId: identity.participantId,
+      player: { puuid: readPuuid(player) }
+    };
+  }
+  function participantMatches(participant, puuid) {
+    return Boolean(puuid) && readPuuid(participant) === puuid;
+  }
+  function identityMatches(identity, puuid) {
+    return Boolean(puuid) && readPuuid(identity?.player || {}) === puuid;
+  }
+  function slimMatchGame(entry, focusPuuid = "") {
+    if (!entry) return null;
+    const json = entry.json && typeof entry.json === "object" ? entry.json : entry;
+    let participants = Array.isArray(json.participants) ? json.participants : [];
+    let identities = Array.isArray(json.participantIdentities) ? json.participantIdentities : [];
+    if (focusPuuid) {
+      const focused = participants.filter((participant) => participantMatches(participant, focusPuuid));
+      if (focused.length) {
+        participants = focused;
+        const keepIds = new Set(focused.map((participant) => Number(participant.participantId)).filter(Boolean));
+        identities = identities.filter(
+          (identity) => identityMatches(identity, focusPuuid) || keepIds.has(Number(identity.participantId))
+        );
+      }
+    }
+    return {
+      queueId: json.queueId ?? json.gameQueueConfigId ?? json.queue?.id,
+      seasonId: json.seasonId ?? json.gameSeasonId ?? json.season?.id ?? json.season?.seasonId,
+      gameCreation: json.gameCreation,
+      gameCreationDate: json.gameCreationDate,
+      gameEndTimestamp: json.gameEndTimestamp,
+      gameStartTime: json.gameStartTime,
+      championId: json.championId,
+      win: json.win,
+      participants: participants.map(slimParticipant).filter(Boolean),
+      participantIdentities: identities.map(slimIdentity)
+    };
+  }
+  function normalizeMatchGames(payload, focusPuuid = "") {
+    const list = Array.isArray(payload) ? payload : Array.isArray(payload?.games?.games) ? payload.games.games : Array.isArray(payload?.games) ? payload.games : [];
+    return list.map((entry) => slimMatchGame(entry, focusPuuid)).filter(Boolean);
+  }
+  async function createSgpContext(lcu2) {
+    if (!lcu2?.get) return null;
+    try {
+      const token = await lcu2.get(ENTITLEMENTS_ROUTE);
+      if (!token?.accessToken) return null;
+      let chatMe = null;
+      try {
+        chatMe = await lcu2.get(CHAT_ME_ROUTE);
+      } catch {
+      }
+      const serverId = resolveSgpServerId(chatMe, token);
+      if (!sgpMatchHistoryUrl(serverId, "x")) return null;
+      return { accessToken: token.accessToken, serverId };
+    } catch {
+      return null;
+    }
+  }
+  async function fetchQueueMatchHistory({
+    lcu: lcu2,
+    fetchImpl = fetch,
+    puuid,
+    queueId,
+    count,
+    sgp = null,
+    signal
+  }) {
+    if (!puuid || signal?.aborted) return [];
+    try {
+      const ctx = sgp === void 0 ? await createSgpContext(lcu2) : sgp;
+      if (!ctx?.accessToken || !ctx.serverId || signal?.aborted) return [];
+      const url = sgpMatchHistoryUrl(ctx.serverId, puuid, {
+        startIndex: 0,
+        count,
+        tag: queueIdToTag(queueId)
+      });
+      if (!url) return [];
+      const resp = await fetchImpl(url, {
+        headers: { Authorization: `Bearer ${ctx.accessToken}` },
+        signal
+      });
+      if (!resp?.ok) return [];
+      return normalizeMatchGames(await resp.json(), puuid);
+    } catch {
+      return [];
+    }
+  }
+
+  // src/features/teamRevealStats.js
+  var TEAM_REVEAL_SAMPLE_SIZE = 20;
+  var TEAM_REVEAL_SEASON_SAMPLE_SIZE = 100;
+  var TEAM_REVEAL_SEASON_MAX = 300;
+  var TEAM_REVEAL_NATIVE_HISTORY_MAX = 100;
+  var TEAM_REVEAL_FETCH_CONCURRENCY = 1;
+  var TEAM_REVEAL_RECENT_GAMES = 5;
+  var LAST_12H_MS = 12 * 60 * 60 * 1e3;
+  var RANKED_QUEUE_BY_ID = {
+    420: "RANKED_SOLO_5x5",
+    440: "RANKED_FLEX_SR"
+  };
+  var RANKED_SOLO = "RANKED_SOLO_5x5";
+  var RANKED_FLEX = "RANKED_FLEX_SR";
+  function readAssignedPosition(player) {
+    const raw = String(player?.assignedPosition ?? player?.position ?? "").trim().toUpperCase();
+    if (!raw || raw === "UNSELECTED") return "";
+    return raw;
+  }
+  function readLobbyKey(session) {
+    if (!session) return "";
+    const gameId = session.gameId ?? session.gameData?.gameId;
+    if (gameId != null && Number(gameId) !== 0) return `game:${gameId}`;
+    const chat = session.chatDetails?.chatRoomName ?? session.chatDetails?.multiUserChatId ?? session.chatDetails?.mucJwtDto?.channelClaim;
+    if (chat) return `chat:${chat}`;
+    if (session.counter != null && session.counter >= 0) return `counter:${session.counter}`;
+    return "";
+  }
+  function matchHistoryRoute(puuid, sampleSize = TEAM_REVEAL_SAMPLE_SIZE) {
+    return `/lol-match-history/v1/products/lol/${puuid}/matches?begIndex=0&endIndex=${sampleSize}`;
+  }
+  function rankedStatsRoute(puuid) {
+    return `/lol-ranked/v1/ranked-stats/${puuid}`;
+  }
+  function currentSeasonRoute() {
+    return "/lol-seasons/v1/season/product/LOL";
+  }
+  function readCurrentSeasonId(payload) {
+    if (!payload) return 0;
+    if (typeof payload.seasonId === "number") return payload.seasonId;
+    const seasons = Array.isArray(payload) ? payload : payload.seasons || payload.currentSplitSeasons || payload.splitSeasons || [];
+    for (const season of seasons) {
+      if (season?.isActive || season?.active) {
+        return readNumber(season.id ?? season.seasonId);
+      }
+    }
+    if (!seasons.length) return 0;
+    const sorted = [...seasons].sort(
+      (a, b) => readNumber(b.id ?? b.seasonId) - readNumber(a.id ?? a.seasonId)
+    );
+    return readNumber(sorted[0]?.id ?? sorted[0]?.seasonId);
+  }
+  function readGameSeasonId(game) {
+    return readNumber(game?.seasonId ?? game?.gameSeasonId ?? game?.season?.id ?? game?.season?.seasonId);
+  }
+  function formatWl(wins, losses, winRate) {
+    const w = wins ?? 0;
+    const l = losses ?? 0;
+    const total = w + l;
+    const rate = winRate ?? (total ? Math.round(w / total * 100) : 0);
+    return `${w}W/${l}L \xB7 ${rate}%`;
+  }
+  function formatWlPair(wins, losses) {
+    return `${wins ?? 0}W/${losses ?? 0}L`;
+  }
+  function readRankedQueueType(queueId) {
+    return RANKED_QUEUE_BY_ID[Number(queueId)] || "";
+  }
+  function readQueueId(session) {
+    const fromQueue = session?.gameData?.queue;
+    return Number(fromQueue?.id ?? fromQueue?.queueId ?? session?.gameData?.queueId ?? 0) || 0;
+  }
+  function readGames(payload, puuid = "") {
+    return normalizeMatchGames(payload, puuid);
+  }
+  function seasonHistoryCount(rank, fallback = TEAM_REVEAL_SEASON_SAMPLE_SIZE) {
+    const wins = rank?.wins || 0;
+    const losses = rank?.losses || 0;
+    const total = wins + losses;
+    if (wins > 0 && losses === 0) {
+      return Math.min(Math.max(Math.ceil(wins / 0.55), fallback), TEAM_REVEAL_SEASON_MAX);
+    }
+    if (total <= 0) return fallback;
+    return Math.min(Math.max(total, fallback), TEAM_REVEAL_SEASON_MAX);
+  }
+  function readGameQueueId(game) {
+    return Number(game?.queueId ?? game?.gameQueueConfigId ?? game?.queue?.id ?? 0) || 0;
+  }
+  function pickParticipant(game, puuid) {
+    const participants = Array.isArray(game?.participants) ? game.participants : [];
+    return participants.find((p) => p?.puuid === puuid || p?.playerPuuid === puuid || p?.summoner?.puuid === puuid) || null;
+  }
+  function readWin(game, participant) {
+    const raw = participant?.stats?.win ?? participant?.win ?? game?.win;
+    if (raw === true || raw === 1) return true;
+    if (raw === false || raw === 0) return false;
+    if (typeof raw === "string") return raw.toLowerCase() === "win" || raw.toLowerCase() === "true";
+    return false;
+  }
+  function readNumber(value) {
+    return Number(value) || 0;
+  }
+  function readChampionId(game, participant) {
+    return readNumber(participant?.championId ?? participant?.champion?.id ?? game?.championId);
+  }
+  function readTimestamp(game) {
+    return readNumber(game?.gameCreation) || readNumber(game?.gameCreationDate) || readNumber(game?.gameEndTimestamp) || readNumber(game?.gameStartTime) || 0;
+  }
+  function round2(value) {
+    return Math.round(value * 100) / 100;
+  }
+  function readCount(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+  function rankEntryScore(entry) {
+    if (!entry) return -1;
+    return readCount(entry.losses) * 100 + readCount(entry.games);
+  }
+  function listRankedQueueEntries(payload) {
+    const out = [];
+    const queueMap = payload?.queueMap && typeof payload.queueMap === "object" ? payload.queueMap : {};
+    for (const [key, entry] of Object.entries(queueMap)) {
+      if (!entry || typeof entry !== "object") continue;
+      out.push({ ...entry, queueType: entry.queueType || key });
+    }
+    for (const entry of Array.isArray(payload?.queues) ? payload.queues : []) {
+      if (!entry || typeof entry !== "object") continue;
+      out.push(entry);
+    }
+    return out;
+  }
+  function pickQueueEntry(payload, queueType) {
+    const matched = listRankedQueueEntries(payload).filter(
+      (entry) => String(entry.queueType || "") === queueType
+    );
+    if (!matched.length) return payload?.queueMap?.[queueType] || null;
+    matched.sort((a, b) => rankEntryScore(b) - rankEntryScore(a));
+    return matched[0];
+  }
+  function readQueueRank(entry) {
+    if (!entry) {
+      return {
+        tier: "",
+        division: "",
+        lp: 0,
+        wins: 0,
+        losses: 0,
+        winRate: 0,
+        hasRank: false
+      };
+    }
+    const wins = readCount(entry.wins ?? entry.currentSeasonWinsForRewards);
+    const games = readCount(entry.games);
+    const parsedLosses = entry.losses != null && entry.losses !== "" ? readCount(entry.losses) : entry.loss != null && entry.loss !== "" ? readCount(entry.loss) : null;
+    const losses = parsedLosses != null && !(parsedLosses === 0 && games > wins) ? parsedLosses : games >= wins && games > 0 ? games - wins : parsedLosses ?? 0;
+    const total = wins + losses;
+    const tier = String(entry.tier || "").trim();
+    const division = String(entry.division || entry.rank || "").trim();
+    return {
+      tier,
+      division,
+      lp: readCount(entry.leaguePoints),
+      wins,
+      losses,
+      winRate: total ? Math.round(wins / total * 100) : 0,
+      hasRank: Boolean(tier && tier !== "NONE" && tier !== "UNRANKED") || total > 0
+    };
+  }
+  function readRankedQueues(rankedPayload) {
+    return {
+      solo: readQueueRank(pickQueueEntry(rankedPayload, RANKED_SOLO)),
+      flex: readQueueRank(pickQueueEntry(rankedPayload, RANKED_FLEX))
+    };
+  }
+  function emptyPlayerStats() {
+    return {
+      wins: 0,
+      losses: 0,
+      winRate: 0,
+      kda: 0,
+      last12hWins: 0,
+      last12hLosses: 0,
+      mostPlayedChampionId: 0,
+      mostPlayedCount: 0,
+      matchesUsed: 0,
+      queueScopedMatches: 0,
+      recentGames: []
+    };
+  }
+  function emptySeasonMain() {
+    return {
+      seasonMostPlayedChampionId: 0,
+      seasonMostPlayedCount: 0,
+      seasonMostPlayedWins: 0,
+      seasonMostPlayedLosses: 0,
+      seasonMostPlayedWinRate: 0
+    };
+  }
+  function makeRevealRow({
+    cellId,
+    puuid,
+    riotId,
+    isLocalPlayer,
+    rankedQueueType,
+    ranks,
+    assignedPosition = "",
+    stats = emptyPlayerStats(),
+    seasonMain = emptySeasonMain(),
+    season
+  }) {
+    return {
+      cellId,
+      puuid,
+      riotId,
+      isLocalPlayer,
+      rankedQueueType,
+      assignedPosition,
+      soloRank: ranks.solo,
+      flexRank: ranks.flex,
+      ...stats,
+      ...seasonMain,
+      ...season
+    };
+  }
+  function yieldUi() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  async function mapPool(items, limit, mapper) {
+    const results = new Array(items.length);
+    let next = 0;
+    async function worker() {
+      while (next < items.length) {
+        const index = next;
+        next += 1;
+        results[index] = await mapper(items[index], index);
+      }
+    }
+    const workers = Array.from({ length: Math.min(Math.max(limit, 1), items.length) }, () => worker());
+    if (workers.length) await Promise.all(workers);
+    return results;
+  }
+  function readSeasonStats(ranks, queueType) {
+    const empty = {
+      seasonWins: 0,
+      seasonLosses: 0,
+      seasonWinRate: 0,
+      seasonTier: "",
+      seasonDivision: "",
+      seasonLp: 0,
+      hasSeason: false
+    };
+    if (!queueType) return empty;
+    const rank = queueType === RANKED_FLEX ? ranks.flex : queueType === RANKED_SOLO ? ranks.solo : null;
+    if (!rank) return empty;
+    return {
+      seasonWins: rank.wins,
+      seasonLosses: rank.losses,
+      seasonWinRate: rank.winRate,
+      seasonTier: rank.tier,
+      seasonDivision: rank.division,
+      seasonLp: rank.lp,
+      hasSeason: rank.hasRank
+    };
+  }
+  function resolveParticipantByIdentity(game, puuid) {
+    const identities = Array.isArray(game?.participantIdentities) ? game.participantIdentities : [];
+    const participants = Array.isArray(game?.participants) ? game.participants : [];
+    const identity = identities.find((entry) => {
+      const player = entry?.player || {};
+      const idPuuid = player?.puuid || player?.playerPuuid || player?.summoner?.puuid;
+      return idPuuid === puuid;
+    });
+    if (!identity?.participantId) return null;
+    return participants.find((entry) => Number(entry?.participantId) === Number(identity.participantId)) || null;
+  }
+  function resolveParticipant(game, puuid) {
+    return pickParticipant(game, puuid) || resolveParticipantByIdentity(game, puuid);
+  }
+  function buildPlayerStats(games, puuid, queueId, now) {
+    const entries = [];
+    for (const game of games) {
+      const participant = resolveParticipant(game, puuid);
+      if (!participant) continue;
+      entries.push({
+        game,
+        participant,
+        queueId: readGameQueueId(game)
+      });
+    }
+    const queueScoped = queueId ? entries.filter((entry) => !entry.queueId || entry.queueId === queueId) : entries;
+    const selected = queueScoped.length > 0 ? queueScoped : entries;
+    let wins = 0;
+    let losses = 0;
+    let kills = 0;
+    let deaths = 0;
+    let assists = 0;
+    let last12hWins = 0;
+    let last12hLosses = 0;
+    const championCounts = /* @__PURE__ */ new Map();
+    const windowStart = now - LAST_12H_MS;
+    for (const entry of selected) {
+      const game = entry.game;
+      const participant = entry.participant;
+      const didWin = readWin(game, participant);
+      if (didWin) wins += 1;
+      else losses += 1;
+      kills += readNumber(participant?.stats?.kills ?? participant?.kills);
+      deaths += readNumber(participant?.stats?.deaths ?? participant?.deaths);
+      assists += readNumber(participant?.stats?.assists ?? participant?.assists);
+      const playedAt = readTimestamp(game);
+      if (playedAt >= windowStart && playedAt <= now) {
+        if (didWin) last12hWins += 1;
+        else last12hLosses += 1;
+      }
+      const championId = readChampionId(game, participant);
+      if (championId) {
+        championCounts.set(championId, (championCounts.get(championId) || 0) + 1);
+      }
+    }
+    const total = wins + losses;
+    let mostPlayedChampionId = 0;
+    let mostPlayedCount = 0;
+    for (const [championId, count] of championCounts.entries()) {
+      const bestCount = championCounts.get(mostPlayedChampionId) || 0;
+      if (!mostPlayedChampionId || count > bestCount || count === bestCount && championId < mostPlayedChampionId) {
+        mostPlayedChampionId = championId;
+        mostPlayedCount = count;
+      }
+    }
+    return {
+      wins,
+      losses,
+      winRate: total ? Math.round(wins / total * 100) : 0,
+      kda: deaths ? round2((kills + assists) / deaths) : round2(kills + assists),
+      last12hWins,
+      last12hLosses,
+      mostPlayedChampionId,
+      mostPlayedCount,
+      matchesUsed: selected.length,
+      queueScopedMatches: queueScoped.length,
+      recentGames: listRecentGames(selected)
+    };
+  }
+  function listRecentGames(entries, limit = TEAM_REVEAL_RECENT_GAMES) {
+    const ordered = [...entries].sort((a, b) => readTimestamp(b.game) - readTimestamp(a.game));
+    return ordered.slice(0, limit).map((entry) => ({
+      championId: readChampionId(entry.game, entry.participant),
+      win: readWin(entry.game, entry.participant),
+      kills: readNumber(entry.participant?.stats?.kills ?? entry.participant?.kills),
+      deaths: readNumber(entry.participant?.stats?.deaths ?? entry.participant?.deaths),
+      assists: readNumber(entry.participant?.stats?.assists ?? entry.participant?.assists)
+    }));
+  }
+  function pickMostPlayedChampion(championStats) {
+    let championId = 0;
+    let games = 0;
+    for (const [id, stat] of championStats.entries()) {
+      const count = stat.wins + stat.losses;
+      if (!championId || count > games || count === games && id < championId) {
+        championId = id;
+        games = count;
+      }
+    }
+    return { championId, games };
+  }
+  function listScopedEntries(games, puuid, queueId) {
+    const entries = [];
+    for (const game of games) {
+      const participant = resolveParticipant(game, puuid);
+      if (!participant) continue;
+      entries.push({
+        game,
+        participant,
+        queueId: readGameQueueId(game)
+      });
+    }
+    const queueScoped = queueId ? entries.filter((entry) => !entry.queueId || entry.queueId === queueId) : entries;
+    return queueScoped.length > 0 ? queueScoped : entries;
+  }
+  function buildSeasonChampionStats(games, puuid, queueId, seasonId) {
+    const empty = {
+      seasonMostPlayedChampionId: 0,
+      seasonMostPlayedCount: 0,
+      seasonMostPlayedWins: 0,
+      seasonMostPlayedLosses: 0,
+      seasonMostPlayedWinRate: 0
+    };
+    if (!puuid) return empty;
+    const scoped = listScopedEntries(games, puuid, queueId);
+    const hasSeasonOnGames = scoped.some((entry) => readGameSeasonId(entry.game) > 0);
+    const seasonScoped = hasSeasonOnGames && seasonId ? scoped.filter((entry) => readGameSeasonId(entry.game) === seasonId) : scoped;
+    const selected = seasonScoped.length > 0 ? seasonScoped : scoped;
+    const championStats = /* @__PURE__ */ new Map();
+    for (const entry of selected) {
+      const championId2 = readChampionId(entry.game, entry.participant);
+      if (!championId2) continue;
+      const stat = championStats.get(championId2) || { wins: 0, losses: 0 };
+      if (readWin(entry.game, entry.participant)) stat.wins += 1;
+      else stat.losses += 1;
+      championStats.set(championId2, stat);
+    }
+    const { championId, games: gamesPlayed } = pickMostPlayedChampion(championStats);
+    if (!championId) return empty;
+    const best = championStats.get(championId);
+    const wins = best.wins;
+    const losses = best.losses;
+    return {
+      seasonMostPlayedChampionId: championId,
+      seasonMostPlayedCount: gamesPlayed,
+      seasonMostPlayedWins: wins,
+      seasonMostPlayedLosses: losses,
+      seasonMostPlayedWinRate: gamesPlayed ? Math.round(wins / gamesPlayed * 100) : 0
+    };
+  }
+  async function resolveIdentity(player, lcu2) {
+    const direct = formatRiotId(player);
+    if (direct && player?.puuid) return { riotId: direct, puuid: player.puuid };
+    const resolvedPuuid = resolveChampSelectPuuid(player);
+    if (direct && resolvedPuuid) return { riotId: direct, puuid: resolvedPuuid };
+    if (direct) return { riotId: direct, puuid: "" };
+    if (resolvedPuuid) {
+      try {
+        const resolved = await lcu2.get(SUMMONER_BY_PUUID_ROUTE(resolvedPuuid));
+        return {
+          riotId: formatRiotId(resolved),
+          puuid: resolved?.puuid || resolvedPuuid
+        };
+      } catch {
+        return { riotId: "", puuid: resolvedPuuid };
+      }
+    }
+    if (!player?.summonerId) return { riotId: "", puuid: "" };
+    try {
+      const resolved = await lcu2.get(SUMMONER_BY_ID_ROUTE(player.summonerId));
+      return {
+        riotId: formatRiotId(resolved),
+        puuid: resolved?.puuid || ""
+      };
+    } catch {
+      return { riotId: "", puuid: "" };
+    }
+  }
+  async function getSafe(lcu2, route) {
+    try {
+      return await lcu2.get(route);
+    } catch {
+      return null;
+    }
+  }
+  async function buildTeamRevealSnapshot({
+    session,
+    lcu: lcu2,
+    fetchImpl = fetch,
+    sampleSize = TEAM_REVEAL_SAMPLE_SIZE,
+    seasonSampleSize = TEAM_REVEAL_SEASON_SAMPLE_SIZE,
+    now = Date.now(),
+    onProgress,
+    signal
+  }) {
+    if (signal?.aborted) return [];
+    const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+    const localCellId = Number(session?.localPlayerCellId ?? -1);
+    const queueId = readQueueId(session);
+    const rankedQueueType = readRankedQueueType(queueId);
+    const [seasonPayload, sgp] = await Promise.all([
+      getSafe(lcu2, currentSeasonRoute()),
+      createSgpContext(lcu2)
+    ]);
+    const currentSeasonId = readCurrentSeasonId(seasonPayload);
+    if (signal?.aborted) return [];
+    const shells = await mapPool(team, TEAM_REVEAL_FETCH_CONCURRENCY, async (player, index) => {
+      const cellId = Number(player?.cellId ?? index);
+      const identity = await resolveIdentity(player, lcu2);
+      const puuid = identity.puuid;
+      const riotId = identity.riotId;
+      let rankedPayload = null;
+      if (puuid) {
+        try {
+          rankedPayload = await lcu2.get(rankedStatsRoute(puuid));
+        } catch {
+        }
+      }
+      const ranks = readRankedQueues(rankedPayload);
+      await yieldUi();
+      return makeRevealRow({
+        cellId,
+        puuid,
+        riotId,
+        isLocalPlayer: cellId === localCellId,
+        rankedQueueType,
+        assignedPosition: readAssignedPosition(player),
+        ranks,
+        season: readSeasonStats(ranks, rankedQueueType)
+      });
+    });
+    shells.sort((a, b) => a.cellId - b.cellId);
+    if (signal?.aborted) return [];
+    if (typeof onProgress === "function") onProgress(shells);
+    if (signal?.aborted) return [];
+    const rows = await mapPool(shells, TEAM_REVEAL_FETCH_CONCURRENCY, async (shell) => {
+      if (signal?.aborted) return shell;
+      await yieldUi();
+      if (signal?.aborted) return shell;
+      const puuid = shell.puuid;
+      let games = [];
+      const rankedForQueue = queueId === 440 ? shell.flexRank : shell.soloRank;
+      const historyCount = Math.max(sampleSize, seasonHistoryCount(rankedForQueue, seasonSampleSize));
+      if (puuid) {
+        games = await fetchQueueMatchHistory({
+          lcu: lcu2,
+          fetchImpl,
+          puuid,
+          queueId,
+          count: historyCount,
+          sgp,
+          signal
+        });
+        if (!games.length) {
+          try {
+            games = readGames(
+              await lcu2.get(matchHistoryRoute(puuid, Math.min(historyCount, TEAM_REVEAL_NATIVE_HISTORY_MAX))),
+              puuid
+            );
+          } catch {
+          }
+        }
+      }
+      const ranks = { solo: shell.soloRank, flex: shell.flexRank };
+      const recentGames = games.slice(0, sampleSize);
+      const stats = puuid ? buildPlayerStats(recentGames, puuid, queueId, now) : emptyPlayerStats();
+      const seasonMain = puuid ? buildSeasonChampionStats(games, puuid, queueId, currentSeasonId) : emptySeasonMain();
+      await yieldUi();
+      return makeRevealRow({
+        cellId: shell.cellId,
+        puuid,
+        riotId: shell.riotId,
+        isLocalPlayer: shell.isLocalPlayer,
+        rankedQueueType,
+        assignedPosition: shell.assignedPosition,
+        ranks,
+        stats,
+        seasonMain,
+        season: readSeasonStats(ranks, rankedQueueType)
+      });
+    });
+    if (signal?.aborted) return [];
+    return rows;
+  }
+
+  // src/ui/roleIcons.js
+  var ROLE_ICONS = {
+    TOP: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M21%2C14H14v7h7V14Zm5-3V26L11.014%2C26l-4%2C4H30V7.016Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%224%204%204.003%2028.045%209%2023%209%209%2023%209%2028.045%204.003%204%204%22%2F%3E%3C%2Fsvg%3E",
+    JUNGLE: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20fill%3D%22%23c8aa6e%22%20fill-rule%3D%22evenodd%22%20d%3D%22M25%2C3c-2.128%2C3.3-5.147%2C6.851-6.966%2C11.469A42.373%2C42.373%2C0%2C0%2C1%2C20%2C20a27.7%2C27.7%2C0%2C0%2C1%2C1-3C21%2C12.023%2C22.856%2C8.277%2C25%2C3ZM13%2C20c-1.488-4.487-4.76-6.966-9-9%2C3.868%2C3.136%2C4.422%2C7.52%2C5%2C12l3.743%2C3.312C14.215%2C27.917%2C16.527%2C30.451%2C17%2C31c4.555-9.445-3.366-20.8-8-28C11.67%2C9.573%2C13.717%2C13.342%2C13%2C20Zm8%2C5a15.271%2C15.271%2C0%2C0%2C1%2C0%2C2l4-4c0.578-4.48%2C1.132-8.864%2C5-12C24.712%2C13.537%2C22.134%2C18.854%2C21%2C25Z%22%2F%3E%3C%2Fsvg%3E",
+    MIDDLE: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M30%2C12.968l-4.008%2C4L26%2C26H17l-4%2C4H30ZM16.979%2C8L21%2C4H4V20.977L8%2C17%2C8%2C8h8.981Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%2225%204%204%2025%204%2030%209%2030%2030%209%2030%204%2025%204%22%2F%3E%3C%2Fsvg%3E",
+    BOTTOM: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M13%2C20h7V13H13v7ZM4%2C4V26.984l3.955-4L8%2C8%2C22.986%2C8l4-4H4Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%2229.997%205.955%2025%2011%2025%2025%2011%2025%205.955%2029.997%2030%2030%2029.997%205.955%22%2F%3E%3C%2Fsvg%3E",
+    UTILITY: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20fill%3D%22%23c8aa6e%22%20fill-rule%3D%22evenodd%22%20d%3D%22M26%2C13c3.535%2C0%2C8-4%2C8-4H23l-3%2C3%2C2%2C7%2C5-2-3-4h2ZM22%2C5L20.827%2C3H13.062L12%2C5l5%2C6Zm-5%2C9-1-1L13%2C28l4%2C3%2C4-3L18%2C13ZM11%2C9H0s4.465%2C4%2C8%2C4h2L7%2C17l5%2C2%2C2-7Z%22%2F%3E%3C%2Fsvg%3E",
+    FILL: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M13%2C20h7V13H13v7ZM4%2C4V26.984l3.955-4L8%2C8%2C22.986%2C8l4-4H4Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%2229.997%205.955%2025%2011%2025%2025%2011%2025%205.955%2029.997%2030%2030%2029.997%205.955%22%2F%3E%3C%2Fsvg%3E"
+  };
+  function roleIconUrl(position) {
+    const key = String(position || "").trim().toUpperCase();
+    return ROLE_ICONS[key] || "";
+  }
+  function roleLabel(position) {
+    const key = String(position || "").trim().toUpperCase();
+    if (key === "UTILITY") return "Support";
+    if (key === "MIDDLE") return "Mid";
+    if (key === "FILL") return "Fill";
+    if (!key) return "";
+    return key.charAt(0) + key.slice(1).toLowerCase();
+  }
+
+  // src/ui/teamRevealDom.js
+  var ORIGINAL_NAME_KEY = "drakeTeamRevealOriginal";
+  var APPLIED_KEY = "drakeTeamRevealApplied";
+  var ORIGINAL_HTML_KEY = "drakeTeamRevealOriginalHtml";
+  var ORIGINAL_STYLE_KEY = "drakeTeamRevealOriginalStyle";
+  var ROOT_KEY = "drakeRevealRoot";
+  var SPINNER_SVG = `<svg class="team-reveal-spinner-svg" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="26" stroke-dashoffset="8"/></svg>`;
+  var STATUS_READY_MS = 8e3;
+  function toLabelNode(row) {
+    if (!row?.querySelector) return null;
+    return row.querySelector("[data-drake-summoner-name]") || row.querySelector(".summoner-name") || row.querySelector('[data-testid="summoner-name"]') || row.querySelector('[data-testid*="summoner-name"]') || row.querySelector('[class*="summoner-name"]') || row.querySelector('[class*="summonerName"]');
+  }
+  function readCellId(row) {
+    return Number(row?.dataset?.cellId ?? row?.getAttribute?.("data-cell-id") ?? -1);
+  }
+  function readRowWl(row) {
+    return {
+      wins: row.wins,
+      losses: row.losses,
+      winRate: row.winRate
+    };
+  }
+  function hasMatchWl(row) {
+    return Number(row?.matchesUsed) > 0 || Number(row?.wins) + Number(row?.losses) > 0;
+  }
+  function isLiveRevealSession(session) {
+    return Boolean(session && Array.isArray(session.myTeam) && session.myTeam.length);
+  }
+  function formatRankLabel(rank) {
+    if (!rank?.hasRank) return "Unranked";
+    const tier = String(rank.tier || "").trim();
+    if (!tier || tier === "NONE") return "Unranked";
+    const label = tier.charAt(0) + tier.slice(1).toLowerCase();
+    const apex = tier === "MASTER" || tier === "GRANDMASTER" || tier === "CHALLENGER";
+    const division = apex ? "" : ` ${rank.division || ""}`.trimEnd();
+    const lp = rank.lp ? ` \xB7 ${rank.lp} LP` : "";
+    return `${label}${division}${lp}`;
+  }
+  function rankIconSrc(tier) {
+    const key = String(tier || "").trim().toUpperCase();
+    if (!key || key === "NONE") return RANK_ICONS.UNRANKED;
+    return RANK_ICONS[key] || RANK_ICONS.UNRANKED;
+  }
+  function formatWlHtml(wins, losses, winRate) {
+    const w = wins ?? 0;
+    const l = losses ?? 0;
+    const total = w + l;
+    const rate = winRate ?? (total ? Math.round(w / total * 100) : 0);
+    return `<span class="wl-win">${w}W</span>/<span class="wl-loss">${l}L</span> \xB7 ${rate}%`;
+  }
+  function formatRowName(_maskedName, snapshot) {
+    if (!hasMatchWl(snapshot)) return snapshot.riotId || "";
+    const wl = readRowWl(snapshot);
+    return `${snapshot.riotId} (${formatWl(wl.wins, wl.losses, wl.winRate)})`;
+  }
+  function formatCardRow(label, value) {
+    return `<div class="team-reveal-card-row"><span class="team-reveal-card-label">${label}</span><span class="team-reveal-card-value">${value}</span></div>`;
+  }
+  function renderRoleIcon(position) {
+    const src = roleIconUrl(position);
+    if (!src) return "";
+    const label = roleLabel(position);
+    return `<img class="team-reveal-role-icon" src="${src}" alt="" title="${label}">`;
+  }
+  function renderRankBlock(label, rank) {
+    const icon = rankIconSrc(rank?.tier);
+    const rankText = formatRankLabel(rank);
+    return `<div class="team-reveal-rank-block">
+    <div class="team-reveal-rank-head">
+      <img class="team-reveal-rank-icon" src="${icon}" alt="">
+      <div class="team-reveal-rank-meta">
+        <span class="team-reveal-rank-queue">${label}</span>
+        <span class="team-reveal-rank-tier">${rankText}</span>
+      </div>
+    </div>
+  </div>`;
+  }
+  function renderSeasonMain(row, getChampName) {
+    const id = Number(row?.seasonMostPlayedChampionId) || 0;
+    if (!id) return "\u2014";
+    const name = getChampName(id) || "Unknown";
+    const count = row.seasonMostPlayedCount ? ` \xB7 ${row.seasonMostPlayedCount}g` : "";
+    const wl = row.seasonMostPlayedCount ? ` \xB7 ${formatWlPair(row.seasonMostPlayedWins, row.seasonMostPlayedLosses)} \xB7 ${row.seasonMostPlayedWinRate}%` : "";
+    return `<span class="team-reveal-champ">
+    <img class="team-reveal-champ-icon" src="${iconUrl(id)}" alt="">
+    <span>${name}${count}${wl}</span>
+  </span>`;
+  }
+  function cardsContentSig(snapshot) {
+    return JSON.stringify(
+      snapshot.map((row) => ({
+        cellId: row.cellId,
+        riotId: row.riotId,
+        assignedPosition: row.assignedPosition,
+        isLocalPlayer: row.isLocalPlayer,
+        wins: row.wins,
+        losses: row.losses,
+        kda: row.kda,
+        soloRank: row.soloRank,
+        flexRank: row.flexRank,
+        seasonMostPlayedChampionId: row.seasonMostPlayedChampionId,
+        seasonMostPlayedCount: row.seasonMostPlayedCount,
+        seasonMostPlayedWinRate: row.seasonMostPlayedWinRate,
+        recentGames: row.recentGames
+      }))
+    );
+  }
+  function renderRecentGames(row, getChampName) {
+    const games = Array.isArray(row?.recentGames) ? row.recentGames : [];
+    if (!games.length) return '<span class="team-reveal-recent-empty">\u2014</span>';
+    return `<div class="team-reveal-recent-games">${games.map((game) => {
+      const id = Number(game?.championId) || 0;
+      const name = getChampName(id) || "Unknown";
+      const result = game.win ? "is-win" : "is-loss";
+      const kda = `${game.kills ?? 0}/${game.deaths ?? 0}/${game.assists ?? 0}`;
+      return `<div class="team-reveal-recent-game ${result}" title="${name} ${kda}">
+        <img class="team-reveal-champ-icon" src="${iconUrl(id)}" alt="${name}">
+        <span class="team-reveal-recent-kda">${kda}</span>
+      </div>`;
+    }).join("")}</div>`;
+  }
+  function makeRenderCards(getChampName) {
+    return function renderCards(snapshot) {
+      const cards = snapshot.map((row) => {
+        const riotId = row.riotId || "Unknown";
+        const youTag = row.isLocalPlayer ? ' <span class="team-reveal-you">(You)</span>' : "";
+        const recentWl = formatWlHtml(row.wins, row.losses, row.winRate);
+        const kda = row.kda ?? "\u2014";
+        const last12h = formatWlPair(row.last12hWins, row.last12hLosses);
+        const recentNote = row.matchesUsed ? ` \xB7 last ${row.matchesUsed} games` : "";
+        const cardClass = row.isLocalPlayer ? "team-reveal-card is-you" : "team-reveal-card";
+        const roleIcon = renderRoleIcon(row.assignedPosition);
+        return `<section class="${cardClass}">
+          <div class="team-reveal-card-head">
+            <div class="team-reveal-card-title-row">
+              ${roleIcon}
+              <div class="team-reveal-card-title">${riotId}${youTag}</div>
+            </div>
+          </div>
+          <div class="team-reveal-ranks">
+            ${renderRankBlock("Solo/Duo", row.soloRank)}
+            ${renderRankBlock("Flex", row.flexRank)}
+          </div>
+          <div class="team-reveal-card-section">
+            ${formatCardRow(`Recent W/L${recentNote}`, recentWl)}
+            ${formatCardRow("Recent KDA", kda)}
+            ${formatCardRow("Last 12h", last12h)}
+            ${formatCardRow("Season Main", renderSeasonMain(row, getChampName))}
+            ${formatCardRow("Last 5", renderRecentGames(row, getChampName))}
+          </div>
+        </section>`;
+      }).join("");
+      return `<div class="team-reveal-shell" data-team-reveal-panel="1">
+      <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">Close</button>
+      <div class="team-reveal-panel">${cards}</div>
+    </div>`;
+    };
+  }
+  function readLabelNodes(doc) {
+    const seen = /* @__PURE__ */ new Set();
+    const out = [];
+    const selectors = [
+      '[data-testid="summoner-name"]',
+      '[data-testid*="summoner-name"]',
+      ".summoner-name",
+      '[class*="summoner-name"]',
+      '[class*="champ-select"] [class*="name"]'
+    ];
+    for (const selector of selectors) {
+      for (const node of doc.querySelectorAll(selector)) {
+        if (seen.has(node)) continue;
+        seen.add(node);
+        out.push(node);
+      }
+    }
+    return out;
+  }
+  function findLabelsByCurrentNames(doc, snapshot) {
+    const pool = readLabelNodes(doc).filter((node) => {
+      if (node?.dataset?.[APPLIED_KEY]) return false;
+      const text = String(node?.textContent || "").trim();
+      return Boolean(text) && text.length <= 48;
+    });
+    const matched = [];
+    const used = /* @__PURE__ */ new Set();
+    for (const row of snapshot) {
+      const riotId = String(row?.riotId || "").trim().toLowerCase();
+      const nameOnly = riotId.split("#")[0] || "";
+      if (!riotId && !nameOnly) continue;
+      const node = pool.find((entry) => {
+        if (used.has(entry)) return false;
+        const text = String(entry?.textContent || "").trim().toLowerCase();
+        return text === riotId || text === nameOnly;
+      });
+      if (!node) continue;
+      used.add(node);
+      matched.push(node);
+    }
+    return matched;
+  }
+  var LABEL_SIG_KEY = "drakeRevealSig";
+  function applyLabel(label, info) {
+    if (!label.dataset) label.dataset = {};
+    const wl = readRowWl(info);
+    const showWl = hasMatchWl(info);
+    const sig = `${info.riotId}|${showWl ? `${wl.wins}|${wl.losses}|${wl.winRate}` : "pending"}`;
+    if (label.dataset[APPLIED_KEY] === "1" && label.dataset[LABEL_SIG_KEY] === sig) return;
+    label.setAttribute?.("data-drake-reveal-root", "1");
+    label.dataset[ROOT_KEY] = "1";
+    if (!label.dataset[ORIGINAL_NAME_KEY]) {
+      label.dataset[ORIGINAL_NAME_KEY] = label.textContent || "";
+    }
+    if (!label.dataset[ORIGINAL_HTML_KEY]) {
+      label.dataset[ORIGINAL_HTML_KEY] = typeof label.innerHTML === "string" ? label.innerHTML : "";
+    }
+    if (!label.dataset[ORIGINAL_STYLE_KEY]) {
+      label.dataset[ORIGINAL_STYLE_KEY] = label.style?.cssText || "";
+    }
+    if (typeof label.innerHTML === "string") {
+      const stats = showWl ? `<span class="drake-reveal-stats">${formatWlHtml(wl.wins, wl.losses, wl.winRate)}</span>` : "";
+      label.innerHTML = `<span class="drake-reveal-name">${info.riotId}</span>${stats}`;
+      if (label.style) {
+        label.style.cssText = `${label.dataset[ORIGINAL_STYLE_KEY]};display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.1;max-height:none;height:auto;`;
+      }
+      const parent = label.parentElement;
+      if (parent?.style) {
+        parent.style.overflow = "visible";
+        parent.style.maxHeight = "none";
+        parent.style.height = "auto";
+      }
+    } else {
+      label.textContent = formatRowName("", info);
+    }
+    label.dataset[APPLIED_KEY] = "1";
+    label.dataset[LABEL_SIG_KEY] = sig;
+  }
+  function makeTeamRevealDom({
+    doc,
+    subscribe: subscribe2,
+    loadSnapshot,
+    overlayRoot,
+    getChampName = () => "",
+    setTimeoutImpl = setTimeout,
+    clearTimeoutImpl = clearTimeout,
+    statusReadyMs = STATUS_READY_MS
+  }) {
+    const renderCards = makeRenderCards((id) => getChampName(Number(id)));
+    let enabled = false;
+    let stopSession = null;
+    let snapshot = [];
+    let overlay = null;
+    let statusNode = null;
+    let statusSpinner = null;
+    let statusText = null;
+    let statusOpenBtn = null;
+    let statusBar = null;
+    let readyDismissTimer = null;
+    let open = false;
+    let boundLabels = /* @__PURE__ */ new Map();
+    let lastSessionSig = "";
+    let lastLobbyKey = "";
+    let lastTeam = [];
+    let lastCardsRenderSig = "";
+    let statusPhase = "hidden";
+    let loadGen = 0;
+    let loadAbort = null;
+    let stopPhase = null;
+    function stopRevealLoad() {
+      loadGen += 1;
+      if (loadAbort) {
+        loadAbort.abort();
+        loadAbort = null;
+      }
+    }
+    function clearReveal() {
+      stopRevealLoad();
+      restoreRows();
+      snapshot = [];
+      lastSessionSig = "";
+      lastLobbyKey = "";
+      lastTeam = [];
+      lastCardsRenderSig = "";
+      open = false;
+      renderVisibility();
+      setStatus("hidden");
+    }
+    function handlePhase(payload) {
+      if (!enabled) return;
+      const phase = readGameflowPhase2(payload);
+      if (phase !== "ChampSelect") clearReveal();
+    }
+    function needsReapply() {
+      if (!snapshot.length) return false;
+      if (boundLabels.size === 0) return true;
+      for (const label of boundLabels.values()) {
+        if (label.isConnected === false) return true;
+      }
+      return false;
+    }
+    function mergePositionsFromSession(session) {
+      if (!snapshot.length) return false;
+      const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+      const byCell = new Map(team.map((player) => [Number(player?.cellId), readAssignedPosition(player)]));
+      let changed = false;
+      snapshot = snapshot.map((row) => {
+        const next = byCell.has(Number(row.cellId)) ? byCell.get(Number(row.cellId)) : row.assignedPosition || "";
+        if (next === (row.assignedPosition || "")) return row;
+        changed = true;
+        return { ...row, assignedPosition: next };
+      });
+      if (changed) lastCardsRenderSig = "";
+      return changed;
+    }
+    function teamFingerprint(session) {
+      const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+      return team.map((player) => ({
+        cellId: Number(player?.cellId),
+        summonerId: Number(player?.summonerId) || 0,
+        puuid: String(player?.puuid || ""),
+        obf: String(player?.obfuscatedPuuid || "")
+      })).sort((a, b) => a.cellId - b.cellId);
+    }
+    function sameTeamIdentity(prev, next) {
+      if (!prev.length || prev.length !== next.length) return false;
+      return prev.every((left, index) => {
+        const right = next[index];
+        if (left.cellId !== right.cellId) return false;
+        if (left.summonerId && right.summonerId && left.summonerId !== right.summonerId) return false;
+        if (left.puuid && right.puuid && left.puuid !== right.puuid) return false;
+        if (left.obf && right.obf && left.obf !== right.obf) return false;
+        return true;
+      });
+    }
+    function sessionSignature(session) {
+      return JSON.stringify(teamFingerprint(session));
+    }
+    function ensureOverlay() {
+      if (overlay) return overlay;
+      const existing = overlayRoot?.querySelector?.(".team-reveal-overlay");
+      if (existing) {
+        overlay = existing;
+        wireOverlayEvents(overlay);
+        return overlay;
+      }
+      const owner = overlayRoot?.ownerDocument || doc;
+      const node = owner?.createElement?.("div");
+      if (!node) return null;
+      node.className = "team-reveal-overlay";
+      node.hidden = true;
+      if (node.style) node.style.display = "none";
+      overlayRoot?.appendChild?.(node);
+      overlay = node;
+      wireOverlayEvents(overlay);
+      return overlay;
+    }
+    function wireOverlayEvents(node) {
+      if (!node?.addEventListener || node.dataset?.drakeRevealWired === "1") return;
+      if (node.dataset) node.dataset.drakeRevealWired = "1";
+      node.addEventListener("click", (event) => {
+        const target = event.target;
+        if (target?.closest?.('[data-team-reveal-close="1"]')) {
+          event.stopPropagation?.();
+          closeCards();
+          return;
+        }
+        if (target === node) {
+          closeCards();
+          return;
+        }
+        if (target?.closest && !target.closest('[data-team-reveal-panel="1"]')) {
+          closeCards();
+        }
+      });
+    }
+    function ensureStatusBar(node, owner) {
+      if (statusBar) return statusBar;
+      statusBar = node.querySelector?.(".team-reveal-status-bar");
+      if (statusBar) return statusBar;
+      if (!owner?.createElement) return null;
+      const bar = owner.createElement("div");
+      bar.className = "team-reveal-status-bar";
+      bar.hidden = true;
+      if (bar.style) bar.style.display = "none";
+      node.appendChild(bar);
+      statusBar = bar;
+      return statusBar;
+    }
+    function stopReadyDismiss() {
+      if (readyDismissTimer != null) {
+        clearTimeoutImpl(readyDismissTimer);
+        readyDismissTimer = null;
+      }
+      if (statusBar) {
+        statusBar.hidden = true;
+        if (statusBar.style) {
+          statusBar.style.display = "none";
+          statusBar.style.animation = "none";
+        }
+      }
+    }
+    function startReadyDismiss() {
+      stopReadyDismiss();
+      const bar = statusBar || ensureStatusBar(statusNode, overlayRoot?.ownerDocument || doc);
+      if (!bar) return;
+      bar.hidden = false;
+      if (bar.style) {
+        bar.style.display = "block";
+        bar.style.animation = "none";
+        void bar.offsetWidth;
+        bar.style.animation = `team-reveal-status-shrink ${statusReadyMs}ms linear forwards`;
+      }
+      readyDismissTimer = setTimeoutImpl(() => {
+        readyDismissTimer = null;
+        setStatus("hidden");
+      }, statusReadyMs);
+    }
+    function ensureStatus() {
+      if (statusNode) return statusNode;
+      const existing = overlayRoot?.querySelector?.(".team-reveal-status");
+      if (existing) {
+        statusNode = existing;
+        statusSpinner = existing.querySelector?.(".team-reveal-status-spinner");
+        statusText = existing.querySelector?.(".team-reveal-status-text");
+        statusOpenBtn = existing.querySelector?.(".team-reveal-status-open");
+        wireStatusOpen(statusOpenBtn);
+        ensureStatusBar(existing, overlayRoot?.ownerDocument || doc);
+        return statusNode;
+      }
+      const owner = overlayRoot?.ownerDocument || doc;
+      const node = owner?.createElement?.("div");
+      if (!node) return null;
+      node.className = "team-reveal-status";
+      node.hidden = true;
+      if (node.style) node.style.display = "none";
+      const spinner = owner.createElement("span");
+      spinner.className = "team-reveal-status-spinner";
+      spinner.innerHTML = SPINNER_SVG;
+      spinner.hidden = true;
+      const text = owner.createElement("span");
+      text.className = "team-reveal-status-text";
+      const openBtn = owner.createElement("button");
+      openBtn.className = "team-reveal-status-open";
+      openBtn.type = "button";
+      openBtn.textContent = "View";
+      openBtn.hidden = true;
+      wireStatusOpen(openBtn);
+      node.appendChild(spinner);
+      node.appendChild(text);
+      node.appendChild(openBtn);
+      overlayRoot?.appendChild?.(node);
+      statusNode = node;
+      statusSpinner = spinner;
+      statusText = text;
+      statusOpenBtn = openBtn;
+      ensureStatusBar(node, owner);
+      return statusNode;
+    }
+    function wireStatusOpen(btn) {
+      if (!btn?.addEventListener || btn.dataset?.drakeRevealWired === "1") return;
+      if (btn.dataset) btn.dataset.drakeRevealWired = "1";
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation?.();
+        event.preventDefault?.();
+        openCards();
+      });
+    }
+    function setStatus(phase) {
+      statusPhase = phase;
+      const node = ensureStatus();
+      if (!node) return;
+      const visible = enabled && (phase === "loading" || phase === "ready") && !open;
+      node.hidden = !visible;
+      if (node.style) node.style.display = visible ? "flex" : "none";
+      const loading = phase === "loading";
+      if (statusSpinner) {
+        statusSpinner.hidden = !loading || !visible;
+        if (statusSpinner.style) statusSpinner.style.display = loading && visible ? "inline-flex" : "none";
+      }
+      if (statusOpenBtn) {
+        statusOpenBtn.hidden = loading || !visible;
+        if (statusOpenBtn.style) statusOpenBtn.style.display = !loading && visible ? "inline-flex" : "none";
+      }
+      if (statusText) {
+        statusText.textContent = loading ? "Revealing lobby" : "Session revealed. Press Ctrl+Shift+D to view it.";
+      }
+      if (visible && phase === "ready") startReadyDismiss();
+      else stopReadyDismiss();
+    }
+    function renderVisibility() {
+      if (!overlay) return;
+      if (open && snapshot.length > 0) {
+        const sig = cardsContentSig(snapshot);
+        if (sig !== lastCardsRenderSig) {
+          overlay.innerHTML = renderCards(snapshot);
+          lastCardsRenderSig = sig;
+        }
+        overlay.hidden = false;
+        if (overlay.style) overlay.style.display = "flex";
+      } else {
+        overlay.hidden = true;
+        if (overlay.style) overlay.style.display = "none";
+        open = false;
+        lastCardsRenderSig = "";
+      }
+    }
+    function restoreRows() {
+      const seen = /* @__PURE__ */ new Set();
+      const restore = (label) => {
+        if (!label || seen.has(label)) return;
+        seen.add(label);
+        if (label.dataset?.[ORIGINAL_NAME_KEY] || label.dataset?.[APPLIED_KEY]) restoreLabel(label);
+      };
+      for (const label of doc.querySelectorAll?.("[data-drake-reveal-root]") || []) restore(label);
+      for (const row of doc.querySelectorAll("[data-cell-id]")) restore(toLabelNode(row));
+      for (const label of readLabelNodes(doc)) restore(label);
+      boundLabels = /* @__PURE__ */ new Map();
+    }
+    function restoreLabel(label) {
+      if (typeof label.innerHTML === "string") {
+        label.innerHTML = label.dataset[ORIGINAL_HTML_KEY] || label.dataset[ORIGINAL_NAME_KEY] || "";
+      } else {
+        label.textContent = label.dataset[ORIGINAL_NAME_KEY];
+      }
+      if (label.style) {
+        label.style.cssText = label.dataset[ORIGINAL_STYLE_KEY] || "";
+      }
+      delete label.dataset[ORIGINAL_NAME_KEY];
+      delete label.dataset[ORIGINAL_HTML_KEY];
+      delete label.dataset[ORIGINAL_STYLE_KEY];
+      delete label.dataset[ROOT_KEY];
+      label.removeAttribute?.("data-drake-reveal-root");
+      delete label.dataset[APPLIED_KEY];
+      delete label.dataset[LABEL_SIG_KEY];
+    }
+    function applyRows(rows) {
+      const byCell = new Map(rows.map((row) => [Number(row.cellId), row]));
+      const used = /* @__PURE__ */ new Set();
+      for (const row of rows) {
+        const key = Number(row?.cellId);
+        const bound = boundLabels.get(key);
+        if (!bound || bound.isConnected === false) continue;
+        applyLabel(bound, row);
+        used.add(row);
+      }
+      for (const row of doc.querySelectorAll("[data-cell-id]")) {
+        const label = toLabelNode(row);
+        if (!label) continue;
+        if (!label.dataset) label.dataset = {};
+        const cellId = readCellId(row);
+        const info = byCell.get(cellId);
+        if (!info?.riotId) continue;
+        if (used.has(info)) continue;
+        applyLabel(label, info);
+        boundLabels.set(cellId, label);
+        used.add(info);
+      }
+      const remaining = rows.filter((row) => !used.has(row) && row?.riotId);
+      const labels = readLabelNodes(doc).filter((label) => {
+        if (!label?.dataset) label.dataset = {};
+        return !label.dataset[APPLIED_KEY];
+      });
+      const count = Math.min(remaining.length, labels.length);
+      for (let index = 0; index < count; index += 1) {
+        const label = labels[index];
+        const info = remaining[index];
+        applyLabel(label, info);
+        boundLabels.set(Number(info.cellId), label);
+      }
+      if (count === 0 && remaining.length > 0) {
+        const matched = findLabelsByCurrentNames(doc, remaining);
+        const limit = Math.min(matched.length, remaining.length);
+        for (let index = 0; index < limit; index += 1) {
+          const info = remaining[index];
+          const label = matched[index];
+          applyLabel(label, info);
+          boundLabels.set(Number(info.cellId), label);
+        }
+      }
+    }
+    function closeCards() {
+      open = false;
+      renderVisibility();
+      setStatus(statusPhase === "loading" ? "loading" : snapshot.length ? "ready" : "hidden");
+    }
+    function openCards() {
+      if (!enabled || !snapshot.length) return;
+      ensureOverlay();
+      open = true;
+      renderVisibility();
+      setStatus("ready");
+    }
+    async function handleSession(session) {
+      if (!enabled) return;
+      if (!isLiveRevealSession(session)) {
+        clearReveal();
+        return;
+      }
+      const lobbyKey = readLobbyKey(session);
+      const team = teamFingerprint(session);
+      const newLobby = Boolean(lobbyKey && lastLobbyKey && lobbyKey !== lastLobbyKey);
+      if (newLobby) clearReveal();
+      else if (lastSessionSig && sameTeamIdentity(lastTeam, team)) {
+        mergePositionsFromSession(session);
+        if (snapshot.length && needsReapply()) applyRows(snapshot);
+        if (open) renderVisibility();
+        if (lobbyKey) lastLobbyKey = lobbyKey;
+        lastTeam = team;
+        return;
+      }
+      if (lobbyKey) lastLobbyKey = lobbyKey;
+      lastTeam = team;
+      const sig = sessionSignature(session);
+      if (sig && sig === lastSessionSig) {
+        mergePositionsFromSession(session);
+        if (snapshot.length && needsReapply()) applyRows(snapshot);
+        if (open) renderVisibility();
+        return;
+      }
+      stopRevealLoad();
+      lastSessionSig = sig;
+      const gen = loadGen;
+      loadAbort = typeof AbortController === "function" ? new AbortController() : null;
+      try {
+        setStatus("loading");
+        const next = await loadSnapshot(session, {
+          signal: loadAbort?.signal,
+          onProgress(rows) {
+            if (gen !== loadGen) return;
+            snapshot = Array.isArray(rows) ? rows : [];
+            applyRows(snapshot);
+            if (open) renderVisibility();
+          }
+        });
+        if (gen !== loadGen) return;
+        snapshot = Array.isArray(next) ? next : [];
+        setStatus(snapshot.length ? "ready" : "hidden");
+        if (snapshot.length) applyRows(snapshot);
+        if (open) renderVisibility();
+      } catch {
+        if (gen !== loadGen) return;
+        setStatus(snapshot.length ? "ready" : "hidden");
+      }
+    }
+    function setEnabled(next) {
+      if (next === enabled) return;
+      enabled = next;
+      if (enabled) {
+        if (!stopPhase) {
+          stopPhase = subscribe2(GAMEFLOW_PHASE_ROUTE, (phase) => {
+            handlePhase(phase);
+          });
+        }
+        return;
+      }
+      if (stopSession) {
+        stopSession();
+        stopSession = null;
+      }
+      if (stopPhase) {
+        stopPhase();
+        stopPhase = null;
+      }
+      clearReveal();
+    }
+    function toggleCards() {
+      if (!enabled) return;
+      if (open) {
+        closeCards();
+        return;
+      }
+      openCards();
+    }
+    function teardown() {
+      setEnabled(false);
+      if (overlay?.remove) overlay.remove();
+      if (statusNode?.remove) statusNode.remove();
+      overlay = null;
+      statusNode = null;
+      statusSpinner = null;
+      statusText = null;
+      statusOpenBtn = null;
+      stopReadyDismiss();
+      statusBar = null;
+    }
+    return {
+      setEnabled,
+      handleSession,
+      toggleCards,
+      closeCards,
+      openCards,
+      teardown
+    };
+  }
+
   // src/ui/index.js
   var TAG = "[Drake]";
   var MAX_DELAY_MS = 8e3;
@@ -2581,11 +4743,17 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     let screen = "auto-accept";
     let shadowRoot = null;
     let stopDodgeReposition = null;
+    let stopSocialToggle = null;
     let dodgeBusy = false;
     let champSelectActive = false;
+    let champSelectSession = null;
     let statusText = "";
     let provider = "porofessor";
     let champions = [];
+    let teamRevealChamps = [];
+    let teamRevealChampsLoading = null;
+    let teamRevealDom = null;
+    let inGameIdle = false;
     const queries = {
       auto_pick_champion_id: "",
       auto_ban_champion_id: "",
@@ -2599,7 +4767,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     });
     const restarter = makeRestartUx({ lcu: lcu2 });
     const opener = makeOpener({ port: cfg.port, token: cfg.token });
-    const presence = makePresence({ lcu: lcu2 });
+    const presence2 = makePresence({ lcu: lcu2 });
+    const challenges = makeChallenges({ lcu: lcu2 });
     const riotId = makeRiotId({ lcu: lcu2 });
     let lol = {};
     let friends = [];
@@ -2611,6 +4780,15 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     const sfx = makeSfx();
     const steps = { "rank-div": "I", "rank-queue": QUEUES[0].id, crystal: "IRON" };
     let pickedTier = "";
+    function syncRankUiFromSettings() {
+      const saved = readProfileRank(settings);
+      if (!saved.tier) return;
+      pickedTier = saved.tier;
+      steps["rank-div"] = saved.division;
+      steps["rank-queue"] = saved.queue;
+      steps.crystal = saved.crystal;
+    }
+    syncRankUiFromSettings();
     const client = makeSettingsClient({
       port: cfg.port,
       token: cfg.token,
@@ -2625,14 +4803,19 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       doc: document,
       win: window,
       render: renderShell,
+      isIdle: () => inGameIdle,
       onOpenChange: (open) => {
         if (!shadowRoot) return;
         shadowRoot.getElementById("scrim").style.display = open ? "grid" : "none";
+        syncSocialToggle(document, open);
+      },
+      onTeamRevealCardsToggle: () => {
+        if (teamRevealDom) teamRevealDom.toggleCards();
       },
       onMount: wire
     });
     function setReadyCheck(payload) {
-      if (!shadowRoot) return;
+      if (inGameIdle || !shadowRoot) return;
       shadowRoot.getElementById("cancel-dock").hidden = !canCancel(payload);
     }
     function resetDodgeUi({ keepLabel = false } = {}) {
@@ -2655,10 +4838,59 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       reposition();
       stopDodgeReposition = watchAnchor(document, window, reposition);
     }
+    function startSocialWatch(api) {
+      const panel = api || ui2;
+      if (stopSocialToggle || !shadowRoot || !panel) return;
+      stopSocialToggle = watchSocialToggle(document, window, () => {
+        mountSocialToggle(document, {
+          onToggle: () => panel.toggle(),
+          isOpen: () => panel.isOpen()
+        });
+      });
+      mountSocialToggle(document, {
+        onToggle: () => panel.toggle(),
+        isOpen: () => panel.isOpen()
+      });
+    }
+    function stopSocialWatch() {
+      if (!stopSocialToggle) return;
+      stopSocialToggle();
+      stopSocialToggle = null;
+    }
+    function setIdle(next) {
+      if (next === inGameIdle) return;
+      inGameIdle = next;
+      if (inGameIdle) {
+        ui2.close();
+        stopSocialWatch();
+        if (stopDodgeReposition) {
+          stopDodgeReposition();
+          stopDodgeReposition = null;
+        }
+        champSelectActive = false;
+        champSelectSession = null;
+        if (teamRevealDom) {
+          void teamRevealDom.handleSession(null);
+          teamRevealDom.setEnabled(false);
+        }
+        if (shadowRoot) {
+          const dodge = shadowRoot.getElementById("dodge-dock");
+          if (dodge) dodge.hidden = true;
+          const cancel = shadowRoot.getElementById("cancel-dock");
+          if (cancel) cancel.hidden = true;
+        }
+        return;
+      }
+      startSocialWatch();
+      if (teamRevealDom) teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+    }
     function setChampSelect(session) {
+      if (inGameIdle) return;
+      champSelectSession = session;
       if (!shadowRoot) return;
       const dock = shadowRoot.getElementById("dodge-dock");
       champSelectActive = inChampSelect(session);
+      if (teamRevealDom) void teamRevealDom.handleSession(session);
       dock.hidden = !champSelectActive;
       if (stopDodgeReposition) {
         stopDodgeReposition();
@@ -2711,7 +4943,34 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         console.log(TAG, "dodge", detail);
       };
       shadow.getElementById("scrim").style.display = "none";
+      startSocialWatch(api);
       shadow.getElementById("host-label").textContent = typeof Pengu !== "undefined" && Pengu.version ? `loader ${Pengu.version}` : "in client";
+      teamRevealDom = makeTeamRevealDom({
+        doc: document,
+        subscribe,
+        overlayRoot: shadow,
+        getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || "",
+        loadSnapshot: async (session, hooks) => {
+          if (!teamRevealChamps.length) {
+            if (!teamRevealChampsLoading) {
+              teamRevealChampsLoading = loadChampions(lcu2).then((list) => {
+                teamRevealChamps = list;
+                teamRevealChampsLoading = null;
+                return list;
+              });
+            }
+            await teamRevealChampsLoading;
+          }
+          return buildTeamRevealSnapshot({
+            session,
+            lcu: lcu2,
+            onProgress: hooks?.onProgress,
+            signal: hooks?.signal
+          });
+        }
+      });
+      teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+      if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
       function paint() {
         if (screen === "settings") {
           content.innerHTML = renderSettings(settings, {
@@ -2750,7 +5009,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         } else if (screen === "friends") {
           content.innerHTML = renderFriends(friends);
         } else if (screen === "queue") {
-          content.innerHTML = renderQueue({ provider });
+          content.innerHTML = renderQueue({ provider, settings, disabled: trayDown });
         } else if (screen === "status") {
           content.innerHTML = renderStatus(statusText);
           updateCount();
@@ -2790,8 +5049,9 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         const result = await client.save(patch);
         if (result.ok) {
           trayDown = false;
+          settings = { ...settings, ...patch };
           if (onSettingsChanged) onSettingsChanged(settings);
-          return;
+          return { ok: true };
         }
         revert();
         trayDown = result.reason.includes("not running");
@@ -2799,6 +5059,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         statusEl.textContent = result.reason;
         statusEl.className = "status-bad";
         console.log(TAG, "could not save -", result.reason);
+        return { ok: false, reason: result.reason };
       }
       const BOX = { min: 120, max: Math.round(window.innerHeight * 0.46) };
       const GRIP = 16;
@@ -2816,15 +5077,19 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           champions = await loadChampions(lcu2);
         }
         if (screen === "profile") {
-          try {
-            lol = readLol(await lcu2.get(CHAT_ME));
-          } catch {
-            lol = {};
+          if (settings.profile_rank_tier) {
+            syncRankUiFromSettings();
+          } else {
+            try {
+              lol = readLol(await lcu2.get(CHAT_ME));
+            } catch {
+              lol = {};
+            }
+            pickedTier = lol.rankedLeagueTier || "";
+            if (lol.rankedLeagueDivision) steps["rank-div"] = lol.rankedLeagueDivision;
+            if (lol.rankedLeagueQueue) steps["rank-queue"] = lol.rankedLeagueQueue;
+            if (lol.challengeCrystalLevel) steps.crystal = lol.challengeCrystalLevel;
           }
-          pickedTier = lol.rankedLeagueTier || "";
-          if (lol.rankedLeagueDivision) steps["rank-div"] = lol.rankedLeagueDivision;
-          if (lol.rankedLeagueQueue) steps["rank-queue"] = lol.rankedLeagueQueue;
-          if (lol.challengeCrystalLevel) steps.crystal = lol.challengeCrystalLevel;
           if (profileTab === "banner" && skins.length === 0) skins = await loadSkins(lcu2);
         }
         if (screen === "friends") friends = await loadFriends(lcu2);
@@ -2880,26 +5145,34 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         }
       });
       content.addEventListener("click", async (e) => {
+        const applyPickToggle = (id) => {
+          const previous = {
+            auto_pick_champion_id: settings.auto_pick_champion_id,
+            auto_pick_champion_id_2: settings.auto_pick_champion_id_2
+          };
+          settings = toggleAutoPickChampion(settings, id);
+          paint();
+          commit(
+            {
+              auto_pick_champion_id: settings.auto_pick_champion_id,
+              auto_pick_champion_id_2: settings.auto_pick_champion_id_2
+            },
+            () => {
+              settings = { ...settings, ...previous };
+            }
+          );
+        };
+        const removePick = e.target.closest("[data-remove-pick]");
+        if (removePick) {
+          applyPickToggle(Number(removePick.dataset.removePick));
+          return;
+        }
         const champ = e.target.closest("[data-champ]");
         if (champ) {
           const key = champ.dataset.for;
           const id = Number(champ.dataset.champ);
           if (key === "auto_pick") {
-            const previous2 = {
-              auto_pick_champion_id: settings.auto_pick_champion_id,
-              auto_pick_champion_id_2: settings.auto_pick_champion_id_2
-            };
-            settings = toggleAutoPickChampion(settings, id);
-            paint();
-            commit(
-              {
-                auto_pick_champion_id: settings.auto_pick_champion_id,
-                auto_pick_champion_id_2: settings.auto_pick_champion_id_2
-              },
-              () => {
-                settings = { ...settings, ...previous2 };
-              }
-            );
+            applyPickToggle(id);
             return;
           }
           const previous = settings[key];
@@ -3012,20 +5285,60 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           return;
         }
         const profileAction = {
-          "rank-save": () => presence.setRank({
-            tier: pickedTier || lol.rankedLeagueTier || "GOLD",
-            division: steps["rank-div"],
-            queue: steps["rank-queue"]
-          }).then(
-            (r) => r.ok ? presence.setBadges({ crystal: steps.crystal }) : r
-          ),
-          "rank-clear": () => presence.clearRank(),
+          "rank-save": async () => {
+            const tier = pickedTier || lol.rankedLeagueTier || "GOLD";
+            const patch = profileRankPatch({
+              tier,
+              division: steps["rank-div"],
+              queue: steps["rank-queue"],
+              crystal: steps.crystal
+            });
+            const previous = {
+              profile_rank_tier: settings.profile_rank_tier,
+              profile_rank_division: settings.profile_rank_division,
+              profile_rank_queue: settings.profile_rank_queue,
+              profile_rank_crystal: settings.profile_rank_crystal
+            };
+            settings = { ...settings, ...patch };
+            const saved = await commit(patch, () => {
+              settings = { ...settings, ...previous };
+            });
+            if (!saved.ok) return saved;
+            return applyProfileRank(presence2, readProfileRank(settings));
+          },
+          "rank-clear": async () => {
+            const patch = profileRankPatch({
+              tier: "",
+              division: "I",
+              queue: QUEUES[0].id,
+              crystal: "IRON"
+            });
+            const previous = {
+              profile_rank_tier: settings.profile_rank_tier,
+              profile_rank_division: settings.profile_rank_division,
+              profile_rank_queue: settings.profile_rank_queue,
+              profile_rank_crystal: settings.profile_rank_crystal
+            };
+            settings = { ...settings, ...patch };
+            pickedTier = "";
+            steps["rank-div"] = "I";
+            steps["rank-queue"] = QUEUES[0].id;
+            steps.crystal = "IRON";
+            const saved = await commit(patch, () => {
+              settings = { ...settings, ...previous };
+            });
+            if (!saved.ok) return saved;
+            return presence2.clearRank();
+          },
+          "badges-remove": () => challenges.removeBadges(),
+          "badges-clone": () => challenges.cloneFirstBadge(),
           "riot-id-save": () => riotId.save(
             `${shadow.getElementById("riot-name").value}#${shadow.getElementById("riot-tag").value}`
           )
         }[e.target.id];
         if (profileAction) {
           const btn2 = e.target;
+          const actionId = btn2.id;
           btn2.disabled = true;
           const result2 = await profileAction();
           try {
@@ -3033,7 +5346,11 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           } catch {
           }
           paint();
-          say(result2.ok ? "Applied" : result2.reason, result2.ok);
+          const okCopy = {
+            "badges-remove": "Badges removed",
+            "badges-clone": "Cloned first badge to all 3"
+          }[actionId] || "Applied";
+          say(result2.ok ? okCopy : result2.reason, result2.ok);
           return;
         }
         if (e.target.id === "status-clear") {
@@ -3057,9 +5374,15 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         const key = row.dataset.setting;
         const previous = settings[key];
         settings = { ...settings, [key]: !previous };
+        if (key === "queue_team_reveal_in_client" && teamRevealDom) {
+          teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+        }
         paint();
         commit({ [key]: settings[key] }, () => {
           settings = { ...settings, [key]: previous };
+          if (key === "queue_team_reveal_in_client" && teamRevealDom) {
+            teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+          }
         });
       });
       content.addEventListener("input", (e) => {
@@ -3124,7 +5447,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       });
       paint();
     }
-    return { ...ui2, setReadyCheck, setChampSelect };
+    return { ...ui2, setReadyCheck, setChampSelect, setIdle };
   }
 
   // src/features/unlockFields.js
@@ -3184,6 +5507,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   }
 
   // src/features/autoPick.js
+  var CHAMP_SELECT_POLL_MS = 500;
   function pickCandidates(settings) {
     const ids = [];
     for (const id of [settings.auto_pick_champion_id, settings.auto_pick_champion_id_2]) {
@@ -3209,13 +5533,15 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         kind: "ban"
       };
     }
-    const pick = findMyAction(session, "pick");
+    const livePick = findMyAction(session, "pick");
+    const queuedPick = isPlanningPhase(session) ? findMyQueuedAction(session, "pick") : null;
+    const pick = livePick || queuedPick;
     const championId = choosePickChampion(session, settings, skipped);
     if (pick && settings.auto_pick && championId) {
       return {
         actionId: pick.id,
         championId,
-        completed: !!settings.insta_lock,
+        completed: !!(settings.insta_lock && livePick),
         kind: "pick"
       };
     }
@@ -3224,11 +5550,58 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   function decisionKey(decision) {
     return `${decision.kind}:${decision.actionId}:${decision.championId}:${decision.completed ? "lock" : "hover"}`;
   }
-  function startChampSelectAutomation({ getSettings, champSelect, subscribe: subscribe2, onResult, onSession }) {
+  function startChampSelectAutomation({
+    getSettings,
+    champSelect,
+    subscribe: subscribe2,
+    onResult,
+    onSession,
+    getSession,
+    setTimeoutImpl = setTimeout,
+    clearTimeoutImpl = clearTimeout
+  }) {
     let pending = null;
     let echoed = false;
     let lastSession = null;
     let skipped = /* @__PURE__ */ new Set();
+    let pollId = 0;
+    let applying = false;
+    let inChampSelect2 = false;
+    let stopPhase = null;
+    let stopSession = null;
+    function armSession(active) {
+      if (active === inChampSelect2) return;
+      inChampSelect2 = active;
+      if (active) {
+        if (!stopSession) stopSession = subscribe2(SESSION_ROUTE, apply);
+        return;
+      }
+      if (stopSession) {
+        stopSession();
+        stopSession = null;
+      }
+      void apply(null);
+    }
+    function stopPoll() {
+      if (pollId) {
+        clearTimeoutImpl(pollId);
+        pollId = 0;
+      }
+    }
+    function schedulePoll() {
+      stopPoll();
+      if (typeof getSession !== "function") return;
+      pollId = setTimeoutImpl(async () => {
+        pollId = 0;
+        if (!lastSession) return;
+        try {
+          const session = await getSession();
+          await apply(session || lastSession);
+        } catch {
+          await apply(lastSession);
+        }
+      }, CHAMP_SELECT_POLL_MS);
+    }
     const apply = async (session) => {
       lastSession = session;
       if (onSession) onSession(session);
@@ -3236,61 +5609,101 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         pending = null;
         echoed = false;
         skipped = /* @__PURE__ */ new Set();
+        stopPoll();
         return;
       }
-      for (; ; ) {
-        const decision = decideAction(session, getSettings(), skipped);
-        if (!decision) {
-          pending = null;
-          echoed = false;
-          return;
-        }
-        const mine = findMyAction(session, decision.kind);
-        if (!mine) {
-          pending = null;
-          echoed = false;
-          return;
-        }
-        const key = decisionKey(decision);
-        const already = mine.championId === decision.championId && (!decision.completed || mine.completed);
-        if (already) {
+      if (applying) {
+        schedulePoll();
+        return;
+      }
+      applying = true;
+      try {
+        for (; ; ) {
+          const decision = decideAction(session, getSettings(), skipped);
+          if (!decision) {
+            pending = null;
+            echoed = false;
+            schedulePoll();
+            return;
+          }
+          const mine = decision.kind === "pick" && !decision.completed ? findMyQueuedAction(session, "pick") || findMyAction(session, "pick") : findMyAction(session, decision.kind);
+          if (!mine) {
+            pending = null;
+            echoed = false;
+            schedulePoll();
+            return;
+          }
+          const key = decisionKey(decision);
+          const already = mine.championId === decision.championId && (!decision.completed || mine.completed);
+          if (already) {
+            pending = key;
+            echoed = true;
+            schedulePoll();
+            return;
+          }
+          if (pending === key && echoed && mine.championId === 0) {
+            pending = null;
+            echoed = false;
+          }
+          const needsConfirm = decision.completed && mine.championId === decision.championId && !mine.completed;
+          if (pending === key && !needsConfirm) {
+            schedulePoll();
+            return;
+          }
           pending = key;
-          echoed = true;
-          return;
-        }
-        if (pending === key && echoed && mine.championId === 0) {
+          const result = await champSelect.commit(
+            mine.id,
+            decision.championId,
+            decision.completed,
+            decision.kind
+          );
+          if (result.ok) {
+            if (onResult) onResult(decision, result);
+            schedulePoll();
+            return;
+          }
           pending = null;
-          echoed = false;
-        }
-        if (pending === key) return;
-        pending = key;
-        const result = await champSelect.commit(
-          decision.actionId,
-          decision.championId,
-          decision.completed
-        );
-        if (result.ok) {
           if (onResult) onResult(decision, result);
-          return;
+          if (decision.kind !== "pick") {
+            schedulePoll();
+            return;
+          }
+          const nextSkipped = new Set(skipped);
+          nextSkipped.add(decision.championId);
+          if (!decideAction(session, getSettings(), nextSkipped)) {
+            schedulePoll();
+            return;
+          }
+          skipped = nextSkipped;
         }
-        pending = null;
-        if (onResult) onResult(decision, result);
-        if (decision.kind !== "pick") return;
-        const nextSkipped = new Set(skipped);
-        nextSkipped.add(decision.championId);
-        if (!decideAction(session, getSettings(), nextSkipped)) return;
-        skipped = nextSkipped;
+      } finally {
+        applying = false;
       }
     };
-    const unsubscribe = subscribe2(SESSION_ROUTE, apply);
+    stopPhase = subscribe2(GAMEFLOW_PHASE_ROUTE, (payload) => {
+      const phase = readGameflowPhase2(payload);
+      if (!phase) return;
+      armSession(isChampSelectPhase(phase));
+    });
     return {
-      refresh: () => apply(lastSession),
+      refresh: () => {
+        if (inChampSelect2) apply(lastSession);
+      },
       stop: () => {
         pending = null;
         echoed = false;
         lastSession = null;
         skipped = /* @__PURE__ */ new Set();
-        if (typeof unsubscribe === "function") unsubscribe();
+        stopPoll();
+        if (stopSession) {
+          stopSession();
+          stopSession = null;
+        }
+        if (stopPhase) {
+          stopPhase();
+          stopPhase = null;
+        }
+        inChampSelect2 = false;
       }
     };
   }
@@ -3298,14 +5711,32 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   // src/index.js
   var TAG2 = "[Drake]";
   var lcu = makeLcu();
+  var presence = makePresence({ lcu });
   var stopFeatures = () => {
+  };
+  var stopProfileRank = () => {
   };
   var champSelectCtl = null;
   var ui = null;
   var currentSettings = {};
+  var idleInGame = false;
+  function sleepPlugin() {
+    stopFeatures();
+    if (champSelectCtl) {
+      champSelectCtl.stop();
+      champSelectCtl = null;
+    }
+    if (ui) ui.setIdle(true);
+  }
+  function wakePlugin() {
+    if (ui) ui.setIdle(false);
+    wireFeatures(currentSettings);
+  }
   function wireFeatures(settings) {
     currentSettings = settings;
     stopFeatures();
+    stopProfileRank();
+    if (idleInGame) return;
     const stopAutoAccept = startAutoAccept({
       enabled: !!settings.auto_accept,
       delayMs: settings.auto_accept_delay_ms || 0,
@@ -3318,6 +5749,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         getSettings: () => currentSettings,
         champSelect: makeChampSelect({ lcu }),
         subscribe,
+        getSession: () => lcu.get("/lol-champ-select/v1/session"),
         onResult: (d, r) => console.log(TAG2, d.kind, d.championId, r.ok ? "ok" : "failed: " + r.reason),
         onSession: (session) => ui && ui.setChampSelect(session)
       });
@@ -3328,7 +5760,14 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       enabled: !!settings.unlock_status_message,
       onFirstUnlock: (n) => console.log(TAG2, "unlocked the status message input", n > 1 ? n : "")
     });
+    stopProfileRank = startProfileRankRefresh({
+      subscribe,
+      getSettings: () => currentSettings,
+      presence,
+      lcu
+    });
     stopFeatures = () => {
+      stopProfileRank();
       if (typeof stopAutoAccept === "function") stopAutoAccept();
       stopUnlocks();
     };
@@ -3352,6 +5791,15 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     console.log(TAG2, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
     ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
     wireFeatures(cfg.settings);
+    startInGameIdle({
+      subscribe,
+      onChange(idle) {
+        idleInGame = idle;
+        console.log(TAG2, idle ? "idle in game" : "active in client");
+        if (idle) sleepPlugin();
+        else wakePlugin();
+      }
+    });
     console.log(TAG2, "UI ready \u2014 press Ctrl+D");
   }
   if (document.readyState === "complete") start();
