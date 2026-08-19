@@ -386,6 +386,30 @@ describe('startChampSelectAutomation', () => {
     expect(commit.mock.calls[0][1]).toBe(103);
     expect(commit.mock.calls[1][1]).toBe(64);
   });
+
+  it('keeps the same champion when only the lock was refused', async () => {
+    // A refused hover means the champion is gone, but a refused completion just
+    // means it could not be locked yet. Giving up on the first pick there would
+    // hand the player their second choice for no reason.
+    const commit = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, retry: true, reason: 'would not lock it (500)' })
+      .mockResolvedValueOnce({ ok: true });
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
+    startChampSelectAutomation({
+      getSettings: () =>
+        settings({ auto_pick: true, auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 }),
+      champSelect: { commit },
+      subscribe,
+    });
+    enterChampSelect();
+
+    await fireSession(session([act({ id: 5 })]));
+    await fireSession(session([act({ id: 5 })]));
+
+    expect(commit.mock.calls[0][1]).toBe(103);
+    expect(commit.mock.calls[1][1]).toBe(103);
+  });
 });
 
 describe('renderAutoPick', () => {

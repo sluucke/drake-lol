@@ -151,13 +151,14 @@
             return { ok: false, reason: `the client refused it (${pick.status})` };
           }
           if (!completed) return { ok: true };
-          try {
-            await lcu2.post(actionCompleteRoute(actionId));
-          } catch {
-          }
-          const locked = await lcu2.patch(actionRoute(actionId), { championId, completed: true });
-          if (!accepted(locked)) {
-            return { ok: false, reason: `the client refused it (${locked.status})` };
+          const done = await lcu2.post(actionCompleteRoute(actionId));
+          if (!accepted(done)) {
+            const what = type === "ban" ? "ban" : "lock";
+            return {
+              ok: false,
+              retry: true,
+              reason: `the client would not ${what} it (${done.status})`
+            };
           }
           return { ok: true };
         } catch (e) {
@@ -396,6 +397,10 @@
   function isChampSelectPhase(phase) {
     return String(phase || "").trim() === "ChampSelect";
   }
+  var READY_CHECK_PHASES = /* @__PURE__ */ new Set(["Matchmaking", "ReadyCheck"]);
+  function isReadyCheckPhase(phase) {
+    return READY_CHECK_PHASES.has(String(phase || "").trim());
+  }
   function startInGameIdle({ subscribe: subscribe2, onChange }) {
     let idle = false;
     const unsubscribe = subscribe2(GAMEFLOW_PHASE_ROUTE, (payload) => {
@@ -471,7 +476,7 @@
     };
     const unsubscribePhase = subscribe2(GAMEFLOW_PHASE_ROUTE, (payload) => {
       const phase = readGameflowPhase2(payload);
-      if (phase === "Lobby") {
+      if (isReadyCheckPhase(phase)) {
         startReadyCheck();
       } else {
         if (unsubscribeReadyCheck) {
@@ -488,8 +493,11 @@
 
   // src/subscribe.js
   var DEFAULT_POLL_INTERVAL_MS = 1e3;
+  function socketPushAvailable() {
+    return typeof socket !== "undefined" && !!socket && typeof socket.observe === "function";
+  }
   function subscribe(route, handler, { fetchImpl = fetch, intervalMs = DEFAULT_POLL_INTERVAL_MS } = {}) {
-    const push = typeof socket !== "undefined" && socket && typeof socket.observe === "function";
+    const push = socketPushAvailable();
     let stopped = false;
     let idle = false;
     let seen = false;
@@ -530,10 +538,14 @@
         seen = true;
         handler(message.data);
       };
-      socket.observe(route, observer);
+      const subscription = socket.observe(route, observer);
       unobserve = () => {
-        if (typeof socket !== "undefined" && socket && typeof socket.unobserve === "function") {
-          socket.unobserve(route, observer);
+        if (subscription && typeof subscription.disconnect === "function") {
+          subscription.disconnect();
+          return;
+        }
+        if (typeof socket !== "undefined" && socket && typeof socket.disconnect === "function") {
+          socket.disconnect(route, observer);
         }
       };
     }
@@ -5691,7 +5703,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           }
           pending = null;
           if (onResult) onResult(decision, result);
-          if (decision.kind !== "pick") {
+          if (decision.kind !== "pick" || result.retry) {
             schedulePoll();
             return;
           }
@@ -5816,6 +5828,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const host = typeof Pengu !== "undefined" && Pengu.version ? `pengu ${Pengu.version}` : "unknown";
     const ok = await startHeartbeat({ checkIn: transport.checkIn, host });
     console.log(TAG2, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
+    console.log(TAG2, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
     ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
     wireFeatures(cfg.settings);
     startInGameIdle({

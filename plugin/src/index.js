@@ -3,7 +3,7 @@ import { makeLcu } from './lcu.js';
 import { makeTransport } from './transport.js';
 import { PLUGIN_BUILD } from './buildId.js';
 import { startAutoAccept } from './autoAccept.js';
-import { subscribe } from './subscribe.js';
+import { socketPushAvailable, subscribe } from './subscribe.js';
 import { startHeartbeat } from './heartbeat.js';
 import { startUI } from './ui/index.js';
 import { startUnlocks } from './features/startUnlocks.js';
@@ -119,6 +119,7 @@ async function start() {
   const host = (typeof Pengu !== 'undefined' && Pengu.version) ? `pengu ${Pengu.version}` : 'unknown';
   const ok = await startHeartbeat({ checkIn: transport.checkIn, host });
   console.log(TAG, 'check-in', ok ? 'ok' : 'failed', '| settings', JSON.stringify(cfg.settings));
+  console.log(TAG, 'lcu events', socketPushAvailable() ? 'pushed by the loader' : 'polled');
 
   ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
   wireFeatures(cfg.settings);

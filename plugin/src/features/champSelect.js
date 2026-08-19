@@ -70,14 +70,14 @@ export function makeChampSelect({ lcu }) {
         }
         if (!completed) return { ok: true };
 
-        try {
-          await lcu.post(actionCompleteRoute(actionId));
-        } catch {
-        }
-
-        const locked = await lcu.patch(actionRoute(actionId), { championId, completed: true });
-        if (!accepted(locked)) {
-          return { ok: false, reason: `the client refused it (${locked.status})` };
+        const done = await lcu.post(actionCompleteRoute(actionId));
+        if (!accepted(done)) {
+          const what = type === 'ban' ? 'ban' : 'lock';
+          return {
+            ok: false,
+            retry: true,
+            reason: `the client would not ${what} it (${done.status})`,
+          };
         }
         return { ok: true };
       } catch (e) {

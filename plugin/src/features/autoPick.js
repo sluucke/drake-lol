@@ -193,7 +193,7 @@ export function startChampSelectAutomation({
         pending = null;
         if (onResult) onResult(decision, result);
 
-        if (decision.kind !== 'pick') {
+        if (decision.kind !== 'pick' || result.retry) {
           schedulePoll();
           return;
         }
