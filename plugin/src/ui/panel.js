@@ -61,6 +61,11 @@ export function renderShell() {
     </div>`;
 }
 
+export function formatHostLabel({ appVersion, loaderVersion }) {
+  const host = loaderVersion ? `loader ${loaderVersion}` : 'in client';
+  return `drake ${appVersion || '?'} · ${host}`;
+}
+
 export function renderCheckRow({ id, label, help, checked, disabled }) {
   return `
     <button class="check-row" data-setting="${id}" ${disabled ? 'disabled' : ''}>

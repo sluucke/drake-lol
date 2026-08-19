@@ -13,6 +13,7 @@ import {
   skinWindow,
   describeStatus,
   formatDelay,
+  formatHostLabel,
   toggleAutoPickChampion,
 } from './panel.js';
 import { makeStatus } from '../features/status.js';
@@ -289,8 +290,10 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     shadow.getElementById('scrim').style.display = 'none';
 
     startSocialWatch(api);
-    shadow.getElementById('host-label').textContent =
-      typeof Pengu !== 'undefined' && Pengu.version ? `loader ${Pengu.version}` : 'in client';
+    shadow.getElementById('host-label').textContent = formatHostLabel({
+      appVersion,
+      loaderVersion: typeof Pengu !== 'undefined' && Pengu.version ? Pengu.version : '',
+    });
     teamRevealDom = makeTeamRevealDom({
       doc: document,
       subscribe,
