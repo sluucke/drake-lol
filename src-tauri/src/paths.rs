@@ -15,6 +15,7 @@ pub fn our_core_dll() -> PathBuf { our_loader_dir().join("core.dll") }
 /// launches League -- cannot be replaced by a standard user.
 pub fn state_dir() -> PathBuf { data_dir().join("state") }
 pub fn settings_file() -> PathBuf { state_dir().join("settings.json") }
+pub fn update_attempt_file() -> PathBuf { state_dir().join("update-attempt.json") }
 
 #[cfg(test)]
 mod tests {
@@ -39,6 +40,11 @@ mod tests {
         assert_eq!(settings_file().parent().unwrap(), state_dir());
         assert_eq!(state_dir().parent().unwrap(), data_dir());
         assert_ne!(settings_file().parent().unwrap(), data_dir());
+    }
+
+    #[test]
+    fn the_update_attempt_record_is_written_where_the_unelevated_tray_can_write() {
+        assert_eq!(update_attempt_file().parent().unwrap(), state_dir());
     }
 
     #[test]

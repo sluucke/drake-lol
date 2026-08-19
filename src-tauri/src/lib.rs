@@ -66,6 +66,7 @@ async fn try_apply_update(
     state: &Arc<configd::ConfigdState>,
     note: Arc<Mutex<Option<String>>>,
     announce_current: bool,
+    trigger: update::UpdateTrigger,
 ) {
     if !state.try_begin_update() {
         return;
@@ -80,7 +81,7 @@ async fn try_apply_update(
             return;
         }
     };
-    match update::apply_if_newer(env!("CARGO_PKG_VERSION"), &relaunch).await {
+    match update::apply_if_newer(env!("CARGO_PKG_VERSION"), &relaunch, trigger).await {
         Ok(true) => {
             *note.lock().unwrap() = Some("Installing update".into());
             std::thread::sleep(update::HANDOFF_START_GRACE);
@@ -225,7 +226,7 @@ pub fn run() {
                     let tray = menu_state.clone();
                     let note = menu_note.clone();
                     tauri::async_runtime::spawn(async move {
-                        try_apply_update(&tray, note, true).await;
+                        try_apply_update(&tray, note, true, update::UpdateTrigger::Manual).await;
                     });
                 } else if event.id() == "reload" {
                     // Reload is only ever triggered by an explicit click here.
@@ -403,7 +404,13 @@ pub fn run() {
                     }
                     let enabled = periodic_state.settings.lock().unwrap().auto_update;
                     if enabled {
-                        try_apply_update(&periodic_state, periodic_note.clone(), false).await;
+                        try_apply_update(
+                            &periodic_state,
+                            periodic_note.clone(),
+                            false,
+                            update::UpdateTrigger::Automatic,
+                        )
+                        .await;
                     }
                 }
             });
