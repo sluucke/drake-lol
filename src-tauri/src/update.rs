@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 pub const RELEASES_LATEST: &str =
     "https://api.github.com/repos/sluucke/drake-lol/releases/latest";
@@ -124,9 +124,13 @@ $log = {log}
 function Write-Step($message) {{
   "{{0}} {{1}}" -f (Get-Date -Format o), $message | Out-File -FilePath $log -Append -Encoding utf8
 }}
-while (Get-Process -Name Drake -ErrorAction SilentlyContinue) {{
+Write-Step 'the handoff started'
+$waited = 0
+while ((Get-Process -Name Drake -ErrorAction SilentlyContinue) -and $waited -lt 30000) {{
   Start-Sleep -Milliseconds 200
+  $waited += 200
 }}
+Write-Step "Drake took $waited ms to exit"
 try {{
   Write-Step 'running the installer'
   $proc = Start-Process -FilePath $installer -ArgumentList '/S' -Verb RunAs -Wait -PassThru
@@ -184,29 +188,79 @@ pub async fn download_installer(
     std::fs::write(dest, bytes).map_err(UpdateError::Write)
 }
 
+#[cfg(windows)]
+const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+#[cfg(windows)]
+const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
+
+/// The handoff has to outlive Drake, but powershell.exe still needs a console to
+/// run at all, so it gets a hidden one rather than none.
+#[cfg(windows)]
+pub const fn handoff_creation_flags() -> u32 {
+    CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB | CREATE_NEW_PROCESS_GROUP
+}
+
+/// A job object that forbids breakaway rejects the spawn outright, so the second
+/// attempt drops the flag and accepts that the handoff may die with the job.
+#[cfg(windows)]
+pub const fn handoff_creation_flags_without_breakaway() -> u32 {
+    CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
+}
+
 pub fn spawn_handoff(installer: &Path, relaunch: &Path) -> Result<(), UpdateError> {
     let log: PathBuf = std::env::temp_dir().join("drake-update.log");
     let script = handoff_script(installer, relaunch, &log);
     let ps1: PathBuf = std::env::temp_dir().join("drake-update.ps1");
     std::fs::write(&ps1, script).map_err(UpdateError::Write)?;
+    let host_log: PathBuf = std::env::temp_dir().join("drake-update-host.log");
 
-    let mut cmd = Command::new("powershell.exe");
-    cmd.args([
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        &ps1.to_string_lossy(),
-    ]);
+    let build = || {
+        let mut cmd = Command::new("powershell.exe");
+        cmd.args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            &ps1.to_string_lossy(),
+        ]);
+        cmd.stdin(Stdio::null());
+        match std::fs::File::create(&host_log) {
+            Ok(file) => {
+                let dup = file.try_clone().ok();
+                cmd.stdout(Stdio::from(file));
+                match dup {
+                    Some(err) => cmd.stderr(Stdio::from(err)),
+                    None => cmd.stderr(Stdio::null()),
+                };
+            }
+            Err(_) => {
+                cmd.stdout(Stdio::null()).stderr(Stdio::null());
+            }
+        }
+        cmd
+    };
+
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        const DETACHED_PROCESS: u32 = 0x00000008;
-        const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
-        cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
+        let mut cmd = build();
+        cmd.creation_flags(handoff_creation_flags());
+        if cmd.spawn().is_ok() {
+            return Ok(());
+        }
+        let mut retry = build();
+        retry.creation_flags(handoff_creation_flags_without_breakaway());
+        retry.spawn().map_err(UpdateError::Spawn)?;
+        return Ok(());
     }
-    cmd.spawn().map_err(UpdateError::Spawn)?;
-    Ok(())
+
+    #[cfg(not(windows))]
+    {
+        build().spawn().map_err(UpdateError::Spawn)?;
+        Ok(())
+    }
 }
 
 pub async fn apply_if_newer(current: &str, relaunch: &Path) -> Result<bool, UpdateError> {
@@ -368,6 +422,52 @@ mod tests {
         let script = a_handoff();
         assert!(script.contains(r"C:\Temp\drake-update.log"));
         assert!(script.contains("Out-File"));
+    }
+
+    #[test]
+    fn the_handoff_logs_before_it_waits_for_drake_to_exit() {
+        // An empty log has to mean "the script never ran", not "it ran but was
+        // still waiting", otherwise a stall and a failed launch look identical.
+        let script = a_handoff();
+        let first_log_at = script.find("Write-Step '").expect("a logged step");
+        let wait_at = script.find("while (").expect("the wait loop");
+        assert!(
+            first_log_at < wait_at,
+            "the first step must be recorded before the wait: {script}"
+        );
+    }
+
+    #[test]
+    fn the_handoff_does_not_wait_for_drake_forever() {
+        let script = a_handoff();
+        assert!(
+            script.contains("$waited -lt"),
+            "an unbounded wait can strand the update silently: {script}"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn the_handoff_is_given_a_console_and_escapes_the_parent_job() {
+        // powershell.exe is a console application. DETACHED_PROCESS denies it a
+        // console, so it exits before running a line when the parent is a GUI
+        // process with no console of its own.
+        const DETACHED_PROCESS: u32 = 0x0000_0008;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
+
+        let flags = handoff_creation_flags();
+        assert_eq!(flags & DETACHED_PROCESS, 0, "must not detach the console");
+        assert_eq!(flags & CREATE_NO_WINDOW, CREATE_NO_WINDOW);
+        assert_eq!(flags & CREATE_BREAKAWAY_FROM_JOB, CREATE_BREAKAWAY_FROM_JOB);
+        assert_eq!(flags & CREATE_NEW_PROCESS_GROUP, CREATE_NEW_PROCESS_GROUP);
+
+        // A job that forbids breakaway makes CreateProcess fail outright, so the
+        // spawn has to have a second shape to fall back to.
+        let fallback = handoff_creation_flags_without_breakaway();
+        assert_eq!(fallback & CREATE_BREAKAWAY_FROM_JOB, 0);
+        assert_eq!(fallback & CREATE_NO_WINDOW, CREATE_NO_WINDOW);
     }
 
     #[test]
