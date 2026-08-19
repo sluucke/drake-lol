@@ -1,6 +1,7 @@
 import {
   findMyAction,
   findMyQueuedAction,
+  isChampSelectSession,
   isPlanningPhase,
   SESSION_ROUTE,
   unavailableChampionIds,
@@ -114,7 +115,8 @@ export function startChampSelectAutomation({
     }, CHAMP_SELECT_POLL_MS);
   }
 
-  const apply = async (session) => {
+  const apply = async (rawSession) => {
+    const session = isChampSelectSession(rawSession) ? rawSession : null;
     lastSession = session;
     if (onSession) onSession(session);
     if (!session) {
@@ -227,6 +229,7 @@ export function startChampSelectAutomation({
       lastSession = null;
       skipped = new Set();
       stopPoll();
+      if (onSession) onSession(null);
       if (stopSession) {
         stopSession();
         stopSession = null;

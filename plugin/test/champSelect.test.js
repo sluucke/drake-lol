@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   findMyAction,
   isBanPhase,
+  isChampSelectSession,
   actionRoute,
   makeChampSelect,
   unavailableChampionIds,
@@ -113,7 +114,37 @@ describe('actionRoute', () => {
   });
 });
 
+describe('isChampSelectSession', () => {
+  it('accepts a real session', () => {
+    expect(isChampSelectSession(session({ actions: [[action()]] }))).toBe(true);
+  });
+
+  it('rejects the error body the client answers with outside champ select', () => {
+    expect(
+      isChampSelectSession({
+        errorCode: 'RPC_ERROR',
+        httpStatus: 404,
+        message: 'No active delegate',
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects nothing at all', () => {
+    expect(isChampSelectSession(null)).toBe(false);
+    expect(isChampSelectSession(undefined)).toBe(false);
+    expect(isChampSelectSession('')).toBe(false);
+  });
+});
+
 describe('makeChampSelect', () => {
+  it('reads no session when the client answers with an error body', async () => {
+    const lcu = {
+      get: vi.fn().mockResolvedValue({ errorCode: 'RPC_ERROR', httpStatus: 404 }),
+    };
+
+    expect(await makeChampSelect({ lcu }).getSession()).toBe(null);
+  });
+
   it('locks a champion by hovering it and then completing the action', async () => {
     const lcu = { patch: vi.fn().mockResolvedValue({ ok: true }), post: vi.fn().mockResolvedValue({ ok: true, status: 204 }) };
 
