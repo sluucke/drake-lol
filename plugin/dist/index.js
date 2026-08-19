@@ -2083,6 +2083,10 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       </div>
     </div>`;
   }
+  function formatHostLabel({ appVersion, loaderVersion }) {
+    const host = loaderVersion ? `loader ${loaderVersion}` : "in client";
+    return `drake ${appVersion || "?"} \xB7 ${host}`;
+  }
   function renderCheckRow({ id, label, help, checked, disabled }) {
     return `
     <button class="check-row" data-setting="${id}" ${disabled ? "disabled" : ""}>
@@ -4964,7 +4968,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
       };
       shadow.getElementById("scrim").style.display = "none";
       startSocialWatch(api);
-      shadow.getElementById("host-label").textContent = typeof Pengu !== "undefined" && Pengu.version ? `loader ${Pengu.version}` : "in client";
+      shadow.getElementById("host-label").textContent = formatHostLabel({
+        appVersion,
+        loaderVersion: typeof Pengu !== "undefined" && Pengu.version ? Pengu.version : ""
+      });
       teamRevealDom = makeTeamRevealDom({
         doc: document,
         subscribe,
