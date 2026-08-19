@@ -8,7 +8,7 @@ pub const RELEASES_LATEST: &str =
     "https://api.github.com/repos/sluucke/drake-lol/releases/latest";
 pub const USER_AGENT: &str = "Drake (https://github.com/sluucke/drake-lol)";
 pub const CHECK_EVERY: std::time::Duration = std::time::Duration::from_secs(6 * 60 * 60);
-pub const FIRST_CHECK_AFTER: std::time::Duration = std::time::Duration::from_secs(15);
+pub const HANDOFF_START_GRACE: std::time::Duration = std::time::Duration::from_millis(750);
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpdateError {
@@ -118,11 +118,11 @@ pub fn handoff_script(installer: &Path, relaunch: &Path) -> String {
 $installer = {installer}
 $relaunch = {relaunch}
 while (Get-Process -Name Drake -ErrorAction SilentlyContinue) {{
-  Start-Sleep -Seconds 1
+  Start-Sleep -Milliseconds 200
 }}
-try {{
-  Start-Process -FilePath $installer -ArgumentList '/S' -Verb RunAs -Wait
-}} catch {{
+$proc = Start-Process -FilePath $installer -ArgumentList '/S' -Verb RunAs -Wait -PassThru
+if ($null -eq $proc -or $proc.ExitCode -ne 0) {{
+  exit 1
 }}
 if (Test-Path -LiteralPath $relaunch) {{
   Start-Process -FilePath $relaunch
@@ -171,8 +171,6 @@ pub fn spawn_handoff(installer: &Path, relaunch: &Path) -> Result<(), UpdateErro
     let mut cmd = Command::new("powershell.exe");
     cmd.args([
         "-NoProfile",
-        "-WindowStyle",
-        "Hidden",
         "-ExecutionPolicy",
         "Bypass",
         "-File",
@@ -183,8 +181,7 @@ pub fn spawn_handoff(installer: &Path, relaunch: &Path) -> Result<(), UpdateErro
         use std::os::windows::process::CommandExt;
         const DETACHED_PROCESS: u32 = 0x00000008;
         const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW);
+        cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
     }
     cmd.spawn().map_err(UpdateError::Spawn)?;
     Ok(())
@@ -300,6 +297,8 @@ mod tests {
         assert!(script.contains("Get-Process -Name Drake"));
         assert!(script.contains("-Verb RunAs"));
         assert!(script.contains("/S"));
+        assert!(script.contains("-PassThru"));
+        assert!(script.contains("ExitCode"));
         assert!(script.contains(r"C:\Temp\Drake_0.2.0_x64-setup.exe"));
         assert!(script.contains(r"C:\Program Files\Drake\Drake.exe"));
     }

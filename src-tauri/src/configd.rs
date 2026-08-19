@@ -518,6 +518,7 @@ async fn apply_update(
     };
     match crate::update::apply_if_newer(env!("CARGO_PKG_VERSION"), &relaunch).await {
         Ok(true) => {
+            std::thread::sleep(crate::update::HANDOFF_START_GRACE);
             std::process::exit(0);
         }
         Ok(false) => {
