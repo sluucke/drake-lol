@@ -93,6 +93,326 @@
   // src/buildId.js
   var PLUGIN_BUILD = "__DRAKE_BUILD__";
 
+  // src/features/champSelect.js
+  var SESSION_ROUTE = "/lol-champ-select/v1/session";
+  function actionRoute(actionId) {
+    return `/lol-champ-select/v1/session/actions/${actionId}`;
+  }
+  function actionCompleteRoute(actionId) {
+    return `/lol-champ-select/v1/session/actions/${actionId}/complete`;
+  }
+  function eachAction(session) {
+    const phases = session && session.actions || [];
+    return phases.flat ? phases.flat() : [].concat(...phases);
+  }
+  function findMyQueuedAction(session, type) {
+    if (!session || session.localPlayerCellId === void 0) return null;
+    for (const a of eachAction(session)) {
+      if (a.type !== type) continue;
+      if (a.actorCellId !== session.localPlayerCellId) continue;
+      if (a.completed) continue;
+      return a;
+    }
+    return null;
+  }
+  function findMyAction(session, type) {
+    const action = findMyQueuedAction(session, type);
+    if (!action || !action.isInProgress) return null;
+    return action;
+  }
+  function isPlanningPhase(session) {
+    return String(session?.timer?.phase || "") === "PLANNING";
+  }
+  function unavailableChampionIds(session) {
+    const ids = /* @__PURE__ */ new Set();
+    if (!session) return ids;
+    const bans = session.bans || {};
+    for (const id of bans.myTeamBans || []) if (id) ids.add(id);
+    for (const id of bans.theirTeamBans || []) if (id) ids.add(id);
+    for (const a of eachAction(session)) {
+      if (a.completed && a.championId) ids.add(a.championId);
+    }
+    return ids;
+  }
+  function accepted(res) {
+    if (!res) return true;
+    if (typeof res.ok === "boolean") return res.ok;
+    return res.ok !== false;
+  }
+  function makeChampSelect({ lcu: lcu2 }) {
+    return {
+      async getSession() {
+        return lcu2.get(SESSION_ROUTE);
+      },
+      async commit(actionId, championId, completed, type = "pick") {
+        try {
+          const pick = await lcu2.patch(actionRoute(actionId), { championId });
+          if (!accepted(pick)) {
+            return { ok: false, reason: `the client refused it (${pick.status})` };
+          }
+          if (!completed) return { ok: true };
+          try {
+            await lcu2.post(actionCompleteRoute(actionId));
+          } catch {
+          }
+          const locked = await lcu2.patch(actionRoute(actionId), { championId, completed: true });
+          if (!accepted(locked)) {
+            return { ok: false, reason: `the client refused it (${locked.status})` };
+          }
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, reason: `could not reach the client (${e.message})` };
+        }
+      }
+    };
+  }
+
+  // src/features/dodge.js
+  var GAMEFLOW_DODGE_ROUTE = "/lol-gameflow/v1/session/dodge";
+  var GAMEFLOW_SESSION_ROUTE = "/lol-gameflow/v1/session";
+  var GAMEFLOW_PHASE_ROUTE = "/lol-gameflow/v1/gameflow-phase";
+  var LCDS_DODGE_BODY = ["", "teambuilder-draft", "quitV2", "{}"];
+  var LCDS_DODGE_BODY_LEGACY = ["", "teambuilder-draft", "quitV2", ""];
+  var DODGE_POST_TIMEOUT_MS = 4e3;
+  var DODGE_VERIFY_DELAY_MS = 400;
+  var DODGE_VERIFY_ATTEMPTS = 16;
+  var DODGE_VERIFY_INTERVAL_MS = 300;
+  var DODGE_VERIFY_STABLE_READS = 2;
+  var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  function withTimeout(promise, ms, message = "timed out") {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(message)), ms);
+      Promise.resolve(promise).then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+        }
+      );
+    });
+  }
+  var DODGE_ATTEMPTS = 5;
+  var DEFAULT_DELAY_MS = 250;
+  function lcdsDodgeRoute(body = LCDS_DODGE_BODY) {
+    const params = new URLSearchParams({
+      destination: "lcdsServiceProxy",
+      method: "call",
+      args: JSON.stringify(body)
+    });
+    return `/lol-login/v1/session/invoke?${params.toString()}`;
+  }
+  var DODGE_ROUTE = lcdsDodgeRoute();
+  function explain(status) {
+    if (status === 404 || status === 400) {
+      return "you have to be in champ select to dodge";
+    }
+    return `the client refused (${status})`;
+  }
+  async function readJson(res) {
+    if (!res || typeof res.json !== "function") return null;
+    try {
+      return await withTimeout(res.json(), 500, "json timed out");
+    } catch {
+      return null;
+    }
+  }
+  async function hasChampSelectSession(fetchImpl = fetch) {
+    try {
+      const res = await fetchImpl(SESSION_ROUTE);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+  async function readGameflowPhase(fetchImpl = fetch) {
+    try {
+      const res = await fetchImpl(GAMEFLOW_PHASE_ROUTE);
+      if (!res.ok) return null;
+      const body = await readJson(res);
+      if (typeof body === "string") return body;
+      return body?.phase ?? null;
+    } catch {
+      return null;
+    }
+  }
+  async function readGameflowSession(fetchImpl = fetch) {
+    try {
+      const res = await fetchImpl(GAMEFLOW_SESSION_ROUTE);
+      if (!res.ok) return null;
+      return readJson(res);
+    } catch {
+      return null;
+    }
+  }
+  function buildGameflowDodgeBody(session) {
+    const dodge = session?.gameDodge;
+    if (!dodge || typeof dodge !== "object") return null;
+    return {
+      dodgeData: dodge,
+      state: dodge.state ?? "Invalid",
+      dodgeIds: dodge.dodgeIds ?? [],
+      phase: session.phase ?? dodge.phase ?? "ChampSelect"
+    };
+  }
+  async function leftChampSelect(fetchImpl = fetch) {
+    if (await hasChampSelectSession(fetchImpl)) return false;
+    const phase = await readGameflowPhase(fetchImpl);
+    if (!phase) return true;
+    return phase !== "ChampSelect" && phase !== "ReadyCheck";
+  }
+  async function waitForChampSelectExit(fetchImpl = fetch, {
+    attempts = DODGE_VERIFY_ATTEMPTS,
+    delayMs = DODGE_VERIFY_INTERVAL_MS,
+    stableReads = DODGE_VERIFY_STABLE_READS
+  } = {}) {
+    let stable = 0;
+    for (let i = 0; i < attempts; i += 1) {
+      if (await leftChampSelect(fetchImpl)) {
+        stable += 1;
+        if (stable >= stableReads) return true;
+      } else {
+        stable = 0;
+      }
+      if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
+    }
+    return false;
+  }
+  function postAccepted(res) {
+    return !res || res.ok !== false;
+  }
+  async function readResponseHint(res) {
+    if (!res || typeof res.text !== "function") return "";
+    try {
+      const text = await withTimeout(res.text(), 500, "");
+      if (!text) return "";
+      return text.length > 120 ? `${text.slice(0, 120)}\u2026` : text;
+    } catch {
+      return "";
+    }
+  }
+  function postLcdsDodge(fetchImpl = fetch, body = LCDS_DODGE_BODY) {
+    return fetchImpl(lcdsDodgeRoute(body), {
+      method: "POST",
+      body: JSON.stringify(body)
+    });
+  }
+  async function postGameflowDodge(fetchImpl = fetch) {
+    const session = await readGameflowSession(fetchImpl);
+    const payload = buildGameflowDodgeBody(session);
+    if (!payload) return null;
+    return fetchImpl(GAMEFLOW_DODGE_ROUTE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }
+  function dodgeSteps(fetchImpl = fetch) {
+    return [
+      {
+        name: "lcds",
+        run: () => postLcdsDodge(fetchImpl, LCDS_DODGE_BODY)
+      },
+      {
+        name: "gameflow",
+        run: async () => {
+          const res = await postGameflowDodge(fetchImpl);
+          if (res) return res;
+          return { ok: false, status: 400 };
+        }
+      },
+      {
+        name: "lcds-legacy",
+        run: () => postLcdsDodge(fetchImpl, LCDS_DODGE_BODY_LEGACY)
+      }
+    ];
+  }
+  function makeDodge({
+    fetchImpl = fetch,
+    steps = dodgeSteps(fetchImpl),
+    attempts = DODGE_ATTEMPTS,
+    delayMs = DEFAULT_DELAY_MS,
+    postTimeoutMs = DODGE_POST_TIMEOUT_MS,
+    onStatus = () => {
+    }
+  }) {
+    return {
+      async dodge() {
+        let reason = "still in champ select";
+        for (let i = 0; i < attempts; i += 1) {
+          let accepted3 = false;
+          for (const step of steps) {
+            try {
+              onStatus(`attempt ${i + 1}: ${step.name}\u2026`);
+              const res = await withTimeout(step.run(), postTimeoutMs, "post timed out");
+              const httpStatus = res?.status || 0;
+              const hint = await readResponseHint(res);
+              if (!postAccepted(res)) {
+                reason = explain(httpStatus);
+                onStatus(`attempt ${i + 1}: ${step.name} HTTP ${httpStatus}${hint ? ` (${hint})` : ""}`);
+                continue;
+              }
+              accepted3 = true;
+              onStatus(
+                `attempt ${i + 1}: ${step.name} HTTP ${httpStatus || 200}${hint ? ` (${hint})` : ""}`
+              );
+            } catch (e) {
+              reason = e.message === "post timed out" ? "the client did not respond in time" : `could not reach the client (${e.message})`;
+              onStatus(`attempt ${i + 1}: ${step.name} ${reason}`);
+            }
+          }
+          if (!accepted3) {
+            if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
+            continue;
+          }
+          onStatus(`attempt ${i + 1}: waiting\u2026`);
+          if (DODGE_VERIFY_DELAY_MS > 0) await sleep(DODGE_VERIFY_DELAY_MS);
+          if (await waitForChampSelectExit(fetchImpl)) {
+            return { ok: true, detail: `left on attempt ${i + 1}` };
+          }
+          reason = "still in champ select after the dodge call";
+          onStatus(`attempt ${i + 1}: still in champ select`);
+          if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
+        }
+        onStatus(`failed: ${reason}`);
+        return { ok: false, reason };
+      }
+    };
+  }
+
+  // src/features/inGameIdle.js
+  var IN_GAME_PHASES = /* @__PURE__ */ new Set(["GameStart", "InProgress", "Reconnect"]);
+  function readGameflowPhase2(payload) {
+    if (payload == null) return "";
+    if (typeof payload === "string") return payload.replace(/^"+|"+$/g, "");
+    const raw = payload.phase ?? payload.data;
+    return typeof raw === "string" ? raw.replace(/^"+|"+$/g, "") : "";
+  }
+  function isInGamePhase(phase) {
+    return IN_GAME_PHASES.has(String(phase || "").trim());
+  }
+  function isChampSelectPhase(phase) {
+    return String(phase || "").trim() === "ChampSelect";
+  }
+  function startInGameIdle({ subscribe: subscribe2, onChange }) {
+    let idle = false;
+    const unsubscribe = subscribe2(GAMEFLOW_PHASE_ROUTE, (payload) => {
+      const phase = readGameflowPhase2(payload);
+      if (!phase) return;
+      const next = isInGamePhase(phase);
+      if (next === idle) return;
+      idle = next;
+      if (typeof onChange === "function") onChange(idle);
+    });
+    return {
+      stop() {
+        if (typeof unsubscribe === "function") unsubscribe();
+      }
+    };
+  }
+
   // src/autoAccept.js
   var ACCEPT_ROUTE = "/lol-matchmaking/v1/ready-check/accept";
   var DECLINE_ROUTE = "/lol-matchmaking/v1/ready-check/decline";
@@ -116,31 +436,53 @@
     if (!enabled && !onState) return () => {
     };
     let pending = null;
+    let unsubscribeReadyCheck = null;
     const cancelPending = () => {
       if (pending !== null) {
         clearTimeoutImpl(pending);
         pending = null;
       }
     };
-    const unsubscribe = subscribe2("/lol-matchmaking/v1/ready-check", async (payload) => {
-      if (onState) onState(payload);
-      if (!shouldAccept(payload)) {
-        cancelPending();
-        return;
+    const stopReadyCheck = () => {
+      cancelPending();
+      if (typeof unsubscribeReadyCheck === "function") {
+        unsubscribeReadyCheck();
+        unsubscribeReadyCheck = null;
       }
-      if (!enabled || pending !== null) return;
-      if (delayMs > 0) {
-        pending = setTimeoutImpl(() => {
-          pending = null;
-          lcu2.post(ACCEPT_ROUTE);
-        }, delayMs);
-        return;
+    };
+    const startReadyCheck = () => {
+      if (unsubscribeReadyCheck) return;
+      unsubscribeReadyCheck = subscribe2("/lol-matchmaking/v1/ready-check", async (payload) => {
+        if (onState) onState(payload);
+        if (!shouldAccept(payload)) {
+          cancelPending();
+          return;
+        }
+        if (!enabled || pending !== null) return;
+        if (delayMs > 0) {
+          pending = setTimeoutImpl(() => {
+            pending = null;
+            lcu2.post(ACCEPT_ROUTE);
+          }, delayMs);
+          return;
+        }
+        await lcu2.post(ACCEPT_ROUTE);
+      });
+    };
+    const unsubscribePhase = subscribe2(GAMEFLOW_PHASE_ROUTE, (payload) => {
+      const phase = readGameflowPhase2(payload);
+      if (phase === "Lobby") {
+        startReadyCheck();
+      } else {
+        if (unsubscribeReadyCheck) {
+          if (onState) onState(null);
+          stopReadyCheck();
+        }
       }
-      await lcu2.post(ACCEPT_ROUTE);
     });
     return () => {
-      cancelPending();
-      if (typeof unsubscribe === "function") unsubscribe();
+      stopReadyCheck();
+      if (typeof unsubscribePhase === "function") unsubscribePhase();
     };
   }
 
@@ -2253,295 +2595,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     };
   }
 
-  // src/features/champSelect.js
-  var SESSION_ROUTE = "/lol-champ-select/v1/session";
-  function actionRoute(actionId) {
-    return `/lol-champ-select/v1/session/actions/${actionId}`;
-  }
-  function actionCompleteRoute(actionId) {
-    return `/lol-champ-select/v1/session/actions/${actionId}/complete`;
-  }
-  function eachAction(session) {
-    const phases = session && session.actions || [];
-    return phases.flat ? phases.flat() : [].concat(...phases);
-  }
-  function findMyQueuedAction(session, type) {
-    if (!session || session.localPlayerCellId === void 0) return null;
-    for (const a of eachAction(session)) {
-      if (a.type !== type) continue;
-      if (a.actorCellId !== session.localPlayerCellId) continue;
-      if (a.completed) continue;
-      return a;
-    }
-    return null;
-  }
-  function findMyAction(session, type) {
-    const action = findMyQueuedAction(session, type);
-    if (!action || !action.isInProgress) return null;
-    return action;
-  }
-  function isPlanningPhase(session) {
-    return String(session?.timer?.phase || "") === "PLANNING";
-  }
-  function unavailableChampionIds(session) {
-    const ids = /* @__PURE__ */ new Set();
-    if (!session) return ids;
-    const bans = session.bans || {};
-    for (const id of bans.myTeamBans || []) if (id) ids.add(id);
-    for (const id of bans.theirTeamBans || []) if (id) ids.add(id);
-    for (const a of eachAction(session)) {
-      if (a.completed && a.championId) ids.add(a.championId);
-    }
-    return ids;
-  }
-  function accepted(res) {
-    if (!res) return true;
-    if (typeof res.ok === "boolean") return res.ok;
-    return res.ok !== false;
-  }
-  function makeChampSelect({ lcu: lcu2 }) {
-    return {
-      async getSession() {
-        return lcu2.get(SESSION_ROUTE);
-      },
-      async commit(actionId, championId, completed, type = "pick") {
-        try {
-          const pick = await lcu2.patch(actionRoute(actionId), { championId });
-          if (!accepted(pick)) {
-            return { ok: false, reason: `the client refused it (${pick.status})` };
-          }
-          if (!completed) return { ok: true };
-          try {
-            await lcu2.post(actionCompleteRoute(actionId));
-          } catch {
-          }
-          const locked = await lcu2.patch(actionRoute(actionId), { championId, completed: true });
-          if (!accepted(locked)) {
-            return { ok: false, reason: `the client refused it (${locked.status})` };
-          }
-          return { ok: true };
-        } catch (e) {
-          return { ok: false, reason: `could not reach the client (${e.message})` };
-        }
-      }
-    };
-  }
-
-  // src/features/dodge.js
-  var GAMEFLOW_DODGE_ROUTE = "/lol-gameflow/v1/session/dodge";
-  var GAMEFLOW_SESSION_ROUTE = "/lol-gameflow/v1/session";
-  var GAMEFLOW_PHASE_ROUTE = "/lol-gameflow/v1/gameflow-phase";
-  var LCDS_DODGE_BODY = ["", "teambuilder-draft", "quitV2", "{}"];
-  var LCDS_DODGE_BODY_LEGACY = ["", "teambuilder-draft", "quitV2", ""];
-  var DODGE_POST_TIMEOUT_MS = 4e3;
-  var DODGE_VERIFY_DELAY_MS = 400;
-  var DODGE_VERIFY_ATTEMPTS = 16;
-  var DODGE_VERIFY_INTERVAL_MS = 300;
-  var DODGE_VERIFY_STABLE_READS = 2;
-  var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  function withTimeout(promise, ms, message = "timed out") {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(message)), ms);
-      Promise.resolve(promise).then(
-        (value) => {
-          clearTimeout(timer);
-          resolve(value);
-        },
-        (error) => {
-          clearTimeout(timer);
-          reject(error);
-        }
-      );
-    });
-  }
-  var DODGE_ATTEMPTS = 5;
-  var DEFAULT_DELAY_MS = 250;
-  function lcdsDodgeRoute(body = LCDS_DODGE_BODY) {
-    const params = new URLSearchParams({
-      destination: "lcdsServiceProxy",
-      method: "call",
-      args: JSON.stringify(body)
-    });
-    return `/lol-login/v1/session/invoke?${params.toString()}`;
-  }
-  var DODGE_ROUTE = lcdsDodgeRoute();
-  function explain(status) {
-    if (status === 404 || status === 400) {
-      return "you have to be in champ select to dodge";
-    }
-    return `the client refused (${status})`;
-  }
-  async function readJson(res) {
-    if (!res || typeof res.json !== "function") return null;
-    try {
-      return await withTimeout(res.json(), 500, "json timed out");
-    } catch {
-      return null;
-    }
-  }
-  async function hasChampSelectSession(fetchImpl = fetch) {
-    try {
-      const res = await fetchImpl(SESSION_ROUTE);
-      return res.ok;
-    } catch {
-      return false;
-    }
-  }
-  async function readGameflowPhase(fetchImpl = fetch) {
-    try {
-      const res = await fetchImpl(GAMEFLOW_PHASE_ROUTE);
-      if (!res.ok) return null;
-      const body = await readJson(res);
-      if (typeof body === "string") return body;
-      return body?.phase ?? null;
-    } catch {
-      return null;
-    }
-  }
-  async function readGameflowSession(fetchImpl = fetch) {
-    try {
-      const res = await fetchImpl(GAMEFLOW_SESSION_ROUTE);
-      if (!res.ok) return null;
-      return readJson(res);
-    } catch {
-      return null;
-    }
-  }
-  function buildGameflowDodgeBody(session) {
-    const dodge = session?.gameDodge;
-    if (!dodge || typeof dodge !== "object") return null;
-    return {
-      dodgeData: dodge,
-      state: dodge.state ?? "Invalid",
-      dodgeIds: dodge.dodgeIds ?? [],
-      phase: session.phase ?? dodge.phase ?? "ChampSelect"
-    };
-  }
-  async function leftChampSelect(fetchImpl = fetch) {
-    if (await hasChampSelectSession(fetchImpl)) return false;
-    const phase = await readGameflowPhase(fetchImpl);
-    if (!phase) return true;
-    return phase !== "ChampSelect" && phase !== "ReadyCheck";
-  }
-  async function waitForChampSelectExit(fetchImpl = fetch, {
-    attempts = DODGE_VERIFY_ATTEMPTS,
-    delayMs = DODGE_VERIFY_INTERVAL_MS,
-    stableReads = DODGE_VERIFY_STABLE_READS
-  } = {}) {
-    let stable = 0;
-    for (let i = 0; i < attempts; i += 1) {
-      if (await leftChampSelect(fetchImpl)) {
-        stable += 1;
-        if (stable >= stableReads) return true;
-      } else {
-        stable = 0;
-      }
-      if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
-    }
-    return false;
-  }
-  function postAccepted(res) {
-    return !res || res.ok !== false;
-  }
-  async function readResponseHint(res) {
-    if (!res || typeof res.text !== "function") return "";
-    try {
-      const text = await withTimeout(res.text(), 500, "");
-      if (!text) return "";
-      return text.length > 120 ? `${text.slice(0, 120)}\u2026` : text;
-    } catch {
-      return "";
-    }
-  }
-  function postLcdsDodge(fetchImpl = fetch, body = LCDS_DODGE_BODY) {
-    return fetchImpl(lcdsDodgeRoute(body), {
-      method: "POST",
-      body: JSON.stringify(body)
-    });
-  }
-  async function postGameflowDodge(fetchImpl = fetch) {
-    const session = await readGameflowSession(fetchImpl);
-    const payload = buildGameflowDodgeBody(session);
-    if (!payload) return null;
-    return fetchImpl(GAMEFLOW_DODGE_ROUTE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-  }
-  function dodgeSteps(fetchImpl = fetch) {
-    return [
-      {
-        name: "lcds",
-        run: () => postLcdsDodge(fetchImpl, LCDS_DODGE_BODY)
-      },
-      {
-        name: "gameflow",
-        run: async () => {
-          const res = await postGameflowDodge(fetchImpl);
-          if (res) return res;
-          return { ok: false, status: 400 };
-        }
-      },
-      {
-        name: "lcds-legacy",
-        run: () => postLcdsDodge(fetchImpl, LCDS_DODGE_BODY_LEGACY)
-      }
-    ];
-  }
-  function makeDodge({
-    fetchImpl = fetch,
-    steps = dodgeSteps(fetchImpl),
-    attempts = DODGE_ATTEMPTS,
-    delayMs = DEFAULT_DELAY_MS,
-    postTimeoutMs = DODGE_POST_TIMEOUT_MS,
-    onStatus = () => {
-    }
-  }) {
-    return {
-      async dodge() {
-        let reason = "still in champ select";
-        for (let i = 0; i < attempts; i += 1) {
-          let accepted3 = false;
-          for (const step of steps) {
-            try {
-              onStatus(`attempt ${i + 1}: ${step.name}\u2026`);
-              const res = await withTimeout(step.run(), postTimeoutMs, "post timed out");
-              const httpStatus = res?.status || 0;
-              const hint = await readResponseHint(res);
-              if (!postAccepted(res)) {
-                reason = explain(httpStatus);
-                onStatus(`attempt ${i + 1}: ${step.name} HTTP ${httpStatus}${hint ? ` (${hint})` : ""}`);
-                continue;
-              }
-              accepted3 = true;
-              onStatus(
-                `attempt ${i + 1}: ${step.name} HTTP ${httpStatus || 200}${hint ? ` (${hint})` : ""}`
-              );
-            } catch (e) {
-              reason = e.message === "post timed out" ? "the client did not respond in time" : `could not reach the client (${e.message})`;
-              onStatus(`attempt ${i + 1}: ${step.name} ${reason}`);
-            }
-          }
-          if (!accepted3) {
-            if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
-            continue;
-          }
-          onStatus(`attempt ${i + 1}: waiting\u2026`);
-          if (DODGE_VERIFY_DELAY_MS > 0) await sleep(DODGE_VERIFY_DELAY_MS);
-          if (await waitForChampSelectExit(fetchImpl)) {
-            return { ok: true, detail: `left on attempt ${i + 1}` };
-          }
-          reason = "still in champ select after the dodge call";
-          onStatus(`attempt ${i + 1}: still in champ select`);
-          if (i < attempts - 1 && delayMs > 0) await sleep(delayMs);
-        }
-        onStatus(`failed: ${reason}`);
-        return { ok: false, reason };
-      }
-    };
-  }
-
   // src/features/restartUx.js
   var RESTART_UX_ROUTE = "/riotclient/kill-and-restart-ux";
   function makeRestartUx({ lcu: lcu2 }) {
@@ -2642,37 +2695,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         } catch (e) {
           return { ok: false, reason: `could not read your badges (${e.message})` };
         }
-      }
-    };
-  }
-
-  // src/features/inGameIdle.js
-  var IN_GAME_PHASES = /* @__PURE__ */ new Set(["GameStart", "InProgress", "Reconnect"]);
-  function readGameflowPhase2(payload) {
-    if (payload == null) return "";
-    if (typeof payload === "string") return payload.replace(/^"+|"+$/g, "");
-    const raw = payload.phase ?? payload.data;
-    return typeof raw === "string" ? raw.replace(/^"+|"+$/g, "") : "";
-  }
-  function isInGamePhase(phase) {
-    return IN_GAME_PHASES.has(String(phase || "").trim());
-  }
-  function isChampSelectPhase(phase) {
-    return String(phase || "").trim() === "ChampSelect";
-  }
-  function startInGameIdle({ subscribe: subscribe2, onChange }) {
-    let idle = false;
-    const unsubscribe = subscribe2(GAMEFLOW_PHASE_ROUTE, (payload) => {
-      const phase = readGameflowPhase2(payload);
-      if (!phase) return;
-      const next = isInGamePhase(phase);
-      if (next === idle) return;
-      idle = next;
-      if (typeof onChange === "function") onChange(idle);
-    });
-    return {
-      stop() {
-        if (typeof unsubscribe === "function") unsubscribe();
       }
     };
   }
@@ -3028,7 +3050,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
   // src/ui/dodgeDock.js
   var ROSE_BUTTON_SELECTOR = ".rose-custom-wheel-button";
-  var CHAMP_SELECT_BUTTONS = ".bottom-right-buttons";
   var DOCK_GAP_PX = 8;
   function inChampSelect(session) {
     return session != null;
@@ -3041,8 +3062,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   function findAnchor(doc) {
     const rose = doc.querySelector(ROSE_BUTTON_SELECTOR);
     if (isVisible(rose)) return rose;
-    const stack = doc.querySelector(CHAMP_SELECT_BUTTONS);
-    if (isVisible(stack)) return stack;
     return null;
   }
   function layoutKey(dockEl, anchor, win) {
@@ -3057,8 +3076,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     dockEl.dataset.layoutKey = key;
     if (!anchor) {
       dockEl.style.left = "auto";
-      dockEl.style.right = "24px";
-      dockEl.style.bottom = "120px";
+      dockEl.style.right = "20px";
+      dockEl.style.bottom = "70px";
       dockEl.style.transform = "none";
       return true;
     }
@@ -4626,6 +4645,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (!enabled || !snapshot.length) return;
       ensureOverlay();
       open = true;
+      if (needsReapply()) applyRows(snapshot);
       renderVisibility();
       setStatus("ready");
     }
