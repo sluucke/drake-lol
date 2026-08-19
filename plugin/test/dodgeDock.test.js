@@ -50,12 +50,9 @@ describe('findAnchor', () => {
     expect(findAnchor(doc)).toBe(rose);
   });
 
-  it('falls back to the bottom-right stack when Rose is absent', () => {
-    const stack = el({ rect: { width: 200, height: 40 } });
-    const doc = {
-      querySelector: (sel) => (sel === CHAMP_SELECT_BUTTONS ? stack : null),
-    };
-    expect(findAnchor(doc)).toBe(stack);
+  it('returns null when Rose is absent', () => {
+    const doc = { querySelector: () => null };
+    expect(findAnchor(doc)).toBe(null);
   });
 
   it('skips hidden anchors', () => {
@@ -78,8 +75,8 @@ describe('layoutDock', () => {
   it('uses a bottom-right fallback when no anchor exists yet', () => {
     const dock = { style: {}, dataset: {} };
     layoutDock(dock, null, { innerHeight: 900 });
-    expect(dock.style.right).toBe('24px');
-    expect(dock.style.bottom).toBe('120px');
+    expect(dock.style.right).toBe('20px');
+    expect(dock.style.bottom).toBe('70px');
     expect(dock.style.transform).toBe('none');
   });
 

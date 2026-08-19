@@ -663,6 +663,7 @@ export function makeTeamRevealDom({
     if (!enabled || !snapshot.length) return;
     ensureOverlay();
     open = true;
+    if (needsReapply()) applyRows(snapshot);
     renderVisibility();
     setStatus('ready');
   }

@@ -1,3 +1,6 @@
+import { GAMEFLOW_PHASE_ROUTE } from './features/dodge.js';
+import { readGameflowPhase } from './features/inGameIdle.js';
+
 export const ACCEPT_ROUTE = '/lol-matchmaking/v1/ready-check/accept';
 export const DECLINE_ROUTE = '/lol-matchmaking/v1/ready-check/decline';
 
@@ -5,9 +8,6 @@ export function shouldAccept(payload) {
   if (!payload) return false;
   return payload.state === 'InProgress' && payload.playerResponse === 'None';
 }
-
-
-
 
 export function canCancel(payload) {
   if (!payload) return false;
@@ -23,13 +23,10 @@ export function startAutoAccept({
   clearTimeoutImpl = clearTimeout,
   onState,
 }) {
-  
-  
   if (!enabled && !onState) return () => {};
 
-  
-  
   let pending = null;
+  let unsubscribeReadyCheck = null;
 
   const cancelPending = () => {
     if (pending !== null) {
@@ -38,31 +35,52 @@ export function startAutoAccept({
     }
   };
 
-  const unsubscribe = subscribe('/lol-matchmaking/v1/ready-check', async (payload) => {
-    if (onState) onState(payload);
-
-    if (!shouldAccept(payload)) {
-      
-      
-      cancelPending();
-      return;
+  const stopReadyCheck = () => {
+    cancelPending();
+    if (typeof unsubscribeReadyCheck === 'function') {
+      unsubscribeReadyCheck();
+      unsubscribeReadyCheck = null;
     }
+  };
 
-    if (!enabled || pending !== null) return;
+  const startReadyCheck = () => {
+    if (unsubscribeReadyCheck) return;
+    unsubscribeReadyCheck = subscribe('/lol-matchmaking/v1/ready-check', async (payload) => {
+      if (onState) onState(payload);
 
-    if (delayMs > 0) {
-      pending = setTimeoutImpl(() => {
-        pending = null;
-        lcu.post(ACCEPT_ROUTE);
-      }, delayMs);
-      return;
+      if (!shouldAccept(payload)) {
+        cancelPending();
+        return;
+      }
+
+      if (!enabled || pending !== null) return;
+
+      if (delayMs > 0) {
+        pending = setTimeoutImpl(() => {
+          pending = null;
+          lcu.post(ACCEPT_ROUTE);
+        }, delayMs);
+        return;
+      }
+
+      await lcu.post(ACCEPT_ROUTE);
+    });
+  };
+
+  const unsubscribePhase = subscribe(GAMEFLOW_PHASE_ROUTE, (payload) => {
+    const phase = readGameflowPhase(payload);
+    if (phase === 'Lobby') {
+      startReadyCheck();
+    } else {
+      if (unsubscribeReadyCheck) {
+        if (onState) onState(null);
+        stopReadyCheck();
+      }
     }
-
-    await lcu.post(ACCEPT_ROUTE);
   });
 
   return () => {
-    cancelPending();
-    if (typeof unsubscribe === 'function') unsubscribe();
+    stopReadyCheck();
+    if (typeof unsubscribePhase === 'function') unsubscribePhase();
   };
 }

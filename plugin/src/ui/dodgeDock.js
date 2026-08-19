@@ -15,8 +15,6 @@ export function isVisible(el) {
 export function findAnchor(doc) {
   const rose = doc.querySelector(ROSE_BUTTON_SELECTOR);
   if (isVisible(rose)) return rose;
-  const stack = doc.querySelector(CHAMP_SELECT_BUTTONS);
-  if (isVisible(stack)) return stack;
   return null;
 }
 
@@ -35,8 +33,8 @@ export function layoutDock(dockEl, anchor, win) {
 
   if (!anchor) {
     dockEl.style.left = 'auto';
-    dockEl.style.right = '24px';
-    dockEl.style.bottom = '120px';
+    dockEl.style.right = '20px';
+    dockEl.style.bottom = '70px';
     dockEl.style.transform = 'none';
     return true;
   }
