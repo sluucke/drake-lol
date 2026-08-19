@@ -120,6 +120,12 @@
     if (!action || !action.isInProgress) return null;
     return action;
   }
+  function isChampSelectSession(session) {
+    if (!session || typeof session !== "object" || Array.isArray(session)) return false;
+    if (session.errorCode || session.httpStatus) return false;
+    if (Array.isArray(session.actions) || Array.isArray(session.myTeam)) return true;
+    return typeof session.localPlayerCellId === "number";
+  }
   function isPlanningPhase(session) {
     return String(session?.timer?.phase || "") === "PLANNING";
   }
@@ -142,7 +148,8 @@
   function makeChampSelect({ lcu: lcu2 }) {
     return {
       async getSession() {
-        return lcu2.get(SESSION_ROUTE);
+        const session = await lcu2.get(SESSION_ROUTE);
+        return isChampSelectSession(session) ? session : null;
       },
       async commit(actionId, championId, completed, type = "pick") {
         try {
@@ -3068,7 +3075,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   var ROSE_BUTTON_SELECTOR = ".rose-custom-wheel-button";
   var DOCK_GAP_PX = 8;
   function inChampSelect(session) {
-    return session != null;
+    return isChampSelectSession(session);
   }
   function isVisible(el) {
     if (!el || typeof el.getBoundingClientRect !== "function") return false;
@@ -5641,7 +5648,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
         }
       }, CHAMP_SELECT_POLL_MS);
     }
-    const apply = async (session) => {
+    const apply = async (rawSession) => {
+      const session = isChampSelectSession(rawSession) ? rawSession : null;
       lastSession = session;
       if (onSession) onSession(session);
       if (!session) {
@@ -5734,6 +5742,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         lastSession = null;
         skipped = /* @__PURE__ */ new Set();
         stopPoll();
+        if (onSession) onSession(null);
         if (stopSession) {
           stopSession();
           stopSession = null;

@@ -410,6 +410,45 @@ describe('startChampSelectAutomation', () => {
     expect(commit.mock.calls[0][1]).toBe(103);
     expect(commit.mock.calls[1][1]).toBe(103);
   });
+
+  it('tells the UI the session is gone when it is stopped', async () => {
+    // Going in game stops the controller directly, and whoever hears the phase
+    // change first decides whether anything clears the dodge dock. Leaving that
+    // to chance is what left the button on screen for the rest of the session.
+    const onSession = vi.fn();
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
+    const ctl = startChampSelectAutomation({
+      getSettings: () => settings(),
+      champSelect: { commit: vi.fn() },
+      subscribe,
+      onSession,
+    });
+    enterChampSelect();
+    await fireSession(session([act({ id: 5 })]));
+    onSession.mockClear();
+
+    ctl.stop();
+
+    expect(onSession).toHaveBeenCalledWith(null);
+  });
+
+  it('treats an error body from the client as no session at all', async () => {
+    // Outside champ select the endpoint answers 404 with a JSON error body,
+    // which is not null and so used to count as a live champ select.
+    const onSession = vi.fn();
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
+    startChampSelectAutomation({
+      getSettings: () => settings(),
+      champSelect: { commit: vi.fn() },
+      subscribe,
+      onSession,
+    });
+    enterChampSelect();
+
+    await fireSession({ errorCode: 'RPC_ERROR', httpStatus: 404, message: 'no active delegate' });
+
+    expect(onSession).toHaveBeenLastCalledWith(null);
+  });
 });
 
 describe('renderAutoPick', () => {

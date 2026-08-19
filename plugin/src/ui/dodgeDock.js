@@ -2,8 +2,10 @@ export const ROSE_BUTTON_SELECTOR = '.rose-custom-wheel-button';
 export const CHAMP_SELECT_BUTTONS = '.bottom-right-buttons';
 export const DOCK_GAP_PX = 8;
 
+import { isChampSelectSession } from '../features/champSelect.js';
+
 export function inChampSelect(session) {
-  return session != null;
+  return isChampSelectSession(session);
 }
 
 export function isVisible(el) {

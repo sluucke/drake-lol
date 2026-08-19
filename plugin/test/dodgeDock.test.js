@@ -26,6 +26,12 @@ describe('inChampSelect', () => {
   it('is false when the session ended', () => {
     expect(inChampSelect(null)).toBe(false);
   });
+
+  it('is false for the error body the client returns outside champ select', () => {
+    expect(
+      inChampSelect({ errorCode: 'RPC_ERROR', httpStatus: 404, message: 'no active delegate' }),
+    ).toBe(false);
+  });
 });
 
 describe('isVisible', () => {
