@@ -60,9 +60,13 @@ export function unavailableChampionIds(session) {
 }
 
 function accepted(res) {
-  if (!res) return true;
+  if (!res) return false;
   if (typeof res.ok === 'boolean') return res.ok;
   return res.ok !== false;
+}
+
+function statusOf(res) {
+  return res && res.status !== undefined ? res.status : 0;
 }
 
 export function makeChampSelect({ lcu }) {
@@ -75,21 +79,25 @@ export function makeChampSelect({ lcu }) {
     async commit(actionId, championId, completed, type = 'pick') {
       try {
         const pick = await lcu.patch(actionRoute(actionId), { championId });
+        const hoverStatus = statusOf(pick);
         if (!accepted(pick)) {
-          return { ok: false, reason: `the client refused it (${pick.status})` };
+          return { ok: false, hoverStatus, reason: `the client refused it (${hoverStatus})` };
         }
-        if (!completed) return { ok: true };
+        if (!completed) return { ok: true, hoverStatus };
 
         const done = await lcu.post(actionCompleteRoute(actionId));
+        const completeStatus = statusOf(done);
         if (!accepted(done)) {
           const what = type === 'ban' ? 'ban' : 'lock';
           return {
             ok: false,
             retry: true,
-            reason: `the client would not ${what} it (${done.status})`,
+            hoverStatus,
+            completeStatus,
+            reason: `the client would not ${what} it (${completeStatus})`,
           };
         }
-        return { ok: true };
+        return { ok: true, hoverStatus, completeStatus };
       } catch (e) {
         return { ok: false, reason: `could not reach the client (${e.message})` };
       }

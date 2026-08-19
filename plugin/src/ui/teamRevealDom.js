@@ -333,6 +333,7 @@ export function makeTeamRevealDom({
   function handlePhase(payload) {
     if (!enabled) return;
     const phase = readGameflowPhase(payload);
+    if (!phase) return;
     if (phase !== 'ChampSelect') clearReveal();
   }
 

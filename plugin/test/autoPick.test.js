@@ -411,6 +411,25 @@ describe('startChampSelectAutomation', () => {
     expect(commit.mock.calls[1][1]).toBe(103);
   });
 
+  it('reports what the action looked like when it committed', async () => {
+    // A commit that reports success while the action keeps its old champion
+    // means the client accepted the call and ignored it.
+    const commit = vi.fn().mockResolvedValue({ ok: true });
+    const onResult = vi.fn();
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
+    startChampSelectAutomation({
+      getSettings: () => settings({ auto_ban: true, auto_ban_champion_id: 55 }),
+      champSelect: { commit },
+      subscribe,
+      onResult,
+    });
+    enterChampSelect();
+
+    await fireSession(session([act({ id: 8, type: 'ban', championId: 0 })]));
+
+    expect(onResult.mock.calls[0][2]).toEqual({ championId: 0, completed: false });
+  });
+
   it('tells the UI the session is gone when it is stopped', async () => {
     // Going in game stops the controller directly, and whoever hears the phase
     // change first decides whether anything clears the dodge dock. Leaving that

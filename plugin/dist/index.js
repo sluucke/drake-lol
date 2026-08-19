@@ -141,9 +141,12 @@
     return ids;
   }
   function accepted(res) {
-    if (!res) return true;
+    if (!res) return false;
     if (typeof res.ok === "boolean") return res.ok;
     return res.ok !== false;
+  }
+  function statusOf(res) {
+    return res && res.status !== void 0 ? res.status : 0;
   }
   function makeChampSelect({ lcu: lcu2 }) {
     return {
@@ -154,20 +157,24 @@
       async commit(actionId, championId, completed, type = "pick") {
         try {
           const pick = await lcu2.patch(actionRoute(actionId), { championId });
+          const hoverStatus = statusOf(pick);
           if (!accepted(pick)) {
-            return { ok: false, reason: `the client refused it (${pick.status})` };
+            return { ok: false, hoverStatus, reason: `the client refused it (${hoverStatus})` };
           }
-          if (!completed) return { ok: true };
+          if (!completed) return { ok: true, hoverStatus };
           const done = await lcu2.post(actionCompleteRoute(actionId));
+          const completeStatus = statusOf(done);
           if (!accepted(done)) {
             const what = type === "ban" ? "ban" : "lock";
             return {
               ok: false,
               retry: true,
-              reason: `the client would not ${what} it (${done.status})`
+              hoverStatus,
+              completeStatus,
+              reason: `the client would not ${what} it (${completeStatus})`
             };
           }
-          return { ok: true };
+          return { ok: true, hoverStatus, completeStatus };
         } catch (e) {
           return { ok: false, reason: `could not reach the client (${e.message})` };
         }
@@ -4369,6 +4376,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function handlePhase(payload) {
       if (!enabled) return;
       const phase = readGameflowPhase2(payload);
+      if (!phase) return;
       if (phase !== "ChampSelect") clearReveal();
     }
     function needsReapply() {
@@ -5704,13 +5712,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
             decision.completed,
             decision.kind
           );
+          const observed = { championId: mine.championId, completed: !!mine.completed };
           if (result.ok) {
-            if (onResult) onResult(decision, result);
+            if (onResult) onResult(decision, result, observed);
             schedulePoll();
             return;
           }
           pending = null;
-          if (onResult) onResult(decision, result);
+          if (onResult) onResult(decision, result, observed);
           if (decision.kind !== "pick" || result.retry) {
             schedulePoll();
             return;
@@ -5798,7 +5807,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
         champSelect: makeChampSelect({ lcu }),
         subscribe,
         getSession: () => lcu.get("/lol-champ-select/v1/session"),
-        onResult: (d, r) => console.log(TAG2, d.kind, d.championId, r.ok ? "ok" : "failed: " + r.reason),
+        onResult: (d, r, was) => console.log(
+          TAG2,
+          d.kind,
+          d.championId,
+          r.ok ? "ok" : "failed: " + r.reason,
+          `| hover ${r.hoverStatus ?? "-"} complete ${r.completeStatus ?? "-"}`,
+          `| action had ${was ? was.championId : "-"} completed ${was ? was.completed : "-"}`
+        ),
         onSession: (session) => ui && ui.setChampSelect(session)
       });
     } else {

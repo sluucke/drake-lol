@@ -340,6 +340,61 @@ describe('teamRevealDom', () => {
     expect(overlay.hidden).toBe(true);
   });
 
+  it('keeps the reveal when the phase momentarily cannot be read', async () => {
+    // A failed gameflow poll hands the handler null. Reading that as "not champ
+    // select" wiped the reveal, and the next session then revealed all over
+    // again a few seconds later.
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const loadSnapshot = vi.fn(async () => [
+      { cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
+    ]);
+    let phase;
+    const subscribe = vi.fn((route, fn) => {
+      phase = fn;
+      return () => {};
+    });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+    const session = {
+      myTeam: [{ cellId: 0, puuid: 'x', gameName: 'RealOne', tagLine: 'TAG' }],
+      localPlayerCellId: 0,
+    };
+
+    ctl.setEnabled(true);
+    await ctl.handleSession(session);
+    expect(loadSnapshot).toHaveBeenCalledTimes(1);
+
+    phase(null);
+    await ctl.handleSession(session);
+
+    expect(loadSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('still drops the reveal when the phase really does leave champ select', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const loadSnapshot = vi.fn(async () => [
+      { cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
+    ]);
+    let phase;
+    const subscribe = vi.fn((route, fn) => {
+      phase = fn;
+      return () => {};
+    });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+    const session = {
+      myTeam: [{ cellId: 0, puuid: 'x', gameName: 'RealOne', tagLine: 'TAG' }],
+      localPlayerCellId: 0,
+    };
+
+    ctl.setEnabled(true);
+    await ctl.handleSession(session);
+    phase('"None"');
+    await ctl.handleSession(session);
+
+    expect(loadSnapshot).toHaveBeenCalledTimes(2);
+  });
+
   it('subscribes once and unsubscribes on teardown', () => {
     const stop = vi.fn();
     const subscribe = vi.fn(() => stop);

@@ -207,6 +207,32 @@ describe('makeChampSelect', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('does not call a missing response a success', async () => {
+    // A commit that never produced a response cannot have been accepted, and
+    // calling it ok is how a ban that never happened got logged as done.
+    const lcu = { patch: vi.fn().mockResolvedValue(undefined), post: vi.fn() };
+
+    const result = await makeChampSelect({ lcu }).commit(42, 55, true, 'ban');
+
+    expect(result.ok).toBe(false);
+    expect(lcu.post).not.toHaveBeenCalled();
+  });
+
+  it('reports the status of each call it made', async () => {
+    // Both calls answering 2xx while nothing happens is indistinguishable from
+    // a silent failure unless the statuses are visible.
+    const lcu = {
+      patch: vi.fn().mockResolvedValue({ ok: true, status: 204 }),
+      post: vi.fn().mockResolvedValue({ ok: true, status: 200 }),
+    };
+
+    const result = await makeChampSelect({ lcu }).commit(42, 55, true, 'ban');
+
+    expect(result.ok).toBe(true);
+    expect(result.hoverStatus).toBe(204);
+    expect(result.completeStatus).toBe(200);
+  });
+
   it('survives the call throwing', async () => {
     const lcu = { patch: vi.fn().mockRejectedValue(new Error('gone')) };
     const result = await makeChampSelect({ lcu }).commit(1, 2, true);

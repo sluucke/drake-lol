@@ -186,14 +186,16 @@ export function startChampSelectAutomation({
           decision.kind,
         );
 
+        const observed = { championId: mine.championId, completed: !!mine.completed };
+
         if (result.ok) {
-          if (onResult) onResult(decision, result);
+          if (onResult) onResult(decision, result, observed);
           schedulePoll();
           return;
         }
 
         pending = null;
-        if (onResult) onResult(decision, result);
+        if (onResult) onResult(decision, result, observed);
 
         if (decision.kind !== 'pick' || result.retry) {
           schedulePoll();
