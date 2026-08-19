@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchesToggle, matchesClose } from '../src/ui/hotkey.js';
+import { matchesToggle, matchesClose, matchesTeamRevealCardsToggle } from '../src/ui/hotkey.js';
 
 const ev = (over = {}) => ({
   ctrlKey: false,
@@ -13,8 +13,8 @@ describe('matchesToggle', () => {
     expect(matchesToggle(ev({ ctrlKey: true, key: 'd' }))).toBe(true);
   });
 
-  it('fires on Ctrl+Shift+D, because Shift is how some layouts send D', () => {
-    expect(matchesToggle(ev({ ctrlKey: true, key: 'D' }))).toBe(true);
+  it('does not fire on Ctrl+Shift+D', () => {
+    expect(matchesToggle(ev({ ctrlKey: true, shiftKey: true, key: 'D', code: 'KeyD' }))).toBe(false);
   });
 
   it('ignores D without Ctrl', () => {
@@ -44,6 +44,35 @@ describe('matchesToggle', () => {
 
   it('survives an event with no target', () => {
     expect(matchesToggle({ ctrlKey: true, key: 'd' })).toBe(true);
+  });
+});
+
+describe('matchesTeamRevealCardsToggle', () => {
+  it('fires on Ctrl+Shift+D', () => {
+    expect(matchesTeamRevealCardsToggle(ev({ ctrlKey: true, shiftKey: true, key: 'D', code: 'KeyD' }))).toBe(true);
+  });
+
+  it('ignores Ctrl+D without Shift', () => {
+    expect(matchesTeamRevealCardsToggle(ev({ ctrlKey: true, shiftKey: false, key: 'd', code: 'KeyD' }))).toBe(false);
+  });
+
+  it('ignores Shift+D without Ctrl', () => {
+    expect(matchesTeamRevealCardsToggle(ev({ ctrlKey: false, shiftKey: true, key: 'D', code: 'KeyD' }))).toBe(false);
+  });
+
+  it('ignores other Ctrl+Shift combos', () => {
+    expect(matchesTeamRevealCardsToggle(ev({ ctrlKey: true, shiftKey: true, key: 'K', code: 'KeyK' }))).toBe(false);
+  });
+
+  it('accepts layouts where Shift changes D key casing', () => {
+    expect(matchesTeamRevealCardsToggle(ev({ ctrlKey: true, shiftKey: true, key: 'd', code: 'KeyD' }))).toBe(true);
+  });
+
+  it('still fires while typing in an input', () => {
+    const target = { tagName: 'INPUT', isContentEditable: false };
+    expect(
+      matchesTeamRevealCardsToggle(ev({ ctrlKey: true, shiftKey: true, key: 'D', code: 'KeyD', target })),
+    ).toBe(true);
   });
 });
 

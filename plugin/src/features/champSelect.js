@@ -1,15 +1,11 @@
-
-
-
-
-
-
-
-
 export const SESSION_ROUTE = '/lol-champ-select/v1/session';
 
 export function actionRoute(actionId) {
   return `/lol-champ-select/v1/session/actions/${actionId}`;
+}
+
+export function actionCompleteRoute(actionId) {
+  return `/lol-champ-select/v1/session/actions/${actionId}/complete`;
 }
 
 function eachAction(session) {
@@ -17,29 +13,30 @@ function eachAction(session) {
   return phases.flat ? phases.flat() : [].concat(...phases);
 }
 
-
-
-
-
-
-export function findMyAction(session, type) {
+export function findMyQueuedAction(session, type) {
   if (!session || session.localPlayerCellId === undefined) return null;
   for (const a of eachAction(session)) {
     if (a.type !== type) continue;
     if (a.actorCellId !== session.localPlayerCellId) continue;
     if (a.completed) continue;
-    if (!a.isInProgress) continue;
     return a;
   }
   return null;
+}
+
+export function findMyAction(session, type) {
+  const action = findMyQueuedAction(session, type);
+  if (!action || !action.isInProgress) return null;
+  return action;
 }
 
 export function isBanPhase(session) {
   return eachAction(session).some((a) => a.type === 'ban' && a.isInProgress && !a.completed);
 }
 
-
-
+export function isPlanningPhase(session) {
+  return String(session?.timer?.phase || '') === 'PLANNING';
+}
 
 export function unavailableChampionIds(session) {
   const ids = new Set();
@@ -53,16 +50,34 @@ export function unavailableChampionIds(session) {
   return ids;
 }
 
+function accepted(res) {
+  if (!res) return true;
+  if (typeof res.ok === 'boolean') return res.ok;
+  return res.ok !== false;
+}
+
 export function makeChampSelect({ lcu }) {
   return {
-    
-    
-    async commit(actionId, championId, completed) {
+    async getSession() {
+      return lcu.get(SESSION_ROUTE);
+    },
+
+    async commit(actionId, championId, completed, type = 'pick') {
       try {
-        const res = await lcu.patch(actionRoute(actionId), { championId, completed });
-        if (res && res.ok === false) {
-          
-          return { ok: false, reason: `the client refused it (${res.status})` };
+        const pick = await lcu.patch(actionRoute(actionId), { championId });
+        if (!accepted(pick)) {
+          return { ok: false, reason: `the client refused it (${pick.status})` };
+        }
+        if (!completed) return { ok: true };
+
+        try {
+          await lcu.post(actionCompleteRoute(actionId));
+        } catch {
+        }
+
+        const locked = await lcu.patch(actionRoute(actionId), { championId, completed: true });
+        if (!accepted(locked)) {
+          return { ok: false, reason: `the client refused it (${locked.status})` };
         }
         return { ok: true };
       } catch (e) {

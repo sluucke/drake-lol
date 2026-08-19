@@ -58,6 +58,16 @@ pub struct Settings {
     pub auto_ban_champion_id: u32,
     #[serde(default = "on")]
     pub auto_update: bool,
+    #[serde(default = "off")]
+    pub queue_team_reveal_in_client: bool,
+    #[serde(default = "empty_string")]
+    pub profile_rank_tier: String,
+    #[serde(default = "default_rank_division")]
+    pub profile_rank_division: String,
+    #[serde(default = "default_rank_queue")]
+    pub profile_rank_queue: String,
+    #[serde(default = "default_rank_crystal")]
+    pub profile_rank_crystal: String,
 }
 
 fn no_champion() -> u32 {
@@ -78,6 +88,22 @@ fn on() -> bool {
 }
 fn off() -> bool {
     false
+}
+
+fn empty_string() -> String {
+    String::new()
+}
+
+fn default_rank_division() -> String {
+    "I".into()
+}
+
+fn default_rank_queue() -> String {
+    "RANKED_SOLO_5x5".into()
+}
+
+fn default_rank_crystal() -> String {
+    "IRON".into()
 }
 
 impl Default for Settings {
@@ -102,6 +128,11 @@ impl Default for Settings {
             auto_ban: off(),
             auto_ban_champion_id: no_champion(),
             auto_update: on(),
+            queue_team_reveal_in_client: off(),
+            profile_rank_tier: empty_string(),
+            profile_rank_division: default_rank_division(),
+            profile_rank_queue: default_rank_queue(),
+            profile_rank_crystal: default_rank_crystal(),
         }
     }
 }
@@ -302,6 +333,11 @@ pub struct SettingsPatch {
     pub auto_ban: Option<bool>,
     pub auto_ban_champion_id: Option<u32>,
     pub auto_update: Option<bool>,
+    pub queue_team_reveal_in_client: Option<bool>,
+    pub profile_rank_tier: Option<String>,
+    pub profile_rank_division: Option<String>,
+    pub profile_rank_queue: Option<String>,
+    pub profile_rank_crystal: Option<String>,
 }
 
 impl SettingsPatch {
@@ -332,6 +368,25 @@ impl SettingsPatch {
                 .auto_ban_champion_id
                 .unwrap_or(base.auto_ban_champion_id),
             auto_update: self.auto_update.unwrap_or(base.auto_update),
+            queue_team_reveal_in_client: self
+                .queue_team_reveal_in_client
+                .unwrap_or(base.queue_team_reveal_in_client),
+            profile_rank_tier: self
+                .profile_rank_tier
+                .clone()
+                .unwrap_or_else(|| base.profile_rank_tier.clone()),
+            profile_rank_division: self
+                .profile_rank_division
+                .clone()
+                .unwrap_or_else(|| base.profile_rank_division.clone()),
+            profile_rank_queue: self
+                .profile_rank_queue
+                .clone()
+                .unwrap_or_else(|| base.profile_rank_queue.clone()),
+            profile_rank_crystal: self
+                .profile_rank_crystal
+                .clone()
+                .unwrap_or_else(|| base.profile_rank_crystal.clone()),
         }
     }
 }
@@ -518,6 +573,7 @@ mod tests {
     fn settings_default_to_everything_off() {
         // Nothing automates the user's game until they ask for it.
         assert_eq!(Settings::default().auto_accept, false);
+        assert_eq!(Settings::default().queue_team_reveal_in_client, false);
     }
 
     #[test]
@@ -568,6 +624,7 @@ mod tests {
         assert_eq!(s.auto_reload_on_open, false);
         assert_eq!(s.auto_pick_champion_id_2, 0);
         assert_eq!(s.auto_update, true);
+        assert_eq!(s.queue_team_reveal_in_client, false);
     }
 
     #[test]
@@ -815,6 +872,26 @@ mod tests {
         let s = state.settings.lock().unwrap();
         assert_eq!(s.auto_accept, true);
         assert_eq!(s.run_at_startup, false, "an unmentioned field must not be reset");
+        assert_eq!(s.queue_team_reveal_in_client, false, "an unmentioned field must not be reset");
+    }
+
+    #[tokio::test]
+    async fn posting_queue_team_reveal_setting_persists_it() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+
+        let res = router(state.clone())
+            .oneshot(settings_request(
+                &token,
+                r#"{"queue_team_reveal_in_client":true}"#,
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        let s = state.settings.lock().unwrap();
+        assert_eq!(s.queue_team_reveal_in_client, true);
     }
 
     #[tokio::test]

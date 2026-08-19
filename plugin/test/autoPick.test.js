@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { decideAction, startChampSelectAutomation } from '../src/features/autoPick.js';
+import { SESSION_ROUTE } from '../src/features/champSelect.js';
+import { GAMEFLOW_PHASE_ROUTE } from '../src/features/dodge.js';
 import { renderAutoPick, autoPickOrder, toggleAutoPickChampion } from '../src/ui/panel.js';
 
 const act = (over = {}) => ({
@@ -127,28 +129,91 @@ describe('decideAction', () => {
     );
     expect(d.championId).toBe(64);
   });
+
+  it('hovers during planning even when the pick is not in progress yet', () => {
+    const d = decideAction(
+      session([act({ id: 5, isInProgress: false })], { timer: { phase: 'PLANNING' } }),
+      settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+    );
+    expect(d).toEqual({ actionId: 5, championId: 103, completed: false, kind: 'pick' });
+  });
+
+  it('does not ban until the ban action is in progress', () => {
+    expect(
+      decideAction(
+        session([act({ id: 8, type: 'ban', isInProgress: false })]),
+        settings({ auto_ban: true, auto_ban_champion_id: 55 }),
+      ),
+    ).toBe(null);
+  });
 });
 
 describe('startChampSelectAutomation', () => {
+  function makeSubscribe() {
+    const handlers = new Map();
+    const subscribe = (route, fn) => {
+      handlers.set(route, fn);
+      return () => handlers.delete(route);
+    };
+    return {
+      subscribe,
+      enterChampSelect: () => handlers.get(GAMEFLOW_PHASE_ROUTE)('ChampSelect'),
+      fireSession: (session) => handlers.get(SESSION_ROUTE)?.(session),
+    };
+  }
+
   function harness(over = {}) {
     const commit = vi.fn().mockResolvedValue({ ok: true });
-    let handler;
-    const subscribe = (_r, fn) => {
-      handler = fn;
-      return () => {};
-    };
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     const stop = startChampSelectAutomation({
       getSettings: () => settings(over),
       champSelect: { commit },
       subscribe,
     });
-    return { commit, fire: (s) => handler(s), stop };
+    enterChampSelect();
+    return { commit, fire: fireSession, stop };
   }
+
+  it('does not subscribe to session while gameflow is not ChampSelect', () => {
+    const routes = [];
+    const subscribe = vi.fn((route, fn) => {
+      routes.push(route);
+      return () => {};
+    });
+    startChampSelectAutomation({
+      getSettings: () => settings(),
+      champSelect: { commit: vi.fn() },
+      subscribe,
+    });
+    expect(routes).toEqual([GAMEFLOW_PHASE_ROUTE]);
+  });
+
+  it('arms session polling only after entering ChampSelect', () => {
+    const handlers = new Map();
+    const routes = [];
+    const subscribe = (route, fn) => {
+      routes.push(route);
+      handlers.set(route, fn);
+      return () => handlers.delete(route);
+    };
+    startChampSelectAutomation({
+      getSettings: () => settings(),
+      champSelect: { commit: vi.fn() },
+      subscribe,
+    });
+    expect(routes).toEqual([GAMEFLOW_PHASE_ROUTE]);
+    handlers.get(GAMEFLOW_PHASE_ROUTE)('Lobby');
+    expect(routes).toEqual([GAMEFLOW_PHASE_ROUTE]);
+    handlers.get(GAMEFLOW_PHASE_ROUTE)('ChampSelect');
+    expect(routes).toEqual([GAMEFLOW_PHASE_ROUTE, SESSION_ROUTE]);
+    handlers.get(GAMEFLOW_PHASE_ROUTE)('Lobby');
+    expect(routes).toEqual([GAMEFLOW_PHASE_ROUTE, SESSION_ROUTE]);
+  });
 
   it('commits the decided action', async () => {
     const h = harness({ auto_pick: true, auto_pick_champion_id: 103 });
     await h.fire(session([act({ id: 5 })]));
-    expect(h.commit).toHaveBeenCalledWith(5, 103, false);
+    expect(h.commit).toHaveBeenCalledWith(5, 103, false, 'pick');
   });
 
   it('does not fire twice for the same action', async () => {
@@ -189,43 +254,58 @@ describe('startChampSelectAutomation', () => {
 
     let current = settings({ auto_pick: true, auto_pick_champion_id: 103 });
     const commit = vi.fn().mockResolvedValue({ ok: true });
-    let handler;
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     const ctl = startChampSelectAutomation({
       getSettings: () => current,
       champSelect: { commit },
-      subscribe: (_r, fn) => {
-        handler = fn;
-        return () => {};
-      },
+      subscribe,
     });
+    enterChampSelect();
 
-    await handler(session([act({ id: 5, championId: 0 })]));
+    await fireSession(session([act({ id: 5, championId: 0 })]));
     current = settings({ auto_pick: true, auto_pick_champion_id: 64 });
     await ctl.refresh();
 
-    expect(commit).toHaveBeenNthCalledWith(1, 5, 103, false);
-    expect(commit).toHaveBeenNthCalledWith(2, 5, 64, false);
+    expect(commit).toHaveBeenNthCalledWith(1, 5, 103, false, 'pick');
+    expect(commit).toHaveBeenNthCalledWith(2, 5, 64, false, 'pick');
   });
 
   it('locks after insta lock is turned on mid-hover', async () => {
     let current = settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: false });
     const commit = vi.fn().mockResolvedValue({ ok: true });
-    let handler;
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     const ctl = startChampSelectAutomation({
       getSettings: () => current,
       champSelect: { commit },
-      subscribe: (_r, fn) => {
-        handler = fn;
-        return () => {};
-      },
+      subscribe,
     });
+    enterChampSelect();
 
-    await handler(session([act({ id: 5, championId: 0 })]));
+    await fireSession(session([act({ id: 5, championId: 0 })]));
     current = settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true });
-    await handler(session([act({ id: 5, championId: 103 })]));
+    await fireSession(session([act({ id: 5, championId: 103 })]));
 
     expect(commit.mock.calls[0][2]).toBe(false);
-    expect(commit.mock.calls[1]).toEqual([5, 103, true]);
+    expect(commit.mock.calls[1]).toEqual([5, 103, true, 'pick']);
+  });
+
+  it('retries confirm when the champion is selected but not completed', async () => {
+    const commit = vi.fn().mockResolvedValue({ ok: true });
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
+    startChampSelectAutomation({
+      getSettings: () =>
+        settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+      champSelect: { commit },
+      subscribe,
+    });
+    enterChampSelect();
+
+    await fireSession(session([act({ id: 5, championId: 0 })]));
+    await fireSession(session([act({ id: 5, championId: 103, completed: false })]));
+
+    expect(commit).toHaveBeenCalledTimes(2);
+    expect(commit.mock.calls[0]).toEqual([5, 103, true, 'pick']);
+    expect(commit.mock.calls[1]).toEqual([5, 103, true, 'pick']);
   });
 
   it('picks again after a dodge even if the empty session never arrived', async () => {
@@ -246,40 +326,62 @@ describe('startChampSelectAutomation', () => {
       .fn()
       .mockResolvedValueOnce({ ok: false, reason: 'refused (409)' })
       .mockResolvedValueOnce({ ok: true });
-    let handler;
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     startChampSelectAutomation({
       getSettings: () => settings({ auto_pick: true, auto_pick_champion_id: 103 }),
       champSelect: { commit },
-      subscribe: (_r, fn) => { handler = fn; return () => {}; },
+      subscribe,
     });
+    enterChampSelect();
 
-    await handler(session([act({ id: 5 })]));
-    await handler(session([act({ id: 5 })]));
+    await fireSession(session([act({ id: 5 })]));
+    await fireSession(session([act({ id: 5 })]));
 
     expect(commit).toHaveBeenCalledTimes(2);
   });
 
+  it('picks once the turn becomes in progress on a later poll', async () => {
+    vi.useFakeTimers();
+    const commit = vi.fn().mockResolvedValue({ ok: true });
+    let n = 0;
+    const getSession = vi.fn(async () => {
+      n += 1;
+      return session([act({ id: 5, isInProgress: n >= 1 })]);
+    });
+    startChampSelectAutomation({
+      getSettings: () => settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+      champSelect: { commit },
+      subscribe: (route, fn) => {
+        if (route === GAMEFLOW_PHASE_ROUTE) fn('ChampSelect');
+        if (route === SESSION_ROUTE) void fn(session([act({ id: 5, isInProgress: false })]));
+        return () => {};
+      },
+      getSession,
+      setTimeoutImpl: setTimeout,
+    });
+
+    expect(commit).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(600);
+    vi.useRealTimers();
+    expect(commit).toHaveBeenCalledWith(5, 103, true, 'pick');
+  });
+
   it('tries the second pick after the client refuses the first', async () => {
-
-
-
     const commit = vi
       .fn()
       .mockResolvedValueOnce({ ok: false, reason: 'refused (409)' })
       .mockResolvedValueOnce({ ok: true });
-    let handler;
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     startChampSelectAutomation({
       getSettings: () =>
         settings({ auto_pick: true, auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 }),
       champSelect: { commit },
-      subscribe: (_r, fn) => {
-        handler = fn;
-        return () => {};
-      },
+      subscribe,
     });
+    enterChampSelect();
 
-    await handler(session([act({ id: 5 })]));
-    await handler(session([act({ id: 5 })]));
+    await fireSession(session([act({ id: 5 })]));
+    await fireSession(session([act({ id: 5 })]));
 
     expect(commit.mock.calls[0][1]).toBe(103);
     expect(commit.mock.calls[1][1]).toBe(64);
@@ -308,6 +410,8 @@ describe('renderAutoPick', () => {
       },
     );
     expect(html).toContain('pick-order-item');
+    expect(html).toContain('data-remove-pick="103"');
+    expect(html).toContain('data-remove-pick="64"');
     expect(html).toContain('Ahri');
     expect(html).toContain('Lee Sin');
     expect(html).toContain('champ-slot');

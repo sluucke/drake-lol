@@ -6,11 +6,11 @@ import { build } from 'esbuild';
 
 const root = dirname(fileURLToPath(import.meta.url));
 
-function listJsFiles(dir, out = []) {
+function listSourceFiles(dir, out = []) {
   for (const name of readdirSync(dir).sort()) {
     const path = join(dir, name);
-    if (statSync(path).isDirectory()) listJsFiles(path, out);
-    else if (name.endsWith('.js')) out.push(path);
+    if (statSync(path).isDirectory()) listSourceFiles(path, out);
+    else if (name.endsWith('.js') || name.endsWith('.svg') || name.endsWith('.png')) out.push(path);
   }
   return out;
 }
@@ -18,10 +18,13 @@ function listJsFiles(dir, out = []) {
 function sourceBuildId() {
   const srcDir = join(root, 'src');
   const hash = createHash('sha256');
-  for (const file of listJsFiles(srcDir)) {
+  for (const file of listSourceFiles(srcDir)) {
     hash.update(relative(srcDir, file));
     hash.update(readFileSync(file));
   }
+  const sprite = join(root, 'assets', 'drake-spritesheet.png');
+  hash.update('assets/drake-spritesheet.png');
+  hash.update(readFileSync(sprite));
   return hash.digest('hex').slice(0, 16);
 }
 
@@ -34,7 +37,23 @@ await build({
   format: 'iife',
   target: 'chrome108',
   outfile: 'dist/index.js',
+  loader: { '.png': 'dataurl' },
   define: { __DRAKE_BUILD__: JSON.stringify(buildId) },
+  plugins: [
+    {
+      name: 'svg-text',
+      setup(buildApi) {
+        buildApi.onResolve({ filter: /\.svg(\?raw)?$/ }, (args) => ({
+          path: join(dirname(args.importer), args.path.replace(/\?raw$/, '')),
+          namespace: 'svg-text',
+        }));
+        buildApi.onLoad({ filter: /.*/, namespace: 'svg-text' }, (args) => ({
+          contents: `export default ${JSON.stringify(readFileSync(args.path, 'utf8'))}`,
+          loader: 'js',
+        }));
+      },
+    },
+  ],
 });
 
 console.log('built dist/index.js');

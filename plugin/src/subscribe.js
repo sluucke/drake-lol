@@ -53,7 +53,17 @@ export function subscribe(route, handler, { fetchImpl = fetch, intervalMs = DEFA
 
   let unobserve = () => {};
   if (push) {
-    const observer = (message) => handler(message && message.data);
+    const observer = (message) => {
+      if (stopped) return;
+      if (!message || message.eventType === 'Delete' || message.data == null) {
+        idle = true;
+        handler(null);
+        return;
+      }
+      idle = false;
+      seen = true;
+      handler(message.data);
+    };
     socket.observe(route, observer);
     unobserve = () => {
       if (typeof socket !== 'undefined' && socket && typeof socket.unobserve === 'function') {

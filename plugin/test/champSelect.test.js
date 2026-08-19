@@ -114,13 +114,17 @@ describe('actionRoute', () => {
 });
 
 describe('makeChampSelect', () => {
-  it('locks a champion by completing the action', async () => {
-    const lcu = { patch: vi.fn().mockResolvedValue({ ok: true }) };
+  it('locks a champion by hovering, completing, then marking the action done', async () => {
+    const lcu = { patch: vi.fn().mockResolvedValue({ ok: true }), post: vi.fn().mockResolvedValue({ ok: true, status: 204 }) };
 
-    const result = await makeChampSelect({ lcu }).commit(42, 103, true);
+    const result = await makeChampSelect({ lcu }).commit(42, 103, true, 'pick');
 
     expect(result.ok).toBe(true);
-    expect(lcu.patch).toHaveBeenCalledWith(actionRoute(42), {
+    expect(lcu.patch).toHaveBeenNthCalledWith(1, actionRoute(42), {
+      championId: 103,
+    });
+    expect(lcu.post).toHaveBeenCalledWith('/lol-champ-select/v1/session/actions/42/complete');
+    expect(lcu.patch).toHaveBeenLastCalledWith(actionRoute(42), {
       championId: 103,
       completed: true,
     });
@@ -134,19 +138,22 @@ describe('makeChampSelect', () => {
 
     expect(lcu.patch).toHaveBeenCalledWith(actionRoute(42), {
       championId: 103,
-      completed: false,
     });
   });
 
-  it('reports a refusal instead of pretending it worked', async () => {
+  it('falls back to a single completed patch when complete is refused', async () => {
+    const lcu = {
+      patch: vi.fn().mockResolvedValue({ ok: true }),
+      post: vi.fn().mockResolvedValue({ ok: false, status: 404 }),
+    };
 
+    const result = await makeChampSelect({ lcu }).commit(42, 55, true, 'ban');
 
-    const lcu = { patch: vi.fn().mockResolvedValue({ ok: false, status: 409 }) };
-
-    const result = await makeChampSelect({ lcu }).commit(42, 103, true);
-
-    expect(result.ok).toBe(false);
-    expect(result.reason).toContain('409');
+    expect(result.ok).toBe(true);
+    expect(lcu.patch).toHaveBeenLastCalledWith(actionRoute(42), {
+      championId: 55,
+      completed: true,
+    });
   });
 
   it('survives the call throwing', async () => {

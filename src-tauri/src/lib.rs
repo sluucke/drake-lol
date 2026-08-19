@@ -13,6 +13,7 @@ pub mod update;
 pub mod vendored;
 
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
@@ -162,9 +163,26 @@ pub fn run() {
             let auto_update_check = auto_update_item.clone();
             let update_note: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
             let menu_note = update_note.clone();
+            let shutting_down = Arc::new(AtomicBool::new(false));
+            let menu_shutdown = shutting_down.clone();
             app.on_menu_event(move |_app, event| {
                 if event.id() == "quit" {
-                    std::process::exit(0);
+                    if menu_shutdown.swap(true, Ordering::SeqCst) {
+                        return;
+                    }
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = elevate::uninstall(
+                            &slot::WindowsRegistry,
+                            &paths::our_core_dll(),
+                            &paths::data_dir(),
+                        ) {
+                            eprintln!("[Drake] could not deactivate injection on quit: {e}");
+                        }
+                        if let Err(e) = lcu::restart_ux().await {
+                            eprintln!("[Drake] could not reload the client on quit: {e}");
+                        }
+                        std::process::exit(0);
+                    });
                 } else if event.id() == "run_at_startup"
                     || event.id() == "auto_reload_on_open"
                     || event.id() == "auto_update"
@@ -227,12 +245,16 @@ pub fn run() {
 
             let loop_state = state.clone();
             let loop_note = update_note.clone();
+            let loop_shutdown = shutting_down.clone();
             tauri::async_runtime::spawn(async move {
                 let started = std::time::Instant::now();
                 let mut auto_reload_fired = false;
                 let exe = std::env::current_exe().ok();
 
                 loop {
+                    if loop_shutdown.load(Ordering::SeqCst) {
+                        break;
+                    }
                     let settings = loop_state.settings.lock().unwrap().clone();
 
                     // The in-client panel writes settings too, so the tray's
@@ -345,9 +367,13 @@ pub fn run() {
 
             let periodic_state = state.clone();
             let periodic_note = update_note.clone();
+            let periodic_shutdown = shutting_down.clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(update::FIRST_CHECK_AFTER).await;
                 loop {
+                    if periodic_shutdown.load(Ordering::SeqCst) {
+                        break;
+                    }
                     let enabled = periodic_state.settings.lock().unwrap().auto_update;
                     if enabled {
                         try_apply_update(&periodic_state, periodic_note.clone(), false).await;
