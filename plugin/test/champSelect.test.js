@@ -114,7 +114,7 @@ describe('actionRoute', () => {
 });
 
 describe('makeChampSelect', () => {
-  it('locks a champion by hovering, completing, then marking the action done', async () => {
+  it('locks a champion by hovering it and then completing the action', async () => {
     const lcu = { patch: vi.fn().mockResolvedValue({ ok: true }), post: vi.fn().mockResolvedValue({ ok: true, status: 204 }) };
 
     const result = await makeChampSelect({ lcu }).commit(42, 103, true, 'pick');
@@ -124,10 +124,6 @@ describe('makeChampSelect', () => {
       championId: 103,
     });
     expect(lcu.post).toHaveBeenCalledWith('/lol-champ-select/v1/session/actions/42/complete');
-    expect(lcu.patch).toHaveBeenLastCalledWith(actionRoute(42), {
-      championId: 103,
-      completed: true,
-    });
   });
 
   it('hovers without locking when asked not to complete', async () => {
@@ -141,7 +137,10 @@ describe('makeChampSelect', () => {
     });
   });
 
-  it('falls back to a single completed patch when complete is refused', async () => {
+  it('reports a refused ban instead of calling it done', async () => {
+    // Only the complete call finalises an action. Patching completed: true is
+    // accepted by the client without banning anything, so trusting it turned
+    // every failed ban into a logged success.
     const lcu = {
       patch: vi.fn().mockResolvedValue({ ok: true }),
       post: vi.fn().mockResolvedValue({ ok: false, status: 404 }),
@@ -149,11 +148,32 @@ describe('makeChampSelect', () => {
 
     const result = await makeChampSelect({ lcu }).commit(42, 55, true, 'ban');
 
-    expect(result.ok).toBe(true);
-    expect(lcu.patch).toHaveBeenLastCalledWith(actionRoute(42), {
-      championId: 55,
-      completed: true,
-    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('404');
+  });
+
+  it('reports a refused lock instead of calling it done', async () => {
+    const lcu = {
+      patch: vi.fn().mockResolvedValue({ ok: true }),
+      post: vi.fn().mockResolvedValue({ ok: false, status: 500 }),
+    };
+
+    const result = await makeChampSelect({ lcu }).commit(7, 103, true, 'pick');
+
+    expect(result.ok).toBe(false);
+    expect(result.retry).toBe(true);
+    expect(result.reason).toContain('500');
+  });
+
+  it('reports a completion that could not be sent at all', async () => {
+    const lcu = {
+      patch: vi.fn().mockResolvedValue({ ok: true }),
+      post: vi.fn().mockRejectedValue(new Error('gone')),
+    };
+
+    const result = await makeChampSelect({ lcu }).commit(7, 103, true, 'pick');
+
+    expect(result.ok).toBe(false);
   });
 
   it('survives the call throwing', async () => {

@@ -1,5 +1,5 @@
 import { GAMEFLOW_PHASE_ROUTE } from './features/dodge.js';
-import { readGameflowPhase } from './features/inGameIdle.js';
+import { isReadyCheckPhase, readGameflowPhase } from './features/inGameIdle.js';
 
 export const ACCEPT_ROUTE = '/lol-matchmaking/v1/ready-check/accept';
 export const DECLINE_ROUTE = '/lol-matchmaking/v1/ready-check/decline';
@@ -69,7 +69,7 @@ export function startAutoAccept({
 
   const unsubscribePhase = subscribe(GAMEFLOW_PHASE_ROUTE, (payload) => {
     const phase = readGameflowPhase(payload);
-    if (phase === 'Lobby') {
+    if (isReadyCheckPhase(phase)) {
       startReadyCheck();
     } else {
       if (unsubscribeReadyCheck) {

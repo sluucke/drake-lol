@@ -17,6 +17,12 @@ export function isChampSelectPhase(phase) {
   return String(phase || '').trim() === 'ChampSelect';
 }
 
+const READY_CHECK_PHASES = new Set(['Matchmaking', 'ReadyCheck']);
+
+export function isReadyCheckPhase(phase) {
+  return READY_CHECK_PHASES.has(String(phase || '').trim());
+}
+
 export function startInGameIdle({ subscribe, onChange }) {
   let idle = false;
   const unsubscribe = subscribe(GAMEFLOW_PHASE_ROUTE, (payload) => {

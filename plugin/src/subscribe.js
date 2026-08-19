@@ -13,9 +13,12 @@
 
 const DEFAULT_POLL_INTERVAL_MS = 1000;
 
+export function socketPushAvailable() {
+  return typeof socket !== 'undefined' && !!socket && typeof socket.observe === 'function';
+}
+
 export function subscribe(route, handler, { fetchImpl = fetch, intervalMs = DEFAULT_POLL_INTERVAL_MS } = {}) {
-  const push =
-    typeof socket !== 'undefined' && socket && typeof socket.observe === 'function';
+  const push = socketPushAvailable();
 
   let stopped = false;
   let idle = false;
@@ -64,10 +67,14 @@ export function subscribe(route, handler, { fetchImpl = fetch, intervalMs = DEFA
       seen = true;
       handler(message.data);
     };
-    socket.observe(route, observer);
+    const subscription = socket.observe(route, observer);
     unobserve = () => {
-      if (typeof socket !== 'undefined' && socket && typeof socket.unobserve === 'function') {
-        socket.unobserve(route, observer);
+      if (subscription && typeof subscription.disconnect === 'function') {
+        subscription.disconnect();
+        return;
+      }
+      if (typeof socket !== 'undefined' && socket && typeof socket.disconnect === 'function') {
+        socket.disconnect(route, observer);
       }
     };
   }

@@ -11,8 +11,9 @@ function makeSubscribe() {
     return () => { delete handlers[route]; };
   });
   const emit = (route, payload) => handlers[route]?.(payload);
-  const emitLobby = () => emit(PHASE_ROUTE, '"Lobby"');
-  return { subscribe, emit, emitLobby };
+  const emitQueue = () => emit(PHASE_ROUTE, '"Matchmaking"');
+  const listening = () => Object.prototype.hasOwnProperty.call(handlers, READY_CHECK_ROUTE);
+  return { subscribe, emit, emitQueue, listening };
 }
 
 describe('shouldAccept', () => {
@@ -40,28 +41,43 @@ describe('shouldAccept', () => {
 describe('startAutoAccept', () => {
   it('posts accept when enabled and the check is pending', async () => {
     const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
-    const { subscribe, emit, emitLobby } = makeSubscribe();
+    const { subscribe, emit, emitQueue } = makeSubscribe();
     startAutoAccept({ enabled: true, lcu, subscribe });
-    emitLobby();
+    emitQueue();
     await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
     expect(lcu.post).toHaveBeenCalledWith('/lol-matchmaking/v1/ready-check/accept');
   });
 
-  it('does not poll ready-check when phase is not Lobby', async () => {
-    const lcu = { post: vi.fn() };
-    const { subscribe, emit } = makeSubscribe();
+  it('is still listening once the queue pops the check', async () => {
+    // The phase is Matchmaking while searching and ReadyCheck when the popup
+    // appears. It is never Lobby, so gating on Lobby never accepts anything.
+    const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
+    const { subscribe, emit, listening } = makeSubscribe();
     startAutoAccept({ enabled: true, lcu, subscribe });
-    emit(PHASE_ROUTE, '"ChampSelect"');
+    emit(PHASE_ROUTE, '"Matchmaking"');
+    expect(listening()).toBe(true);
+    emit(PHASE_ROUTE, '"ReadyCheck"');
+    expect(listening()).toBe(true);
+    await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
+    expect(lcu.post).toHaveBeenCalledWith('/lol-matchmaking/v1/ready-check/accept');
+  });
+
+  it('does not poll ready-check while the lobby is just sitting there', async () => {
+    const lcu = { post: vi.fn() };
+    const { subscribe, emit, listening } = makeSubscribe();
+    startAutoAccept({ enabled: true, lcu, subscribe });
+    emit(PHASE_ROUTE, '"Lobby"');
+    expect(listening()).toBe(false);
     await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
     expect(lcu.post).not.toHaveBeenCalled();
   });
 
-  it('stops polling ready-check when phase leaves Lobby', async () => {
+  it('stops polling ready-check once champ select starts', async () => {
     const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
     const onState = vi.fn();
-    const { subscribe, emit, emitLobby } = makeSubscribe();
+    const { subscribe, emit, emitQueue } = makeSubscribe();
     startAutoAccept({ enabled: true, lcu, subscribe, onState });
-    emitLobby();
+    emitQueue();
     emit(PHASE_ROUTE, '"ChampSelect"');
     expect(onState).toHaveBeenCalledWith(null);
     await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
@@ -78,12 +94,12 @@ describe('startAutoAccept', () => {
 
   it('waits the configured delay before accepting', async () => {
     const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
-    const { subscribe, emit, emitLobby } = makeSubscribe();
+    const { subscribe, emit, emitQueue } = makeSubscribe();
     const timers = [];
     const setTimeoutImpl = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
 
     startAutoAccept({ enabled: true, delayMs: 3000, lcu, subscribe, setTimeoutImpl });
-    emitLobby();
+    emitQueue();
     await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
 
     expect(lcu.post).not.toHaveBeenCalled();
@@ -94,12 +110,12 @@ describe('startAutoAccept', () => {
 
   it('does not stack timers when the same check reports repeatedly', async () => {
     const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
-    const { subscribe, emit, emitLobby } = makeSubscribe();
+    const { subscribe, emit, emitQueue } = makeSubscribe();
     const timers = [];
     const setTimeoutImpl = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
 
     startAutoAccept({ enabled: true, delayMs: 3000, lcu, subscribe, setTimeoutImpl });
-    emitLobby();
+    emitQueue();
     await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
     await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
     await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
@@ -109,7 +125,7 @@ describe('startAutoAccept', () => {
 
   it('cancels a pending accept when the check goes away', async () => {
     const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
-    const { subscribe, emit, emitLobby } = makeSubscribe();
+    const { subscribe, emit, emitQueue } = makeSubscribe();
     const cleared = [];
     const setTimeoutImpl = () => 42;
     const clearTimeoutImpl = (id) => cleared.push(id);
@@ -117,7 +133,7 @@ describe('startAutoAccept', () => {
     startAutoAccept({
       enabled: true, delayMs: 3000, lcu, subscribe, setTimeoutImpl, clearTimeoutImpl,
     });
-    emitLobby();
+    emitQueue();
     await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
     await emit(READY_CHECK_ROUTE, { state: 'Invalid', playerResponse: 'None' });
 
@@ -127,11 +143,11 @@ describe('startAutoAccept', () => {
 
   it('accepts immediately when the delay is zero', async () => {
     const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
-    const { subscribe, emit, emitLobby } = makeSubscribe();
+    const { subscribe, emit, emitQueue } = makeSubscribe();
     const setTimeoutImpl = vi.fn();
 
     startAutoAccept({ enabled: true, delayMs: 0, lcu, subscribe, setTimeoutImpl });
-    emitLobby();
+    emitQueue();
     await emit(READY_CHECK_ROUTE, { state: 'InProgress', playerResponse: 'None' });
 
     expect(setTimeoutImpl).not.toHaveBeenCalled();
