@@ -5578,8 +5578,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return 0;
   }
   function decideAction(session, settings, skipped = /* @__PURE__ */ new Set()) {
+    const planning = isPlanningPhase(session);
     const ban = findMyAction(session, "ban");
-    if (ban && settings.auto_ban && settings.auto_ban_champion_id) {
+    if (ban && !planning && settings.auto_ban && settings.auto_ban_champion_id) {
       return {
         actionId: ban.id,
         championId: settings.auto_ban_champion_id,
@@ -5588,14 +5589,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
       };
     }
     const livePick = findMyAction(session, "pick");
-    const queuedPick = isPlanningPhase(session) ? findMyQueuedAction(session, "pick") : null;
+    const queuedPick = planning ? findMyQueuedAction(session, "pick") : null;
     const pick = livePick || queuedPick;
     const championId = choosePickChampion(session, settings, skipped);
     if (pick && settings.auto_pick && championId) {
       return {
         actionId: pick.id,
         championId,
-        completed: !!(settings.insta_lock && livePick),
+        completed: !!(settings.insta_lock && livePick && !planning),
         kind: "pick"
       };
     }
@@ -5712,7 +5713,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
             decision.completed,
             decision.kind
           );
-          const observed = { championId: mine.championId, completed: !!mine.completed };
+          const observed = {
+            actionId: mine.id,
+            championId: mine.championId,
+            completed: !!mine.completed,
+            phase: String(session?.timer?.phase || "")
+          };
           if (result.ok) {
             if (onResult) onResult(decision, result, observed);
             schedulePoll();
@@ -5813,7 +5819,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
           d.championId,
           r.ok ? "ok" : "failed: " + r.reason,
           `| hover ${r.hoverStatus ?? "-"} complete ${r.completeStatus ?? "-"}`,
-          `| action had ${was ? was.championId : "-"} completed ${was ? was.completed : "-"}`
+          `| action ${was ? was.actionId : "-"} had ${was ? was.championId : "-"} completed ${was ? was.completed : "-"}`,
+          `| phase ${was && was.phase ? was.phase : "-"}`
         ),
         onSession: (session) => ui && ui.setChampSelect(session)
       });

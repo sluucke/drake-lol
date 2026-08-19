@@ -29,8 +29,9 @@ function choosePickChampion(session, settings, skipped) {
 }
 
 export function decideAction(session, settings, skipped = new Set()) {
+  const planning = isPlanningPhase(session);
   const ban = findMyAction(session, 'ban');
-  if (ban && settings.auto_ban && settings.auto_ban_champion_id) {
+  if (ban && !planning && settings.auto_ban && settings.auto_ban_champion_id) {
     return {
       actionId: ban.id,
       championId: settings.auto_ban_champion_id,
@@ -40,14 +41,14 @@ export function decideAction(session, settings, skipped = new Set()) {
   }
 
   const livePick = findMyAction(session, 'pick');
-  const queuedPick = isPlanningPhase(session) ? findMyQueuedAction(session, 'pick') : null;
+  const queuedPick = planning ? findMyQueuedAction(session, 'pick') : null;
   const pick = livePick || queuedPick;
   const championId = choosePickChampion(session, settings, skipped);
   if (pick && settings.auto_pick && championId) {
     return {
       actionId: pick.id,
       championId,
-      completed: !!(settings.insta_lock && livePick),
+      completed: !!(settings.insta_lock && livePick && !planning),
       kind: 'pick',
     };
   }
@@ -186,7 +187,12 @@ export function startChampSelectAutomation({
           decision.kind,
         );
 
-        const observed = { championId: mine.championId, completed: !!mine.completed };
+        const observed = {
+          actionId: mine.id,
+          championId: mine.championId,
+          completed: !!mine.completed,
+          phase: String(session?.timer?.phase || ''),
+        };
 
         if (result.ok) {
           if (onResult) onResult(decision, result, observed);

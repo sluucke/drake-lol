@@ -48,6 +48,36 @@ describe('decideAction', () => {
     expect(d.completed).toBe(true);
   });
 
+  it('does not try to ban during planning, since nothing completes there', () => {
+    expect(
+      decideAction(
+        session([act({ id: 8, type: 'ban', isInProgress: true })], {
+          timer: { phase: 'PLANNING' },
+        }),
+        settings({ auto_ban: true, auto_ban_champion_id: 55 }),
+      ),
+    ).toBe(null);
+  });
+
+  it('hovers without locking during planning even when the action is in progress', () => {
+    // Planning is the declare phase: the client accepts a hover and accepts the
+    // completion call with a 204, then leaves the action uncompleted. Asking to
+    // lock there just retries forever against a client that will never agree.
+    const d = decideAction(
+      session([act({ id: 5, isInProgress: true })], { timer: { phase: 'PLANNING' } }),
+      settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+    );
+    expect(d).toEqual({ actionId: 5, championId: 103, completed: false, kind: 'pick' });
+  });
+
+  it('locks once planning gives way to the real pick turn', () => {
+    const d = decideAction(
+      session([act({ id: 5, isInProgress: true })], { timer: { phase: 'BAN_PICK' } }),
+      settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+    );
+    expect(d.completed).toBe(true);
+  });
+
   it('always completes a ban, because a hovered ban bans nothing', () => {
     const d = decideAction(
       session([act({ id: 8, type: 'ban' })]),
@@ -427,7 +457,12 @@ describe('startChampSelectAutomation', () => {
 
     await fireSession(session([act({ id: 8, type: 'ban', championId: 0 })]));
 
-    expect(onResult.mock.calls[0][2]).toEqual({ championId: 0, completed: false });
+    expect(onResult.mock.calls[0][2]).toEqual({
+      actionId: 8,
+      championId: 0,
+      completed: false,
+      phase: '',
+    });
   });
 
   it('tells the UI the session is gone when it is stopped', async () => {

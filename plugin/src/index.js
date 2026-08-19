@@ -73,7 +73,8 @@ function wireFeatures(settings) {
           d.championId,
           r.ok ? 'ok' : 'failed: ' + r.reason,
           `| hover ${r.hoverStatus ?? '-'} complete ${r.completeStatus ?? '-'}`,
-          `| action had ${was ? was.championId : '-'} completed ${was ? was.completed : '-'}`,
+          `| action ${was ? was.actionId : '-'} had ${was ? was.championId : '-'} completed ${was ? was.completed : '-'}`,
+          `| phase ${was && was.phase ? was.phase : '-'}`,
         ),
       onSession: (session) => ui && ui.setChampSelect(session),
     });
