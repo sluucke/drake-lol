@@ -156,6 +156,14 @@
       },
       async commit(actionId, championId, completed, type = "pick") {
         try {
+          if (completed) {
+            const locked = await lcu2.patch(actionRoute(actionId), {
+              championId,
+              completed: true,
+              type
+            });
+            if (accepted(locked)) return { ok: true, hoverStatus: statusOf(locked) };
+          }
           const pick = await lcu2.patch(actionRoute(actionId), { championId });
           const hoverStatus = statusOf(pick);
           if (!accepted(pick)) {
@@ -5580,13 +5588,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
   function decideAction(session, settings, skipped = /* @__PURE__ */ new Set()) {
     const planning = isPlanningPhase(session);
     const ban = findMyAction(session, "ban");
-    if (ban && !planning && settings.auto_ban && settings.auto_ban_champion_id) {
-      return {
-        actionId: ban.id,
-        championId: settings.auto_ban_champion_id,
-        completed: true,
-        kind: "ban"
-      };
+    const banTarget = settings.auto_ban_champion_id;
+    if (ban && !planning && settings.auto_ban && banTarget && !skipped.has(banTarget)) {
+      if (!unavailableChampionIds(session).has(banTarget)) {
+        return {
+          actionId: ban.id,
+          championId: banTarget,
+          completed: true,
+          kind: "ban"
+        };
+      }
     }
     const livePick = findMyAction(session, "pick");
     const queuedPick = planning ? findMyQueuedAction(session, "pick") : null;
@@ -5726,7 +5737,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
           }
           pending = null;
           if (onResult) onResult(decision, result, observed);
-          if (decision.kind !== "pick" || result.retry) {
+          if (decision.kind === "ban") {
+            if (!result.retry) skipped = new Set(skipped).add(decision.championId);
+            schedulePoll();
+            return;
+          }
+          if (result.retry) {
             schedulePoll();
             return;
           }

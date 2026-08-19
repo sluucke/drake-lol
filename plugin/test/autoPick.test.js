@@ -59,6 +59,18 @@ describe('decideAction', () => {
     ).toBe(null);
   });
 
+  it('does not try to ban a champion that is already banned', () => {
+    // The client refuses a ban on a champion that is already gone, and with a
+    // single configured target there is nothing else to try, so asking at all
+    // just means asking again every poll for the rest of the ban phase.
+    expect(
+      decideAction(
+        session([act({ id: 8, type: 'ban' })], { bans: { theirTeamBans: [67] } }),
+        settings({ auto_ban: true, auto_ban_champion_id: 67 }),
+      ),
+    ).toBe(null);
+  });
+
   it('hovers without locking during planning even when the action is in progress', () => {
     // Planning is the declare phase: the client accepts a hover and accepts the
     // completion call with a 204, then leaves the action uncompleted. Asking to
@@ -439,6 +451,45 @@ describe('startChampSelectAutomation', () => {
 
     expect(commit.mock.calls[0][1]).toBe(103);
     expect(commit.mock.calls[1][1]).toBe(103);
+  });
+
+  it('stops asking for a ban the client has refused', async () => {
+    // A refused ban is not going to start working on the next poll, and there is
+    // no second ban target to fall back to, so retrying it every 500ms only
+    // hammers the client for the rest of the ban phase.
+    const commit = vi.fn().mockResolvedValue({ ok: false, reason: 'refused (400)' });
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
+    startChampSelectAutomation({
+      getSettings: () => settings({ auto_ban: true, auto_ban_champion_id: 55 }),
+      champSelect: { commit },
+      subscribe,
+    });
+    enterChampSelect();
+
+    await fireSession(session([act({ id: 8, type: 'ban' })]));
+    await fireSession(session([act({ id: 8, type: 'ban' })]));
+
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps trying a ban whose completion was only refused for now', async () => {
+    const commit = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, retry: true, reason: 'would not ban it (500)' })
+      .mockResolvedValueOnce({ ok: true });
+    const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
+    startChampSelectAutomation({
+      getSettings: () => settings({ auto_ban: true, auto_ban_champion_id: 55 }),
+      champSelect: { commit },
+      subscribe,
+    });
+    enterChampSelect();
+
+    await fireSession(session([act({ id: 8, type: 'ban' })]));
+    await fireSession(session([act({ id: 8, type: 'ban' })]));
+
+    expect(commit).toHaveBeenCalledTimes(2);
+    expect(commit.mock.calls[1][1]).toBe(55);
   });
 
   it('reports what the action looked like when it committed', async () => {

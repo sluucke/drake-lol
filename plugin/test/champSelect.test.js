@@ -145,15 +145,39 @@ describe('makeChampSelect', () => {
     expect(await makeChampSelect({ lcu }).getSession()).toBe(null);
   });
 
-  it('locks a champion by hovering it and then completing the action', async () => {
-    const lcu = { patch: vi.fn().mockResolvedValue({ ok: true }), post: vi.fn().mockResolvedValue({ ok: true, status: 204 }) };
+  it('locks a champion with a single call carrying the completion', async () => {
+    // Hovering and then completing is accepted by the client (both calls answer
+    // 2xx) while leaving the action unfinished. Sending the completion as part
+    // of the action itself is what actually locks it in.
+    const lcu = {
+      patch: vi.fn().mockResolvedValue({ ok: true, status: 204 }),
+      post: vi.fn(),
+    };
 
     const result = await makeChampSelect({ lcu }).commit(42, 103, true, 'pick');
 
     expect(result.ok).toBe(true);
-    expect(lcu.patch).toHaveBeenNthCalledWith(1, actionRoute(42), {
+    expect(lcu.patch).toHaveBeenCalledWith(actionRoute(42), {
       championId: 103,
+      completed: true,
+      type: 'pick',
     });
+    expect(lcu.post).not.toHaveBeenCalled();
+  });
+
+  it('falls back to hovering and completing when the single call is refused', async () => {
+    const lcu = {
+      patch: vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 400 })
+        .mockResolvedValueOnce({ ok: true, status: 204 }),
+      post: vi.fn().mockResolvedValue({ ok: true, status: 204 }),
+    };
+
+    const result = await makeChampSelect({ lcu }).commit(42, 103, true, 'pick');
+
+    expect(result.ok).toBe(true);
+    expect(lcu.patch).toHaveBeenNthCalledWith(2, actionRoute(42), { championId: 103 });
     expect(lcu.post).toHaveBeenCalledWith('/lol-champ-select/v1/session/actions/42/complete');
   });
 
@@ -169,11 +193,8 @@ describe('makeChampSelect', () => {
   });
 
   it('reports a refused ban instead of calling it done', async () => {
-    // Only the complete call finalises an action. Patching completed: true is
-    // accepted by the client without banning anything, so trusting it turned
-    // every failed ban into a logged success.
     const lcu = {
-      patch: vi.fn().mockResolvedValue({ ok: true }),
+      patch: vi.fn().mockResolvedValue({ ok: false, status: 404 }),
       post: vi.fn().mockResolvedValue({ ok: false, status: 404 }),
     };
 
@@ -185,7 +206,10 @@ describe('makeChampSelect', () => {
 
   it('reports a refused lock instead of calling it done', async () => {
     const lcu = {
-      patch: vi.fn().mockResolvedValue({ ok: true }),
+      patch: vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 400 })
+        .mockResolvedValueOnce({ ok: true, status: 204 }),
       post: vi.fn().mockResolvedValue({ ok: false, status: 500 }),
     };
 
@@ -198,7 +222,10 @@ describe('makeChampSelect', () => {
 
   it('reports a completion that could not be sent at all', async () => {
     const lcu = {
-      patch: vi.fn().mockResolvedValue({ ok: true }),
+      patch: vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 400 })
+        .mockResolvedValueOnce({ ok: true, status: 204 }),
       post: vi.fn().mockRejectedValue(new Error('gone')),
     };
 
@@ -219,10 +246,13 @@ describe('makeChampSelect', () => {
   });
 
   it('reports the status of each call it made', async () => {
-    // Both calls answering 2xx while nothing happens is indistinguishable from
+    // Every call answering 2xx while nothing happens is indistinguishable from
     // a silent failure unless the statuses are visible.
     const lcu = {
-      patch: vi.fn().mockResolvedValue({ ok: true, status: 204 }),
+      patch: vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 400 })
+        .mockResolvedValueOnce({ ok: true, status: 204 }),
       post: vi.fn().mockResolvedValue({ ok: true, status: 200 }),
     };
 
