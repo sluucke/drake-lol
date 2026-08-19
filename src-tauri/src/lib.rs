@@ -50,6 +50,10 @@ fn check_vendored_loader(app: &tauri::AppHandle) -> Result<(), String> {
     verify_installed_loader(&src, &paths::our_core_dll())
 }
 
+fn tray_version_label(version: &str) -> String {
+    format!("Drake - v{version}")
+}
+
 fn next_auto_update_delay(first_check: bool) -> std::time::Duration {
     if first_check {
         std::time::Duration::ZERO
@@ -107,6 +111,14 @@ pub fn run() {
 
             let state = Arc::new(configd::ConfigdState::new(CONFIGD_PORT));
 
+            let version_label = MenuItem::with_id(
+                app,
+                "version",
+                &tray_version_label(env!("CARGO_PKG_VERSION")),
+                false,
+                None::<&str>,
+            )?;
+
             // Starts disabled: the first tick (within 2s) enables it once we
             // actually know the client is running without our plugin loaded.
             let reload = MenuItem::with_id(app, "reload", strings::MENU_RELOAD_CLIENT, false, None::<&str>)?;
@@ -151,6 +163,7 @@ pub fn run() {
             let menu = Menu::with_items(
                 app,
                 &[
+                    &version_label,
                     &startup_item,
                     &auto_reload_item,
                     &auto_update_item,
@@ -403,7 +416,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{next_auto_update_delay, verify_installed_loader};
+    use super::{next_auto_update_delay, tray_version_label, verify_installed_loader};
 
     #[test]
     fn a_matching_core_dll_is_reported_as_fine() {
@@ -448,5 +461,11 @@ mod tests {
     fn auto_update_checks_immediately_on_startup() {
         assert_eq!(next_auto_update_delay(true), std::time::Duration::ZERO);
         assert_eq!(next_auto_update_delay(false), crate::update::CHECK_EVERY);
+    }
+
+    #[test]
+    fn tray_version_label_formats_as_drake_vx_y_z() {
+        assert_eq!(tray_version_label("0.3.4"), "Drake - v0.3.4");
+        assert_eq!(tray_version_label("1.0.0"), "Drake - v1.0.0");
     }
 }
