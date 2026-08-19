@@ -31,13 +31,16 @@ function choosePickChampion(session, settings, skipped) {
 export function decideAction(session, settings, skipped = new Set()) {
   const planning = isPlanningPhase(session);
   const ban = findMyAction(session, 'ban');
-  if (ban && !planning && settings.auto_ban && settings.auto_ban_champion_id) {
-    return {
-      actionId: ban.id,
-      championId: settings.auto_ban_champion_id,
-      completed: true,
-      kind: 'ban',
-    };
+  const banTarget = settings.auto_ban_champion_id;
+  if (ban && !planning && settings.auto_ban && banTarget && !skipped.has(banTarget)) {
+    if (!unavailableChampionIds(session).has(banTarget)) {
+      return {
+        actionId: ban.id,
+        championId: banTarget,
+        completed: true,
+        kind: 'ban',
+      };
+    }
   }
 
   const livePick = findMyAction(session, 'pick');
@@ -203,7 +206,13 @@ export function startChampSelectAutomation({
         pending = null;
         if (onResult) onResult(decision, result, observed);
 
-        if (decision.kind !== 'pick' || result.retry) {
+        if (decision.kind === 'ban') {
+          if (!result.retry) skipped = new Set(skipped).add(decision.championId);
+          schedulePoll();
+          return;
+        }
+
+        if (result.retry) {
           schedulePoll();
           return;
         }

@@ -78,6 +78,15 @@ export function makeChampSelect({ lcu }) {
 
     async commit(actionId, championId, completed, type = 'pick') {
       try {
+        if (completed) {
+          const locked = await lcu.patch(actionRoute(actionId), {
+            championId,
+            completed: true,
+            type,
+          });
+          if (accepted(locked)) return { ok: true, hoverStatus: statusOf(locked) };
+        }
+
         const pick = await lcu.patch(actionRoute(actionId), { championId });
         const hoverStatus = statusOf(pick);
         if (!accepted(pick)) {
