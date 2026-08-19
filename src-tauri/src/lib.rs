@@ -50,6 +50,14 @@ fn check_vendored_loader(app: &tauri::AppHandle) -> Result<(), String> {
     verify_installed_loader(&src, &paths::our_core_dll())
 }
 
+fn next_auto_update_delay(first_check: bool) -> std::time::Duration {
+    if first_check {
+        std::time::Duration::ZERO
+    } else {
+        update::CHECK_EVERY
+    }
+}
+
 async fn try_apply_update(
     state: &Arc<configd::ConfigdState>,
     note: Arc<Mutex<Option<String>>>,
@@ -370,7 +378,13 @@ pub fn run() {
             let periodic_note = update_note.clone();
             let periodic_shutdown = shutting_down.clone();
             tauri::async_runtime::spawn(async move {
+                let mut first_check = true;
                 loop {
+                    if periodic_shutdown.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    tokio::time::sleep(next_auto_update_delay(first_check)).await;
+                    first_check = false;
                     if periodic_shutdown.load(Ordering::SeqCst) {
                         break;
                     }
@@ -378,7 +392,6 @@ pub fn run() {
                     if enabled {
                         try_apply_update(&periodic_state, periodic_note.clone(), false).await;
                     }
-                    tokio::time::sleep(update::CHECK_EVERY).await;
                 }
             });
 
@@ -390,7 +403,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::verify_installed_loader;
+    use super::{next_auto_update_delay, verify_installed_loader};
 
     #[test]
     fn a_matching_core_dll_is_reported_as_fine() {
@@ -429,5 +442,11 @@ mod tests {
 
         assert!(err.contains("reinstall"), "reason shown in the tray: {err}");
         assert_eq!(std::fs::read(&dest).unwrap(), b"old loader bytes");
+    }
+
+    #[test]
+    fn auto_update_checks_immediately_on_startup() {
+        assert_eq!(next_auto_update_delay(true), std::time::Duration::ZERO);
+        assert_eq!(next_auto_update_delay(false), crate::update::CHECK_EVERY);
     }
 }
