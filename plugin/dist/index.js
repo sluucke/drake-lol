@@ -4291,7 +4291,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       });
       if (!node) continue;
       used.add(node);
-      matched.push(node);
+      matched.push({ row, label: node });
     }
     return matched;
   }
@@ -4359,6 +4359,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let lastTeam = [];
     let lastCardsRenderSig = "";
     let statusPhase = "hidden";
+    let lastPhase = "";
     let loadGen = 0;
     let loadAbort = null;
     let stopPhase = null;
@@ -4385,7 +4386,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (!enabled) return;
       const phase = readGameflowPhase2(payload);
       if (!phase) return;
-      if (phase !== "ChampSelect") clearReveal();
+      const previous = lastPhase;
+      lastPhase = phase;
+      if (phase !== "ChampSelect") {
+        clearReveal();
+        return;
+      }
+      if (previous && previous !== "ChampSelect") restoreRows();
     }
     function needsReapply() {
       if (!snapshot.length) return false;
@@ -4653,26 +4660,23 @@ button.bug-report-button[data-drake-toggle]:disabled {
         used.add(info);
       }
       const remaining = rows.filter((row) => !used.has(row) && row?.riotId);
+      for (const { row, label } of findLabelsByCurrentNames(doc, remaining)) {
+        applyLabel(label, row);
+        boundLabels.set(Number(row.cellId), label);
+        used.add(row);
+      }
+      const unmatched = remaining.filter((row) => !used.has(row));
+      if (!unmatched.length) return;
       const labels = readLabelNodes(doc).filter((label) => {
         if (!label?.dataset) label.dataset = {};
         return !label.dataset[APPLIED_KEY];
       });
-      const count = Math.min(remaining.length, labels.length);
+      const count = Math.min(unmatched.length, labels.length);
       for (let index = 0; index < count; index += 1) {
         const label = labels[index];
-        const info = remaining[index];
+        const info = unmatched[index];
         applyLabel(label, info);
         boundLabels.set(Number(info.cellId), label);
-      }
-      if (count === 0 && remaining.length > 0) {
-        const matched = findLabelsByCurrentNames(doc, remaining);
-        const limit = Math.min(matched.length, remaining.length);
-        for (let index = 0; index < limit; index += 1) {
-          const info = remaining[index];
-          const label = matched[index];
-          applyLabel(label, info);
-          boundLabels.set(Number(info.cellId), label);
-        }
       }
     }
     function closeCards() {
@@ -4759,6 +4763,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         stopPhase();
         stopPhase = null;
       }
+      lastPhase = "";
       clearReveal();
     }
     function toggleCards() {

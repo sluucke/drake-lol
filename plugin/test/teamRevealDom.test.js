@@ -395,6 +395,57 @@ describe('teamRevealDom', () => {
     expect(loadSnapshot).toHaveBeenCalledTimes(2);
   });
 
+  it('resets labels left over from the last match when champ select starts', async () => {
+    // The exit cleanup finds nothing when the client has already pulled the rows
+    // out of the document, and the next champ select reuses those same nodes, so
+    // the previous lobby's names and W/L were still sitting in them.
+    const rows = [makeRow(0, 'MaskedOne')];
+    let visible = rows;
+    const doc = { querySelectorAll: () => visible };
+    const loadSnapshot = vi.fn(async () => [
+      { cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
+    ]);
+    let phase;
+    const subscribe = vi.fn((route, fn) => {
+      phase = fn;
+      return () => {};
+    });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    expect(rows[0]._label.textContent).toBe('RealOne#TAG (1W/0L · 100%)');
+
+    visible = [];
+    phase('"InProgress"');
+    visible = rows;
+    phase('"ChampSelect"');
+
+    expect(rows[0]._label.textContent).toBe('MaskedOne');
+  });
+
+  it('does not wipe a reveal when the first phase it ever sees is champ select', async () => {
+    // Starting up mid champ select gives no previous phase to compare against,
+    // and treating that as an entry would clear a reveal that just landed.
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const loadSnapshot = vi.fn(async () => [
+      { cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
+    ]);
+    let phase;
+    const subscribe = vi.fn((route, fn) => {
+      phase = fn;
+      return () => {};
+    });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    phase('"ChampSelect"');
+
+    expect(rows[0]._label.textContent).toBe('RealOne#TAG (1W/0L · 100%)');
+  });
+
   it('subscribes once and unsubscribes on teardown', () => {
     const stop = vi.fn();
     const subscribe = vi.fn(() => stop);
@@ -440,6 +491,65 @@ describe('teamRevealDom', () => {
 
     expect(labels[0].textContent).toBe('RealOne#TAG (1W/0L · 100%)');
     expect(labels[1].textContent).toBe('RealTwo#TAG (0W/1L · 0%)');
+  });
+
+  it('matches labels by name instead of writing ally rows onto the enemy team', async () => {
+    // Without data-cell-id the rows used to be assigned to whatever unapplied
+    // labels came first in the document, and the enemy rows come first, so the
+    // ally names landed on the enemy team.
+    const labels = [
+      { textContent: 'Summoner 1', dataset: {} },
+      { textContent: 'Summoner 2', dataset: {} },
+      { textContent: 'RealOne', dataset: {} },
+      { textContent: 'RealTwo', dataset: {} },
+    ];
+    const doc = {
+      querySelectorAll: (selector) =>
+        selector === '[data-testid="summoner-name"]' ? labels : [],
+    };
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        { cellId: 1, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
+        { cellId: 2, riotId: 'RealTwo#TAG', wins: 0, losses: 1, winRate: 0 },
+      ],
+      overlayRoot: makeOverlayRoot(),
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 1 }, { cellId: 2 }] });
+
+    expect(labels[0].textContent).toBe('Summoner 1');
+    expect(labels[1].textContent).toBe('Summoner 2');
+    expect(labels[2].textContent).toBe('RealOne#TAG (1W/0L · 100%)');
+    expect(labels[3].textContent).toBe('RealTwo#TAG (0W/1L · 0%)');
+  });
+
+  it('keeps each row with its own label when only some names can be found', async () => {
+    // Matched labels used to be collected without their rows, so a row that
+    // matched nothing shifted every later row onto somebody else's label.
+    const labels = [
+      { textContent: 'RealTwo', dataset: {} },
+    ];
+    const doc = {
+      querySelectorAll: (selector) =>
+        selector === '[data-testid="summoner-name"]' ? labels : [],
+    };
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        { cellId: 1, riotId: 'Missing#TAG', wins: 5, losses: 5, winRate: 50 },
+        { cellId: 2, riotId: 'RealTwo#TAG', wins: 0, losses: 1, winRate: 0 },
+      ],
+      overlayRoot: makeOverlayRoot(),
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 1 }, { cellId: 2 }] });
+
+    expect(labels[0].textContent).toBe('RealTwo#TAG (0W/1L · 0%)');
   });
 
   it('does not recompute snapshot for identical session payloads', async () => {

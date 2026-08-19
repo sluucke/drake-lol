@@ -170,34 +170,103 @@ fn ps_literal(s: &str) -> String {
 /// Drake has already exited by the time this runs, so the relaunch sits outside
 /// the try/catch and after it: a declined UAC prompt or a failed install must
 /// still leave the user with a tray. Never reintroduce an early exit above it.
-pub fn handoff_script(installer: &Path, relaunch: &Path, log: &Path) -> String {
+pub fn handoff_script(installer: &Path, relaunch: &Path, log: &Path, version: &str) -> String {
     format!(
         r#"$ErrorActionPreference = 'Stop'
 $installer = {installer}
 $relaunch = {relaunch}
 $log = {log}
+$version = {version}
 function Write-Step($message) {{
   "{{0}} {{1}}" -f (Get-Date -Format o), $message | Out-File -FilePath $log -Append -Encoding utf8
 }}
 Write-Step 'the handoff started'
+$form = $null
+$status = $null
+try {{
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
+  $form = New-Object System.Windows.Forms.Form
+  $form.Text = 'Drake'
+  $form.ClientSize = New-Object System.Drawing.Size(420, 120)
+  $form.StartPosition = 'CenterScreen'
+  $form.FormBorderStyle = 'FixedDialog'
+  $form.ControlBox = $false
+  $form.TopMost = $true
+  $status = New-Object System.Windows.Forms.Label
+  $status.Location = New-Object System.Drawing.Point(20, 24)
+  $status.Size = New-Object System.Drawing.Size(380, 36)
+  $status.Text = 'Preparing the update...'
+  $bar = New-Object System.Windows.Forms.ProgressBar
+  $bar.Style = 'Marquee'
+  $bar.MarqueeAnimationSpeed = 30
+  $bar.Location = New-Object System.Drawing.Point(20, 70)
+  $bar.Size = New-Object System.Drawing.Size(380, 22)
+  $form.Controls.Add($status)
+  $form.Controls.Add($bar)
+  $form.Show()
+  # The first top-level window a process shows inherits the show state it was
+  # started with, so a form can report Visible while Windows keeps it hidden.
+  Add-Type -Namespace Drake -Name Win -MemberDefinition '[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);'
+  [Drake.Win]::ShowWindow($form.Handle, 5) | Out-Null
+  $form.Activate()
+  $form.Refresh()
+}} catch {{
+  Write-Step "the progress window could not be shown: $($_.Exception.Message)"
+}}
+function Pump-Ui {{
+  if ($null -ne $form) {{
+    try {{ [System.Windows.Forms.Application]::DoEvents() }} catch {{}}
+  }}
+}}
+function Set-Status($message) {{
+  Write-Step $message
+  if ($null -ne $status) {{
+    try {{ $status.Text = $message }} catch {{}}
+  }}
+  Pump-Ui
+}}
+Set-Status 'Waiting for Drake to close...'
 $waited = 0
 while ((Get-Process -Name Drake -ErrorAction SilentlyContinue) -and $waited -lt 30000) {{
+  Pump-Ui
   Start-Sleep -Milliseconds 200
   $waited += 200
 }}
 Write-Step "Drake took $waited ms to exit"
 try {{
-  Write-Step 'running the installer'
-  $proc = Start-Process -FilePath $installer -ArgumentList '/S' -Verb RunAs -Wait -PassThru
+  Set-Status "Installing $version..."
+  $proc = Start-Process -FilePath $installer -ArgumentList '/S' -Verb RunAs -PassThru
+  if ($null -eq $proc) {{
+    # RunAs can hand back no process at all, and without -Wait there is then
+    # nothing to watch: fall back to the setup's own process name.
+    $setupName = [System.IO.Path]::GetFileNameWithoutExtension($installer)
+    Write-Step "no process handle; watching for $setupName"
+    Start-Sleep -Milliseconds 500
+    while (Get-Process -Name $setupName -ErrorAction SilentlyContinue) {{
+      Pump-Ui
+      Start-Sleep -Milliseconds 200
+    }}
+  }} else {{
+    while (-not $proc.HasExited) {{
+      Pump-Ui
+      Start-Sleep -Milliseconds 100
+    }}
+  }}
   $code = if ($null -eq $proc) {{ $null }} else {{ $proc.ExitCode }}
   if ($null -ne $code -and $code -ne 0) {{
     Write-Step "the installer exited with $code"
+    Set-Status 'The update could not be installed'
+    Start-Sleep -Seconds 3
   }} else {{
     Write-Step 'the installer finished'
   }}
 }} catch {{
   Write-Step "the installer could not start: $($_.Exception.Message)"
+  Set-Status 'The update could not be installed'
+  Start-Sleep -Seconds 3
 }}
+Set-Status 'Starting Drake...'
 if (Get-Process -Name Drake -ErrorAction SilentlyContinue) {{
   Write-Step 'Drake is already running again'
 }} elseif (Test-Path -LiteralPath $relaunch) {{
@@ -206,10 +275,15 @@ if (Get-Process -Name Drake -ErrorAction SilentlyContinue) {{
 }} else {{
   Write-Step 'nothing left to relaunch'
 }}
+if ($null -ne $form) {{
+  try {{ $form.Close() }} catch {{}}
+  try {{ $form.Dispose() }} catch {{}}
+}}
 "#,
         installer = ps_literal(&installer.to_string_lossy()),
         relaunch = ps_literal(&relaunch.to_string_lossy()),
         log = ps_literal(&log.to_string_lossy()),
+        version = ps_literal(version),
     )
 }
 
@@ -264,9 +338,9 @@ pub const fn handoff_creation_flags_without_breakaway() -> u32 {
     CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
 }
 
-pub fn spawn_handoff(installer: &Path, relaunch: &Path) -> Result<(), UpdateError> {
+pub fn spawn_handoff(installer: &Path, relaunch: &Path, version: &str) -> Result<(), UpdateError> {
     let log: PathBuf = std::env::temp_dir().join("drake-update.log");
-    let script = handoff_script(installer, relaunch, &log);
+    let script = handoff_script(installer, relaunch, &log, version);
     let ps1: PathBuf = std::env::temp_dir().join("drake-update.ps1");
     std::fs::write(&ps1, script).map_err(UpdateError::Write)?;
     let host_log: PathBuf = std::env::temp_dir().join("drake-update-host.log");
@@ -344,7 +418,7 @@ pub async fn apply_if_newer(
             if let Err(e) = save_attempt(&record, &log) {
                 eprintln!("[Drake] could not record the {version} attempt: {e}");
             }
-            spawn_handoff(&dest, relaunch)?;
+            spawn_handoff(&dest, relaunch, &version)?;
             Ok(true)
         }
     }
@@ -497,7 +571,79 @@ mod tests {
             Path::new(r"C:\Temp\Drake_0.2.0_x64-setup.exe"),
             Path::new(r"C:\Program Files\Drake\Drake.exe"),
             Path::new(r"C:\Temp\drake-update.log"),
+            "v0.2.0",
         )
+    }
+
+    #[test]
+    fn the_handoff_shows_a_progress_window_while_the_installer_runs() {
+        // Drake is gone by now, so the handoff is the only thing left that can
+        // tell the user an update is in progress rather than nothing at all.
+        let script = a_handoff();
+        assert!(script.contains("System.Windows.Forms"));
+        assert!(script.contains("ProgressBar"));
+        assert!(script.contains("Marquee"), "a silent install reports no percentage: {script}");
+        assert!(script.contains("$form.Show()"));
+        assert!(script.contains("DoEvents"), "the bar has to keep animating: {script}");
+        assert!(script.contains("$form.Close()"));
+    }
+
+    #[test]
+    fn the_progress_window_is_forced_visible_even_when_started_hidden() {
+        // The first top-level window a process shows inherits the show state it
+        // was started with. A hidden one leaves a form that reports Visible while
+        // Windows keeps it off screen, which is the silence this window replaces.
+        let script = a_handoff();
+        assert!(
+            script.contains("ShowWindow"),
+            "an inherited hidden show state must be overridden: {script}"
+        );
+        let show_at = script.find("$form.Show()").expect("the show call");
+        let force_at = script.find("ShowWindow(").expect("the win32 call");
+        assert!(force_at > show_at, "the handle must exist first: {script}");
+    }
+
+    #[test]
+    fn the_handoff_names_the_version_it_is_installing() {
+        assert!(a_handoff().contains("v0.2.0"));
+    }
+
+    #[test]
+    fn a_window_that_cannot_be_created_does_not_stop_the_update() {
+        // An update that fails because its progress window failed would be a
+        // worse outcome than the silence this window replaces.
+        let script = a_handoff();
+        let add_type_at = script.find("Add-Type").expect("the assembly load");
+        let first_try_at = script.find("try {").expect("a try block");
+        assert!(
+            first_try_at < add_type_at,
+            "building the window must be guarded: {script}"
+        );
+        assert!(
+            script.contains("$null -ne $status"),
+            "status updates must tolerate a window that was never built: {script}"
+        );
+        assert!(
+            script.contains("$null -ne $form"),
+            "pumping the UI must tolerate a window that was never built: {script}"
+        );
+    }
+
+    #[test]
+    fn the_handoff_waits_for_the_installer_even_without_a_process_handle() {
+        // Dropping -Wait is what keeps the window responsive, but RunAs can hand
+        // back no process at all, and relaunching Drake mid-install is worse than
+        // a frozen bar.
+        let script = a_handoff();
+        assert!(
+            script.contains("GetFileNameWithoutExtension"),
+            "needs the setup process name to fall back on: {script}"
+        );
+        let relaunch_at = script
+            .rfind("Start-Process -FilePath $relaunch")
+            .expect("relaunch call");
+        let fallback_at = script.find("GetFileNameWithoutExtension").unwrap();
+        assert!(fallback_at < relaunch_at, "the wait must precede the relaunch: {script}");
     }
 
     #[test]

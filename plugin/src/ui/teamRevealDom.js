@@ -213,6 +213,9 @@ function readLabelNodes(doc) {
   return out;
 }
 
+/// Pairs each row with the label showing that player's name. Returning the pair
+/// matters: a row that matches nothing must not shift the rows after it onto
+/// somebody else's label.
 function findLabelsByCurrentNames(doc, snapshot) {
   const pool = readLabelNodes(doc).filter((node) => {
     if (node?.dataset?.[APPLIED_KEY]) return false;
@@ -232,7 +235,7 @@ function findLabelsByCurrentNames(doc, snapshot) {
     });
     if (!node) continue;
     used.add(node);
-    matched.push(node);
+    matched.push({ row, label: node });
   }
   return matched;
 }
@@ -305,6 +308,7 @@ export function makeTeamRevealDom({
   let lastTeam = [];
   let lastCardsRenderSig = '';
   let statusPhase = 'hidden';
+  let lastPhase = '';
   let loadGen = 0;
   let loadAbort = null;
   let stopPhase = null;
@@ -334,7 +338,16 @@ export function makeTeamRevealDom({
     if (!enabled) return;
     const phase = readGameflowPhase(payload);
     if (!phase) return;
-    if (phase !== 'ChampSelect') clearReveal();
+    const previous = lastPhase;
+    lastPhase = phase;
+    if (phase !== 'ChampSelect') {
+      clearReveal();
+      return;
+    }
+    // Leaving champ select can restore nothing, because the client has often
+    // already pulled the rows out of the document by then, and it reuses those
+    // same nodes next time. Anything still marked belongs to the last match.
+    if (previous && previous !== 'ChampSelect') restoreRows();
   }
 
   function needsReapply() {
@@ -630,27 +643,29 @@ export function makeTeamRevealDom({
     }
 
     const remaining = rows.filter((row) => !used.has(row) && row?.riotId);
+
+    // The player's own name is the only reliable way to tell which label is
+    // theirs. Document order is not: the enemy rows come first, so falling back
+    // to it too eagerly wrote the ally names onto the enemy team.
+    for (const { row, label } of findLabelsByCurrentNames(doc, remaining)) {
+      applyLabel(label, row);
+      boundLabels.set(Number(row.cellId), label);
+      used.add(row);
+    }
+
+    const unmatched = remaining.filter((row) => !used.has(row));
+    if (!unmatched.length) return;
+
     const labels = readLabelNodes(doc).filter((label) => {
       if (!label?.dataset) label.dataset = {};
       return !label.dataset[APPLIED_KEY];
     });
-
-    const count = Math.min(remaining.length, labels.length);
+    const count = Math.min(unmatched.length, labels.length);
     for (let index = 0; index < count; index += 1) {
       const label = labels[index];
-      const info = remaining[index];
+      const info = unmatched[index];
       applyLabel(label, info);
       boundLabels.set(Number(info.cellId), label);
-    }
-    if (count === 0 && remaining.length > 0) {
-      const matched = findLabelsByCurrentNames(doc, remaining);
-      const limit = Math.min(matched.length, remaining.length);
-      for (let index = 0; index < limit; index += 1) {
-        const info = remaining[index];
-        const label = matched[index];
-        applyLabel(label, info);
-        boundLabels.set(Number(info.cellId), label);
-      }
     }
   }
 
@@ -745,6 +760,7 @@ export function makeTeamRevealDom({
       stopPhase();
       stopPhase = null;
     }
+    lastPhase = '';
     clearReveal();
   }
 
