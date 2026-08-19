@@ -66,8 +66,15 @@ function wireFeatures(settings) {
       champSelect: makeChampSelect({ lcu }),
       subscribe,
       getSession: () => lcu.get('/lol-champ-select/v1/session'),
-      onResult: (d, r) =>
-        console.log(TAG, d.kind, d.championId, r.ok ? 'ok' : 'failed: ' + r.reason),
+      onResult: (d, r, was) =>
+        console.log(
+          TAG,
+          d.kind,
+          d.championId,
+          r.ok ? 'ok' : 'failed: ' + r.reason,
+          `| hover ${r.hoverStatus ?? '-'} complete ${r.completeStatus ?? '-'}`,
+          `| action had ${was ? was.championId : '-'} completed ${was ? was.completed : '-'}`,
+        ),
       onSession: (session) => ui && ui.setChampSelect(session),
     });
   } else {
