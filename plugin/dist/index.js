@@ -1975,6 +1975,12 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     { id: "RANKED_FLEX_SR", label: "Flex" },
     { id: "RANKED_TFT", label: "TFT" }
   ];
+  var AVAILABILITIES = [
+    { id: "chat", label: "Online" },
+    { id: "offline", label: "Offline" },
+    { id: "mobile", label: "Mobile" },
+    { id: "dnd", label: "Busy" }
+  ];
   var CRYSTALS = [
     "IRON",
     "BRONZE",
@@ -2040,6 +2046,17 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         if (crystal !== void 0) fields.challengeCrystalLevel = crystal;
         if (titleId !== void 0) fields.playerTitleSelected = String(titleId);
         return merge(fields);
+      },
+      async setAvailability(availability) {
+        try {
+          const res = await lcu2.put(CHAT_ME, { availability });
+          if (res && res.ok === false) {
+            return { ok: false, reason: `the client refused it (${res.status})` };
+          }
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, reason: `could not reach the client (${e.message})` };
+        }
       }
     };
   }
@@ -2337,7 +2354,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     })}
     </div>`;
   }
-  function renderStatus(text) {
+  function renderStatus(text, settings = {}) {
     const safe = String(text ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     return `
     <h2 class="screen-title">Status Message</h2>
@@ -2346,6 +2363,18 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       single-line input and cannot hold them.
     </p>
     <div class="rule"></div>
+
+    <div class="row">
+      <span class="field-label" style="min-width:72px">Presence</span>
+      ${renderSelect(
+      "presence-availability",
+      [{ id: "", label: "Client default" }, ...AVAILABILITIES],
+      settings.presence_availability || ""
+    )}
+    </div>
+    <p class="check-help" style="margin:-4px 0 10px">
+      Drake keeps re-applying the chosen status whenever the client resets it.
+    </p>
 
     <textarea class="status-box" id="status-text" spellcheck="false"
               placeholder="Type or paste your status. ASCII art welcome.">${safe}</textarea>
@@ -5078,7 +5107,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         } else if (screen === "queue") {
           content.innerHTML = renderQueue({ provider, settings, disabled: trayDown });
         } else if (screen === "status") {
-          content.innerHTML = renderStatus(statusText);
+          content.innerHTML = renderStatus(statusText, settings);
           updateCount();
         } else {
           content.innerHTML = renderAutoAccept(settings, {
@@ -5457,12 +5486,24 @@ button.bug-report-button[data-drake-toggle]:disabled {
         shadow.getElementById("delay-value").textContent = formatDelay(Number(e.target.value));
       });
       content.addEventListener("change", (e) => {
-        if (e.target.id !== "delay") return;
-        const previous = settings.auto_accept_delay_ms;
-        settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };
-        commit({ auto_accept_delay_ms: settings.auto_accept_delay_ms }, () => {
-          settings = { ...settings, auto_accept_delay_ms: previous };
-        });
+        if (e.target.id === "delay") {
+          const previous = settings.auto_accept_delay_ms;
+          settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };
+          commit({ auto_accept_delay_ms: settings.auto_accept_delay_ms }, () => {
+            settings = { ...settings, auto_accept_delay_ms: previous };
+          });
+          return;
+        }
+        if (e.target.id === "presence-availability") {
+          const previous = settings.presence_availability || "";
+          const value = e.target.value;
+          settings = { ...settings, presence_availability: value };
+          paint();
+          commit({ presence_availability: value }, () => {
+            settings = { ...settings, presence_availability: previous };
+            paint();
+          });
+        }
       });
       shadow.getElementById("cancel-queue").addEventListener("click", async () => {
         const dock = shadow.getElementById("cancel-dock");
@@ -5792,6 +5833,54 @@ button.bug-report-button[data-drake-toggle]:disabled {
     };
   }
 
+  // src/features/presenceLock.js
+  function readAvailability(me) {
+    return String(me?.availability || "").trim().toLowerCase();
+  }
+  function readForcedAvailability(settings) {
+    return String(settings?.presence_availability || "").trim().toLowerCase();
+  }
+  function presenceNeedsRefresh(me, target) {
+    if (!target) return false;
+    return readAvailability(me) !== target;
+  }
+  function applyPresenceLock(presence2, availability) {
+    return presence2.setAvailability(availability);
+  }
+  function startPresenceLock({ subscribe: subscribe2, getSettings, presence: presence2, lcu: lcu2 }) {
+    let refreshing = false;
+    async function refreshIfNeeded() {
+      if (refreshing) return;
+      const target = readForcedAvailability(getSettings());
+      if (!target) return;
+      let me;
+      try {
+        me = await lcu2.get(CHAT_ME);
+      } catch {
+        return;
+      }
+      if (!presenceNeedsRefresh(me, target)) return;
+      refreshing = true;
+      try {
+        await applyPresenceLock(presence2, target);
+      } finally {
+        refreshing = false;
+      }
+    }
+    void refreshIfNeeded();
+    const stopChat = subscribe2(CHAT_ME, () => {
+      void refreshIfNeeded();
+    });
+    const stopPhase = subscribe2(GAMEFLOW_PHASE_ROUTE, (payload) => {
+      if (!readGameflowPhase2(payload)) return;
+      void refreshIfNeeded();
+    });
+    return () => {
+      stopChat();
+      stopPhase();
+    };
+  }
+
   // src/index.js
   var TAG2 = "[Drake]";
   var lcu = makeLcu();
@@ -5858,8 +5947,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
       presence,
       lcu
     });
+    const stopPresenceLock = startPresenceLock({
+      subscribe,
+      getSettings: () => currentSettings,
+      presence,
+      lcu
+    });
     stopFeatures = () => {
       stopProfileRank();
+      stopPresenceLock();
       if (typeof stopAutoAccept === "function") stopAutoAccept();
       stopUnlocks();
     };

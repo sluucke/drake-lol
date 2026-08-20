@@ -29,6 +29,13 @@ export const QUEUES = [
   { id: 'RANKED_TFT', label: 'TFT' },
 ];
 
+export const AVAILABILITIES = [
+  { id: 'chat', label: 'Online' },
+  { id: 'offline', label: 'Offline' },
+  { id: 'mobile', label: 'Mobile' },
+  { id: 'dnd', label: 'Busy' },
+];
+
 export const CRYSTALS = [
   'IRON',
   'BRONZE',
@@ -111,6 +118,18 @@ export function makePresence({ lcu }) {
       if (crystal !== undefined) fields.challengeCrystalLevel = crystal;
       if (titleId !== undefined) fields.playerTitleSelected = String(titleId);
       return merge(fields);
+    },
+
+    async setAvailability(availability) {
+      try {
+        const res = await lcu.put(CHAT_ME, { availability });
+        if (res && res.ok === false) {
+          return { ok: false, reason: `the client refused it (${res.status})` };
+        }
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, reason: `could not reach the client (${e.message})` };
+      }
     },
   };
 }

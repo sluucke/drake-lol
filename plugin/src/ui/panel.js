@@ -2,7 +2,7 @@ import { CSS } from './styles.js';
 import { DRAKE_ICON } from './assets.js';
 import { PROVIDERS } from '../features/reveal.js';
 import { iconUrl } from '../features/champions.js';
-import { TIERS, DIVISIONS, QUEUES, CRYSTALS } from '../features/presence.js';
+import { TIERS, DIVISIONS, QUEUES, CRYSTALS, AVAILABILITIES } from '../features/presence.js';
 import { RANK_ICONS, HASHTAG } from './assets.js';
 import { visibleWindow } from './virtualGrid.js';
 
@@ -309,7 +309,7 @@ export function renderAutoBan(settings, { disabled, list, query }) {
     </div>`;
 }
 
-export function renderStatus(text) {
+export function renderStatus(text, settings = {}) {
   
   
   const safe = String(text ?? '')
@@ -324,6 +324,18 @@ export function renderStatus(text) {
       single-line input and cannot hold them.
     </p>
     <div class="rule"></div>
+
+    <div class="row">
+      <span class="field-label" style="min-width:72px">Presence</span>
+      ${renderSelect(
+        'presence-availability',
+        [{ id: '', label: 'Client default' }, ...AVAILABILITIES],
+        settings.presence_availability || '',
+      )}
+    </div>
+    <p class="check-help" style="margin:-4px 0 10px">
+      Drake keeps re-applying the chosen status whenever the client resets it.
+    </p>
 
     <textarea class="status-box" id="status-text" spellcheck="false"
               placeholder="Type or paste your status. ASCII art welcome.">${safe}</textarea>

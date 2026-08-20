@@ -358,7 +358,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       } else if (screen === 'queue') {
         content.innerHTML = renderQueue({ provider, settings, disabled: trayDown });
       } else if (screen === 'status') {
-        content.innerHTML = renderStatus(statusText);
+        content.innerHTML = renderStatus(statusText, settings);
         updateCount();
       } else {
         content.innerHTML = renderAutoAccept(settings, {
@@ -816,12 +816,24 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     });
 
     content.addEventListener('change', (e) => {
-      if (e.target.id !== 'delay') return;
-      const previous = settings.auto_accept_delay_ms;
-      settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };
-      commit({ auto_accept_delay_ms: settings.auto_accept_delay_ms }, () => {
-        settings = { ...settings, auto_accept_delay_ms: previous };
-      });
+      if (e.target.id === 'delay') {
+        const previous = settings.auto_accept_delay_ms;
+        settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };
+        commit({ auto_accept_delay_ms: settings.auto_accept_delay_ms }, () => {
+          settings = { ...settings, auto_accept_delay_ms: previous };
+        });
+        return;
+      }
+      if (e.target.id === 'presence-availability') {
+        const previous = settings.presence_availability || '';
+        const value = e.target.value;
+        settings = { ...settings, presence_availability: value };
+        paint();
+        commit({ presence_availability: value }, () => {
+          settings = { ...settings, presence_availability: previous };
+          paint();
+        });
+      }
     });
 
     shadow.getElementById('cancel-queue').addEventListener('click', async () => {
