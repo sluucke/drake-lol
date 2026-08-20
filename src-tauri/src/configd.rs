@@ -41,6 +41,8 @@ pub struct Settings {
     /// Lifts the 25-character cap on the client's own status-message input.
     #[serde(default = "on")]
     pub unlock_status_message: bool,
+    #[serde(default = "empty_string")]
+    pub presence_availability: String,
     #[serde(default = "off")]
     pub auto_pick: bool,
     /// Champion the pick phase should choose. 0 means none chosen.
@@ -94,6 +96,13 @@ fn empty_string() -> String {
     String::new()
 }
 
+fn normalize_presence_availability(value: String) -> String {
+    match value.as_str() {
+        "chat" | "offline" | "mobile" | "dnd" => value,
+        _ => String::new(),
+    }
+}
+
 fn default_rank_division() -> String {
     "I".into()
 }
@@ -121,6 +130,7 @@ impl Default for Settings {
             // Purely permissive: it removes a restriction on a field the user
             // already owns, and changes nothing until they type in it.
             unlock_status_message: on(),
+            presence_availability: empty_string(),
             auto_pick: off(),
             auto_pick_champion_id: no_champion(),
             auto_pick_champion_id_2: no_champion(),
@@ -326,6 +336,7 @@ pub struct SettingsPatch {
     pub auto_reload_on_open: Option<bool>,
     pub auto_accept_delay_ms: Option<u32>,
     pub unlock_status_message: Option<bool>,
+    pub presence_availability: Option<String>,
     pub auto_pick: Option<bool>,
     pub auto_pick_champion_id: Option<u32>,
     pub auto_pick_champion_id_2: Option<u32>,
@@ -355,6 +366,11 @@ impl SettingsPatch {
             unlock_status_message: self
                 .unlock_status_message
                 .unwrap_or(base.unlock_status_message),
+            presence_availability: normalize_presence_availability(
+                self.presence_availability
+                    .clone()
+                    .unwrap_or_else(|| base.presence_availability.clone()),
+            ),
             auto_pick: self.auto_pick.unwrap_or(base.auto_pick),
             auto_pick_champion_id: self
                 .auto_pick_champion_id

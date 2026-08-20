@@ -12,6 +12,7 @@ import { makeChampSelect } from './features/champSelect.js';
 import { startInGameIdle } from './features/inGameIdle.js';
 import { makePresence } from './features/presence.js';
 import { startProfileRankRefresh } from './features/profileRank.js';
+import { startPresenceLock } from './features/presenceLock.js';
 
 const TAG = '[Drake]';
 
@@ -94,8 +95,15 @@ function wireFeatures(settings) {
     presence,
     lcu,
   });
+  const stopPresenceLock = startPresenceLock({
+    subscribe,
+    getSettings: () => currentSettings,
+    presence,
+    lcu,
+  });
   stopFeatures = () => {
     stopProfileRank();
+    stopPresenceLock();
     if (typeof stopAutoAccept === 'function') stopAutoAccept();
     stopUnlocks();
   };

@@ -107,6 +107,15 @@ describe('makePresence', () => {
     expect(result.ok).toBe(false);
     expect(lcu.put).not.toHaveBeenCalled();
   });
+
+  it('sets availability on the chat me payload', async () => {
+    const lcu = {
+      put: vi.fn().mockResolvedValue({ ok: true }),
+    };
+    const result = await makePresence({ lcu }).setAvailability('offline');
+    expect(result.ok).toBe(true);
+    expect(lcu.put).toHaveBeenCalledWith(CHAT_ME, { availability: 'offline' });
+  });
 });
 
 describe('option lists', () => {
