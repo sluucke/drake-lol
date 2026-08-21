@@ -5562,7 +5562,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let screen = opened.screen;
     let overlay = opened.overlay;
     let tourIndex = -1;
-    let autoPrompted = false;
     let pendingOnboard = null;
     const onboardLock = { busy: false };
     let shadowRoot = null;
@@ -5634,7 +5633,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (!shadowRoot) return;
         shadowRoot.getElementById("scrim").style.display = open ? "grid" : "none";
         syncSocialToggle(document, open);
-        if (open && !autoPrompted) autoPrompted = true;
       },
       onTeamRevealCardsToggle: () => {
         if (teamRevealDom) teamRevealDom.toggleCards();
@@ -5990,7 +5988,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           if (profileTab === "banner" && skins.length === 0) skins = await loadSkins(lcu2);
         }
         if (screen === "friends") friends = await loadFriends(lcu2);
-        if (screen === "settings" && updateUi.phase === "idle") runUpdateCheck();
+        if (screen === "settings" && overlay !== "tour" && updateUi.phase === "idle") runUpdateCheck();
       }
       async function commitOnboard(patch) {
         settings = { ...settings, ...patch };
