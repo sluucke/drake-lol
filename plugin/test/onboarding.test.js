@@ -4,6 +4,10 @@ import {
   markOnboardingPatch,
   markWhatsNewSeenPatch,
   TOUR_STEPS,
+  initialScreenForMode,
+  applyOpenMode,
+  resolveWhatsNewTarget,
+  nextTourIndex,
 } from '../src/ui/onboarding.js';
 
 describe('decideOpenMode', () => {
@@ -66,5 +70,51 @@ describe('TOUR_STEPS', () => {
     expect(ids).toContain('queue');
     expect(ids).toContain('settings');
     expect(TOUR_STEPS.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe('initialScreenForMode', () => {
+  it("opens what's new screen for that mode", () => {
+    expect(initialScreenForMode('whats-new')).toBe('whats-new');
+  });
+  it('uses auto-accept otherwise', () => {
+    expect(initialScreenForMode('welcome')).toBe('auto-accept');
+    expect(initialScreenForMode('default')).toBe('auto-accept');
+  });
+});
+
+describe('applyOpenMode', () => {
+  it('shows the welcome overlay only for welcome mode', () => {
+    expect(applyOpenMode('welcome')).toEqual({ screen: 'auto-accept', overlay: 'welcome' });
+  });
+  it("opens what's new with no overlay", () => {
+    expect(applyOpenMode('whats-new')).toEqual({ screen: 'whats-new', overlay: '' });
+  });
+  it('opens auto-accept with no overlay when caught up', () => {
+    expect(applyOpenMode('default')).toEqual({ screen: 'auto-accept', overlay: '' });
+  });
+});
+
+describe('resolveWhatsNewTarget', () => {
+  const screens = [{ id: 'queue' }, { id: 'auto-accept' }];
+
+  it('navigates when the screen is known', () => {
+    expect(resolveWhatsNewTarget('queue', screens)).toBe('queue');
+  });
+  it('lands on auto-accept when dismissing without a screen', () => {
+    expect(resolveWhatsNewTarget('', screens)).toBe('auto-accept');
+    expect(resolveWhatsNewTarget(undefined, screens)).toBe('auto-accept');
+  });
+  it('stays put when the screen is unknown', () => {
+    expect(resolveWhatsNewTarget('not-a-screen', screens)).toBeNull();
+  });
+});
+
+describe('nextTourIndex', () => {
+  it('advances within the tour', () => {
+    expect(nextTourIndex(0, 5)).toBe(1);
+  });
+  it('ends after the last step', () => {
+    expect(nextTourIndex(4, 5)).toBe(-1);
   });
 });

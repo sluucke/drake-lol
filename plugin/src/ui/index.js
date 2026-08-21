@@ -15,7 +15,21 @@ import {
   formatDelay,
   formatHostLabel,
   toggleAutoPickChampion,
+  renderWelcome,
+  renderWhatsNew,
+  renderTourCard,
+  SCREENS,
 } from './panel.js';
+import {
+  decideOpenMode,
+  markOnboardingPatch,
+  markWhatsNewSeenPatch,
+  TOUR_STEPS,
+  applyOpenMode,
+  resolveWhatsNewTarget,
+  nextTourIndex,
+} from './onboarding.js';
+import { WHATS_NEW, pickWhatsNew } from './whatsNew.js';
 import { makeStatus } from '../features/status.js';
 import { makeReveal } from '../features/reveal.js';
 import { makeDodge } from '../features/dodge.js';
@@ -60,7 +74,17 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let appVersion = cfg.version || '0.0.0';
   let updateUi = { phase: 'idle' };
   let trayDown = false;
-  let screen = 'auto-accept';
+  let openMode = decideOpenMode({
+    onboardingDone: !!settings.onboarding_done,
+    seenVersion: settings.whats_new_seen_version || '',
+    currentVersion: appVersion,
+  });
+  const opened = applyOpenMode(openMode);
+  let screen = opened.screen;
+  let overlay = opened.overlay;
+  let tourIndex = -1;
+  let autoPrompted = false;
+  let pendingOnboard = null;
   let shadowRoot = null;
   let stopDodgeReposition = null;
   let stopSocialToggle = null;
@@ -135,6 +159,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       if (!shadowRoot) return;
       shadowRoot.getElementById('scrim').style.display = open ? 'grid' : 'none';
       syncSocialToggle(document, open);
+      if (open && !autoPrompted) autoPrompted = true;
     },
     onTeamRevealCardsToggle: () => {
       if (teamRevealDom) teamRevealDom.toggleCards();
@@ -321,6 +346,38 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
     if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
 
+    function paintOnboard() {
+      const layer = shadow.getElementById('onboard-layer');
+      if (!layer) return;
+      for (const item of shadow.querySelectorAll('[data-tour-active]')) {
+        item.removeAttribute('data-tour-active');
+      }
+      if (overlay === 'welcome') {
+        layer.innerHTML = renderWelcome();
+        layer.hidden = false;
+        return;
+      }
+      if (overlay === 'tour') {
+        const step = TOUR_STEPS[tourIndex];
+        if (!step) {
+          overlay = '';
+          layer.innerHTML = '';
+          layer.hidden = true;
+          return;
+        }
+        layer.innerHTML = renderTourCard(step, {
+          index: tourIndex + 1,
+          total: TOUR_STEPS.length,
+        });
+        layer.hidden = false;
+        const navItem = shadow.querySelector(`[data-screen="${step.screen}"]`);
+        if (navItem) navItem.setAttribute('data-tour-active', 'true');
+        return;
+      }
+      layer.innerHTML = '';
+      layer.hidden = true;
+    }
+
     function paint() {
       if (screen === 'settings') {
         content.innerHTML = renderSettings(settings, {
@@ -360,6 +417,10 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       } else if (screen === 'status') {
         content.innerHTML = renderStatus(statusText, settings);
         updateCount();
+      } else if (screen === 'whats-new') {
+        content.innerHTML = renderWhatsNew(pickWhatsNew(WHATS_NEW, appVersion), {
+          version: appVersion,
+        });
       } else {
         content.innerHTML = renderAutoAccept(settings, {
           disabled: trayDown,
@@ -371,6 +432,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       for (const item of shadow.querySelectorAll('[data-screen]')) {
         item.setAttribute('aria-selected', String(item.dataset.screen === screen));
       }
+      paintOnboard();
     }
 
     function applyUpdateStatus(body) {
@@ -398,10 +460,12 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     
     
     async function commit(patch, revert) {
-      const result = await client.save(patch);
+      const payload = pendingOnboard ? { ...pendingOnboard, ...patch } : patch;
+      const result = await client.save(payload);
       if (result.ok) {
         trayDown = false;
-        settings = { ...settings, ...patch };
+        settings = { ...settings, ...payload };
+        pendingOnboard = null;
         if (onSettingsChanged) onSettingsChanged(settings);
         return { ok: true };
       }
@@ -414,32 +478,12 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       return { ok: false, reason: result.reason };
     }
 
-    
-    const BOX = { min: 120, max: Math.round(window.innerHeight * 0.46) };
-    
-    const GRIP = 16;
-
-    function updateCount() {
-      const el = shadow.getElementById('status-count');
-      if (el) el.textContent = describeStatus(statusText);
-      autoSize(shadow.getElementById('status-text'), BOX);
-    }
-
-    shadow.querySelector('.nav').addEventListener('click', async (e) => {
-      const item = e.target.closest('[data-screen]');
-      if (!item) return;
-      screen = item.dataset.screen;
-      
-      
-      
+    async function goToScreen(next) {
+      screen = next;
       if (screen === 'status') statusText = await status.read();
-      
-      
       if ((screen === 'auto-pick' || screen === 'auto-ban') && champions.length === 0) {
         champions = await loadChampions(lcu);
       }
-      
-      
       if (screen === 'profile') {
         if (settings.profile_rank_tier) {
           syncRankUiFromSettings();
@@ -458,7 +502,88 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       }
       if (screen === 'friends') friends = await loadFriends(lcu);
       if (screen === 'settings' && updateUi.phase === 'idle') runUpdateCheck();
+    }
+
+    async function commitOnboard(patch) {
+      settings = { ...settings, ...patch };
+      pendingOnboard = { ...pendingOnboard, ...patch };
       paint();
+      return commit(patch, () => {});
+    }
+
+    async function finishOnboarding(startTour) {
+      openMode = 'default';
+      if (startTour) {
+        tourIndex = 0;
+        overlay = 'tour';
+        await goToScreen(TOUR_STEPS[0].screen);
+      } else {
+        tourIndex = -1;
+        overlay = '';
+        await goToScreen('auto-accept');
+      }
+      await commitOnboard(markOnboardingPatch(appVersion));
+    }
+
+    async function stepTour() {
+      tourIndex = nextTourIndex(tourIndex, TOUR_STEPS.length);
+      if (tourIndex < 0) {
+        overlay = '';
+        await goToScreen('auto-accept');
+      } else {
+        overlay = 'tour';
+        await goToScreen(TOUR_STEPS[tourIndex].screen);
+      }
+      paint();
+    }
+
+    async function dismissWhatsNew(target) {
+      openMode = 'default';
+      const next = resolveWhatsNewTarget(target, SCREENS);
+      if (next) await goToScreen(next);
+      await commitOnboard(markWhatsNewSeenPatch(appVersion));
+    }
+
+    async function handleOnboard(action) {
+      if (action === 'skip') {
+        await finishOnboarding(false);
+        return;
+      }
+      if (action === 'tour') {
+        await finishOnboarding(true);
+        return;
+      }
+      if (action === 'tour-next') {
+        await stepTour();
+        return;
+      }
+      if (action === 'dismiss-whats-new') {
+        await dismissWhatsNew();
+      }
+    }
+
+    
+    const BOX = { min: 120, max: Math.round(window.innerHeight * 0.46) };
+    
+    const GRIP = 16;
+
+    function updateCount() {
+      const el = shadow.getElementById('status-count');
+      if (el) el.textContent = describeStatus(statusText);
+      autoSize(shadow.getElementById('status-text'), BOX);
+    }
+
+    shadow.querySelector('.nav').addEventListener('click', async (e) => {
+      const item = e.target.closest('[data-screen]');
+      if (!item) return;
+      await goToScreen(item.dataset.screen);
+      paint();
+    });
+
+    shadow.getElementById('onboard-layer').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-onboard]');
+      if (!btn) return;
+      void handleOnboard(btn.dataset.onboard);
     });
 
     content.addEventListener('input', (e) => {
@@ -535,6 +660,16 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     });
 
     content.addEventListener('click', async (e) => {
+      const jump = e.target.closest('[data-whats-new-screen]');
+      if (jump) {
+        await dismissWhatsNew(jump.dataset.whatsNewScreen);
+        return;
+      }
+      if (e.target.closest('[data-onboard="dismiss-whats-new"]')) {
+        await dismissWhatsNew();
+        return;
+      }
+
       const applyPickToggle = (id) => {
         const previous = {
           auto_pick_champion_id: settings.auto_pick_champion_id,
@@ -854,7 +989,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     
     
     
-    const INTERACTIVE = '.navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .select-field, .slider';
+    const INTERACTIVE = '.navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .select-field, .slider, [data-onboard], [data-whats-new-screen]';
 
     shadow.addEventListener(
       'mouseover',

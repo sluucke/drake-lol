@@ -42,3 +42,27 @@ export function markOnboardingPatch(currentVersion) {
 export function markWhatsNewSeenPatch(currentVersion) {
   return { whats_new_seen_version: String(currentVersion || '') };
 }
+
+export function initialScreenForMode(mode) {
+  if (mode === 'whats-new') return 'whats-new';
+  return 'auto-accept';
+}
+
+export function applyOpenMode(mode) {
+  return {
+    screen: initialScreenForMode(mode),
+    overlay: mode === 'welcome' ? 'welcome' : '',
+  };
+}
+
+export function resolveWhatsNewTarget(screenId, screens) {
+  if (!screenId) return 'auto-accept';
+  const ids = (screens || []).map((s) => s.id);
+  if (ids.includes(screenId)) return screenId;
+  return null;
+}
+
+export function nextTourIndex(index, total) {
+  const next = Number(index) + 1;
+  return next < Number(total) ? next : -1;
+}
