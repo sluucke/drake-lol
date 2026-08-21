@@ -942,6 +942,20 @@
   margin: 6px 0 0 24px;
   max-width: 46ch;
 }
+.reveal-recommend {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #0a8f3c;
+  margin: 6px 0 0;
+  max-width: 46ch;
+}
+.reveal-warn {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c84a4a;
+  margin: 6px 0 0;
+  max-width: 46ch;
+}
 
 
 
@@ -2177,10 +2191,45 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       </p>
     </div>`;
   }
-  function renderQueue({ provider, settings = {}, disabled }) {
+  function renderQueue({
+    provider,
+    settings = {},
+    disabled,
+    revealTiming = null
+  }) {
     const options = PROVIDERS.map(
       (p) => `<button class="pill" data-provider="${p.id}" aria-selected="${p.id === provider}">${p.label}</button>`
     ).join("");
+    const sampleSize = Number(settings.queue_team_reveal_sample_size) || 50;
+    const recentPool = settings.queue_team_reveal_recent_pool || "ranked_both";
+    const last5Pool = settings.queue_team_reveal_last5_pool || "current_queue";
+    const concurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
+    const poolOptions = [
+      { id: "ranked_both", label: "Solo + Flex" },
+      { id: "current_queue", label: "Current queue" },
+      { id: "any", label: "Any queue" }
+    ];
+    const sampleOptions = [
+      { id: 20, label: "20" },
+      { id: 50, label: "50" },
+      { id: 100, label: "100" }
+    ];
+    const concurrencyOptions = [
+      { id: 1, label: "1" },
+      { id: 2, label: "2" },
+      { id: 3, label: "3" },
+      { id: 5, label: "5" }
+    ];
+    const currentQueueWarn = recentPool === "current_queue" || last5Pool === "current_queue" ? `<p class="check-help" style="margin:8px 0 0">Current queue can look sparse if that player rarely plays this queue.</p>` : "";
+    const concurrencyWarn = concurrency >= 3 ? `<p class="reveal-warn" style="margin:8px 0 0">Higher concurrency loads the client harder and can hit rate limits.</p>` : "";
+    let timingHelp = "";
+    if (revealTiming?.lastMs > 0) {
+      const recommended = Number(revealTiming.recommended) || 1;
+      const estimateSec = Math.max(1, Math.round((Number(revealTiming.estimateMs) || 0) / 1e3));
+      timingHelp = `<p class="check-help" style="margin:8px 0 0">About ~${estimateSec}s for a full lobby at this setting.</p>
+      <p class="reveal-recommend">Based on your last reveal, we suggest resolving ${recommended} player${recommended === 1 ? "" : "s"} at a time.</p>`;
+    }
+    const revealOptsDisabled = disabled || !settings.queue_team_reveal_in_client;
     return `
     <h2 class="screen-title">Queue</h2>
     <p class="screen-sub">Tools for champ select.</p>
@@ -2208,6 +2257,29 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       disabled
     })}
 
+    <div class="field ${settings.queue_team_reveal_in_client ? "" : "field-off"}">
+      <div class="row">
+        <span class="field-label" style="min-width:120px">Sample size</span>
+        ${renderSelect("team-reveal-sample-size", sampleOptions, sampleSize, revealOptsDisabled)}
+      </div>
+      <div class="row">
+        <span class="field-label" style="min-width:120px">Recent pool</span>
+        ${renderSelect("team-reveal-recent-pool", poolOptions, recentPool, revealOptsDisabled)}
+      </div>
+      <div class="row">
+        <span class="field-label" style="min-width:120px">Last 5 pool</span>
+        ${renderSelect("team-reveal-last5-pool", poolOptions, last5Pool, revealOptsDisabled)}
+      </div>
+      <div class="row">
+        <span class="field-label" style="min-width:120px">Fetch at once</span>
+        ${renderSelect("team-reveal-fetch-concurrency", concurrencyOptions, concurrency, revealOptsDisabled)}
+      </div>
+      ${currentQueueWarn}
+      ${concurrencyWarn}
+      ${timingHelp}
+      ${revealOptsDisabled ? '<p class="check-help" style="margin:8px 0 0">Enable in-client reveal to change these.</p>' : ""}
+    </div>
+
     <div class="rule"></div>
 
     <div class="field-head">
@@ -2217,6 +2289,13 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       Leaves champ select. Costs you the usual dodge penalty \u2014 Drake does not
       confirm first, so only press it if you mean it.
     </p>
+    ${renderCheckRow({
+      id: "queue_dodge_in_client",
+      label: "Show dodge button in champ select",
+      help: "Places a Dodge button over the client while you are in champ select.",
+      checked: settings.queue_dodge_in_client !== false,
+      disabled
+    })}
     <div class="status-actions">
       <button class="hextech-btn hextech-btn-danger" id="dodge">Dodge</button>
     </div>`;
@@ -2396,15 +2475,15 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     { id: "banner", label: "Banner" },
     { id: "riot-id", label: "Riot ID" }
   ];
-  function renderSelect(id, list, selected) {
+  function renderSelect(id, list, selected, disabled = false) {
     const opts = list.map((o) => {
       const value = o.id ?? o;
       const label = o.label ?? o;
-      return `<option value="${value}" ${value === selected ? "selected" : ""}>${label}</option>`;
+      return `<option value="${value}" ${String(value) === String(selected) ? "selected" : ""}>${label}</option>`;
     }).join("");
     return `
     <span class="select-wrap">
-      <select class="select-field" id="${id}">${opts}</select>
+      <select class="select-field" id="${id}" ${disabled ? "disabled" : ""}>${opts}</select>
       <span class="select-arrows" aria-hidden="true">
         <span>\u25B2</span><span>\u25BC</span>
       </span>
@@ -3553,23 +3632,125 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/features/teamRevealStats.js
-  var TEAM_REVEAL_SAMPLE_SIZE = 20;
+  var TEAM_REVEAL_SAMPLE_SIZE = 50;
+  var TEAM_REVEAL_SAMPLE_SIZES = [20, 50, 100];
   var TEAM_REVEAL_SEASON_SAMPLE_SIZE = 100;
   var TEAM_REVEAL_SEASON_MAX = 300;
   var TEAM_REVEAL_NATIVE_HISTORY_MAX = 100;
   var TEAM_REVEAL_FETCH_CONCURRENCY = 1;
+  var TEAM_REVEAL_FETCH_CONCURRENCIES = [1, 2, 3, 5];
   var TEAM_REVEAL_RECENT_GAMES = 5;
   var LAST_12H_MS = 12 * 60 * 60 * 1e3;
+  var MATCH_POOL_RANKED_BOTH = "ranked_both";
+  var MATCH_POOL_CURRENT_QUEUE = "current_queue";
+  var MATCH_POOL_ANY = "any";
   var RANKED_QUEUE_BY_ID = {
     420: "RANKED_SOLO_5x5",
     440: "RANKED_FLEX_SR"
   };
   var RANKED_SOLO = "RANKED_SOLO_5x5";
   var RANKED_FLEX = "RANKED_FLEX_SR";
+  function normalizeMatchPool(value, fallback = MATCH_POOL_RANKED_BOTH) {
+    const raw = String(value || "").trim().toLowerCase();
+    if (raw === MATCH_POOL_RANKED_BOTH || raw === MATCH_POOL_CURRENT_QUEUE || raw === MATCH_POOL_ANY) {
+      return raw;
+    }
+    return fallback;
+  }
+  function normalizeSampleSize(value, fallback = TEAM_REVEAL_SAMPLE_SIZE) {
+    const n = Number(value) || 0;
+    return TEAM_REVEAL_SAMPLE_SIZES.includes(n) ? n : fallback;
+  }
+  function normalizeFetchConcurrency(value, fallback = TEAM_REVEAL_FETCH_CONCURRENCY) {
+    const n = Number(value) || 0;
+    return TEAM_REVEAL_FETCH_CONCURRENCIES.includes(n) ? n : fallback;
+  }
+  function filterMatchEntriesByPool(entries, queueId, pool) {
+    const list = Array.isArray(entries) ? entries : [];
+    const mode = normalizeMatchPool(pool);
+    const qid = Number(queueId) || 0;
+    if (mode === MATCH_POOL_ANY) return list;
+    if (mode === MATCH_POOL_RANKED_BOTH) {
+      return list.filter((entry) => Boolean(RANKED_QUEUE_BY_ID[Number(entry?.queueId) || 0]));
+    }
+    if (!qid) return list;
+    return list.filter((entry) => Number(entry?.queueId) === qid);
+  }
+  function recommendFetchConcurrency({ lastMs, lastConcurrency } = {}) {
+    const prev = normalizeFetchConcurrency(lastConcurrency);
+    const ms = Number(lastMs) || 0;
+    if (ms <= 0) return prev;
+    if (ms > 15e3 && prev > 1) {
+      const idx = TEAM_REVEAL_FETCH_CONCURRENCIES.indexOf(prev);
+      return TEAM_REVEAL_FETCH_CONCURRENCIES[Math.max(0, idx - 1)];
+    }
+    if (ms >= 8e3 && prev === 1) return 2;
+    return prev;
+  }
+  function estimateRevealDurationMs({
+    concurrency,
+    lastMs,
+    lastConcurrency
+  } = {}) {
+    const next = normalizeFetchConcurrency(concurrency);
+    const prev = normalizeFetchConcurrency(lastConcurrency);
+    const ms = Number(lastMs) || 0;
+    if (ms > 0 && prev > 0) {
+      return Math.round(ms * (prev / next));
+    }
+    return Math.round(Math.ceil(5 / next) * 3500);
+  }
   function readAssignedPosition(player) {
     const raw = String(player?.assignedPosition ?? player?.position ?? "").trim().toUpperCase();
     if (!raw || raw === "UNSELECTED") return "";
     return raw;
+  }
+  function playerIdentityKey(player) {
+    const puuid = String(player?.puuid || "").trim();
+    if (puuid) return `p:${puuid}`;
+    const summonerId = Number(player?.summonerId) || 0;
+    if (summonerId) return `s:${summonerId}`;
+    const obf = String(player?.obfuscatedPuuid || player?.obf || "").trim();
+    if (obf) return `o:${obf}`;
+    const riotId = String(player?.riotId || formatRiotId(player) || "").trim().toLowerCase();
+    if (riotId) return `r:${riotId}`;
+    return "";
+  }
+  function remapSnapshotToSession(snapshot, session) {
+    if (!Array.isArray(snapshot) || !snapshot.length) {
+      return { rows: snapshot || [], changed: false, ok: false };
+    }
+    const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+    if (!team.length) return { rows: snapshot, changed: false, ok: false };
+    const byIdentity = /* @__PURE__ */ new Map();
+    for (const row of snapshot) {
+      const key = playerIdentityKey(row);
+      if (key) byIdentity.set(key, row);
+    }
+    const localCellId = Number(session?.localPlayerCellId ?? -1);
+    let changed = false;
+    const rows = [];
+    for (let index = 0; index < team.length; index += 1) {
+      const player = team[index];
+      const cellId = Number(player?.cellId ?? index);
+      const key = playerIdentityKey(player);
+      const prev = key ? byIdentity.get(key) : null;
+      if (!prev) return { rows: snapshot, changed: false, ok: false };
+      const assignedPosition = readAssignedPosition(player);
+      const isLocalPlayer = cellId === localCellId;
+      if (Number(prev.cellId) !== cellId || (prev.assignedPosition || "") !== assignedPosition || Boolean(prev.isLocalPlayer) !== isLocalPlayer) {
+        changed = true;
+      }
+      rows.push({
+        ...prev,
+        cellId,
+        assignedPosition,
+        isLocalPlayer
+      });
+    }
+    if (rows.length !== snapshot.length) return { rows: snapshot, changed: false, ok: false };
+    rows.sort((a, b) => a.cellId - b.cellId);
+    return { rows, changed, ok: true };
   }
   function readLobbyKey(session) {
     if (!session) return "";
@@ -3739,7 +3920,21 @@ button.bug-report-button[data-drake-toggle]:disabled {
       mostPlayedCount: 0,
       matchesUsed: 0,
       queueScopedMatches: 0,
-      recentGames: []
+      recentGames: [],
+      pickedChampionId: 0,
+      pickedGames: 0,
+      pickedWins: 0,
+      pickedLosses: 0,
+      pickedWinRate: 0
+    };
+  }
+  function emptyPickedChampionStats() {
+    return {
+      pickedChampionId: 0,
+      pickedGames: 0,
+      pickedWins: 0,
+      pickedLosses: 0,
+      pickedWinRate: 0
     };
   }
   function emptySeasonMain() {
@@ -3831,7 +4026,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   function resolveParticipant(game, puuid) {
     return pickParticipant(game, puuid) || resolveParticipantByIdentity(game, puuid);
   }
-  function buildPlayerStats(games, puuid, queueId, now) {
+  function listParticipantEntries(games, puuid) {
     const entries = [];
     for (const game of games) {
       const participant = resolveParticipant(game, puuid);
@@ -3842,8 +4037,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
         queueId: readGameQueueId(game)
       });
     }
-    const queueScoped = queueId ? entries.filter((entry) => !entry.queueId || entry.queueId === queueId) : entries;
-    const selected = queueScoped.length > 0 ? queueScoped : entries;
+    return entries;
+  }
+  function summarizeEntries(selected, now) {
     let wins = 0;
     let losses = 0;
     let kills = 0;
@@ -3892,8 +4088,49 @@ button.bug-report-button[data-drake-toggle]:disabled {
       mostPlayedChampionId,
       mostPlayedCount,
       matchesUsed: selected.length,
-      queueScopedMatches: queueScoped.length,
-      recentGames: listRecentGames(selected)
+      queueScopedMatches: selected.length
+    };
+  }
+  function buildPickedChampionStats(games, puuid, championId, queueId, pool = MATCH_POOL_RANKED_BOTH) {
+    const empty = emptyPickedChampionStats();
+    const id = readNumber(championId);
+    if (!puuid || !id) return empty;
+    const selected = filterMatchEntriesByPool(listParticipantEntries(games, puuid), queueId, pool).filter(
+      (entry) => readChampionId(entry.game, entry.participant) === id
+    );
+    let wins = 0;
+    let losses = 0;
+    for (const entry of selected) {
+      if (readWin(entry.game, entry.participant)) wins += 1;
+      else losses += 1;
+    }
+    const total = wins + losses;
+    return {
+      pickedChampionId: id,
+      pickedGames: total,
+      pickedWins: wins,
+      pickedLosses: losses,
+      pickedWinRate: total ? Math.round(wins / total * 100) : 0
+    };
+  }
+  function buildPlayerStats(games, puuid, queueId, now, {
+    recentPool = MATCH_POOL_RANKED_BOTH,
+    last5Pool = MATCH_POOL_CURRENT_QUEUE,
+    sampleSize = TEAM_REVEAL_SAMPLE_SIZE,
+    pickedChampionId = 0
+  } = {}) {
+    const entries = listParticipantEntries(games, puuid);
+    const byRecent = filterMatchEntriesByPool(entries, queueId, recentPool).sort(
+      (a, b) => readTimestamp(b.game) - readTimestamp(a.game)
+    );
+    const recentSelected = byRecent.slice(0, sampleSize);
+    const last5Selected = filterMatchEntriesByPool(entries, queueId, last5Pool);
+    const summary = summarizeEntries(recentSelected, now);
+    const picked = buildPickedChampionStats(games, puuid, pickedChampionId, queueId, recentPool);
+    return {
+      ...summary,
+      ...picked,
+      recentGames: listRecentGames(last5Selected)
     };
   }
   function listRecentGames(entries, limit = TEAM_REVEAL_RECENT_GAMES) {
@@ -4002,12 +4239,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
       return null;
     }
   }
+  function readPickedChampionId(player) {
+    return readNumber(player?.championId) || readNumber(player?.selectedChampionId) || readNumber(player?.championPickIntent);
+  }
   async function buildTeamRevealSnapshot({
     session,
     lcu: lcu2,
     fetchImpl = fetch,
     sampleSize = TEAM_REVEAL_SAMPLE_SIZE,
     seasonSampleSize = TEAM_REVEAL_SEASON_SAMPLE_SIZE,
+    recentPool = MATCH_POOL_RANKED_BOTH,
+    last5Pool = MATCH_POOL_CURRENT_QUEUE,
+    fetchConcurrency = TEAM_REVEAL_FETCH_CONCURRENCY,
     now = Date.now(),
     onProgress,
     signal
@@ -4017,13 +4260,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const localCellId = Number(session?.localPlayerCellId ?? -1);
     const queueId = readQueueId(session);
     const rankedQueueType = readRankedQueueType(queueId);
+    const sample = normalizeSampleSize(sampleSize);
+    const concurrency = normalizeFetchConcurrency(fetchConcurrency);
+    const recentMode = normalizeMatchPool(recentPool);
+    const last5Mode = normalizeMatchPool(last5Pool, MATCH_POOL_CURRENT_QUEUE);
+    const historyQueueId = recentMode === MATCH_POOL_CURRENT_QUEUE && last5Mode === MATCH_POOL_CURRENT_QUEUE ? queueId : 0;
     const [seasonPayload, sgp] = await Promise.all([
       getSafe(lcu2, currentSeasonRoute()),
       createSgpContext(lcu2)
     ]);
     const currentSeasonId = readCurrentSeasonId(seasonPayload);
     if (signal?.aborted) return [];
-    const shells = await mapPool(team, TEAM_REVEAL_FETCH_CONCURRENCY, async (player, index) => {
+    const shells = await mapPool(team, concurrency, async (player, index) => {
       const cellId = Number(player?.cellId ?? index);
       const identity = await resolveIdentity(player, lcu2);
       const puuid = identity.puuid;
@@ -4045,31 +4293,50 @@ button.bug-report-button[data-drake-toggle]:disabled {
         rankedQueueType,
         assignedPosition: readAssignedPosition(player),
         ranks,
-        season: readSeasonStats(ranks, rankedQueueType)
+        season: readSeasonStats(ranks, rankedQueueType),
+        stats: {
+          ...emptyPlayerStats(),
+          ...buildPickedChampionStats([], puuid, readPickedChampionId(player), queueId, recentMode)
+        }
       });
     });
     shells.sort((a, b) => a.cellId - b.cellId);
     if (signal?.aborted) return [];
     if (typeof onProgress === "function") onProgress(shells);
     if (signal?.aborted) return [];
-    const rows = await mapPool(shells, TEAM_REVEAL_FETCH_CONCURRENCY, async (shell) => {
+    const byCellPlayer = new Map(team.map((player) => [Number(player?.cellId), player]));
+    const rows = await mapPool(shells, concurrency, async (shell) => {
       if (signal?.aborted) return shell;
       await yieldUi();
       if (signal?.aborted) return shell;
       const puuid = shell.puuid;
       let games = [];
       const rankedForQueue = queueId === 440 ? shell.flexRank : shell.soloRank;
-      const historyCount = Math.max(sampleSize, seasonHistoryCount(rankedForQueue, seasonSampleSize));
+      const historyCount = Math.max(
+        sample * (historyQueueId ? 1 : 3),
+        seasonHistoryCount(rankedForQueue, seasonSampleSize)
+      );
       if (puuid) {
         games = await fetchQueueMatchHistory({
           lcu: lcu2,
           fetchImpl,
           puuid,
-          queueId,
+          queueId: historyQueueId,
           count: historyCount,
           sgp,
           signal
         });
+        if (!games.length && historyQueueId === 0 && queueId) {
+          games = await fetchQueueMatchHistory({
+            lcu: lcu2,
+            fetchImpl,
+            puuid,
+            queueId,
+            count: historyCount,
+            sgp,
+            signal
+          });
+        }
         if (!games.length) {
           try {
             games = readGames(
@@ -4081,25 +4348,57 @@ button.bug-report-button[data-drake-toggle]:disabled {
         }
       }
       const ranks = { solo: shell.soloRank, flex: shell.flexRank };
-      const recentGames = games.slice(0, sampleSize);
-      const stats = puuid ? buildPlayerStats(recentGames, puuid, queueId, now) : emptyPlayerStats();
+      const player = byCellPlayer.get(Number(shell.cellId));
+      const pickedChampionId = readPickedChampionId(player);
+      const stats = puuid ? buildPlayerStats(games, puuid, queueId, now, {
+        recentPool: recentMode,
+        last5Pool: last5Mode,
+        sampleSize: sample,
+        pickedChampionId
+      }) : emptyPlayerStats();
       const seasonMain = puuid ? buildSeasonChampionStats(games, puuid, queueId, currentSeasonId) : emptySeasonMain();
       await yieldUi();
-      return makeRevealRow({
-        cellId: shell.cellId,
-        puuid,
-        riotId: shell.riotId,
-        isLocalPlayer: shell.isLocalPlayer,
-        rankedQueueType,
-        assignedPosition: shell.assignedPosition,
-        ranks,
-        stats,
-        seasonMain,
-        season: readSeasonStats(ranks, rankedQueueType)
-      });
+      return {
+        ...makeRevealRow({
+          cellId: shell.cellId,
+          puuid,
+          riotId: shell.riotId,
+          isLocalPlayer: shell.isLocalPlayer,
+          rankedQueueType,
+          assignedPosition: shell.assignedPosition,
+          ranks,
+          stats,
+          seasonMain,
+          season: readSeasonStats(ranks, rankedQueueType)
+        }),
+        historyGames: games
+      };
     });
     if (signal?.aborted) return [];
     return rows;
+  }
+  function refreshPickedChampionOnRows(rows, session, recentPool = MATCH_POOL_RANKED_BOTH) {
+    if (!Array.isArray(rows) || !rows.length) return { rows: rows || [], changed: false };
+    const queueId = readQueueId(session);
+    const recentMode = normalizeMatchPool(recentPool);
+    const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+    const byCell = new Map(team.map((player) => [Number(player?.cellId), player]));
+    let changed = false;
+    const next = rows.map((row) => {
+      const player = byCell.get(Number(row.cellId));
+      const pickedChampionId = readPickedChampionId(player);
+      if (pickedChampionId === Number(row.pickedChampionId || 0)) return row;
+      changed = true;
+      const picked = buildPickedChampionStats(
+        row.historyGames || [],
+        row.puuid,
+        pickedChampionId,
+        queueId,
+        recentMode
+      );
+      return { ...row, ...picked };
+    });
+    return { rows: next, changed };
   }
 
   // src/ui/roleIcons.js
@@ -4201,6 +4500,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
     </div>
   </div>`;
   }
+  function renderPickedChampion(row, getChampName) {
+    const id = Number(row?.pickedChampionId) || 0;
+    if (!id) return "";
+    const name = getChampName(id) || "Unknown";
+    const games = Number(row?.pickedGames) || 0;
+    const wr = Number(row?.pickedWinRate) || 0;
+    const detail = games ? `${games}g \xB7 ${wr}%` : "no games";
+    return formatCardRow(
+      "Picked",
+      `<span class="team-reveal-champ"><img class="team-reveal-champ-icon" src="${iconUrl(id)}" alt=""><span>${name} \xB7 ${detail}</span></span>`
+    );
+  }
   function renderSeasonMain(row, getChampName) {
     const id = Number(row?.seasonMostPlayedChampionId) || 0;
     if (!id) return "\u2014";
@@ -4227,6 +4538,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
         seasonMostPlayedChampionId: row.seasonMostPlayedChampionId,
         seasonMostPlayedCount: row.seasonMostPlayedCount,
         seasonMostPlayedWinRate: row.seasonMostPlayedWinRate,
+        pickedChampionId: row.pickedChampionId,
+        pickedGames: row.pickedGames,
+        pickedWinRate: row.pickedWinRate,
         recentGames: row.recentGames
       }))
     );
@@ -4271,6 +4585,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
             ${formatCardRow(`Recent W/L${recentNote}`, recentWl)}
             ${formatCardRow("Recent KDA", kda)}
             ${formatCardRow("Last 12h", last12h)}
+            ${renderPickedChampion(row, getChampName)}
             ${formatCardRow("Season Main", renderSeasonMain(row, getChampName))}
             ${formatCardRow("Last 5", renderRecentGames(row, getChampName))}
           </div>
@@ -4366,9 +4681,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
     loadSnapshot,
     overlayRoot,
     getChampName = () => "",
+    getRecentPool = () => "ranked_both",
     setTimeoutImpl = setTimeout,
     clearTimeoutImpl = clearTimeout,
-    statusReadyMs = STATUS_READY_MS
+    statusReadyMs = STATUS_READY_MS,
+    onRevealTiming
   }) {
     const renderCards = makeRenderCards((id) => getChampName(Number(id)));
     let enabled = false;
@@ -4431,19 +4748,67 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
       return false;
     }
-    function mergePositionsFromSession(session) {
+    function applyPickRefresh(session) {
+      if (!snapshot.length) return false;
+      const { rows, changed } = refreshPickedChampionOnRows(snapshot, session, getRecentPool());
+      if (!changed) return false;
+      snapshot = rows;
+      lastCardsRenderSig = "";
+      if (open) renderVisibility();
+      return true;
+    }
+    function mergeRowsByCell(session) {
       if (!snapshot.length) return false;
       const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
-      const byCell = new Map(team.map((player) => [Number(player?.cellId), readAssignedPosition(player)]));
+      const localCellId = Number(session?.localPlayerCellId ?? -1);
+      const byCell = new Map(
+        team.map((player) => [
+          Number(player?.cellId),
+          {
+            assignedPosition: readAssignedPosition(player),
+            puuid: String(player?.puuid || "").trim(),
+            summonerId: Number(player?.summonerId) || 0,
+            obfuscatedPuuid: String(player?.obfuscatedPuuid || "").trim()
+          }
+        ])
+      );
       let changed = false;
       snapshot = snapshot.map((row) => {
-        const next = byCell.has(Number(row.cellId)) ? byCell.get(Number(row.cellId)) : row.assignedPosition || "";
-        if (next === (row.assignedPosition || "")) return row;
+        const cellId = Number(row.cellId);
+        const next = byCell.get(cellId);
+        if (!next) return row;
+        const assignedPosition = next.assignedPosition || row.assignedPosition || "";
+        const isLocalPlayer = cellId === localCellId;
+        const puuid = next.puuid || row.puuid || "";
+        const summonerId = next.summonerId || row.summonerId || 0;
+        const obfuscatedPuuid = next.obfuscatedPuuid || row.obfuscatedPuuid || "";
+        if (assignedPosition === (row.assignedPosition || "") && Boolean(row.isLocalPlayer) === isLocalPlayer && puuid === (row.puuid || "") && summonerId === (row.summonerId || 0) && obfuscatedPuuid === (row.obfuscatedPuuid || "")) {
+          return row;
+        }
         changed = true;
-        return { ...row, assignedPosition: next };
+        return {
+          ...row,
+          assignedPosition,
+          isLocalPlayer,
+          puuid,
+          summonerId,
+          obfuscatedPuuid
+        };
       });
       if (changed) lastCardsRenderSig = "";
-      return changed;
+      return true;
+    }
+    function applyRemappedSnapshot(session) {
+      if (!snapshot.length) return false;
+      const { rows, changed, ok } = remapSnapshotToSession(snapshot, session);
+      if (!ok) return false;
+      if (!changed) return true;
+      snapshot = rows;
+      lastCardsRenderSig = "";
+      restoreRows();
+      applyRows(snapshot);
+      if (open) renderVisibility();
+      return true;
     }
     function teamFingerprint(session) {
       const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
@@ -4731,19 +5096,29 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const team = teamFingerprint(session);
       const newLobby = Boolean(lobbyKey && lastLobbyKey && lobbyKey !== lastLobbyKey);
       if (newLobby) clearReveal();
-      else if (lastSessionSig && sameTeamIdentity(lastTeam, team)) {
-        mergePositionsFromSession(session);
-        if (snapshot.length && needsReapply()) applyRows(snapshot);
+      else if (snapshot.length && lastTeam.length && sameTeamIdentity(lastTeam, team)) {
+        mergeRowsByCell(session);
+        applyPickRefresh(session);
+        if (needsReapply()) applyRows(snapshot);
         if (open) renderVisibility();
         if (lobbyKey) lastLobbyKey = lobbyKey;
         lastTeam = team;
+        lastSessionSig = sessionSignature(session);
+        return;
+      } else if (snapshot.length && applyRemappedSnapshot(session)) {
+        applyPickRefresh(session);
+        if (needsReapply()) applyRows(snapshot);
+        if (open) renderVisibility();
+        if (lobbyKey) lastLobbyKey = lobbyKey;
+        lastTeam = team;
+        lastSessionSig = sessionSignature(session);
         return;
       }
       if (lobbyKey) lastLobbyKey = lobbyKey;
       lastTeam = team;
       const sig = sessionSignature(session);
       if (sig && sig === lastSessionSig) {
-        mergePositionsFromSession(session);
+        mergeRowsByCell(session);
         if (snapshot.length && needsReapply()) applyRows(snapshot);
         if (open) renderVisibility();
         return;
@@ -4752,6 +5127,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       lastSessionSig = sig;
       const gen = loadGen;
       loadAbort = typeof AbortController === "function" ? new AbortController() : null;
+      const startedAt = Date.now();
       try {
         setStatus("loading");
         const next = await loadSnapshot(session, {
@@ -4759,15 +5135,24 @@ button.bug-report-button[data-drake-toggle]:disabled {
           onProgress(rows) {
             if (gen !== loadGen) return;
             snapshot = Array.isArray(rows) ? rows : [];
+            mergeRowsByCell(session);
             applyRows(snapshot);
             if (open) renderVisibility();
           }
         });
         if (gen !== loadGen) return;
         snapshot = Array.isArray(next) ? next : [];
+        mergeRowsByCell(session);
+        applyPickRefresh(session);
         setStatus(snapshot.length ? "ready" : "hidden");
         if (snapshot.length) applyRows(snapshot);
         if (open) renderVisibility();
+        if (typeof onRevealTiming === "function" && snapshot.length) {
+          onRevealTiming({
+            durationMs: Date.now() - startedAt,
+            teamSize: snapshot.length
+          });
+        }
       } catch {
         if (gen !== loadGen) return;
         setStatus(snapshot.length ? "ready" : "hidden");
@@ -4846,6 +5231,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let teamRevealChamps = [];
     let teamRevealChampsLoading = null;
     let teamRevealDom = null;
+    let teamRevealLastLoadMs = 0;
+    let teamRevealLastConcurrency = 1;
     let inGameIdle = false;
     const queries = {
       auto_pick_champion_id: "",
@@ -4922,7 +5309,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
     }
     function startDodgeReposition() {
-      if (!shadowRoot || !champSelectActive) return;
+      if (!shadowRoot || !champSelectActive || settings.queue_dodge_in_client === false) return;
       const dock = shadowRoot.getElementById("dodge-dock");
       const reposition = () => {
         if (dodgeBusy) return;
@@ -4930,6 +5317,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
       };
       reposition();
       stopDodgeReposition = watchAnchor(document, window, reposition);
+    }
+    function syncDodgeDockVisibility() {
+      if (!shadowRoot) return;
+      const dock = shadowRoot.getElementById("dodge-dock");
+      if (!dock) return;
+      const show = champSelectActive && settings.queue_dodge_in_client !== false;
+      dock.hidden = !show;
+      if (stopDodgeReposition) {
+        stopDodgeReposition();
+        stopDodgeReposition = null;
+      }
+      if (show) startDodgeReposition();
     }
     function startSocialWatch(api) {
       const panel = api || ui2;
@@ -4984,7 +5383,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const dock = shadowRoot.getElementById("dodge-dock");
       champSelectActive = inChampSelect(session);
       if (teamRevealDom) void teamRevealDom.handleSession(session);
-      dock.hidden = !champSelectActive;
+      const showDodge = champSelectActive && settings.queue_dodge_in_client !== false;
+      dock.hidden = !showDodge;
       if (stopDodgeReposition) {
         stopDodgeReposition();
         stopDodgeReposition = null;
@@ -4994,7 +5394,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         return;
       }
       resetDodgeUi();
-      startDodgeReposition();
+      if (showDodge) startDodgeReposition();
     }
     async function runDodge(btn) {
       if (!btn || dodgeBusy || btn.disabled) {
@@ -5018,7 +5418,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         btn.textContent = result.ok ? "Dodged!" : "Failed";
       } finally {
         resetDodgeUi({ keepLabel: true });
-        if (champSelectActive) startDodgeReposition();
+        if (champSelectActive && settings.queue_dodge_in_client !== false) startDodgeReposition();
         window.setTimeout(() => resetDodgeUi(), 2500);
       }
     }
@@ -5046,6 +5446,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
         subscribe,
         overlayRoot: shadow,
         getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || "",
+        getRecentPool: () => settings.queue_team_reveal_recent_pool || "ranked_both",
+        onRevealTiming: ({ durationMs }) => {
+          teamRevealLastLoadMs = durationMs;
+          teamRevealLastConcurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
+          if (screen === "queue") paint();
+        },
         loadSnapshot: async (session, hooks) => {
           if (!teamRevealChamps.length) {
             if (!teamRevealChampsLoading) {
@@ -5061,7 +5467,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
             session,
             lcu: lcu2,
             onProgress: hooks?.onProgress,
-            signal: hooks?.signal
+            signal: hooks?.signal,
+            sampleSize: settings.queue_team_reveal_sample_size,
+            recentPool: settings.queue_team_reveal_recent_pool,
+            last5Pool: settings.queue_team_reveal_last5_pool,
+            fetchConcurrency: settings.queue_team_reveal_fetch_concurrency
           });
         }
       });
@@ -5105,7 +5515,22 @@ button.bug-report-button[data-drake-toggle]:disabled {
         } else if (screen === "friends") {
           content.innerHTML = renderFriends(friends);
         } else if (screen === "queue") {
-          content.innerHTML = renderQueue({ provider, settings, disabled: trayDown });
+          const concurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
+          const recommended = recommendFetchConcurrency({
+            lastMs: teamRevealLastLoadMs,
+            lastConcurrency: teamRevealLastConcurrency || concurrency
+          });
+          const estimateMs = estimateRevealDurationMs({
+            concurrency,
+            lastMs: teamRevealLastLoadMs,
+            lastConcurrency: teamRevealLastConcurrency || concurrency
+          });
+          content.innerHTML = renderQueue({
+            provider,
+            settings,
+            disabled: trayDown,
+            revealTiming: teamRevealLastLoadMs ? { lastMs: teamRevealLastLoadMs, recommended, estimateMs } : null
+          });
         } else if (screen === "status") {
           content.innerHTML = renderStatus(statusText, settings);
           updateCount();
@@ -5473,11 +5898,17 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (key === "queue_team_reveal_in_client" && teamRevealDom) {
           teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
         }
+        if (key === "queue_dodge_in_client") {
+          syncDodgeDockVisibility();
+        }
         paint();
         commit({ [key]: settings[key] }, () => {
           settings = { ...settings, [key]: previous };
           if (key === "queue_team_reveal_in_client" && teamRevealDom) {
             teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+          }
+          if (key === "queue_dodge_in_client") {
+            syncDodgeDockVisibility();
           }
         });
       });
@@ -5487,23 +5918,39 @@ button.bug-report-button[data-drake-toggle]:disabled {
       });
       content.addEventListener("change", (e) => {
         if (e.target.id === "delay") {
-          const previous = settings.auto_accept_delay_ms;
+          const previous2 = settings.auto_accept_delay_ms;
           settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };
           commit({ auto_accept_delay_ms: settings.auto_accept_delay_ms }, () => {
-            settings = { ...settings, auto_accept_delay_ms: previous };
+            settings = { ...settings, auto_accept_delay_ms: previous2 };
           });
           return;
         }
         if (e.target.id === "presence-availability") {
-          const previous = settings.presence_availability || "";
-          const value = e.target.value;
-          settings = { ...settings, presence_availability: value };
+          const previous2 = settings.presence_availability || "";
+          const value2 = e.target.value;
+          settings = { ...settings, presence_availability: value2 };
           paint();
-          commit({ presence_availability: value }, () => {
-            settings = { ...settings, presence_availability: previous };
+          commit({ presence_availability: value2 }, () => {
+            settings = { ...settings, presence_availability: previous2 };
             paint();
           });
+          return;
         }
+        const revealSelect = {
+          "team-reveal-sample-size": "queue_team_reveal_sample_size",
+          "team-reveal-recent-pool": "queue_team_reveal_recent_pool",
+          "team-reveal-last5-pool": "queue_team_reveal_last5_pool",
+          "team-reveal-fetch-concurrency": "queue_team_reveal_fetch_concurrency"
+        }[e.target.id];
+        if (!revealSelect) return;
+        const previous = settings[revealSelect];
+        const value = revealSelect === "queue_team_reveal_sample_size" || revealSelect === "queue_team_reveal_fetch_concurrency" ? Number(e.target.value) : e.target.value;
+        settings = { ...settings, [revealSelect]: value };
+        paint();
+        commit({ [revealSelect]: value }, () => {
+          settings = { ...settings, [revealSelect]: previous };
+          paint();
+        });
       });
       shadow.getElementById("cancel-queue").addEventListener("click", async () => {
         const dock = shadow.getElementById("cancel-dock");

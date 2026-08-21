@@ -814,6 +814,43 @@ describe('teamRevealDom', () => {
     expect(overlay.hidden).toBe(true);
   });
 
+  it('renders picked champion games and wr on cards', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const loadSnapshot = vi.fn(async () => [
+      {
+        cellId: 0,
+        riotId: 'RealOne#TAG',
+        wins: 1,
+        losses: 0,
+        winRate: 100,
+        pickedChampionId: 11,
+        pickedGames: 12,
+        pickedWins: 7,
+        pickedLosses: 5,
+        pickedWinRate: 58,
+        soloRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
+        flexRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
+      },
+    ]);
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot,
+      overlayRoot,
+      getChampName: (id) => ({ 11: 'Yi' }[id] || ''),
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0, championId: 11 }] });
+    ctl.toggleCards();
+    const html = overlayRoot.querySelector('.team-reveal-overlay').innerHTML;
+    expect(html).toContain('Picked');
+    expect(html).toContain('Yi');
+    expect(html).toContain('12g · 58%');
+  });
+
   it('renders role icon on card from assignedPosition', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
@@ -880,6 +917,66 @@ describe('teamRevealDom', () => {
     await ctl.handleSession({ ...session, myTeam: [{ ...session.myTeam[0], assignedPosition: 'MIDDLE' }] });
     expect(loadSnapshot).toHaveBeenCalledTimes(1);
     expect(overlayRoot.querySelector('.team-reveal-overlay').innerHTML).toContain('data:image/svg+xml,');
+  });
+
+  it('moves revealed names with players when they swap cellIds', async () => {
+    const row0 = makeRow(0, 'MaskedMe');
+    const row1 = makeRow(1, 'MaskedOther');
+    const rows = [row0, row1];
+    const doc = { querySelectorAll: () => rows };
+    const loadSnapshot = vi.fn(async () => [
+      {
+        cellId: 0,
+        riotId: 'Me#TAG',
+        puuid: 'me',
+        wins: 8,
+        losses: 2,
+        winRate: 80,
+        matchesUsed: 10,
+        assignedPosition: 'TOP',
+      },
+      {
+        cellId: 1,
+        riotId: 'Other#TAG',
+        puuid: 'other',
+        wins: 1,
+        losses: 9,
+        winRate: 10,
+        matchesUsed: 10,
+        assignedPosition: 'MIDDLE',
+      },
+    ]);
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot,
+      overlayRoot: makeOverlayRoot(),
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [
+        { cellId: 0, puuid: 'me', assignedPosition: 'TOP' },
+        { cellId: 1, puuid: 'other', assignedPosition: 'MIDDLE' },
+      ],
+      localPlayerCellId: 0,
+    });
+    expect(row0._label.textContent).toContain('Me#TAG');
+    expect(row1._label.textContent).toContain('Other#TAG');
+
+    await ctl.handleSession({
+      myTeam: [
+        { cellId: 0, puuid: 'other', assignedPosition: 'TOP' },
+        { cellId: 1, puuid: 'me', assignedPosition: 'MIDDLE' },
+      ],
+      localPlayerCellId: 1,
+    });
+
+    expect(loadSnapshot).toHaveBeenCalledTimes(1);
+    expect(row0._label.textContent).toContain('Other#TAG');
+    expect(row0._label.textContent).toContain('1W/9L');
+    expect(row1._label.textContent).toContain('Me#TAG');
+    expect(row1._label.textContent).toContain('8W/2L');
   });
 
   it('does not reload when game id or puuid fill in after the first reveal', async () => {

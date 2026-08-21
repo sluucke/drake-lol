@@ -2,13 +2,19 @@ import { resolveChampSelectPuuid } from './champSelectPuuid.js';
 import { formatRiotId, SUMMONER_BY_PUUID_ROUTE, SUMMONER_BY_ID_ROUTE } from './reveal.js';
 import { createSgpContext, fetchQueueMatchHistory, normalizeMatchGames } from './sgpMatchHistory.js';
 
-export const TEAM_REVEAL_SAMPLE_SIZE = 20;
+export const TEAM_REVEAL_SAMPLE_SIZE = 50;
+export const TEAM_REVEAL_SAMPLE_SIZES = [20, 50, 100];
 export const TEAM_REVEAL_SEASON_SAMPLE_SIZE = 100;
 export const TEAM_REVEAL_SEASON_MAX = 300;
 export const TEAM_REVEAL_NATIVE_HISTORY_MAX = 100;
 export const TEAM_REVEAL_FETCH_CONCURRENCY = 1;
+export const TEAM_REVEAL_FETCH_CONCURRENCIES = [1, 2, 3, 5];
 export const TEAM_REVEAL_RECENT_GAMES = 5;
 export const LAST_12H_MS = 12 * 60 * 60 * 1000;
+
+export const MATCH_POOL_RANKED_BOTH = 'ranked_both';
+export const MATCH_POOL_CURRENT_QUEUE = 'current_queue';
+export const MATCH_POOL_ANY = 'any';
 
 export const RANKED_QUEUE_BY_ID = {
   420: 'RANKED_SOLO_5x5',
@@ -18,10 +24,123 @@ export const RANKED_QUEUE_BY_ID = {
 export const RANKED_SOLO = 'RANKED_SOLO_5x5';
 export const RANKED_FLEX = 'RANKED_FLEX_SR';
 
+export function normalizeMatchPool(value, fallback = MATCH_POOL_RANKED_BOTH) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === MATCH_POOL_RANKED_BOTH || raw === MATCH_POOL_CURRENT_QUEUE || raw === MATCH_POOL_ANY) {
+    return raw;
+  }
+  return fallback;
+}
+
+export function normalizeSampleSize(value, fallback = TEAM_REVEAL_SAMPLE_SIZE) {
+  const n = Number(value) || 0;
+  return TEAM_REVEAL_SAMPLE_SIZES.includes(n) ? n : fallback;
+}
+
+export function normalizeFetchConcurrency(value, fallback = TEAM_REVEAL_FETCH_CONCURRENCY) {
+  const n = Number(value) || 0;
+  return TEAM_REVEAL_FETCH_CONCURRENCIES.includes(n) ? n : fallback;
+}
+
+export function filterMatchEntriesByPool(entries, queueId, pool) {
+  const list = Array.isArray(entries) ? entries : [];
+  const mode = normalizeMatchPool(pool);
+  const qid = Number(queueId) || 0;
+  if (mode === MATCH_POOL_ANY) return list;
+  if (mode === MATCH_POOL_RANKED_BOTH) {
+    return list.filter((entry) => Boolean(RANKED_QUEUE_BY_ID[Number(entry?.queueId) || 0]));
+  }
+  if (!qid) return list;
+  return list.filter((entry) => Number(entry?.queueId) === qid);
+}
+
+export function recommendFetchConcurrency({ lastMs, lastConcurrency } = {}) {
+  const prev = normalizeFetchConcurrency(lastConcurrency);
+  const ms = Number(lastMs) || 0;
+  if (ms <= 0) return prev;
+  if (ms > 15000 && prev > 1) {
+    const idx = TEAM_REVEAL_FETCH_CONCURRENCIES.indexOf(prev);
+    return TEAM_REVEAL_FETCH_CONCURRENCIES[Math.max(0, idx - 1)];
+  }
+  if (ms >= 8000 && prev === 1) return 2;
+  return prev;
+}
+
+export function estimateRevealDurationMs({
+  concurrency,
+  lastMs,
+  lastConcurrency,
+} = {}) {
+  const next = normalizeFetchConcurrency(concurrency);
+  const prev = normalizeFetchConcurrency(lastConcurrency);
+  const ms = Number(lastMs) || 0;
+  if (ms > 0 && prev > 0) {
+    return Math.round(ms * (prev / next));
+  }
+  return Math.round(Math.ceil(5 / next) * 3500);
+}
 export function readAssignedPosition(player) {
   const raw = String(player?.assignedPosition ?? player?.position ?? '').trim().toUpperCase();
   if (!raw || raw === 'UNSELECTED') return '';
   return raw;
+}
+
+function playerIdentityKey(player) {
+  const puuid = String(player?.puuid || '').trim();
+  if (puuid) return `p:${puuid}`;
+  const summonerId = Number(player?.summonerId) || 0;
+  if (summonerId) return `s:${summonerId}`;
+  const obf = String(player?.obfuscatedPuuid || player?.obf || '').trim();
+  if (obf) return `o:${obf}`;
+  const riotId = String(player?.riotId || formatRiotId(player) || '')
+    .trim()
+    .toLowerCase();
+  if (riotId) return `r:${riotId}`;
+  return '';
+}
+
+export function remapSnapshotToSession(snapshot, session) {
+  if (!Array.isArray(snapshot) || !snapshot.length) {
+    return { rows: snapshot || [], changed: false, ok: false };
+  }
+  const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+  if (!team.length) return { rows: snapshot, changed: false, ok: false };
+
+  const byIdentity = new Map();
+  for (const row of snapshot) {
+    const key = playerIdentityKey(row);
+    if (key) byIdentity.set(key, row);
+  }
+
+  const localCellId = Number(session?.localPlayerCellId ?? -1);
+  let changed = false;
+  const rows = [];
+  for (let index = 0; index < team.length; index += 1) {
+    const player = team[index];
+    const cellId = Number(player?.cellId ?? index);
+    const key = playerIdentityKey(player);
+    const prev = key ? byIdentity.get(key) : null;
+    if (!prev) return { rows: snapshot, changed: false, ok: false };
+    const assignedPosition = readAssignedPosition(player);
+    const isLocalPlayer = cellId === localCellId;
+    if (
+      Number(prev.cellId) !== cellId ||
+      (prev.assignedPosition || '') !== assignedPosition ||
+      Boolean(prev.isLocalPlayer) !== isLocalPlayer
+    ) {
+      changed = true;
+    }
+    rows.push({
+      ...prev,
+      cellId,
+      assignedPosition,
+      isLocalPlayer,
+    });
+  }
+
+  if (rows.length !== snapshot.length) return { rows: snapshot, changed: false, ok: false };
+  rows.sort((a, b) => a.cellId - b.cellId);
+  return { rows, changed, ok: true };
 }
 
 export function readLobbyKey(session) {
@@ -244,6 +363,21 @@ function emptyPlayerStats() {
     matchesUsed: 0,
     queueScopedMatches: 0,
     recentGames: [],
+    pickedChampionId: 0,
+    pickedGames: 0,
+    pickedWins: 0,
+    pickedLosses: 0,
+    pickedWinRate: 0,
+  };
+}
+
+function emptyPickedChampionStats() {
+  return {
+    pickedChampionId: 0,
+    pickedGames: 0,
+    pickedWins: 0,
+    pickedLosses: 0,
+    pickedWinRate: 0,
   };
 }
 
@@ -343,7 +477,7 @@ function resolveParticipant(game, puuid) {
   return pickParticipant(game, puuid) || resolveParticipantByIdentity(game, puuid);
 }
 
-function buildPlayerStats(games, puuid, queueId, now) {
+function listParticipantEntries(games, puuid) {
   const entries = [];
   for (const game of games) {
     const participant = resolveParticipant(game, puuid);
@@ -354,10 +488,10 @@ function buildPlayerStats(games, puuid, queueId, now) {
       queueId: readGameQueueId(game),
     });
   }
+  return entries;
+}
 
-  const queueScoped = queueId ? entries.filter((entry) => !entry.queueId || entry.queueId === queueId) : entries;
-  const selected = queueScoped.length > 0 ? queueScoped : entries;
-
+function summarizeEntries(selected, now) {
   let wins = 0;
   let losses = 0;
   let kills = 0;
@@ -413,8 +547,64 @@ function buildPlayerStats(games, puuid, queueId, now) {
     mostPlayedChampionId,
     mostPlayedCount,
     matchesUsed: selected.length,
-    queueScopedMatches: queueScoped.length,
-    recentGames: listRecentGames(selected),
+    queueScopedMatches: selected.length,
+  };
+}
+
+export function buildPickedChampionStats(
+  games,
+  puuid,
+  championId,
+  queueId,
+  pool = MATCH_POOL_RANKED_BOTH,
+) {
+  const empty = emptyPickedChampionStats();
+  const id = readNumber(championId);
+  if (!puuid || !id) return empty;
+  const selected = filterMatchEntriesByPool(listParticipantEntries(games, puuid), queueId, pool).filter(
+    (entry) => readChampionId(entry.game, entry.participant) === id,
+  );
+  let wins = 0;
+  let losses = 0;
+  for (const entry of selected) {
+    if (readWin(entry.game, entry.participant)) wins += 1;
+    else losses += 1;
+  }
+  const total = wins + losses;
+  return {
+    pickedChampionId: id,
+    pickedGames: total,
+    pickedWins: wins,
+    pickedLosses: losses,
+    pickedWinRate: total ? Math.round((wins / total) * 100) : 0,
+  };
+}
+
+function buildPlayerStats(
+  games,
+  puuid,
+  queueId,
+  now,
+  {
+    recentPool = MATCH_POOL_RANKED_BOTH,
+    last5Pool = MATCH_POOL_CURRENT_QUEUE,
+    sampleSize = TEAM_REVEAL_SAMPLE_SIZE,
+    pickedChampionId = 0,
+  } = {},
+) {
+  const entries = listParticipantEntries(games, puuid);
+  const byRecent = filterMatchEntriesByPool(entries, queueId, recentPool).sort(
+    (a, b) => readTimestamp(b.game) - readTimestamp(a.game),
+  );
+  const recentSelected = byRecent.slice(0, sampleSize);
+  const last5Selected = filterMatchEntriesByPool(entries, queueId, last5Pool);
+  const summary = summarizeEntries(recentSelected, now);
+  const picked = buildPickedChampionStats(games, puuid, pickedChampionId, queueId, recentPool);
+
+  return {
+    ...summary,
+    ...picked,
+    recentGames: listRecentGames(last5Selected),
   };
 }
 
@@ -540,12 +730,23 @@ async function getSafe(lcu, route) {
   }
 }
 
+function readPickedChampionId(player) {
+  return (
+    readNumber(player?.championId) ||
+    readNumber(player?.selectedChampionId) ||
+    readNumber(player?.championPickIntent)
+  );
+}
+
 export async function buildTeamRevealSnapshot({
   session,
   lcu,
   fetchImpl = fetch,
   sampleSize = TEAM_REVEAL_SAMPLE_SIZE,
   seasonSampleSize = TEAM_REVEAL_SEASON_SAMPLE_SIZE,
+  recentPool = MATCH_POOL_RANKED_BOTH,
+  last5Pool = MATCH_POOL_CURRENT_QUEUE,
+  fetchConcurrency = TEAM_REVEAL_FETCH_CONCURRENCY,
   now = Date.now(),
   onProgress,
   signal,
@@ -555,6 +756,12 @@ export async function buildTeamRevealSnapshot({
   const localCellId = Number(session?.localPlayerCellId ?? -1);
   const queueId = readQueueId(session);
   const rankedQueueType = readRankedQueueType(queueId);
+  const sample = normalizeSampleSize(sampleSize);
+  const concurrency = normalizeFetchConcurrency(fetchConcurrency);
+  const recentMode = normalizeMatchPool(recentPool);
+  const last5Mode = normalizeMatchPool(last5Pool, MATCH_POOL_CURRENT_QUEUE);
+  const historyQueueId =
+    recentMode === MATCH_POOL_CURRENT_QUEUE && last5Mode === MATCH_POOL_CURRENT_QUEUE ? queueId : 0;
 
   const [seasonPayload, sgp] = await Promise.all([
     getSafe(lcu, currentSeasonRoute()),
@@ -563,7 +770,7 @@ export async function buildTeamRevealSnapshot({
   const currentSeasonId = readCurrentSeasonId(seasonPayload);
   if (signal?.aborted) return [];
 
-  const shells = await mapPool(team, TEAM_REVEAL_FETCH_CONCURRENCY, async (player, index) => {
+  const shells = await mapPool(team, concurrency, async (player, index) => {
     const cellId = Number(player?.cellId ?? index);
     const identity = await resolveIdentity(player, lcu);
     const puuid = identity.puuid;
@@ -586,6 +793,10 @@ export async function buildTeamRevealSnapshot({
       assignedPosition: readAssignedPosition(player),
       ranks,
       season: readSeasonStats(ranks, rankedQueueType),
+      stats: {
+        ...emptyPlayerStats(),
+        ...buildPickedChampionStats([], puuid, readPickedChampionId(player), queueId, recentMode),
+      },
     });
   });
 
@@ -594,24 +805,40 @@ export async function buildTeamRevealSnapshot({
   if (typeof onProgress === 'function') onProgress(shells);
   if (signal?.aborted) return [];
 
-  const rows = await mapPool(shells, TEAM_REVEAL_FETCH_CONCURRENCY, async (shell) => {
+  const byCellPlayer = new Map(team.map((player) => [Number(player?.cellId), player]));
+
+  const rows = await mapPool(shells, concurrency, async (shell) => {
     if (signal?.aborted) return shell;
     await yieldUi();
     if (signal?.aborted) return shell;
     const puuid = shell.puuid;
     let games = [];
     const rankedForQueue = queueId === 440 ? shell.flexRank : shell.soloRank;
-    const historyCount = Math.max(sampleSize, seasonHistoryCount(rankedForQueue, seasonSampleSize));
+    const historyCount = Math.max(
+      sample * (historyQueueId ? 1 : 3),
+      seasonHistoryCount(rankedForQueue, seasonSampleSize),
+    );
     if (puuid) {
       games = await fetchQueueMatchHistory({
         lcu,
         fetchImpl,
         puuid,
-        queueId,
+        queueId: historyQueueId,
         count: historyCount,
         sgp,
         signal,
       });
+      if (!games.length && historyQueueId === 0 && queueId) {
+        games = await fetchQueueMatchHistory({
+          lcu,
+          fetchImpl,
+          puuid,
+          queueId,
+          count: historyCount,
+          sgp,
+          signal,
+        });
+      }
       if (!games.length) {
         try {
           games = readGames(
@@ -623,26 +850,61 @@ export async function buildTeamRevealSnapshot({
       }
     }
     const ranks = { solo: shell.soloRank, flex: shell.flexRank };
-    const recentGames = games.slice(0, sampleSize);
-    const stats = puuid ? buildPlayerStats(recentGames, puuid, queueId, now) : emptyPlayerStats();
+    const player = byCellPlayer.get(Number(shell.cellId));
+    const pickedChampionId = readPickedChampionId(player);
+    const stats = puuid
+      ? buildPlayerStats(games, puuid, queueId, now, {
+          recentPool: recentMode,
+          last5Pool: last5Mode,
+          sampleSize: sample,
+          pickedChampionId,
+        })
+      : emptyPlayerStats();
     const seasonMain = puuid
       ? buildSeasonChampionStats(games, puuid, queueId, currentSeasonId)
       : emptySeasonMain();
     await yieldUi();
-    return makeRevealRow({
-      cellId: shell.cellId,
-      puuid,
-      riotId: shell.riotId,
-      isLocalPlayer: shell.isLocalPlayer,
-      rankedQueueType,
-      assignedPosition: shell.assignedPosition,
-      ranks,
-      stats,
-      seasonMain,
-      season: readSeasonStats(ranks, rankedQueueType),
-    });
+    return {
+      ...makeRevealRow({
+        cellId: shell.cellId,
+        puuid,
+        riotId: shell.riotId,
+        isLocalPlayer: shell.isLocalPlayer,
+        rankedQueueType,
+        assignedPosition: shell.assignedPosition,
+        ranks,
+        stats,
+        seasonMain,
+        season: readSeasonStats(ranks, rankedQueueType),
+      }),
+      historyGames: games,
+    };
   });
 
   if (signal?.aborted) return [];
   return rows;
+}
+
+export function refreshPickedChampionOnRows(rows, session, recentPool = MATCH_POOL_RANKED_BOTH) {
+  if (!Array.isArray(rows) || !rows.length) return { rows: rows || [], changed: false };
+  const queueId = readQueueId(session);
+  const recentMode = normalizeMatchPool(recentPool);
+  const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+  const byCell = new Map(team.map((player) => [Number(player?.cellId), player]));
+  let changed = false;
+  const next = rows.map((row) => {
+    const player = byCell.get(Number(row.cellId));
+    const pickedChampionId = readPickedChampionId(player);
+    if (pickedChampionId === Number(row.pickedChampionId || 0)) return row;
+    changed = true;
+    const picked = buildPickedChampionStats(
+      row.historyGames || [],
+      row.puuid,
+      pickedChampionId,
+      queueId,
+      recentMode,
+    );
+    return { ...row, ...picked };
+  });
+  return { rows: next, changed };
 }
