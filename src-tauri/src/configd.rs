@@ -70,6 +70,10 @@ pub struct Settings {
     pub profile_rank_queue: String,
     #[serde(default = "default_rank_crystal")]
     pub profile_rank_crystal: String,
+    #[serde(default = "off")]
+    pub onboarding_done: bool,
+    #[serde(default = "empty_string")]
+    pub whats_new_seen_version: String,
 }
 
 fn no_champion() -> u32 {
@@ -143,6 +147,8 @@ impl Default for Settings {
             profile_rank_division: default_rank_division(),
             profile_rank_queue: default_rank_queue(),
             profile_rank_crystal: default_rank_crystal(),
+            onboarding_done: off(),
+            whats_new_seen_version: empty_string(),
         }
     }
 }
@@ -158,14 +164,35 @@ pub fn load() -> Settings {
     load_from(&crate::paths::settings_file())
 }
 
+pub fn load_from_migrating(path: &Path, current_version: &str) -> Settings {
+    let existed = path.exists();
+    let mut s = load_from(path);
+    if existed && s.whats_new_seen_version.is_empty() {
+        s.onboarding_done = true;
+        s.whats_new_seen_version = current_version.to_string();
+        let _ = save_to(path, &s);
+    }
+    s
+}
+
+pub fn load_migrating(current_version: &str) -> Settings {
+    load_from_migrating(&crate::paths::settings_file(), current_version)
+}
+
 pub fn save(s: &Settings) -> Result<(), ConfigError> {
-    let path = crate::paths::settings_file();
+    save_to(&crate::paths::settings_file(), s)
+}
+
+pub fn save_to(path: &Path, s: &Settings) -> Result<(), ConfigError> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)
             .map_err(|source| ConfigError::Write { path: dir.to_path_buf(), source })?;
     }
     let raw = serde_json::to_string_pretty(s)?;
-    std::fs::write(&path, raw).map_err(|source| ConfigError::Write { path, source })
+    std::fs::write(path, raw).map_err(|source| ConfigError::Write {
+        path: path.to_path_buf(),
+        source,
+    })
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -234,8 +261,8 @@ impl ConfigdState {
         *self.update_busy.lock().unwrap() = false;
     }
 
-    pub fn new(port: u16) -> Self {
-        Self::new_with_settings(port, load())
+    pub fn new(port: u16, current_version: &str) -> Self {
+        Self::new_with_settings(port, load_migrating(current_version))
     }
 
     /// Seam for tests: builds state from a given `Settings` instead of reading
@@ -349,6 +376,8 @@ pub struct SettingsPatch {
     pub profile_rank_division: Option<String>,
     pub profile_rank_queue: Option<String>,
     pub profile_rank_crystal: Option<String>,
+    pub onboarding_done: Option<bool>,
+    pub whats_new_seen_version: Option<String>,
 }
 
 impl SettingsPatch {
@@ -403,6 +432,11 @@ impl SettingsPatch {
                 .profile_rank_crystal
                 .clone()
                 .unwrap_or_else(|| base.profile_rank_crystal.clone()),
+            onboarding_done: self.onboarding_done.unwrap_or(base.onboarding_done),
+            whats_new_seen_version: self
+                .whats_new_seen_version
+                .clone()
+                .unwrap_or_else(|| base.whats_new_seen_version.clone()),
         }
     }
 }
@@ -592,11 +626,57 @@ pub async fn serve(state: Arc<ConfigdState>) -> Result<(), ConfigError> {
 mod tests {
     use super::*;
 
+    fn unique_scratch(label: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "drake-onboard-{label}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
     #[test]
     fn settings_default_to_everything_off() {
         // Nothing automates the user's game until they ask for it.
         assert_eq!(Settings::default().auto_accept, false);
         assert_eq!(Settings::default().queue_team_reveal_in_client, false);
+    }
+
+    #[test]
+    fn settings_include_onboarding_defaults() {
+        let s = Settings::default();
+        assert_eq!(s.onboarding_done, false);
+        assert_eq!(s.whats_new_seen_version, "");
+    }
+
+    #[test]
+    fn migrating_load_marks_existing_installs_caught_up() {
+        let dir = unique_scratch("exist");
+        let path = dir.join("settings.json");
+        std::fs::write(&path, r#"{"auto_accept":true}"#).unwrap();
+        let s = load_from_migrating(&path, "0.3.16");
+        assert!(s.onboarding_done);
+        assert_eq!(s.whats_new_seen_version, "0.3.16");
+        assert!(s.auto_accept);
+        let raw = std::fs::read_to_string(&path).unwrap();
+        assert!(raw.contains("whats_new_seen_version"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn migrating_load_leaves_fresh_defaults_when_file_missing() {
+        let dir = unique_scratch("fresh");
+        let path = dir.join("settings.json");
+        let s = load_from_migrating(&path, "0.3.16");
+        assert_eq!(s.onboarding_done, false);
+        assert_eq!(s.whats_new_seen_version, "");
+        assert!(!path.exists());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -648,6 +728,8 @@ mod tests {
         assert_eq!(s.auto_pick_champion_id_2, 0);
         assert_eq!(s.auto_update, true);
         assert_eq!(s.queue_team_reveal_in_client, false);
+        assert_eq!(s.onboarding_done, false);
+        assert_eq!(s.whats_new_seen_version, "");
     }
 
     #[test]
