@@ -29,7 +29,7 @@ describe('pickWhatsNew', () => {
 
   it('ships a non-empty catalog', () => {
     expect(WHATS_NEW.length).toBeGreaterThan(0);
-    expect(WHATS_NEW[0].version).toBe('0.3.16');
+    expect(WHATS_NEW[0].version).toBe('0.3.17');
     expect(WHATS_NEW[0].items.length).toBeGreaterThan(0);
   });
 });

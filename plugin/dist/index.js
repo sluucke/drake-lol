@@ -2991,11 +2991,15 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   // src/ui/whatsNew.js
   var WHATS_NEW = [
     {
-      version: "0.3.16",
+      version: "0.3.17",
       items: [
         {
-          title: "Welcome & What's New",
-          body: "First-time welcome tour and a changelog after updates. Reopen What's New anytime from the sidebar.",
+          title: "Welcome tour",
+          body: "First open shows a short welcome with an optional spotlight tour of the Ctrl+D screens. Skip anytime."
+        },
+        {
+          title: "What's New",
+          body: "After an update, Ctrl+D opens a changelog. Reopen it anytime from the sidebar; feature rows jump to that screen.",
           screen: "whats-new"
         },
         {
@@ -3007,7 +3011,12 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           title: "Ranked pool controls",
           body: "Choose Solo+Flex, current queue, or any queue for recent games, plus sample size, last-5 pool, and fetch concurrency.",
           screen: "queue"
-        },
+        }
+      ]
+    },
+    {
+      version: "0.3.16",
+      items: [
         {
           title: "Pick WR on cards",
           body: "Reveal cards show games and win rate for the champion they locked.",
