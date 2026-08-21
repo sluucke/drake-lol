@@ -3,6 +3,8 @@ import { obfuscateChampSelectPuuid } from '../src/features/champSelectPuuid.js';
 import {
   buildTeamRevealSnapshot,
   buildSeasonChampionStats,
+  buildPickedChampionStats,
+  filterMatchEntriesByPool,
   formatWl,
   formatWlPair,
   rankedStatsRoute,
@@ -12,7 +14,18 @@ import {
   readRankedQueues,
   readAssignedPosition,
   readLobbyKey,
+  remapSnapshotToSession,
+  recommendFetchConcurrency,
+  estimateRevealDurationMs,
+  normalizeMatchPool,
+  normalizeSampleSize,
+  normalizeFetchConcurrency,
   seasonHistoryCount,
+  MATCH_POOL_RANKED_BOTH,
+  MATCH_POOL_CURRENT_QUEUE,
+  MATCH_POOL_ANY,
+  TEAM_REVEAL_SAMPLE_SIZES,
+  TEAM_REVEAL_FETCH_CONCURRENCIES,
 } from '../src/features/teamRevealStats.js';
 
 const NOW = new Date('2026-08-18T14:00:00.000Z').getTime();
@@ -44,6 +57,89 @@ function game({
     ],
   };
 }
+
+describe('match pool helpers', () => {
+  it('normalizes pool and sample settings', () => {
+    expect(normalizeMatchPool('ranked_both')).toBe(MATCH_POOL_RANKED_BOTH);
+    expect(normalizeMatchPool('current_queue')).toBe(MATCH_POOL_CURRENT_QUEUE);
+    expect(normalizeMatchPool('any')).toBe(MATCH_POOL_ANY);
+    expect(normalizeMatchPool('nope')).toBe(MATCH_POOL_RANKED_BOTH);
+    expect(normalizeSampleSize(50)).toBe(50);
+    expect(normalizeSampleSize(99)).toBe(50);
+    expect(TEAM_REVEAL_SAMPLE_SIZES).toEqual([20, 50, 100]);
+    expect(normalizeFetchConcurrency(3)).toBe(3);
+    expect(normalizeFetchConcurrency(9)).toBe(1);
+    expect(TEAM_REVEAL_FETCH_CONCURRENCIES).toEqual([1, 2, 3, 5]);
+  });
+
+  it('filters ranked-both strictly without falling back to norms', () => {
+    const entries = [
+      { queueId: 420 },
+      { queueId: 440 },
+      { queueId: 450 },
+      { queueId: 0 },
+    ];
+    expect(filterMatchEntriesByPool(entries, 420, MATCH_POOL_RANKED_BOTH).map((e) => e.queueId)).toEqual([
+      420, 440,
+    ]);
+    expect(filterMatchEntriesByPool(entries, 420, MATCH_POOL_CURRENT_QUEUE).map((e) => e.queueId)).toEqual([
+      420,
+    ]);
+    expect(filterMatchEntriesByPool(entries, 420, MATCH_POOL_ANY).map((e) => e.queueId)).toEqual([
+      420, 440, 450, 0,
+    ]);
+  });
+
+  it('builds picked champion games and wr from the recent pool', () => {
+    const games = [
+      game({ puuid: PUUID_A, championId: 12, win: true, hoursAgo: 1 }),
+      game({ puuid: PUUID_A, championId: 12, win: false, hoursAgo: 2 }),
+      game({ puuid: PUUID_A, queueId: 440, championId: 12, win: true, hoursAgo: 3 }),
+      game({ puuid: PUUID_A, championId: 99, win: true, hoursAgo: 4 }),
+    ];
+    expect(buildPickedChampionStats(games, PUUID_A, 12, 420, MATCH_POOL_CURRENT_QUEUE)).toEqual({
+      pickedChampionId: 12,
+      pickedGames: 2,
+      pickedWins: 1,
+      pickedLosses: 1,
+      pickedWinRate: 50,
+    });
+    expect(buildPickedChampionStats(games, PUUID_A, 12, 420, MATCH_POOL_RANKED_BOTH).pickedGames).toBe(3);
+  });
+
+  it('recommends concurrency from the last reveal duration', () => {
+    expect(recommendFetchConcurrency({ lastMs: 12000, lastConcurrency: 1, teamSize: 5 })).toBe(2);
+    expect(recommendFetchConcurrency({ lastMs: 2500, lastConcurrency: 2, teamSize: 5 })).toBe(2);
+    expect(recommendFetchConcurrency({ lastMs: 20000, lastConcurrency: 3, teamSize: 5 })).toBe(2);
+    expect(estimateRevealDurationMs({ concurrency: 2, teamSize: 5, lastMs: 10000, lastConcurrency: 1 })).toBe(
+      5000,
+    );
+  });
+
+  it('remaps snapshot rows when players swap cellIds', () => {
+    const snapshot = [
+      { cellId: 0, puuid: 'me', riotId: 'Me#TAG', assignedPosition: 'TOP', wins: 8 },
+      { cellId: 1, puuid: 'other', riotId: 'Other#TAG', assignedPosition: 'MIDDLE', wins: 1 },
+    ];
+    const { rows, ok, changed } = remapSnapshotToSession(snapshot, {
+      localPlayerCellId: 1,
+      myTeam: [
+        { cellId: 0, puuid: 'other', assignedPosition: 'TOP' },
+        { cellId: 1, puuid: 'me', assignedPosition: 'MIDDLE' },
+      ],
+    });
+    expect(ok).toBe(true);
+    expect(changed).toBe(true);
+    expect(rows[0]).toMatchObject({ cellId: 0, puuid: 'other', riotId: 'Other#TAG', wins: 1 });
+    expect(rows[1]).toMatchObject({
+      cellId: 1,
+      puuid: 'me',
+      riotId: 'Me#TAG',
+      wins: 8,
+      isLocalPlayer: true,
+    });
+  });
+});
 
 describe('formatWl', () => {
   it('labels wins and losses', () => {
@@ -143,7 +239,14 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW, sampleSize: 20 });
+    const out = await buildTeamRevealSnapshot({
+      session,
+      lcu,
+      now: NOW,
+      sampleSize: 20,
+      recentPool: MATCH_POOL_CURRENT_QUEUE,
+      last5Pool: MATCH_POOL_CURRENT_QUEUE,
+    });
 
     expect(out[0].wins).toBe(2);
     expect(out[0].losses).toBe(1);
@@ -262,7 +365,14 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, fetchImpl, now: NOW });
+    const out = await buildTeamRevealSnapshot({
+      session,
+      lcu,
+      fetchImpl,
+      now: NOW,
+      recentPool: MATCH_POOL_CURRENT_QUEUE,
+      last5Pool: MATCH_POOL_CURRENT_QUEUE,
+    });
 
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://usw2-red.pp.sgp.pvp.net/match-history-query/v1/products/lol/player/01234567-89ab-cdef-0123-456789abcdef/SUMMARY?startIndex=0&count=180&tag=q_420',
@@ -346,7 +456,7 @@ describe('buildTeamRevealSnapshot', () => {
     expect(lcu.get).toHaveBeenCalledWith('/lol-summoner/v1/summoners/77');
   });
 
-  it('falls back to unfiltered sample when queue-filtered sample is empty', async () => {
+  it('keeps recent stats empty when current-queue pool has no matches', async () => {
     const history = [
       game({ puuid: PUUID_A, queueId: 450, win: true, kills: 6, deaths: 3, assists: 4 }),
       game({ puuid: PUUID_A, queueId: 450, win: false, kills: 1, deaths: 4, assists: 2 }),
@@ -355,16 +465,31 @@ describe('buildTeamRevealSnapshot', () => {
       get: vi.fn(async () => ({ games: { games: history } })),
     };
     const session = {
-      gameData: { queue: { id: 9999 } },
+      gameData: { queue: { id: 420 } },
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await buildTeamRevealSnapshot({
+      session,
+      lcu,
+      now: NOW,
+      recentPool: MATCH_POOL_CURRENT_QUEUE,
+      last5Pool: MATCH_POOL_CURRENT_QUEUE,
+    });
 
-    expect(out[0].wins).toBe(1);
-    expect(out[0].losses).toBe(1);
-    expect(out[0].winRate).toBe(50);
-    expect(out[0].kda).toBe(1.86);
+    expect(out[0].wins).toBe(0);
+    expect(out[0].losses).toBe(0);
+    expect(out[0].matchesUsed).toBe(0);
+
+    const mixed = await buildTeamRevealSnapshot({
+      session,
+      lcu,
+      now: NOW,
+      recentPool: MATCH_POOL_ANY,
+      last5Pool: MATCH_POOL_ANY,
+    });
+    expect(mixed[0].wins).toBe(1);
+    expect(mixed[0].losses).toBe(1);
   });
 
   it('reads other-player ranked W/L from queues when queueMap omits losses', () => {
@@ -468,7 +593,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, fetchImpl, now: NOW });
+    const out = await buildTeamRevealSnapshot({ session, lcu, fetchImpl, now: NOW, sampleSize: 20 });
 
     expect(lcu.get).not.toHaveBeenCalledWith(leagueLaddersRoute(PUUID_A));
     expect(out[0].soloRank.tier).toBe('DIAMOND');

@@ -40,7 +40,11 @@ import { canCancel, DECLINE_ROUTE } from '../autoAccept.js';
 import { findAnchor, inChampSelect, layoutDock, watchAnchor } from './dodgeDock.js';
 import { mountSocialToggle, syncSocialToggle, watchSocialToggle } from './socialToggle.js';
 import { subscribe } from '../subscribe.js';
-import { buildTeamRevealSnapshot } from '../features/teamRevealStats.js';
+import {
+  buildTeamRevealSnapshot,
+  estimateRevealDurationMs,
+  recommendFetchConcurrency,
+} from '../features/teamRevealStats.js';
 import { makeTeamRevealDom } from './teamRevealDom.js';
 
 const TAG = '[Drake]';
@@ -73,6 +77,8 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let teamRevealChamps = [];
   let teamRevealChampsLoading = null;
   let teamRevealDom = null;
+  let teamRevealLastLoadMs = 0;
+  let teamRevealLastConcurrency = 1;
   let inGameIdle = false;
   
   const queries = {
@@ -163,7 +169,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   }
 
   function startDodgeReposition() {
-    if (!shadowRoot || !champSelectActive) return;
+    if (!shadowRoot || !champSelectActive || settings.queue_dodge_in_client === false) return;
     const dock = shadowRoot.getElementById('dodge-dock');
     const reposition = () => {
       if (dodgeBusy) return;
@@ -171,6 +177,19 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     };
     reposition();
     stopDodgeReposition = watchAnchor(document, window, reposition);
+  }
+
+  function syncDodgeDockVisibility() {
+    if (!shadowRoot) return;
+    const dock = shadowRoot.getElementById('dodge-dock');
+    if (!dock) return;
+    const show = champSelectActive && settings.queue_dodge_in_client !== false;
+    dock.hidden = !show;
+    if (stopDodgeReposition) {
+      stopDodgeReposition();
+      stopDodgeReposition = null;
+    }
+    if (show) startDodgeReposition();
   }
 
   function startSocialWatch(api) {
@@ -229,7 +248,8 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     const dock = shadowRoot.getElementById('dodge-dock');
     champSelectActive = inChampSelect(session);
     if (teamRevealDom) void teamRevealDom.handleSession(session);
-    dock.hidden = !champSelectActive;
+    const showDodge = champSelectActive && settings.queue_dodge_in_client !== false;
+    dock.hidden = !showDodge;
     if (stopDodgeReposition) {
       stopDodgeReposition();
       stopDodgeReposition = null;
@@ -239,7 +259,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       return;
     }
     resetDodgeUi();
-    startDodgeReposition();
+    if (showDodge) startDodgeReposition();
   }
 
   async function runDodge(btn) {
@@ -266,7 +286,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       btn.textContent = result.ok ? 'Dodged!' : 'Failed';
     } finally {
       resetDodgeUi({ keepLabel: true });
-      if (champSelectActive) startDodgeReposition();
+      if (champSelectActive && settings.queue_dodge_in_client !== false) startDodgeReposition();
       window.setTimeout(() => resetDodgeUi(), 2500);
     }
   }
@@ -299,6 +319,12 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       subscribe,
       overlayRoot: shadow,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
+      getRecentPool: () => settings.queue_team_reveal_recent_pool || 'ranked_both',
+      onRevealTiming: ({ durationMs }) => {
+        teamRevealLastLoadMs = durationMs;
+        teamRevealLastConcurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
+        if (screen === 'queue') paint();
+      },
       loadSnapshot: async (session, hooks) => {
         if (!teamRevealChamps.length) {
           if (!teamRevealChampsLoading) {
@@ -315,6 +341,10 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
           lcu,
           onProgress: hooks?.onProgress,
           signal: hooks?.signal,
+          sampleSize: settings.queue_team_reveal_sample_size,
+          recentPool: settings.queue_team_reveal_recent_pool,
+          last5Pool: settings.queue_team_reveal_last5_pool,
+          fetchConcurrency: settings.queue_team_reveal_fetch_concurrency,
         });
       },
     });
@@ -356,7 +386,24 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       } else if (screen === 'friends') {
         content.innerHTML = renderFriends(friends);
       } else if (screen === 'queue') {
-        content.innerHTML = renderQueue({ provider, settings, disabled: trayDown });
+        const concurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
+        const recommended = recommendFetchConcurrency({
+          lastMs: teamRevealLastLoadMs,
+          lastConcurrency: teamRevealLastConcurrency || concurrency,
+        });
+        const estimateMs = estimateRevealDurationMs({
+          concurrency,
+          lastMs: teamRevealLastLoadMs,
+          lastConcurrency: teamRevealLastConcurrency || concurrency,
+        });
+        content.innerHTML = renderQueue({
+          provider,
+          settings,
+          disabled: trayDown,
+          revealTiming: teamRevealLastLoadMs
+            ? { lastMs: teamRevealLastLoadMs, recommended, estimateMs }
+            : null,
+        });
       } else if (screen === 'status') {
         content.innerHTML = renderStatus(statusText, settings);
         updateCount();
@@ -799,11 +846,17 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       if (key === 'queue_team_reveal_in_client' && teamRevealDom) {
         teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
       }
+      if (key === 'queue_dodge_in_client') {
+        syncDodgeDockVisibility();
+      }
       paint();
       commit({ [key]: settings[key] }, () => {
         settings = { ...settings, [key]: previous };
         if (key === 'queue_team_reveal_in_client' && teamRevealDom) {
           teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+        }
+        if (key === 'queue_dodge_in_client') {
+          syncDodgeDockVisibility();
         }
       });
     });
@@ -833,7 +886,27 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
           settings = { ...settings, presence_availability: previous };
           paint();
         });
+        return;
       }
+      const revealSelect = {
+        'team-reveal-sample-size': 'queue_team_reveal_sample_size',
+        'team-reveal-recent-pool': 'queue_team_reveal_recent_pool',
+        'team-reveal-last5-pool': 'queue_team_reveal_last5_pool',
+        'team-reveal-fetch-concurrency': 'queue_team_reveal_fetch_concurrency',
+      }[e.target.id];
+      if (!revealSelect) return;
+      const previous = settings[revealSelect];
+      const value =
+        revealSelect === 'queue_team_reveal_sample_size' ||
+        revealSelect === 'queue_team_reveal_fetch_concurrency'
+          ? Number(e.target.value)
+          : e.target.value;
+      settings = { ...settings, [revealSelect]: value };
+      paint();
+      commit({ [revealSelect]: value }, () => {
+        settings = { ...settings, [revealSelect]: previous };
+        paint();
+      });
     });
 
     shadow.getElementById('cancel-queue').addEventListener('click', async () => {

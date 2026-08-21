@@ -108,11 +108,56 @@ export function renderAutoAccept(settings, { disabled, maxDelayMs }) {
     </div>`;
 }
 
-export function renderQueue({ provider, settings = {}, disabled }) {
+export function renderQueue({
+  provider,
+  settings = {},
+  disabled,
+  revealTiming = null,
+}) {
   const options = PROVIDERS.map(
     (p) =>
       `<button class="pill" data-provider="${p.id}" aria-selected="${p.id === provider}">${p.label}</button>`,
   ).join('');
+
+  const sampleSize = Number(settings.queue_team_reveal_sample_size) || 50;
+  const recentPool = settings.queue_team_reveal_recent_pool || 'ranked_both';
+  const last5Pool = settings.queue_team_reveal_last5_pool || 'current_queue';
+  const concurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
+  const poolOptions = [
+    { id: 'ranked_both', label: 'Solo + Flex' },
+    { id: 'current_queue', label: 'Current queue' },
+    { id: 'any', label: 'Any queue' },
+  ];
+  const sampleOptions = [
+    { id: 20, label: '20' },
+    { id: 50, label: '50' },
+    { id: 100, label: '100' },
+  ];
+  const concurrencyOptions = [
+    { id: 1, label: '1' },
+    { id: 2, label: '2' },
+    { id: 3, label: '3' },
+    { id: 5, label: '5' },
+  ];
+
+  const currentQueueWarn =
+    recentPool === 'current_queue' || last5Pool === 'current_queue'
+      ? `<p class="check-help" style="margin:8px 0 0">Current queue can look sparse if that player rarely plays this queue.</p>`
+      : '';
+  const concurrencyWarn =
+    concurrency >= 3
+      ? `<p class="reveal-warn" style="margin:8px 0 0">Higher concurrency loads the client harder and can hit rate limits.</p>`
+      : '';
+
+  let timingHelp = '';
+  if (revealTiming?.lastMs > 0) {
+    const recommended = Number(revealTiming.recommended) || 1;
+    const estimateSec = Math.max(1, Math.round((Number(revealTiming.estimateMs) || 0) / 1000));
+    timingHelp = `<p class="check-help" style="margin:8px 0 0">About ~${estimateSec}s for a full lobby at this setting.</p>
+      <p class="reveal-recommend">Based on your last reveal, we suggest resolving ${recommended} player${recommended === 1 ? '' : 's'} at a time.</p>`;
+  }
+
+  const revealOptsDisabled = disabled || !settings.queue_team_reveal_in_client;
 
   return `
     <h2 class="screen-title">Queue</h2>
@@ -141,6 +186,29 @@ export function renderQueue({ provider, settings = {}, disabled }) {
       disabled,
     })}
 
+    <div class="field ${settings.queue_team_reveal_in_client ? '' : 'field-off'}">
+      <div class="row">
+        <span class="field-label" style="min-width:120px">Sample size</span>
+        ${renderSelect('team-reveal-sample-size', sampleOptions, sampleSize, revealOptsDisabled)}
+      </div>
+      <div class="row">
+        <span class="field-label" style="min-width:120px">Recent pool</span>
+        ${renderSelect('team-reveal-recent-pool', poolOptions, recentPool, revealOptsDisabled)}
+      </div>
+      <div class="row">
+        <span class="field-label" style="min-width:120px">Last 5 pool</span>
+        ${renderSelect('team-reveal-last5-pool', poolOptions, last5Pool, revealOptsDisabled)}
+      </div>
+      <div class="row">
+        <span class="field-label" style="min-width:120px">Fetch at once</span>
+        ${renderSelect('team-reveal-fetch-concurrency', concurrencyOptions, concurrency, revealOptsDisabled)}
+      </div>
+      ${currentQueueWarn}
+      ${concurrencyWarn}
+      ${timingHelp}
+      ${revealOptsDisabled ? '<p class="check-help" style="margin:8px 0 0">Enable in-client reveal to change these.</p>' : ''}
+    </div>
+
     <div class="rule"></div>
 
     <div class="field-head">
@@ -150,6 +218,13 @@ export function renderQueue({ provider, settings = {}, disabled }) {
       Leaves champ select. Costs you the usual dodge penalty — Drake does not
       confirm first, so only press it if you mean it.
     </p>
+    ${renderCheckRow({
+      id: 'queue_dodge_in_client',
+      label: 'Show dodge button in champ select',
+      help: 'Places a Dodge button over the client while you are in champ select.',
+      checked: settings.queue_dodge_in_client !== false,
+      disabled,
+    })}
     <div class="status-actions">
       <button class="hextech-btn hextech-btn-danger" id="dodge">Dodge</button>
     </div>`;
@@ -375,18 +450,18 @@ export const PROFILE_TABS = [
 
 
 
-function renderSelect(id, list, selected) {
+function renderSelect(id, list, selected, disabled = false) {
   const opts = list
     .map((o) => {
       const value = o.id ?? o;
       const label = o.label ?? o;
-      return `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`;
+      return `<option value="${value}" ${String(value) === String(selected) ? 'selected' : ''}>${label}</option>`;
     })
     .join('');
 
   return `
     <span class="select-wrap">
-      <select class="select-field" id="${id}">${opts}</select>
+      <select class="select-field" id="${id}" ${disabled ? 'disabled' : ''}>${opts}</select>
       <span class="select-arrows" aria-hidden="true">
         <span>▲</span><span>▼</span>
       </span>

@@ -1,6 +1,13 @@
 import { GAMEFLOW_PHASE_ROUTE } from '../features/dodge.js';
 import { readGameflowPhase } from '../features/inGameIdle.js';
-import { formatWl, formatWlPair, readAssignedPosition, readLobbyKey } from '../features/teamRevealStats.js';
+import {
+  formatWl,
+  formatWlPair,
+  readAssignedPosition,
+  readLobbyKey,
+  remapSnapshotToSession,
+  refreshPickedChampionOnRows,
+} from '../features/teamRevealStats.js';
 import { iconUrl } from '../features/champions.js';
 import { roleIconUrl, roleLabel } from './roleIcons.js';
 import { RANK_ICONS } from './assets.js';
@@ -102,6 +109,19 @@ function renderRankBlock(label, rank) {
   </div>`;
 }
 
+function renderPickedChampion(row, getChampName) {
+  const id = Number(row?.pickedChampionId) || 0;
+  if (!id) return '';
+  const name = getChampName(id) || 'Unknown';
+  const games = Number(row?.pickedGames) || 0;
+  const wr = Number(row?.pickedWinRate) || 0;
+  const detail = games ? `${games}g · ${wr}%` : 'no games';
+  return formatCardRow(
+    'Picked',
+    `<span class="team-reveal-champ"><img class="team-reveal-champ-icon" src="${iconUrl(id)}" alt=""><span>${name} · ${detail}</span></span>`,
+  );
+}
+
 function renderSeasonMain(row, getChampName) {
   const id = Number(row?.seasonMostPlayedChampionId) || 0;
   if (!id) return '—';
@@ -131,6 +151,9 @@ function cardsContentSig(snapshot) {
       seasonMostPlayedChampionId: row.seasonMostPlayedChampionId,
       seasonMostPlayedCount: row.seasonMostPlayedCount,
       seasonMostPlayedWinRate: row.seasonMostPlayedWinRate,
+      pickedChampionId: row.pickedChampionId,
+      pickedGames: row.pickedGames,
+      pickedWinRate: row.pickedWinRate,
       recentGames: row.recentGames,
     })),
   );
@@ -180,6 +203,7 @@ function makeRenderCards(getChampName) {
             ${formatCardRow(`Recent W/L${recentNote}`, recentWl)}
             ${formatCardRow('Recent KDA', kda)}
             ${formatCardRow('Last 12h', last12h)}
+            ${renderPickedChampion(row, getChampName)}
             ${formatCardRow('Season Main', renderSeasonMain(row, getChampName))}
             ${formatCardRow('Last 5', renderRecentGames(row, getChampName))}
           </div>
@@ -286,9 +310,11 @@ export function makeTeamRevealDom({
   loadSnapshot,
   overlayRoot,
   getChampName = () => '',
+  getRecentPool = () => 'ranked_both',
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
   statusReadyMs = STATUS_READY_MS,
+  onRevealTiming,
 }) {
   const renderCards = makeRenderCards((id) => getChampName(Number(id)));
   let enabled = false;
@@ -359,19 +385,75 @@ export function makeTeamRevealDom({
     return false;
   }
 
-  function mergePositionsFromSession(session) {
+  function applyPickRefresh(session) {
+    if (!snapshot.length) return false;
+    const { rows, changed } = refreshPickedChampionOnRows(snapshot, session, getRecentPool());
+    if (!changed) return false;
+    snapshot = rows;
+    lastCardsRenderSig = '';
+    if (open) renderVisibility();
+    return true;
+  }
+
+  function mergeRowsByCell(session) {
     if (!snapshot.length) return false;
     const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
-    const byCell = new Map(team.map((player) => [Number(player?.cellId), readAssignedPosition(player)]));
+    const localCellId = Number(session?.localPlayerCellId ?? -1);
+    const byCell = new Map(
+      team.map((player) => [
+        Number(player?.cellId),
+        {
+          assignedPosition: readAssignedPosition(player),
+          puuid: String(player?.puuid || '').trim(),
+          summonerId: Number(player?.summonerId) || 0,
+          obfuscatedPuuid: String(player?.obfuscatedPuuid || '').trim(),
+        },
+      ]),
+    );
     let changed = false;
     snapshot = snapshot.map((row) => {
-      const next = byCell.has(Number(row.cellId)) ? byCell.get(Number(row.cellId)) : row.assignedPosition || '';
-      if (next === (row.assignedPosition || '')) return row;
+      const cellId = Number(row.cellId);
+      const next = byCell.get(cellId);
+      if (!next) return row;
+      const assignedPosition = next.assignedPosition || row.assignedPosition || '';
+      const isLocalPlayer = cellId === localCellId;
+      const puuid = next.puuid || row.puuid || '';
+      const summonerId = next.summonerId || row.summonerId || 0;
+      const obfuscatedPuuid = next.obfuscatedPuuid || row.obfuscatedPuuid || '';
+      if (
+        assignedPosition === (row.assignedPosition || '') &&
+        Boolean(row.isLocalPlayer) === isLocalPlayer &&
+        puuid === (row.puuid || '') &&
+        summonerId === (row.summonerId || 0) &&
+        obfuscatedPuuid === (row.obfuscatedPuuid || '')
+      ) {
+        return row;
+      }
       changed = true;
-      return { ...row, assignedPosition: next };
+      return {
+        ...row,
+        assignedPosition,
+        isLocalPlayer,
+        puuid,
+        summonerId,
+        obfuscatedPuuid,
+      };
     });
     if (changed) lastCardsRenderSig = '';
-    return changed;
+    return true;
+  }
+
+  function applyRemappedSnapshot(session) {
+    if (!snapshot.length) return false;
+    const { rows, changed, ok } = remapSnapshotToSession(snapshot, session);
+    if (!ok) return false;
+    if (!changed) return true;
+    snapshot = rows;
+    lastCardsRenderSig = '';
+    restoreRows();
+    applyRows(snapshot);
+    if (open) renderVisibility();
+    return true;
   }
 
   function teamFingerprint(session) {
@@ -695,12 +777,22 @@ export function makeTeamRevealDom({
     const team = teamFingerprint(session);
     const newLobby = Boolean(lobbyKey && lastLobbyKey && lobbyKey !== lastLobbyKey);
     if (newLobby) clearReveal();
-    else if (lastSessionSig && sameTeamIdentity(lastTeam, team)) {
-      mergePositionsFromSession(session);
-      if (snapshot.length && needsReapply()) applyRows(snapshot);
+    else if (snapshot.length && lastTeam.length && sameTeamIdentity(lastTeam, team)) {
+      mergeRowsByCell(session);
+      applyPickRefresh(session);
+      if (needsReapply()) applyRows(snapshot);
       if (open) renderVisibility();
       if (lobbyKey) lastLobbyKey = lobbyKey;
       lastTeam = team;
+      lastSessionSig = sessionSignature(session);
+      return;
+    } else if (snapshot.length && applyRemappedSnapshot(session)) {
+      applyPickRefresh(session);
+      if (needsReapply()) applyRows(snapshot);
+      if (open) renderVisibility();
+      if (lobbyKey) lastLobbyKey = lobbyKey;
+      lastTeam = team;
+      lastSessionSig = sessionSignature(session);
       return;
     }
 
@@ -709,7 +801,7 @@ export function makeTeamRevealDom({
 
     const sig = sessionSignature(session);
     if (sig && sig === lastSessionSig) {
-      mergePositionsFromSession(session);
+      mergeRowsByCell(session);
       if (snapshot.length && needsReapply()) applyRows(snapshot);
       if (open) renderVisibility();
       return;
@@ -719,6 +811,7 @@ export function makeTeamRevealDom({
     lastSessionSig = sig;
     const gen = loadGen;
     loadAbort = typeof AbortController === 'function' ? new AbortController() : null;
+    const startedAt = Date.now();
     try {
       setStatus('loading');
       const next = await loadSnapshot(session, {
@@ -726,15 +819,24 @@ export function makeTeamRevealDom({
         onProgress(rows) {
           if (gen !== loadGen) return;
           snapshot = Array.isArray(rows) ? rows : [];
+          mergeRowsByCell(session);
           applyRows(snapshot);
           if (open) renderVisibility();
         },
       });
       if (gen !== loadGen) return;
       snapshot = Array.isArray(next) ? next : [];
+      mergeRowsByCell(session);
+      applyPickRefresh(session);
       setStatus(snapshot.length ? 'ready' : 'hidden');
       if (snapshot.length) applyRows(snapshot);
       if (open) renderVisibility();
+      if (typeof onRevealTiming === 'function' && snapshot.length) {
+        onRevealTiming({
+          durationMs: Date.now() - startedAt,
+          teamSize: snapshot.length,
+        });
+      }
     } catch {
       if (gen !== loadGen) return;
       setStatus(snapshot.length ? 'ready' : 'hidden');

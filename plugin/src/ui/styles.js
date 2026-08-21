@@ -247,6 +247,20 @@ export const CSS = `
   margin: 6px 0 0 24px;
   max-width: 46ch;
 }
+.reveal-recommend {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #0a8f3c;
+  margin: 6px 0 0;
+  max-width: 46ch;
+}
+.reveal-warn {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c84a4a;
+  margin: 6px 0 0;
+  max-width: 46ch;
+}
 
 
 
