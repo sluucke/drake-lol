@@ -4,13 +4,28 @@ export const WHATS_NEW = [
     items: [
       {
         title: 'Welcome & What\'s New',
-        body: 'First-time welcome tour and a changelog screen after updates. Open What\'s New anytime from the sidebar.',
+        body: 'First-time welcome tour and a changelog after updates. Reopen What\'s New anytime from the sidebar.',
         screen: 'whats-new',
       },
       {
-        title: 'Presence lock',
-        body: 'Keep Online, Offline, Mobile, or Busy sticky from the Status screen.',
-        screen: 'status',
+        title: 'Reveal follows role swaps',
+        body: 'In-client team reveal remaps names when players trade cells in champ select.',
+        screen: 'queue',
+      },
+      {
+        title: 'Ranked pool controls',
+        body: 'Choose Solo+Flex, current queue, or any queue for recent games, plus sample size, last-5 pool, and fetch concurrency.',
+        screen: 'queue',
+      },
+      {
+        title: 'Pick WR on cards',
+        body: 'Reveal cards show games and win rate for the champion they locked.',
+        screen: 'queue',
+      },
+      {
+        title: 'Champ select dodge',
+        body: 'Optional in-client dodge button (on by default) from Queue settings.',
+        screen: 'queue',
       },
     ],
   },

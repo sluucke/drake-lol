@@ -816,6 +816,8 @@
   flex: 1;
 }
 
+.mark, .title { pointer-events: none; }
+
 .hint {
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -838,6 +840,7 @@
 
 
 .body {
+  position: relative;
   display: flex;
   min-height: 0;
   flex: 1;
@@ -872,6 +875,14 @@
   color: #f0e6d2;
   border-left-color: #c8aa6e;
   background: linear-gradient(to right, rgba(200, 170, 110, 0.14), transparent);
+}
+.navitem[data-tour-active='true'] {
+  position: relative;
+  z-index: 5;
+  color: #f0e6d2;
+  border-left-color: #c8aa6e;
+  background: linear-gradient(to right, rgba(200, 170, 110, 0.28), transparent);
+  box-shadow: inset 0 0 0 1px rgba(200, 170, 110, 0.45), 0 0 18px rgba(200, 170, 110, 0.25);
 }
 
 .content {
@@ -1817,6 +1828,143 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   background: linear-gradient(to bottom, #1e2328, #3a2020);
   box-shadow: 0 0 8px 0 #c33c3c50;
 }
+
+.onboard-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 32px 24px 192px;
+  background: rgba(1, 10, 19, 0.78);
+  pointer-events: auto;
+}
+.onboard-layer[hidden] { display: none; }
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 420px;
+}
+.welcome-mark {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 10px;
+}
+.welcome-name {
+  font-family: ${DISPLAY};
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f0e6d2;
+}
+.welcome-copy {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #a09b8c;
+  margin: 10px 0 18px;
+  max-width: 36ch;
+}
+.welcome-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.whats-new {
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+}
+.whats-new .welcome-actions {
+  justify-content: flex-start;
+  margin-top: 18px;
+}
+.whats-new-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.whats-new-empty {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #a09b8c;
+  margin: 0;
+}
+.whats-new-link,
+.whats-new-title {
+  font-family: ${DISPLAY};
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f0e6d2;
+}
+.whats-new-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #c8aa6e;
+  cursor: pointer;
+  text-align: left;
+}
+.whats-new-link:hover { color: #f0e6d2; }
+.whats-new-body {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a09b8c;
+  margin: 4px 0 0;
+}
+
+.tour-card {
+  width: min(340px, 100%);
+  padding: 18px 20px;
+  background:
+    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(8, 30, 60, 0.55) 0%, transparent 58%),
+    #010a13;
+  border: 2px solid transparent;
+  border-image: linear-gradient(to bottom, #c8aa6d, #7a5c29);
+  border-image-slice: 1;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.7);
+  align-self: center;
+  margin-right: auto;
+}
+.tour-meta {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5c5b57;
+  margin-bottom: 8px;
+}
+.tour-title {
+  font-family: ${DISPLAY};
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f0e6d2;
+  margin: 0 0 6px;
+}
+.tour-body {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a09b8c;
+  margin: 0 0 16px;
+}
+.tour-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 `;
 
   // src/features/champSelectPuuid.js
@@ -2108,6 +2256,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     { id: "status", label: "Status" },
     { id: "profile", label: "Profile" },
     { id: "friends", label: "Friends" },
+    { id: "whats-new", label: "What's New" },
     { id: "settings", label: "Settings" }
   ];
   function renderShell() {
@@ -2139,12 +2288,64 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         <div class="body">
           <div class="nav" role="tablist">${nav}</div>
           <div class="content" id="content"></div>
+          <div class="onboard-layer" id="onboard-layer" hidden></div>
         </div>
 
         <div class="footer">
           <span id="host-label">\u2014</span>
           <span id="status">\u2014</span>
         </div>
+      </div>
+    </div>`;
+  }
+  function renderWelcome() {
+    return `
+    <div class="welcome">
+      <img class="welcome-mark" src="${DRAKE_ICON}" alt="" aria-hidden="true">
+      <div class="welcome-name">Drake</div>
+      <p class="welcome-copy">Tools that sit beside the client. A short tour covers the screens you will use most.</p>
+      <div class="welcome-actions">
+        <button type="button" class="hextech-btn" data-onboard="tour">Take the tour</button>
+        <button type="button" class="hextech-btn hextech-btn-muted" data-onboard="skip">Skip</button>
+      </div>
+    </div>`;
+  }
+  function renderWhatsNew(entry, { version } = {}) {
+    const ver = escapeHtml(version || entry?.version || "");
+    const items = Array.isArray(entry?.items) ? entry.items : [];
+    const list = items.length ? `<ul class="whats-new-list">${items.map(renderWhatsNewItem).join("")}</ul>` : `<p class="whats-new-empty">No notes for this version.</p>`;
+    return `
+    <div class="whats-new">
+      <h2 class="screen-title">What's New</h2>
+      <p class="screen-sub">${ver ? `Changes in v${ver}` : "Recent changes"}</p>
+      <div class="rule"></div>
+      ${list}
+      <div class="welcome-actions">
+        <button type="button" class="hextech-btn" data-onboard="dismiss-whats-new">Continue</button>
+      </div>
+    </div>`;
+  }
+  function renderWhatsNewItem(item) {
+    const title = escapeHtml(item.title);
+    const body = escapeHtml(item.body);
+    const screen = item.screen ? escapeHtml(item.screen) : "";
+    const heading = screen ? `<button type="button" class="whats-new-link" data-whats-new-screen="${screen}">${title}</button>` : `<span class="whats-new-title">${title}</span>`;
+    return `<li class="whats-new-item">${heading}<p class="whats-new-body">${body}</p></li>`;
+  }
+  function renderTourCard(step, { index, total } = {}) {
+    const title = escapeHtml(step?.title);
+    const body = escapeHtml(step?.body);
+    const current = Number(index) || 0;
+    const count = Number(total) || 0;
+    const nextLabel = current === count && count > 0 ? "Done" : "Next";
+    return `
+    <div class="tour-card">
+      <div class="tour-meta">${current} / ${count}</div>
+      <h3 class="tour-title">${title}</h3>
+      <p class="tour-body">${body}</p>
+      <div class="tour-actions">
+        <button type="button" class="hextech-btn" data-onboard="tour-next">${nextLabel}</button>
+        <button type="button" class="hextech-btn hextech-btn-muted" data-onboard="skip">Skip</button>
       </div>
     </div>`;
   }
@@ -2707,6 +2908,140 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     <div class="status-actions">
       <button class="hextech-btn" id="restart-client">Restart client</button>
     </div>`;
+  }
+
+  // src/ui/onboarding.js
+  var TOUR_STEPS = [
+    {
+      screen: "auto-accept",
+      title: "Auto Accept",
+      body: "Accept ready checks automatically, with an optional delay so you can still decline by hand."
+    },
+    {
+      screen: "queue",
+      title: "Queue",
+      body: "Champ-select tools: dodge helpers and optional in-client team reveal."
+    },
+    {
+      screen: "auto-pick",
+      title: "Auto Pick & Ban",
+      body: "Hover or instalock your picks, and ban a champion when the phase opens."
+    },
+    {
+      screen: "status",
+      title: "Status",
+      body: "Set a long status message and lock Online, Offline, Mobile, or Busy."
+    },
+    {
+      screen: "settings",
+      title: "Settings",
+      body: "Startup, updates, and client reload live here."
+    }
+  ];
+  function decideOpenMode({ onboardingDone, seenVersion, currentVersion }) {
+    if (!onboardingDone) return "welcome";
+    if (String(seenVersion || "") !== String(currentVersion || "")) return "whats-new";
+    return "default";
+  }
+  function markOnboardingPatch(currentVersion) {
+    return {
+      onboarding_done: true,
+      whats_new_seen_version: String(currentVersion || "")
+    };
+  }
+  function markWhatsNewSeenPatch(currentVersion) {
+    return { whats_new_seen_version: String(currentVersion || "") };
+  }
+  function initialScreenForMode(mode) {
+    if (mode === "whats-new") return "whats-new";
+    return "auto-accept";
+  }
+  function applyOpenMode(mode) {
+    return {
+      screen: initialScreenForMode(mode),
+      overlay: mode === "welcome" ? "welcome" : ""
+    };
+  }
+  function resolveWhatsNewTarget(screenId, screens) {
+    if (!screenId) return "auto-accept";
+    const ids = (screens || []).map((s) => s.id);
+    if (ids.includes(screenId)) return screenId;
+    return null;
+  }
+  function nextTourIndex(index, total) {
+    const next = Number(index) + 1;
+    return next < Number(total) ? next : -1;
+  }
+  async function withOnboardLock(lock, fn) {
+    if (lock.busy) return false;
+    lock.busy = true;
+    try {
+      await fn();
+      return true;
+    } finally {
+      lock.busy = false;
+    }
+  }
+  async function runWhatsNewDismiss(target, screens, { mark, go }) {
+    await mark();
+    const next = resolveWhatsNewTarget(target, screens);
+    if (next) await go(next);
+  }
+
+  // src/ui/whatsNew.js
+  var WHATS_NEW = [
+    {
+      version: "0.3.16",
+      items: [
+        {
+          title: "Welcome & What's New",
+          body: "First-time welcome tour and a changelog after updates. Reopen What's New anytime from the sidebar.",
+          screen: "whats-new"
+        },
+        {
+          title: "Reveal follows role swaps",
+          body: "In-client team reveal remaps names when players trade cells in champ select.",
+          screen: "queue"
+        },
+        {
+          title: "Ranked pool controls",
+          body: "Choose Solo+Flex, current queue, or any queue for recent games, plus sample size, last-5 pool, and fetch concurrency.",
+          screen: "queue"
+        },
+        {
+          title: "Pick WR on cards",
+          body: "Reveal cards show games and win rate for the champion they locked.",
+          screen: "queue"
+        },
+        {
+          title: "Champ select dodge",
+          body: "Optional in-client dodge button (on by default) from Queue settings.",
+          screen: "queue"
+        }
+      ]
+    }
+  ];
+  function compareSemver(a, b) {
+    const pa = String(a || "").split(".").map((n) => Number(n) || 0);
+    const pb = String(b || "").split(".").map((n) => Number(n) || 0);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i += 1) {
+      const d = (pa[i] || 0) - (pb[i] || 0);
+      if (d) return d < 0 ? -1 : 1;
+    }
+    return 0;
+  }
+  function pickWhatsNew(entries, version) {
+    const list = Array.isArray(entries) ? entries : [];
+    const exact = list.find((e) => e.version === version);
+    if (exact) return exact;
+    let best = null;
+    for (const e of list) {
+      if (compareSemver(e.version, version) <= 0) {
+        if (!best || compareSemver(e.version, best.version) > 0) best = e;
+      }
+    }
+    return best;
   }
 
   // src/features/status.js
@@ -5218,7 +5553,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let appVersion = cfg.version || "0.0.0";
     let updateUi = { phase: "idle" };
     let trayDown = false;
-    let screen = "auto-accept";
+    let openMode = decideOpenMode({
+      onboardingDone: !!settings.onboarding_done,
+      seenVersion: settings.whats_new_seen_version || "",
+      currentVersion: appVersion
+    });
+    const opened = applyOpenMode(openMode);
+    let screen = opened.screen;
+    let overlay = opened.overlay;
+    let tourIndex = -1;
+    let autoPrompted = false;
+    let pendingOnboard = null;
+    const onboardLock = { busy: false };
     let shadowRoot = null;
     let stopDodgeReposition = null;
     let stopSocialToggle = null;
@@ -5288,6 +5634,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (!shadowRoot) return;
         shadowRoot.getElementById("scrim").style.display = open ? "grid" : "none";
         syncSocialToggle(document, open);
+        if (open && !autoPrompted) autoPrompted = true;
       },
       onTeamRevealCardsToggle: () => {
         if (teamRevealDom) teamRevealDom.toggleCards();
@@ -5477,6 +5824,37 @@ button.bug-report-button[data-drake-toggle]:disabled {
       });
       teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
       if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
+      function paintOnboard() {
+        const layer = shadow.getElementById("onboard-layer");
+        if (!layer) return;
+        for (const item of shadow.querySelectorAll("[data-tour-active]")) {
+          item.removeAttribute("data-tour-active");
+        }
+        if (overlay === "welcome") {
+          layer.innerHTML = renderWelcome();
+          layer.hidden = false;
+          return;
+        }
+        if (overlay === "tour") {
+          const step = TOUR_STEPS[tourIndex];
+          if (!step) {
+            overlay = "";
+            layer.innerHTML = "";
+            layer.hidden = true;
+            return;
+          }
+          layer.innerHTML = renderTourCard(step, {
+            index: tourIndex + 1,
+            total: TOUR_STEPS.length
+          });
+          layer.hidden = false;
+          const navItem = shadow.querySelector(`[data-screen="${step.screen}"]`);
+          if (navItem) navItem.setAttribute("data-tour-active", "true");
+          return;
+        }
+        layer.innerHTML = "";
+        layer.hidden = true;
+      }
       function paint() {
         if (screen === "settings") {
           content.innerHTML = renderSettings(settings, {
@@ -5534,6 +5912,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
         } else if (screen === "status") {
           content.innerHTML = renderStatus(statusText, settings);
           updateCount();
+        } else if (screen === "whats-new") {
+          content.innerHTML = renderWhatsNew(pickWhatsNew(WHATS_NEW, appVersion), {
+            version: appVersion
+          });
         } else {
           content.innerHTML = renderAutoAccept(settings, {
             disabled: trayDown,
@@ -5545,6 +5927,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         for (const item of shadow.querySelectorAll("[data-screen]")) {
           item.setAttribute("aria-selected", String(item.dataset.screen === screen));
         }
+        paintOnboard();
       }
       function applyUpdateStatus(body) {
         if (body.status === "current") updateUi = { phase: "current" };
@@ -5567,10 +5950,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
         paint();
       }
       async function commit(patch, revert) {
-        const result = await client.save(patch);
+        const payload = pendingOnboard ? { ...pendingOnboard, ...patch } : patch;
+        const result = await client.save(payload);
         if (result.ok) {
           trayDown = false;
-          settings = { ...settings, ...patch };
+          settings = { ...settings, ...payload };
+          pendingOnboard = null;
           if (onSettingsChanged) onSettingsChanged(settings);
           return { ok: true };
         }
@@ -5582,17 +5967,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
         console.log(TAG, "could not save -", result.reason);
         return { ok: false, reason: result.reason };
       }
-      const BOX = { min: 120, max: Math.round(window.innerHeight * 0.46) };
-      const GRIP = 16;
-      function updateCount() {
-        const el = shadow.getElementById("status-count");
-        if (el) el.textContent = describeStatus(statusText);
-        autoSize(shadow.getElementById("status-text"), BOX);
-      }
-      shadow.querySelector(".nav").addEventListener("click", async (e) => {
-        const item = e.target.closest("[data-screen]");
-        if (!item) return;
-        screen = item.dataset.screen;
+      async function goToScreen(next) {
+        screen = next;
         if (screen === "status") statusText = await status.read();
         if ((screen === "auto-pick" || screen === "auto-ban") && champions.length === 0) {
           champions = await loadChampions(lcu2);
@@ -5615,7 +5991,84 @@ button.bug-report-button[data-drake-toggle]:disabled {
         }
         if (screen === "friends") friends = await loadFriends(lcu2);
         if (screen === "settings" && updateUi.phase === "idle") runUpdateCheck();
+      }
+      async function commitOnboard(patch) {
+        settings = { ...settings, ...patch };
+        pendingOnboard = { ...pendingOnboard, ...patch };
         paint();
+        return commit(patch, () => {
+        });
+      }
+      async function finishOnboarding(startTour) {
+        openMode = "default";
+        if (startTour) {
+          tourIndex = 0;
+          overlay = "tour";
+          screen = TOUR_STEPS[0].screen;
+        } else {
+          tourIndex = -1;
+          overlay = "";
+          screen = "auto-accept";
+        }
+        paint();
+        await goToScreen(screen);
+        await commitOnboard(markOnboardingPatch(appVersion));
+      }
+      async function stepTour() {
+        tourIndex = nextTourIndex(tourIndex, TOUR_STEPS.length);
+        if (tourIndex < 0) {
+          overlay = "";
+          screen = "auto-accept";
+        } else {
+          overlay = "tour";
+          screen = TOUR_STEPS[tourIndex].screen;
+        }
+        paint();
+        await goToScreen(screen);
+        paint();
+      }
+      async function dismissWhatsNew(target) {
+        openMode = "default";
+        await runWhatsNewDismiss(target, SCREENS, {
+          mark: () => commitOnboard(markWhatsNewSeenPatch(appVersion)),
+          go: async (next) => {
+            await goToScreen(next);
+            paint();
+          }
+        });
+      }
+      async function handleOnboard(action) {
+        await withOnboardLock(onboardLock, async () => {
+          if (action === "skip") {
+            await finishOnboarding(false);
+            return;
+          }
+          if (action === "tour") {
+            await finishOnboarding(true);
+            return;
+          }
+          if (action === "tour-next") {
+            await stepTour();
+          }
+        });
+      }
+      const BOX = { min: 120, max: Math.round(window.innerHeight * 0.46) };
+      const GRIP = 16;
+      function updateCount() {
+        const el = shadow.getElementById("status-count");
+        if (el) el.textContent = describeStatus(statusText);
+        autoSize(shadow.getElementById("status-text"), BOX);
+      }
+      shadow.querySelector(".nav").addEventListener("click", async (e) => {
+        const item = e.target.closest("[data-screen]");
+        if (!item) return;
+        await goToScreen(item.dataset.screen);
+        paint();
+      });
+      shadow.getElementById("onboard-layer").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-onboard]");
+        if (!btn || onboardLock.busy) return;
+        void handleOnboard(btn.dataset.onboard);
       });
       content.addEventListener("input", (e) => {
         if (e.target.id !== "status-text") return;
@@ -5666,6 +6119,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
         }
       });
       content.addEventListener("click", async (e) => {
+        const jump = e.target.closest("[data-whats-new-screen]");
+        if (jump) {
+          await withOnboardLock(onboardLock, () => dismissWhatsNew(jump.dataset.whatsNewScreen));
+          return;
+        }
+        if (e.target.closest('[data-onboard="dismiss-whats-new"]')) {
+          await withOnboardLock(onboardLock, () => dismissWhatsNew());
+          return;
+        }
         const applyPickToggle = (id) => {
           const previous = {
             auto_pick_champion_id: settings.auto_pick_champion_id,
@@ -5965,7 +6427,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         e.stopPropagation();
         void runDodge(e.currentTarget);
       });
-      const INTERACTIVE = ".navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .select-field, .slider";
+      const INTERACTIVE = ".navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .select-field, .slider, [data-onboard], [data-whats-new-screen]";
       shadow.addEventListener(
         "mouseover",
         (e) => {
