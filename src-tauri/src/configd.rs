@@ -62,6 +62,16 @@ pub struct Settings {
     pub auto_update: bool,
     #[serde(default = "off")]
     pub queue_team_reveal_in_client: bool,
+    #[serde(default = "on")]
+    pub queue_dodge_in_client: bool,
+    #[serde(default = "default_team_reveal_sample_size")]
+    pub queue_team_reveal_sample_size: u32,
+    #[serde(default = "default_team_reveal_recent_pool")]
+    pub queue_team_reveal_recent_pool: String,
+    #[serde(default = "default_team_reveal_last5_pool")]
+    pub queue_team_reveal_last5_pool: String,
+    #[serde(default = "default_team_reveal_fetch_concurrency")]
+    pub queue_team_reveal_fetch_concurrency: u32,
     #[serde(default = "empty_string")]
     pub profile_rank_tier: String,
     #[serde(default = "default_rank_division")]
@@ -115,6 +125,43 @@ fn default_rank_crystal() -> String {
     "IRON".into()
 }
 
+fn default_team_reveal_sample_size() -> u32 {
+    50
+}
+
+fn default_team_reveal_recent_pool() -> String {
+    "ranked_both".into()
+}
+
+fn default_team_reveal_last5_pool() -> String {
+    "current_queue".into()
+}
+
+fn default_team_reveal_fetch_concurrency() -> u32 {
+    1
+}
+
+fn normalize_team_reveal_sample_size(value: u32) -> u32 {
+    match value {
+        20 | 50 | 100 => value,
+        _ => default_team_reveal_sample_size(),
+    }
+}
+
+fn normalize_team_reveal_pool(value: String, fallback: &str) -> String {
+    match value.as_str() {
+        "ranked_both" | "current_queue" | "any" => value,
+        _ => fallback.into(),
+    }
+}
+
+fn normalize_team_reveal_fetch_concurrency(value: u32) -> u32 {
+    match value {
+        1 | 2 | 3 | 5 => value,
+        _ => default_team_reveal_fetch_concurrency(),
+    }
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -139,6 +186,11 @@ impl Default for Settings {
             auto_ban_champion_id: no_champion(),
             auto_update: on(),
             queue_team_reveal_in_client: off(),
+            queue_dodge_in_client: on(),
+            queue_team_reveal_sample_size: default_team_reveal_sample_size(),
+            queue_team_reveal_recent_pool: default_team_reveal_recent_pool(),
+            queue_team_reveal_last5_pool: default_team_reveal_last5_pool(),
+            queue_team_reveal_fetch_concurrency: default_team_reveal_fetch_concurrency(),
             profile_rank_tier: empty_string(),
             profile_rank_division: default_rank_division(),
             profile_rank_queue: default_rank_queue(),
@@ -345,6 +397,11 @@ pub struct SettingsPatch {
     pub auto_ban_champion_id: Option<u32>,
     pub auto_update: Option<bool>,
     pub queue_team_reveal_in_client: Option<bool>,
+    pub queue_dodge_in_client: Option<bool>,
+    pub queue_team_reveal_sample_size: Option<u32>,
+    pub queue_team_reveal_recent_pool: Option<String>,
+    pub queue_team_reveal_last5_pool: Option<String>,
+    pub queue_team_reveal_fetch_concurrency: Option<u32>,
     pub profile_rank_tier: Option<String>,
     pub profile_rank_division: Option<String>,
     pub profile_rank_queue: Option<String>,
@@ -387,6 +444,29 @@ impl SettingsPatch {
             queue_team_reveal_in_client: self
                 .queue_team_reveal_in_client
                 .unwrap_or(base.queue_team_reveal_in_client),
+            queue_dodge_in_client: self
+                .queue_dodge_in_client
+                .unwrap_or(base.queue_dodge_in_client),
+            queue_team_reveal_sample_size: normalize_team_reveal_sample_size(
+                self.queue_team_reveal_sample_size
+                    .unwrap_or(base.queue_team_reveal_sample_size),
+            ),
+            queue_team_reveal_recent_pool: normalize_team_reveal_pool(
+                self.queue_team_reveal_recent_pool
+                    .clone()
+                    .unwrap_or_else(|| base.queue_team_reveal_recent_pool.clone()),
+                "ranked_both",
+            ),
+            queue_team_reveal_last5_pool: normalize_team_reveal_pool(
+                self.queue_team_reveal_last5_pool
+                    .clone()
+                    .unwrap_or_else(|| base.queue_team_reveal_last5_pool.clone()),
+                "current_queue",
+            ),
+            queue_team_reveal_fetch_concurrency: normalize_team_reveal_fetch_concurrency(
+                self.queue_team_reveal_fetch_concurrency
+                    .unwrap_or(base.queue_team_reveal_fetch_concurrency),
+            ),
             profile_rank_tier: self
                 .profile_rank_tier
                 .clone()
@@ -597,6 +677,7 @@ mod tests {
         // Nothing automates the user's game until they ask for it.
         assert_eq!(Settings::default().auto_accept, false);
         assert_eq!(Settings::default().queue_team_reveal_in_client, false);
+        assert_eq!(Settings::default().queue_dodge_in_client, true);
     }
 
     #[test]
