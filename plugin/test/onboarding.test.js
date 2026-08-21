@@ -8,6 +8,8 @@ import {
   applyOpenMode,
   resolveWhatsNewTarget,
   nextTourIndex,
+  withOnboardLock,
+  runWhatsNewDismiss,
 } from '../src/ui/onboarding.js';
 
 describe('decideOpenMode', () => {
@@ -116,5 +118,70 @@ describe('nextTourIndex', () => {
   });
   it('ends after the last step', () => {
     expect(nextTourIndex(4, 5)).toBe(-1);
+  });
+});
+
+describe('withOnboardLock', () => {
+  it('skips a second action while the first is in flight', async () => {
+    const lock = { busy: false };
+    let started = 0;
+    let finished = 0;
+    let release;
+    const first = withOnboardLock(lock, async () => {
+      started += 1;
+      await new Promise((resolve) => {
+        release = resolve;
+      });
+      finished += 1;
+    });
+    const second = withOnboardLock(lock, async () => {
+      started += 1;
+      finished += 1;
+    });
+    expect(started).toBe(1);
+    expect(await second).toBe(false);
+    release();
+    expect(await first).toBe(true);
+    expect(started).toBe(1);
+    expect(finished).toBe(1);
+  });
+
+  it('releases the lock after the action throws', async () => {
+    const lock = { busy: false };
+    await expect(
+      withOnboardLock(lock, async () => {
+        throw new Error('fail');
+      }),
+    ).rejects.toThrow('fail');
+    expect(lock.busy).toBe(false);
+    expect(await withOnboardLock(lock, async () => {})).toBe(true);
+  });
+});
+
+describe('runWhatsNewDismiss', () => {
+  it('marks seen before navigating', async () => {
+    const order = [];
+    await runWhatsNewDismiss('queue', [{ id: 'queue' }], {
+      mark: async () => {
+        order.push('mark');
+      },
+      go: async (screen) => {
+        order.push(screen);
+      },
+    });
+    expect(order).toEqual(['mark', 'queue']);
+  });
+
+  it('marks seen even when the jump target is unknown', async () => {
+    const order = [];
+    await runWhatsNewDismiss('missing', [{ id: 'queue' }], {
+      mark: async () => {
+        order.push('mark');
+      },
+      go: async (screen) => {
+        order.push(screen);
+      },
+    });
+    expect(order).toEqual(['mark']);
   });
 });

@@ -26,8 +26,9 @@ import {
   markWhatsNewSeenPatch,
   TOUR_STEPS,
   applyOpenMode,
-  resolveWhatsNewTarget,
   nextTourIndex,
+  withOnboardLock,
+  runWhatsNewDismiss,
 } from './onboarding.js';
 import { WHATS_NEW, pickWhatsNew } from './whatsNew.js';
 import { makeStatus } from '../features/status.js';
@@ -85,6 +86,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let tourIndex = -1;
   let autoPrompted = false;
   let pendingOnboard = null;
+  const onboardLock = { busy: false };
   let shadowRoot = null;
   let stopDodgeReposition = null;
   let stopSocialToggle = null;
@@ -516,12 +518,14 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       if (startTour) {
         tourIndex = 0;
         overlay = 'tour';
-        await goToScreen(TOUR_STEPS[0].screen);
+        screen = TOUR_STEPS[0].screen;
       } else {
         tourIndex = -1;
         overlay = '';
-        await goToScreen('auto-accept');
+        screen = 'auto-accept';
       }
+      paint();
+      await goToScreen(screen);
       await commitOnboard(markOnboardingPatch(appVersion));
     }
 
@@ -529,37 +533,41 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       tourIndex = nextTourIndex(tourIndex, TOUR_STEPS.length);
       if (tourIndex < 0) {
         overlay = '';
-        await goToScreen('auto-accept');
+        screen = 'auto-accept';
       } else {
         overlay = 'tour';
-        await goToScreen(TOUR_STEPS[tourIndex].screen);
+        screen = TOUR_STEPS[tourIndex].screen;
       }
+      paint();
+      await goToScreen(screen);
       paint();
     }
 
     async function dismissWhatsNew(target) {
       openMode = 'default';
-      const next = resolveWhatsNewTarget(target, SCREENS);
-      if (next) await goToScreen(next);
-      await commitOnboard(markWhatsNewSeenPatch(appVersion));
+      await runWhatsNewDismiss(target, SCREENS, {
+        mark: () => commitOnboard(markWhatsNewSeenPatch(appVersion)),
+        go: async (next) => {
+          await goToScreen(next);
+          paint();
+        },
+      });
     }
 
     async function handleOnboard(action) {
-      if (action === 'skip') {
-        await finishOnboarding(false);
-        return;
-      }
-      if (action === 'tour') {
-        await finishOnboarding(true);
-        return;
-      }
-      if (action === 'tour-next') {
-        await stepTour();
-        return;
-      }
-      if (action === 'dismiss-whats-new') {
-        await dismissWhatsNew();
-      }
+      await withOnboardLock(onboardLock, async () => {
+        if (action === 'skip') {
+          await finishOnboarding(false);
+          return;
+        }
+        if (action === 'tour') {
+          await finishOnboarding(true);
+          return;
+        }
+        if (action === 'tour-next') {
+          await stepTour();
+        }
+      });
     }
 
     
@@ -582,7 +590,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
 
     shadow.getElementById('onboard-layer').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-onboard]');
-      if (!btn) return;
+      if (!btn || onboardLock.busy) return;
       void handleOnboard(btn.dataset.onboard);
     });
 
@@ -662,11 +670,11 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     content.addEventListener('click', async (e) => {
       const jump = e.target.closest('[data-whats-new-screen]');
       if (jump) {
-        await dismissWhatsNew(jump.dataset.whatsNewScreen);
+        await withOnboardLock(onboardLock, () => dismissWhatsNew(jump.dataset.whatsNewScreen));
         return;
       }
       if (e.target.closest('[data-onboard="dismiss-whats-new"]')) {
-        await dismissWhatsNew();
+        await withOnboardLock(onboardLock, () => dismissWhatsNew());
         return;
       }
 
