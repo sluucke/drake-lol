@@ -121,6 +121,8 @@ export const CSS = `
   flex: 1;
 }
 
+.mark, .title { pointer-events: none; }
+
 .hint {
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -143,6 +145,7 @@ export const CSS = `
 
 
 .body {
+  position: relative;
   display: flex;
   min-height: 0;
   flex: 1;
@@ -177,6 +180,14 @@ export const CSS = `
   color: #f0e6d2;
   border-left-color: #c8aa6e;
   background: linear-gradient(to right, rgba(200, 170, 110, 0.14), transparent);
+}
+.navitem[data-tour-active='true'] {
+  position: relative;
+  z-index: 5;
+  color: #f0e6d2;
+  border-left-color: #c8aa6e;
+  background: linear-gradient(to right, rgba(200, 170, 110, 0.28), transparent);
+  box-shadow: inset 0 0 0 1px rgba(200, 170, 110, 0.45), 0 0 18px rgba(200, 170, 110, 0.25);
 }
 
 .content {
@@ -1107,5 +1118,142 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   color: #ff6b6b;
   background: linear-gradient(to bottom, #1e2328, #3a2020);
   box-shadow: 0 0 8px 0 #c33c3c50;
+}
+
+.onboard-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 32px 24px 192px;
+  background: rgba(1, 10, 19, 0.78);
+  pointer-events: auto;
+}
+.onboard-layer[hidden] { display: none; }
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 420px;
+}
+.welcome-mark {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 10px;
+}
+.welcome-name {
+  font-family: ${DISPLAY};
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f0e6d2;
+}
+.welcome-copy {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #a09b8c;
+  margin: 10px 0 18px;
+  max-width: 36ch;
+}
+.welcome-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.whats-new {
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+}
+.whats-new .welcome-actions {
+  justify-content: flex-start;
+  margin-top: 18px;
+}
+.whats-new-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.whats-new-empty {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #a09b8c;
+  margin: 0;
+}
+.whats-new-link,
+.whats-new-title {
+  font-family: ${DISPLAY};
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f0e6d2;
+}
+.whats-new-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #c8aa6e;
+  cursor: pointer;
+  text-align: left;
+}
+.whats-new-link:hover { color: #f0e6d2; }
+.whats-new-body {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a09b8c;
+  margin: 4px 0 0;
+}
+
+.tour-card {
+  width: min(340px, 100%);
+  padding: 18px 20px;
+  background:
+    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(8, 30, 60, 0.55) 0%, transparent 58%),
+    #010a13;
+  border: 2px solid transparent;
+  border-image: linear-gradient(to bottom, #c8aa6d, #7a5c29);
+  border-image-slice: 1;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.7);
+  align-self: center;
+  margin-right: auto;
+}
+.tour-meta {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5c5b57;
+  margin-bottom: 8px;
+}
+.tour-title {
+  font-family: ${DISPLAY};
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f0e6d2;
+  margin: 0 0 6px;
+}
+.tour-body {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a09b8c;
+  margin: 0 0 16px;
+}
+.tour-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 `;

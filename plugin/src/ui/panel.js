@@ -14,6 +14,7 @@ export const SCREENS = [
   { id: 'status', label: 'Status' },
   { id: 'profile', label: 'Profile' },
   { id: 'friends', label: 'Friends' },
+  { id: 'whats-new', label: "What's New" },
   { id: 'settings', label: 'Settings' },
 ];
 
@@ -51,12 +52,74 @@ export function renderShell() {
         <div class="body">
           <div class="nav" role="tablist">${nav}</div>
           <div class="content" id="content"></div>
+          <div class="onboard-layer" id="onboard-layer" hidden></div>
         </div>
 
         <div class="footer">
           <span id="host-label">—</span>
           <span id="status">—</span>
         </div>
+      </div>
+    </div>`;
+}
+
+export function renderWelcome() {
+  return `
+    <div class="welcome">
+      <img class="welcome-mark" src="${DRAKE_ICON}" alt="" aria-hidden="true">
+      <div class="welcome-name">Drake</div>
+      <p class="welcome-copy">Tools that sit beside the client. A short tour covers the screens you will use most.</p>
+      <div class="welcome-actions">
+        <button type="button" class="hextech-btn" data-onboard="tour">Take the tour</button>
+        <button type="button" class="hextech-btn hextech-btn-muted" data-onboard="skip">Skip</button>
+      </div>
+    </div>`;
+}
+
+export function renderWhatsNew(entry, { version } = {}) {
+  const ver = escapeHtml(version || entry?.version || '');
+  const items = Array.isArray(entry?.items) ? entry.items : [];
+  const list = items.length
+    ? `<ul class="whats-new-list">${items.map(renderWhatsNewItem).join('')}</ul>`
+    : `<p class="whats-new-empty">No notes for this version.</p>`;
+
+  return `
+    <div class="whats-new">
+      <h2 class="screen-title">What's New</h2>
+      <p class="screen-sub">${ver ? `Changes in v${ver}` : 'Recent changes'}</p>
+      <div class="rule"></div>
+      ${list}
+      <div class="welcome-actions">
+        <button type="button" class="hextech-btn" data-onboard="dismiss-whats-new">Continue</button>
+      </div>
+    </div>`;
+}
+
+function renderWhatsNewItem(item) {
+  const title = escapeHtml(item.title);
+  const body = escapeHtml(item.body);
+  const screen = item.screen ? escapeHtml(item.screen) : '';
+  const heading = screen
+    ? `<button type="button" class="whats-new-link" data-whats-new-screen="${screen}">${title}</button>`
+    : `<span class="whats-new-title">${title}</span>`;
+  return `<li class="whats-new-item">${heading}<p class="whats-new-body">${body}</p></li>`;
+}
+
+export function renderTourCard(step, { index, total } = {}) {
+  const title = escapeHtml(step?.title);
+  const body = escapeHtml(step?.body);
+  const current = Number(index) || 0;
+  const count = Number(total) || 0;
+  const nextLabel = current === count && count > 0 ? 'Done' : 'Next';
+
+  return `
+    <div class="tour-card">
+      <div class="tour-meta">${current} / ${count}</div>
+      <h3 class="tour-title">${title}</h3>
+      <p class="tour-body">${body}</p>
+      <div class="tour-actions">
+        <button type="button" class="hextech-btn" data-onboard="tour-next">${nextLabel}</button>
+        <button type="button" class="hextech-btn hextech-btn-muted" data-onboard="skip">Skip</button>
       </div>
     </div>`;
 }
