@@ -66,3 +66,20 @@ export function nextTourIndex(index, total) {
   const next = Number(index) + 1;
   return next < Number(total) ? next : -1;
 }
+
+export async function withOnboardLock(lock, fn) {
+  if (lock.busy) return false;
+  lock.busy = true;
+  try {
+    await fn();
+    return true;
+  } finally {
+    lock.busy = false;
+  }
+}
+
+export async function runWhatsNewDismiss(target, screens, { mark, go }) {
+  await mark();
+  const next = resolveWhatsNewTarget(target, screens);
+  if (next) await go(next);
+}
