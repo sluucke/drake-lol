@@ -88,7 +88,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let screen = opened.screen;
   let overlay = opened.overlay;
   let tourIndex = -1;
-  let autoPrompted = false;
   let pendingOnboard = null;
   const onboardLock = { busy: false };
   let shadowRoot = null;
@@ -167,7 +166,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       if (!shadowRoot) return;
       shadowRoot.getElementById('scrim').style.display = open ? 'grid' : 'none';
       syncSocialToggle(document, open);
-      if (open && !autoPrompted) autoPrompted = true;
     },
     onTeamRevealCardsToggle: () => {
       if (teamRevealDom) teamRevealDom.toggleCards();
@@ -550,7 +548,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         if (profileTab === 'banner' && skins.length === 0) skins = await loadSkins(lcu);
       }
       if (screen === 'friends') friends = await loadFriends(lcu);
-      if (screen === 'settings' && updateUi.phase === 'idle') runUpdateCheck();
+      if (screen === 'settings' && overlay !== 'tour' && updateUi.phase === 'idle') runUpdateCheck();
     }
 
     async function commitOnboard(patch) {
