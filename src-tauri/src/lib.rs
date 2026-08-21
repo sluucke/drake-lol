@@ -110,7 +110,7 @@ pub fn run() {
             // startup. It is surfaced in the tray tooltip below.
             let install_error = check_vendored_loader(app.handle()).err();
 
-            let state = Arc::new(configd::ConfigdState::new(CONFIGD_PORT));
+            let state = Arc::new(configd::ConfigdState::new(CONFIGD_PORT, env!("CARGO_PKG_VERSION")));
 
             let version_label = MenuItem::with_id(
                 app,
