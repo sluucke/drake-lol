@@ -217,9 +217,17 @@ pub fn load() -> Settings {
 }
 
 pub fn load_from_migrating(path: &Path, current_version: &str) -> Settings {
-    let existed = path.exists();
-    let mut s = load_from(path);
-    if existed && s.whats_new_seen_version.is_empty() {
+    let Ok(raw) = std::fs::read_to_string(path) else {
+        return Settings::default();
+    };
+    let mut s: Settings = serde_json::from_str(&raw).unwrap_or_default();
+    let pre_onboarding = serde_json::from_str::<serde_json::Value>(&raw)
+        .ok()
+        .map(|v| {
+            v.get("onboarding_done").is_none() && v.get("whats_new_seen_version").is_none()
+        })
+        .unwrap_or(false);
+    if pre_onboarding {
         s.onboarding_done = true;
         s.whats_new_seen_version = current_version.to_string();
         let _ = save_to(path, &s);
@@ -757,6 +765,21 @@ mod tests {
         assert_eq!(s.onboarding_done, false);
         assert_eq!(s.whats_new_seen_version, "");
         assert!(!path.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn migrating_load_preserves_explicit_incomplete_onboarding() {
+        let dir = unique_scratch("incomplete");
+        let path = dir.join("settings.json");
+        std::fs::write(
+            &path,
+            r#"{"onboarding_done":false,"whats_new_seen_version":""}"#,
+        )
+        .unwrap();
+        let s = load_from_migrating(&path, "0.3.16");
+        assert_eq!(s.onboarding_done, false);
+        assert_eq!(s.whats_new_seen_version, "");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
