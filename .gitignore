@@ -6,3 +6,5 @@ node_modules
 # 4,500-line diff.
 /src-tauri/gen/schemas
 /docs
+
+.worktrees/
