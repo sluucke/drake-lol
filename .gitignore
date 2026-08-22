@@ -5,6 +5,8 @@ node_modules
 # template ignores it; tracking it turned every tauri.conf.json edit into a
 # 4,500-line diff.
 /src-tauri/gen/schemas
-/docs
+/docs/*
+!/docs/assets/
+!/docs/assets/**
 
 .worktrees/
