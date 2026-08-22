@@ -2,6 +2,7 @@ use axum::http::Method;
 use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -45,12 +46,9 @@ pub struct Settings {
     pub presence_availability: String,
     #[serde(default = "off")]
     pub auto_pick: bool,
-    /// Champion the pick phase should choose. 0 means none chosen.
-    #[serde(default = "no_champion")]
-    pub auto_pick_champion_id: u32,
-    /// Fallback if the first champion is banned or already taken. 0 means none.
-    #[serde(default = "no_champion")]
-    pub auto_pick_champion_id_2: u32,
+    /// Up to two champion ids per assigned role (TOP, JUNGLE, MIDDLE, BOTTOM, UTILITY).
+    #[serde(default = "empty_auto_pick_by_role")]
+    pub auto_pick_by_role: HashMap<String, Vec<u32>>,
     /// Lock the pick outright instead of only hovering it.
     #[serde(default = "off")]
     pub insta_lock: bool,
@@ -88,6 +86,34 @@ pub struct Settings {
 
 fn no_champion() -> u32 {
     0
+}
+
+fn empty_auto_pick_by_role() -> HashMap<String, Vec<u32>> {
+    HashMap::new()
+}
+
+const AUTO_PICK_ROLES: [&str; 5] = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"];
+
+fn normalize_auto_pick_by_role(raw: HashMap<String, Vec<u32>>) -> HashMap<String, Vec<u32>> {
+    let mut out = HashMap::new();
+    for role in AUTO_PICK_ROLES {
+        let Some(list) = raw.get(role) else { continue };
+        let mut cleaned = Vec::new();
+        for id in list {
+            let id = *id;
+            if id == 0 || cleaned.contains(&id) {
+                continue;
+            }
+            cleaned.push(id);
+            if cleaned.len() == 2 {
+                break;
+            }
+        }
+        if !cleaned.is_empty() {
+            out.insert(role.to_string(), cleaned);
+        }
+    }
+    out
 }
 
 /// The client's ready check expires on its own, so a delay past that would
@@ -183,8 +209,7 @@ impl Default for Settings {
             unlock_status_message: on(),
             presence_availability: empty_string(),
             auto_pick: off(),
-            auto_pick_champion_id: no_champion(),
-            auto_pick_champion_id_2: no_champion(),
+            auto_pick_by_role: empty_auto_pick_by_role(),
             insta_lock: off(),
             auto_ban: off(),
             auto_ban_champion_id: no_champion(),
@@ -425,8 +450,7 @@ pub struct SettingsPatch {
     pub unlock_status_message: Option<bool>,
     pub presence_availability: Option<String>,
     pub auto_pick: Option<bool>,
-    pub auto_pick_champion_id: Option<u32>,
-    pub auto_pick_champion_id_2: Option<u32>,
+    pub auto_pick_by_role: Option<HashMap<String, Vec<u32>>>,
     pub insta_lock: Option<bool>,
     pub auto_ban: Option<bool>,
     pub auto_ban_champion_id: Option<u32>,
@@ -466,12 +490,11 @@ impl SettingsPatch {
                     .unwrap_or_else(|| base.presence_availability.clone()),
             ),
             auto_pick: self.auto_pick.unwrap_or(base.auto_pick),
-            auto_pick_champion_id: self
-                .auto_pick_champion_id
-                .unwrap_or(base.auto_pick_champion_id),
-            auto_pick_champion_id_2: self
-                .auto_pick_champion_id_2
-                .unwrap_or(base.auto_pick_champion_id_2),
+            auto_pick_by_role: normalize_auto_pick_by_role(
+                self.auto_pick_by_role
+                    .clone()
+                    .unwrap_or_else(|| base.auto_pick_by_role.clone()),
+            ),
             insta_lock: self.insta_lock.unwrap_or(base.insta_lock),
             auto_ban: self.auto_ban.unwrap_or(base.auto_ban),
             auto_ban_champion_id: self
@@ -829,7 +852,7 @@ mod tests {
         assert_eq!(s.auto_accept, true, "the setting they had must survive");
         assert_eq!(s.run_at_startup, true);
         assert_eq!(s.auto_reload_on_open, false);
-        assert_eq!(s.auto_pick_champion_id_2, 0);
+        assert_eq!(s.auto_pick_by_role.is_empty(), true);
         assert_eq!(s.auto_update, true);
         assert_eq!(s.queue_team_reveal_in_client, false);
         assert_eq!(s.onboarding_done, false);

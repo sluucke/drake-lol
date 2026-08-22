@@ -5,6 +5,20 @@ import { iconUrl } from '../features/champions.js';
 import { TIERS, DIVISIONS, QUEUES, CRYSTALS, AVAILABILITIES } from '../features/presence.js';
 import { RANK_ICONS, HASHTAG } from './assets.js';
 import { visibleWindow } from './virtualGrid.js';
+import {
+  AUTO_PICK_ROLES,
+  autoPickOrder,
+  normalizeAutoPickByRole,
+  toggleAutoPickChampion,
+} from '../features/autoPickRoles.js';
+import { roleIconUrl } from './roleIcons.js';
+
+export {
+  AUTO_PICK_ROLES,
+  autoPickOrder,
+  normalizeAutoPickByRole,
+  toggleAutoPickChampion,
+} from '../features/autoPickRoles.js';
 
 export const SCREENS = [
   { id: 'auto-accept', label: 'Auto Accept' },
@@ -316,37 +330,9 @@ export function championName(list, id) {
   return found ? found.name : 'none chosen';
 }
 
-export function autoPickOrder(settings) {
-  const first = Number(settings.auto_pick_champion_id) || 0;
-  const second = Number(settings.auto_pick_champion_id_2) || 0;
-  return [first, second].filter((id) => id > 0);
-}
-
-export function toggleAutoPickChampion(settings, championId) {
-  const id = Number(championId) || 0;
-  if (!id) return settings;
-
-  let first = Number(settings.auto_pick_champion_id) || 0;
-  let second = Number(settings.auto_pick_champion_id_2) || 0;
-
-  if (first === id) {
-    return { ...settings, auto_pick_champion_id: second, auto_pick_champion_id_2: 0 };
-  }
-  if (second === id) {
-    return { ...settings, auto_pick_champion_id_2: 0 };
-  }
-  if (!first) {
-    return { ...settings, auto_pick_champion_id: id };
-  }
-  if (!second) {
-    return { ...settings, auto_pick_champion_id_2: id };
-  }
-  return { ...settings, auto_pick_champion_id_2: id };
-}
-
 function renderPickOrderSummary(list, pickIds) {
   if (pickIds.length === 0) {
-    return '<p class="pick-order pick-order-empty">Click up to 2 champions — first is your pick, second is the backup.</p>';
+    return '<p class="pick-order pick-order-empty">Click up to 2 champions for this role — first is your pick, second is the backup.</p>';
   }
 
   const items = pickIds
@@ -362,6 +348,24 @@ function renderPickOrderSummary(list, pickIds) {
     .join('');
 
   return `<div class="pick-order">${items}</div>`;
+}
+
+function renderRoleTabs(byRole, activeRole) {
+  return `
+    <div class="role-tabs" role="tablist" aria-label="Pick roles">
+      ${AUTO_PICK_ROLES.map((role) => {
+        const count = (byRole[role.id] || []).length;
+        const selected = role.id === activeRole;
+        const icon = roleIconUrl(role.id);
+        return `
+        <button class="role-tab${selected ? ' role-tab-on' : ''}" type="button" role="tab"
+                data-auto-pick-role="${role.id}" aria-selected="${selected}" title="${role.label}">
+          ${icon ? `<img class="role-tab-icon" src="${icon}" alt="">` : ''}
+          <span class="role-tab-label">${role.label}</span>
+          <span class="role-tab-count">${count}</span>
+        </button>`;
+      }).join('')}
+    </div>`;
 }
 
 export function renderOrderedChampionPicker({ list, query, pickIds, compact }) {
@@ -385,13 +389,17 @@ export function renderOrderedChampionPicker({ list, query, pickIds, compact }) {
     <div class="champ-grid${compact ? ' champ-grid-sm' : ''}">${cells || '<p class="check-help">No champions match.</p>'}</div>`;
 }
 
-export function renderAutoPick(settings, { disabled, list, allList, query }) {
-  const pickIds = autoPickOrder(settings);
+export function renderAutoPick(settings, { disabled, list, allList, query, activeRole = 'TOP' }) {
+  const role = String(activeRole || 'TOP').toUpperCase();
+  const byRole = normalizeAutoPickByRole(settings.auto_pick_by_role);
+  const pickIds = autoPickOrder(settings, role);
   const names = allList || list;
+  const roleMeta = AUTO_PICK_ROLES.find((entry) => entry.id === role);
+  const roleLabel = roleMeta?.label || role;
 
   return `
     <h2 class="screen-title">Auto Pick</h2>
-    <p class="screen-sub">Chooses your champion when your turn comes round. If the first is banned or taken, the second is used.</p>
+    <p class="screen-sub">Up to 2 champions per role. Picks wait until your lane is assigned — Fill does nothing.</p>
     <div class="rule"></div>
 
     ${renderCheckRow({
@@ -410,8 +418,9 @@ export function renderAutoPick(settings, { disabled, list, allList, query }) {
     })}
 
     <div class="field ${settings.auto_pick ? '' : 'field-off'}">
+      ${renderRoleTabs(byRole, role)}
       <div class="field-head">
-        <span class="field-label">Champions</span>
+        <span class="field-label">${roleLabel}</span>
         <span class="field-value">${pickIds.length ? `${pickIds.length} selected` : 'none chosen'}</span>
       </div>
       ${renderPickOrderSummary(names, pickIds)}

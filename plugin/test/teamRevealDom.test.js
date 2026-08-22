@@ -446,6 +446,105 @@ describe('teamRevealDom', () => {
     expect(rows[0]._label.textContent).toBe('RealOne#TAG (1W/0L · 100%)');
   });
 
+  it('scrubs leftover ally names after disable/re-enable when the next phase is champ select', async () => {
+    // In-game idle tears the phase subscription down and clears lastPhase. The
+    // exit cleanup already missed the detached rows, so the next champ select's
+    // first phase event has no previous phase to compare — without a pending
+    // scrub those reused nodes keep the previous lobby's revealed names.
+    const rows = [makeRow(0, 'MaskedOne')];
+    let visible = rows;
+    const doc = { querySelectorAll: () => visible };
+    const loadSnapshot = vi.fn(async () => [
+      { cellId: 0, riotId: 'OldAlly#TAG', wins: 1, losses: 0, winRate: 100 },
+    ]);
+    let phase;
+    const subscribe = vi.fn((route, fn) => {
+      phase = fn;
+      return () => {};
+    });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    expect(rows[0]._label.textContent).toBe('OldAlly#TAG (1W/0L · 100%)');
+
+    visible = [];
+    ctl.setEnabled(false);
+    ctl.setEnabled(true);
+    visible = rows;
+    phase('"ChampSelect"');
+
+    expect(rows[0]._label.textContent).toBe('MaskedOne');
+  });
+
+  it('does not overwrite client names when scrubbing a reused row the client already rewrote', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    let visible = rows;
+    const doc = { querySelectorAll: () => visible };
+    const loadSnapshot = vi.fn(async () => [
+      { cellId: 0, riotId: 'OldAlly#TAG', wins: 1, losses: 0, winRate: 100 },
+    ]);
+    let phase;
+    const subscribe = vi.fn((route, fn) => {
+      phase = fn;
+      return () => {};
+    });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+
+    visible = [];
+    ctl.setEnabled(false);
+    ctl.setEnabled(true);
+    rows[0]._label.textContent = 'FreshMask';
+    visible = rows;
+    phase('"ChampSelect"');
+
+    expect(rows[0]._label.textContent).toBe('FreshMask');
+    expect(rows[0]._label.dataset.drakeTeamRevealApplied).toBeUndefined();
+    expect(rows[0]._label.dataset.drakeTeamRevealOriginal).toBeUndefined();
+  });
+
+  it('still restores our reveal markup when the reused row was not rewritten by the client', async () => {
+    const label = {
+      textContent: 'MaskedOne',
+      innerHTML: 'MaskedOne',
+      dataset: {},
+      style: { cssText: '' },
+      querySelector(sel) {
+        if (sel === '.drake-reveal-name' && String(this.innerHTML).includes('drake-reveal-name')) {
+          return { textContent: 'OldAlly#TAG' };
+        }
+        return null;
+      },
+    };
+    const rows = [{ dataset: { cellId: '0' }, querySelector: () => label, _label: label }];
+    let visible = rows;
+    const doc = { querySelectorAll: () => visible };
+    const loadSnapshot = vi.fn(async () => [
+      { cellId: 0, riotId: 'OldAlly#TAG', wins: 1, losses: 0, winRate: 100, matchesUsed: 1 },
+    ]);
+    let phase;
+    const subscribe = vi.fn((route, fn) => {
+      phase = fn;
+      return () => {};
+    });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    expect(label.innerHTML).toContain('drake-reveal-name');
+
+    visible = [];
+    phase('"InProgress"');
+    visible = rows;
+    phase('"ChampSelect"');
+
+    expect(label.innerHTML).toBe('MaskedOne');
+    expect(label.dataset.drakeTeamRevealApplied).toBeUndefined();
+  });
+
   it('subscribes once and unsubscribes on teardown', () => {
     const stop = vi.fn();
     const subscribe = vi.fn(() => stop);

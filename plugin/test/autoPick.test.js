@@ -3,6 +3,7 @@ import { decideAction, startChampSelectAutomation } from '../src/features/autoPi
 import { SESSION_ROUTE } from '../src/features/champSelect.js';
 import { GAMEFLOW_PHASE_ROUTE } from '../src/features/dodge.js';
 import { renderAutoPick, autoPickOrder, toggleAutoPickChampion } from '../src/ui/panel.js';
+import { emptyAutoPickByRole } from '../src/features/autoPickRoles.js';
 
 const act = (over = {}) => ({
   id: 1,
@@ -13,12 +14,24 @@ const act = (over = {}) => ({
   type: 'pick',
   ...over,
 });
-const session = (actions, extra = {}) => ({ localPlayerCellId: 0, actions: [actions], ...extra });
+
+const session = (actions, extra = {}) => ({
+  localPlayerCellId: 0,
+  actions: [actions],
+  myTeam: [{ cellId: 0, assignedPosition: 'MIDDLE' }],
+  ...extra,
+});
+
+const rolePicks = (over = {}) => ({ ...emptyAutoPickByRole(), ...over });
+
+const mid = (...ids) => ({
+  auto_pick: true,
+  auto_pick_by_role: rolePicks({ MIDDLE: ids }),
+});
 
 const settings = (over = {}) => ({
   auto_pick: false,
-  auto_pick_champion_id: 0,
-  auto_pick_champion_id_2: 0,
+  auto_pick_by_role: rolePicks(),
   insta_lock: false,
   auto_ban: false,
   auto_ban_champion_id: 0,
@@ -31,19 +44,14 @@ describe('decideAction', () => {
   });
 
   it('hovers the pick when auto pick is on and insta lock is off', () => {
-
-
-    const d = decideAction(
-      session([act({ id: 5 })]),
-      settings({ auto_pick: true, auto_pick_champion_id: 103 }),
-    );
+    const d = decideAction(session([act({ id: 5 })]), settings(mid(103)));
     expect(d).toEqual({ actionId: 5, championId: 103, completed: false, kind: 'pick' });
   });
 
   it('locks the pick immediately when insta lock is on', () => {
     const d = decideAction(
       session([act({ id: 5 })]),
-      settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+      settings({ ...mid(103), insta_lock: true }),
     );
     expect(d.completed).toBe(true);
   });
@@ -60,9 +68,6 @@ describe('decideAction', () => {
   });
 
   it('does not try to ban a champion that is already banned', () => {
-    // The client refuses a ban on a champion that is already gone, and with a
-    // single configured target there is nothing else to try, so asking at all
-    // just means asking again every poll for the rest of the ban phase.
     expect(
       decideAction(
         session([act({ id: 8, type: 'ban' })], { bans: { theirTeamBans: [67] } }),
@@ -72,12 +77,9 @@ describe('decideAction', () => {
   });
 
   it('hovers without locking during planning even when the action is in progress', () => {
-    // Planning is the declare phase: the client accepts a hover and accepts the
-    // completion call with a 204, then leaves the action uncompleted. Asking to
-    // lock there just retries forever against a client that will never agree.
     const d = decideAction(
       session([act({ id: 5, isInProgress: true })], { timer: { phase: 'PLANNING' } }),
-      settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+      settings({ ...mid(103), insta_lock: true }),
     );
     expect(d).toEqual({ actionId: 5, championId: 103, completed: false, kind: 'pick' });
   });
@@ -85,7 +87,7 @@ describe('decideAction', () => {
   it('locks once planning gives way to the real pick turn', () => {
     const d = decideAction(
       session([act({ id: 5, isInProgress: true })], { timer: { phase: 'BAN_PICK' } }),
-      settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+      settings({ ...mid(103), insta_lock: true }),
     );
     expect(d.completed).toBe(true);
   });
@@ -99,12 +101,10 @@ describe('decideAction', () => {
   });
 
   it('bans before it picks when both are pending', () => {
-
     const d = decideAction(
       session([act({ id: 8, type: 'ban' }), act({ id: 9, type: 'pick' })]),
       settings({
-        auto_pick: true,
-        auto_pick_champion_id: 103,
+        ...mid(103),
         auto_ban: true,
         auto_ban_champion_id: 55,
       }),
@@ -112,26 +112,49 @@ describe('decideAction', () => {
     expect(d.kind).toBe('ban');
   });
 
-  it('ignores a feature with no champion chosen', () => {
+  it('ignores a feature with no champion chosen for the assigned role', () => {
+    expect(decideAction(session([act()]), settings({ auto_pick: true }))).toBe(null);
+  });
 
+  it('does nothing when the assigned role is fill', () => {
     expect(
-      decideAction(session([act()]), settings({ auto_pick: true, auto_pick_champion_id: 0 })),
+      decideAction(
+        session([act()], { myTeam: [{ cellId: 0, assignedPosition: 'FILL' }] }),
+        settings(mid(103)),
+      ),
     ).toBe(null);
+  });
+
+  it('does nothing when no role is assigned yet', () => {
+    expect(
+      decideAction(
+        session([act()], { myTeam: [{ cellId: 0, assignedPosition: '' }] }),
+        settings(mid(103)),
+      ),
+    ).toBe(null);
+  });
+
+  it('uses only the picks configured for the assigned role', () => {
+    const d = decideAction(
+      session([act({ id: 5 })], { myTeam: [{ cellId: 0, assignedPosition: 'TOP' }] }),
+      settings({
+        auto_pick: true,
+        auto_pick_by_role: rolePicks({ TOP: [64], MIDDLE: [103] }),
+      }),
+    );
+    expect(d.championId).toBe(64);
   });
 
   it('does nothing when the action belongs to someone else', () => {
     expect(
-      decideAction(
-        session([act({ actorCellId: 4 })]),
-        settings({ auto_pick: true, auto_pick_champion_id: 103 }),
-      ),
+      decideAction(session([act({ actorCellId: 4 })]), settings(mid(103))),
     ).toBe(null);
   });
 
   it('falls back to the second pick when the first is banned', () => {
     const d = decideAction(
       session([act({ id: 5 })], { bans: { myTeamBans: [103], theirTeamBans: [] } }),
-      settings({ auto_pick: true, auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 }),
+      settings(mid(103, 64)),
     );
     expect(d.championId).toBe(64);
   });
@@ -142,16 +165,13 @@ describe('decideAction', () => {
         act({ id: 1, actorCellId: 1, championId: 103, completed: true, isInProgress: false }),
         act({ id: 5 }),
       ]),
-      settings({ auto_pick: true, auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 }),
+      settings(mid(103, 64)),
     );
     expect(d.championId).toBe(64);
   });
 
   it('keeps the first pick when it is still available', () => {
-    const d = decideAction(
-      session([act({ id: 5 })]),
-      settings({ auto_pick: true, auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 }),
-    );
+    const d = decideAction(session([act({ id: 5 })]), settings(mid(103, 64)));
     expect(d.championId).toBe(103);
   });
 
@@ -159,23 +179,15 @@ describe('decideAction', () => {
     expect(
       decideAction(
         session([act({ id: 5 })], { bans: { myTeamBans: [103, 64], theirTeamBans: [] } }),
-        settings({ auto_pick: true, auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 }),
+        settings(mid(103, 64)),
       ),
     ).toBe(null);
-  });
-
-  it('uses the second pick when the first is unset', () => {
-    const d = decideAction(
-      session([act({ id: 5 })]),
-      settings({ auto_pick: true, auto_pick_champion_id: 0, auto_pick_champion_id_2: 64 }),
-    );
-    expect(d.championId).toBe(64);
   });
 
   it('hovers during planning even when the pick is not in progress yet', () => {
     const d = decideAction(
       session([act({ id: 5, isInProgress: false })], { timer: { phase: 'PLANNING' } }),
-      settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+      settings({ ...mid(103), insta_lock: true }),
     );
     expect(d).toEqual({ actionId: 5, championId: 103, completed: false, kind: 'pick' });
   });
@@ -253,7 +265,7 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('commits the decided action', async () => {
-    const h = harness({ auto_pick: true, auto_pick_champion_id: 103 });
+    const h = harness(mid(103));
     await h.fire(session([act({ id: 5 })]));
     expect(h.commit).toHaveBeenCalledWith(5, 103, false, 'pick');
   });
@@ -261,7 +273,7 @@ describe('startChampSelectAutomation', () => {
   it('does not fire twice for the same action', async () => {
 
 
-    const h = harness({ auto_pick: true, auto_pick_champion_id: 103 });
+    const h = harness(mid(103));
     await h.fire(session([act({ id: 5 })]));
     await h.fire(session([act({ id: 5 })]));
     await h.fire(session([act({ id: 5 })]));
@@ -269,12 +281,7 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('acts again for a different action', async () => {
-    const h = harness({
-      auto_pick: true,
-      auto_pick_champion_id: 103,
-      auto_ban: true,
-      auto_ban_champion_id: 55,
-    });
+    const h = harness({ ...mid(103), auto_ban: true, auto_ban_champion_id: 55 });
     await h.fire(session([act({ id: 8, type: 'ban' })]));
     await h.fire(session([act({ id: 9, type: 'pick' })]));
     expect(h.commit).toHaveBeenCalledTimes(2);
@@ -283,7 +290,7 @@ describe('startChampSelectAutomation', () => {
   it('forgets what it did once champ select ends', async () => {
 
 
-    const h = harness({ auto_pick: true, auto_pick_champion_id: 103 });
+    const h = harness(mid(103));
     await h.fire(session([act({ id: 5 })]));
     await h.fire(null);
     await h.fire(session([act({ id: 5 })]));
@@ -294,7 +301,7 @@ describe('startChampSelectAutomation', () => {
 
 
 
-    let current = settings({ auto_pick: true, auto_pick_champion_id: 103 });
+    let current = settings(mid(103));
     const commit = vi.fn().mockResolvedValue({ ok: true });
     const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     const ctl = startChampSelectAutomation({
@@ -305,7 +312,7 @@ describe('startChampSelectAutomation', () => {
     enterChampSelect();
 
     await fireSession(session([act({ id: 5, championId: 0 })]));
-    current = settings({ auto_pick: true, auto_pick_champion_id: 64 });
+    current = settings(mid(64));
     await ctl.refresh();
 
     expect(commit).toHaveBeenNthCalledWith(1, 5, 103, false, 'pick');
@@ -313,7 +320,7 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('locks after insta lock is turned on mid-hover', async () => {
-    let current = settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: false });
+    let current = settings({ ...mid(103), insta_lock: false });
     const commit = vi.fn().mockResolvedValue({ ok: true });
     const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     const ctl = startChampSelectAutomation({
@@ -324,7 +331,7 @@ describe('startChampSelectAutomation', () => {
     enterChampSelect();
 
     await fireSession(session([act({ id: 5, championId: 0 })]));
-    current = settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true });
+    current = settings({ ...mid(103), insta_lock: true });
     await fireSession(session([act({ id: 5, championId: 103 })]));
 
     expect(commit.mock.calls[0][2]).toBe(false);
@@ -336,7 +343,7 @@ describe('startChampSelectAutomation', () => {
     const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     startChampSelectAutomation({
       getSettings: () =>
-        settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+        settings({ ...mid(103), insta_lock: true }),
       champSelect: { commit },
       subscribe,
     });
@@ -354,7 +361,7 @@ describe('startChampSelectAutomation', () => {
 
 
 
-    const h = harness({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true });
+    const h = harness({ ...mid(103), insta_lock: true });
     await h.fire(session([act({ id: 5, championId: 0 })]));
     await h.fire(session([act({ id: 5, championId: 103, completed: true, isInProgress: false })]));
     await h.fire(session([act({ id: 5, championId: 0 })]));
@@ -370,7 +377,7 @@ describe('startChampSelectAutomation', () => {
       .mockResolvedValueOnce({ ok: true });
     const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     startChampSelectAutomation({
-      getSettings: () => settings({ auto_pick: true, auto_pick_champion_id: 103 }),
+      getSettings: () => settings(mid(103)),
       champSelect: { commit },
       subscribe,
     });
@@ -391,7 +398,7 @@ describe('startChampSelectAutomation', () => {
       return session([act({ id: 5, isInProgress: n >= 1 })]);
     });
     startChampSelectAutomation({
-      getSettings: () => settings({ auto_pick: true, auto_pick_champion_id: 103, insta_lock: true }),
+      getSettings: () => settings({ ...mid(103), insta_lock: true }),
       champSelect: { commit },
       subscribe: (route, fn) => {
         if (route === GAMEFLOW_PHASE_ROUTE) fn('ChampSelect');
@@ -416,7 +423,7 @@ describe('startChampSelectAutomation', () => {
     const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     startChampSelectAutomation({
       getSettings: () =>
-        settings({ auto_pick: true, auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 }),
+        settings(mid(103, 64)),
       champSelect: { commit },
       subscribe,
     });
@@ -440,7 +447,7 @@ describe('startChampSelectAutomation', () => {
     const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     startChampSelectAutomation({
       getSettings: () =>
-        settings({ auto_pick: true, auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 }),
+        settings(mid(103, 64)),
       champSelect: { commit },
       subscribe,
     });
@@ -562,12 +569,11 @@ describe('renderAutoPick', () => {
     { id: 64, name: 'Lee Sin' },
   ];
 
-  it('shows one list with pick order', () => {
+  it('shows role tabs and pick order for the active role', () => {
     const html = renderAutoPick(
       {
         auto_pick: true,
-        auto_pick_champion_id: 103,
-        auto_pick_champion_id_2: 64,
+        auto_pick_by_role: rolePicks({ TOP: [103, 64], MIDDLE: [157] }),
         insta_lock: false,
       },
       {
@@ -575,8 +581,12 @@ describe('renderAutoPick', () => {
         list: champs,
         allList: champs,
         query: '',
+        activeRole: 'TOP',
       },
     );
+    expect(html).toContain('data-auto-pick-role="TOP"');
+    expect(html).toContain('data-auto-pick-role="MIDDLE"');
+    expect(html).toContain('role-tab-count');
     expect(html).toContain('pick-order-item');
     expect(html).toContain('data-remove-pick="103"');
     expect(html).toContain('data-remove-pick="64"');
@@ -584,28 +594,29 @@ describe('renderAutoPick', () => {
     expect(html).toContain('Lee Sin');
     expect(html).toContain('champ-slot');
     expect(html).toContain('data-for="auto_pick"');
-    expect(html).not.toContain('data-for="auto_pick_champion_id_2"');
+    expect(html).not.toContain('Yasuo');
   });
 });
 
 describe('toggleAutoPickChampion', () => {
-  const base = { auto_pick_champion_id: 0, auto_pick_champion_id_2: 0 };
+  const base = { auto_pick_by_role: rolePicks() };
 
-  it('adds first and second picks in order', () => {
-    let s = toggleAutoPickChampion(base, 103);
-    expect(autoPickOrder(s)).toEqual([103]);
-    s = toggleAutoPickChampion(s, 64);
-    expect(autoPickOrder(s)).toEqual([103, 64]);
+  it('adds first and second picks in order for one role', () => {
+    let s = toggleAutoPickChampion(base, 'JUNGLE', 103);
+    expect(autoPickOrder(s, 'JUNGLE')).toEqual([103]);
+    s = toggleAutoPickChampion(s, 'JUNGLE', 64);
+    expect(autoPickOrder(s, 'JUNGLE')).toEqual([103, 64]);
+    expect(autoPickOrder(s, 'TOP')).toEqual([]);
   });
 
   it('removes picks and compacts order', () => {
-    const s = { auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 };
-    expect(autoPickOrder(toggleAutoPickChampion(s, 103))).toEqual([64]);
-    expect(autoPickOrder(toggleAutoPickChampion(s, 64))).toEqual([103]);
+    const s = { auto_pick_by_role: rolePicks({ MIDDLE: [103, 64] }) };
+    expect(autoPickOrder(toggleAutoPickChampion(s, 'MIDDLE', 103), 'MIDDLE')).toEqual([64]);
+    expect(autoPickOrder(toggleAutoPickChampion(s, 'MIDDLE', 64), 'MIDDLE')).toEqual([103]);
   });
 
   it('replaces the backup when a third champion is chosen', () => {
-    const s = { auto_pick_champion_id: 103, auto_pick_champion_id_2: 64 };
-    expect(autoPickOrder(toggleAutoPickChampion(s, 157))).toEqual([103, 157]);
+    const s = { auto_pick_by_role: rolePicks({ MIDDLE: [103, 64] }) };
+    expect(autoPickOrder(toggleAutoPickChampion(s, 'MIDDLE', 157), 'MIDDLE')).toEqual([103, 157]);
   });
 });

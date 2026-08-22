@@ -8,20 +8,19 @@ import {
 } from './champSelect.js';
 import { GAMEFLOW_PHASE_ROUTE } from './dodge.js';
 import { isChampSelectPhase, readGameflowPhase } from './inGameIdle.js';
+import { autoPickOrder, localPlayerPickRole } from './autoPickRoles.js';
 
 export const CHAMP_SELECT_POLL_MS = 500;
 
-function pickCandidates(settings) {
-  const ids = [];
-  for (const id of [settings.auto_pick_champion_id, settings.auto_pick_champion_id_2]) {
-    if (id && !ids.includes(id)) ids.push(id);
-  }
-  return ids;
+function pickCandidates(session, settings) {
+  const role = localPlayerPickRole(session);
+  if (!role) return [];
+  return autoPickOrder(settings, role);
 }
 
 function choosePickChampion(session, settings, skipped) {
   const taken = unavailableChampionIds(session);
-  for (const id of pickCandidates(settings)) {
+  for (const id of pickCandidates(session, settings)) {
     if (taken.has(id) || skipped.has(id)) continue;
     return id;
   }

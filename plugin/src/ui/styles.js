@@ -287,7 +287,7 @@ export const CSS = `
 }
 
 
-.hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-wrap {
+.hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-wrap, .role-tab {
   transition: filter 90ms ease, color 90ms ease, border-color 90ms ease,
     box-shadow 90ms ease, background 90ms ease, transform 60ms ease;
 }
@@ -571,6 +571,62 @@ export const CSS = `
   width: 20px;
   height: 20px;
   border-radius: 50%;
+}
+
+.role-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.role-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  min-height: 32px;
+  color: #a09b8c;
+  background: rgba(1, 10, 19, 0.45);
+  border: 1px solid #3c3c41;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.role-tab:hover {
+  color: #f0e6d2;
+  border-color: #785a28;
+}
+.role-tab-on,
+.role-tab[aria-selected='true'] {
+  color: #f0e6d2;
+  border-color: #c8aa6e;
+  background: rgba(30, 35, 40, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(200, 170, 110, 0.25);
+}
+.role-tab-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.role-tab-label {
+  line-height: 1;
+}
+.role-tab-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  color: #010a13;
+  background: #5b5a56;
+}
+.role-tab-on .role-tab-count,
+.role-tab[aria-selected='true'] .role-tab-count {
+  background: linear-gradient(to bottom, #c8aa6e, #785a28);
+  color: #010a13;
 }
 
 .hextech-input {

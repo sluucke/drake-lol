@@ -266,6 +266,16 @@ function findLabelsByCurrentNames(doc, snapshot) {
 
 const LABEL_SIG_KEY = 'drakeRevealSig';
 
+function stillShowsOurReveal(label) {
+  if (!label?.dataset?.[APPLIED_KEY] && !label?.dataset?.[LABEL_SIG_KEY]) return false;
+  if (label.querySelector?.('.drake-reveal-name')) return true;
+  const sig = String(label.dataset?.[LABEL_SIG_KEY] || '');
+  const riotId = sig.split('|')[0] || '';
+  if (!riotId) return false;
+  const text = String(label.textContent || '').trim();
+  return text === riotId || text.startsWith(`${riotId} `) || text.startsWith(`${riotId}(`);
+}
+
 function applyLabel(label, info) {
   if (!label.dataset) label.dataset = {};
   const wl = readRowWl(info);
@@ -335,6 +345,7 @@ export function makeTeamRevealDom({
   let lastCardsRenderSig = '';
   let statusPhase = 'hidden';
   let lastPhase = '';
+  let pendingScrub = false;
   let loadGen = 0;
   let loadAbort = null;
   let stopPhase = null;
@@ -350,6 +361,11 @@ export function makeTeamRevealDom({
   function clearReveal() {
     stopRevealLoad();
     restoreRows();
+    // Exit cleanup often runs after the client has already detached the rows.
+    // Those same nodes come back marked on the next lobby, so remember to scrub
+    // even if the next ChampSelect event has no previous phase (e.g. after the
+    // in-game idle path tears the subscription down and clears lastPhase).
+    pendingScrub = true;
     snapshot = [];
     lastSessionSig = '';
     lastLobbyKey = '';
@@ -358,6 +374,12 @@ export function makeTeamRevealDom({
     open = false;
     renderVisibility();
     setStatus('hidden');
+  }
+
+  function scrubStaleRows() {
+    if (!pendingScrub) return;
+    restoreRows();
+    pendingScrub = false;
   }
 
   function handlePhase(payload) {
@@ -373,7 +395,12 @@ export function makeTeamRevealDom({
     // Leaving champ select can restore nothing, because the client has often
     // already pulled the rows out of the document by then, and it reuses those
     // same nodes next time. Anything still marked belongs to the last match.
-    if (previous && previous !== 'ChampSelect') restoreRows();
+    if (previous && previous !== 'ChampSelect') {
+      restoreRows();
+      pendingScrub = false;
+    } else {
+      scrubStaleRows();
+    }
   }
 
   function needsReapply() {
@@ -682,13 +709,15 @@ export function makeTeamRevealDom({
   }
 
   function restoreLabel(label) {
-    if (typeof label.innerHTML === 'string') {
-      label.innerHTML = label.dataset[ORIGINAL_HTML_KEY] || label.dataset[ORIGINAL_NAME_KEY] || '';
-    } else {
-      label.textContent = label.dataset[ORIGINAL_NAME_KEY];
-    }
-    if (label.style) {
-      label.style.cssText = label.dataset[ORIGINAL_STYLE_KEY] || '';
+    if (stillShowsOurReveal(label)) {
+      if (typeof label.innerHTML === 'string') {
+        label.innerHTML = label.dataset[ORIGINAL_HTML_KEY] || label.dataset[ORIGINAL_NAME_KEY] || '';
+      } else {
+        label.textContent = label.dataset[ORIGINAL_NAME_KEY];
+      }
+      if (label.style) {
+        label.style.cssText = label.dataset[ORIGINAL_STYLE_KEY] || '';
+      }
     }
     delete label.dataset[ORIGINAL_NAME_KEY];
     delete label.dataset[ORIGINAL_HTML_KEY];
@@ -773,11 +802,15 @@ export function makeTeamRevealDom({
       return;
     }
 
+    scrubStaleRows();
+
     const lobbyKey = readLobbyKey(session);
     const team = teamFingerprint(session);
     const newLobby = Boolean(lobbyKey && lastLobbyKey && lobbyKey !== lastLobbyKey);
-    if (newLobby) clearReveal();
-    else if (snapshot.length && lastTeam.length && sameTeamIdentity(lastTeam, team)) {
+    if (newLobby) {
+      clearReveal();
+      pendingScrub = false;
+    } else if (snapshot.length && lastTeam.length && sameTeamIdentity(lastTeam, team)) {
       mergeRowsByCell(session);
       applyPickRefresh(session);
       if (needsReapply()) applyRows(snapshot);

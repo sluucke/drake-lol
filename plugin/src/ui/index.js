@@ -105,6 +105,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let teamRevealLastLoadMs = 0;
   let teamRevealLastConcurrency = 1;
   let inGameIdle = false;
+  let autoPickRole = 'TOP';
   
   const queries = {
     auto_pick_champion_id: '',
@@ -421,6 +422,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
           list: searchChampions(champions, queries.auto_pick_champion_id),
           allList: champions,
           query: queries.auto_pick_champion_id,
+          activeRole: autoPickRole,
         });
       } else if (screen === 'auto-ban') {
         content.innerHTML = renderAutoBan(settings, {
@@ -724,22 +726,25 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       }
 
       const applyPickToggle = (id) => {
-        const previous = {
-          auto_pick_champion_id: settings.auto_pick_champion_id,
-          auto_pick_champion_id_2: settings.auto_pick_champion_id_2,
-        };
-        settings = toggleAutoPickChampion(settings, id);
+        const previous = settings.auto_pick_by_role;
+        settings = toggleAutoPickChampion(settings, autoPickRole, id);
         paint();
         commit(
           {
-            auto_pick_champion_id: settings.auto_pick_champion_id,
-            auto_pick_champion_id_2: settings.auto_pick_champion_id_2,
+            auto_pick_by_role: settings.auto_pick_by_role,
           },
           () => {
-            settings = { ...settings, ...previous };
+            settings = { ...settings, auto_pick_by_role: previous };
           },
         );
       };
+
+      const roleTab = e.target.closest('[data-auto-pick-role]');
+      if (roleTab) {
+        autoPickRole = roleTab.dataset.autoPickRole || 'TOP';
+        paint();
+        return;
+      }
 
       const removePick = e.target.closest('[data-remove-pick]');
       if (removePick) {
