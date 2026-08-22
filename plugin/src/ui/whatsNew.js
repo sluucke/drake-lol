@@ -1,5 +1,20 @@
 export const WHATS_NEW = [
   {
+    version: '0.3.18',
+    items: [
+      {
+        title: 'Auto Pick by role',
+        body: 'Choose up to 2 champions for Top, Jungle, Mid, ADC, and Support. Picks wait until your role is assigned — old global picks were cleared.',
+        screen: 'auto-pick',
+      },
+      {
+        title: 'Lobby reveal resets between games',
+        body: 'Ally names from the last lobby no longer stick when you queue again; scrub only rewrites rows that still show our reveal.',
+        screen: 'queue',
+      },
+    ],
+  },
+  {
     version: '0.3.17',
     items: [
       {

@@ -12,7 +12,7 @@ export const TOUR_STEPS = [
   {
     screen: 'auto-pick',
     title: 'Auto Pick & Ban',
-    body: 'Hover or instalock your picks, and ban a champion when the phase opens.',
+    body: 'Set up to two champions per role. Auto pick waits until your lane is assigned.',
   },
   {
     screen: 'status',

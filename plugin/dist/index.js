@@ -982,7 +982,7 @@
 }
 
 
-.hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-wrap {
+.hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-wrap, .role-tab {
   transition: filter 90ms ease, color 90ms ease, border-color 90ms ease,
     box-shadow 90ms ease, background 90ms ease, transform 60ms ease;
 }
@@ -1266,6 +1266,62 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
+}
+
+.role-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.role-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  min-height: 32px;
+  color: #a09b8c;
+  background: rgba(1, 10, 19, 0.45);
+  border: 1px solid #3c3c41;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.role-tab:hover {
+  color: #f0e6d2;
+  border-color: #785a28;
+}
+.role-tab-on,
+.role-tab[aria-selected='true'] {
+  color: #f0e6d2;
+  border-color: #c8aa6e;
+  background: rgba(30, 35, 40, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(200, 170, 110, 0.25);
+}
+.role-tab-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.role-tab-label {
+  line-height: 1;
+}
+.role-tab-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  color: #010a13;
+  background: #5b5a56;
+}
+.role-tab-on .role-tab-count,
+.role-tab[aria-selected='true'] .role-tab-count {
+  background: linear-gradient(to bottom, #c8aa6e, #785a28);
+  color: #010a13;
 }
 
 .hextech-input {
@@ -2247,6 +2303,102 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     return { start: start2, end, offsetY: firstRow * rowHeight, totalHeight };
   }
 
+  // src/features/autoPickRoles.js
+  var AUTO_PICK_ROLES = [
+    { id: "TOP", label: "Top" },
+    { id: "JUNGLE", label: "Jungle" },
+    { id: "MIDDLE", label: "Mid" },
+    { id: "BOTTOM", label: "ADC" },
+    { id: "UTILITY", label: "Support" }
+  ];
+  var ROLE_IDS = new Set(AUTO_PICK_ROLES.map((role) => role.id));
+  function emptyAutoPickByRole() {
+    return {
+      TOP: [],
+      JUNGLE: [],
+      MIDDLE: [],
+      BOTTOM: [],
+      UTILITY: []
+    };
+  }
+  function normalizeAutoPickByRole(raw) {
+    const out = emptyAutoPickByRole();
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+    for (const role of Object.keys(out)) {
+      const list = Array.isArray(raw[role]) ? raw[role] : [];
+      const cleaned = [];
+      for (const value of list) {
+        const id = Number(value) || 0;
+        if (id <= 0 || cleaned.includes(id)) continue;
+        cleaned.push(id);
+        if (cleaned.length >= 2) break;
+      }
+      out[role] = cleaned;
+    }
+    return out;
+  }
+  function autoPickOrder(settings, role) {
+    const key = String(role || "").trim().toUpperCase();
+    if (!ROLE_IDS.has(key)) return [];
+    return normalizeAutoPickByRole(settings?.auto_pick_by_role)[key];
+  }
+  function toggleAutoPickChampion(settings, role, championId) {
+    const key = String(role || "").trim().toUpperCase();
+    const id = Number(championId) || 0;
+    if (!ROLE_IDS.has(key) || !id) return settings;
+    const byRole = normalizeAutoPickByRole(settings?.auto_pick_by_role);
+    const current = byRole[key];
+    let next;
+    if (current[0] === id) {
+      next = current.slice(1);
+    } else if (current[1] === id) {
+      next = current.slice(0, 1);
+    } else if (current.length === 0) {
+      next = [id];
+    } else if (current.length === 1) {
+      next = [current[0], id];
+    } else {
+      next = [current[0], id];
+    }
+    return {
+      ...settings,
+      auto_pick_by_role: { ...byRole, [key]: next }
+    };
+  }
+  function isAutoPickRole(role) {
+    return ROLE_IDS.has(String(role || "").trim().toUpperCase());
+  }
+  function localPlayerPickRole(session) {
+    const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+    const localCellId = Number(session?.localPlayerCellId);
+    const me = team.find((player) => Number(player?.cellId) === localCellId);
+    const raw = String(me?.assignedPosition ?? me?.position ?? "").trim().toUpperCase();
+    if (!raw || raw === "UNSELECTED" || raw === "FILL") return "";
+    return isAutoPickRole(raw) ? raw : "";
+  }
+
+  // src/ui/roleIcons.js
+  var ROLE_ICONS = {
+    TOP: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M21%2C14H14v7h7V14Zm5-3V26L11.014%2C26l-4%2C4H30V7.016Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%224%204%204.003%2028.045%209%2023%209%209%2023%209%2028.045%204.003%204%204%22%2F%3E%3C%2Fsvg%3E",
+    JUNGLE: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20fill%3D%22%23c8aa6e%22%20fill-rule%3D%22evenodd%22%20d%3D%22M25%2C3c-2.128%2C3.3-5.147%2C6.851-6.966%2C11.469A42.373%2C42.373%2C0%2C0%2C1%2C20%2C20a27.7%2C27.7%2C0%2C0%2C1%2C1-3C21%2C12.023%2C22.856%2C8.277%2C25%2C3ZM13%2C20c-1.488-4.487-4.76-6.966-9-9%2C3.868%2C3.136%2C4.422%2C7.52%2C5%2C12l3.743%2C3.312C14.215%2C27.917%2C16.527%2C30.451%2C17%2C31c4.555-9.445-3.366-20.8-8-28C11.67%2C9.573%2C13.717%2C13.342%2C13%2C20Zm8%2C5a15.271%2C15.271%2C0%2C0%2C1%2C0%2C2l4-4c0.578-4.48%2C1.132-8.864%2C5-12C24.712%2C13.537%2C22.134%2C18.854%2C21%2C25Z%22%2F%3E%3C%2Fsvg%3E",
+    MIDDLE: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M30%2C12.968l-4.008%2C4L26%2C26H17l-4%2C4H30ZM16.979%2C8L21%2C4H4V20.977L8%2C17%2C8%2C8h8.981Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%2225%204%204%2025%204%2030%209%2030%2030%209%2030%204%2025%204%22%2F%3E%3C%2Fsvg%3E",
+    BOTTOM: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M13%2C20h7V13H13v7ZM4%2C4V26.984l3.955-4L8%2C8%2C22.986%2C8l4-4H4Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%2229.997%205.955%2025%2011%2025%2025%2011%2025%205.955%2029.997%2030%2030%2029.997%205.955%22%2F%3E%3C%2Fsvg%3E",
+    UTILITY: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20fill%3D%22%23c8aa6e%22%20fill-rule%3D%22evenodd%22%20d%3D%22M26%2C13c3.535%2C0%2C8-4%2C8-4H23l-3%2C3%2C2%2C7%2C5-2-3-4h2ZM22%2C5L20.827%2C3H13.062L12%2C5l5%2C6Zm-5%2C9-1-1L13%2C28l4%2C3%2C4-3L18%2C13ZM11%2C9H0s4.465%2C4%2C8%2C4h2L7%2C17l5%2C2%2C2-7Z%22%2F%3E%3C%2Fsvg%3E",
+    FILL: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M13%2C20h7V13H13v7ZM4%2C4V26.984l3.955-4L8%2C8%2C22.986%2C8l4-4H4Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%2229.997%205.955%2025%2011%2025%2025%2011%2025%205.955%2029.997%2030%2030%2029.997%205.955%22%2F%3E%3C%2Fsvg%3E"
+  };
+  function roleIconUrl(position) {
+    const key = String(position || "").trim().toUpperCase();
+    return ROLE_ICONS[key] || "";
+  }
+  function roleLabel(position) {
+    const key = String(position || "").trim().toUpperCase();
+    if (key === "UTILITY") return "Support";
+    if (key === "MIDDLE") return "Mid";
+    if (key === "FILL") return "Fill";
+    if (!key) return "";
+    return key.charAt(0) + key.slice(1).toLowerCase();
+  }
+
   // src/ui/panel.js
   var SCREENS = [
     { id: "auto-accept", label: "Auto Accept" },
@@ -2519,33 +2671,9 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     const found = list.find((c) => c.id === id);
     return found ? found.name : "none chosen";
   }
-  function autoPickOrder(settings) {
-    const first = Number(settings.auto_pick_champion_id) || 0;
-    const second = Number(settings.auto_pick_champion_id_2) || 0;
-    return [first, second].filter((id) => id > 0);
-  }
-  function toggleAutoPickChampion(settings, championId) {
-    const id = Number(championId) || 0;
-    if (!id) return settings;
-    let first = Number(settings.auto_pick_champion_id) || 0;
-    let second = Number(settings.auto_pick_champion_id_2) || 0;
-    if (first === id) {
-      return { ...settings, auto_pick_champion_id: second, auto_pick_champion_id_2: 0 };
-    }
-    if (second === id) {
-      return { ...settings, auto_pick_champion_id_2: 0 };
-    }
-    if (!first) {
-      return { ...settings, auto_pick_champion_id: id };
-    }
-    if (!second) {
-      return { ...settings, auto_pick_champion_id_2: id };
-    }
-    return { ...settings, auto_pick_champion_id_2: id };
-  }
   function renderPickOrderSummary(list, pickIds) {
     if (pickIds.length === 0) {
-      return '<p class="pick-order pick-order-empty">Click up to 2 champions \u2014 first is your pick, second is the backup.</p>';
+      return '<p class="pick-order pick-order-empty">Click up to 2 champions for this role \u2014 first is your pick, second is the backup.</p>';
     }
     const items = pickIds.map(
       (id, index) => `
@@ -2557,6 +2685,23 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       </span>`
     ).join("");
     return `<div class="pick-order">${items}</div>`;
+  }
+  function renderRoleTabs(byRole, activeRole) {
+    return `
+    <div class="role-tabs" role="tablist" aria-label="Pick roles">
+      ${AUTO_PICK_ROLES.map((role) => {
+      const count = (byRole[role.id] || []).length;
+      const selected = role.id === activeRole;
+      const icon = roleIconUrl(role.id);
+      return `
+        <button class="role-tab${selected ? " role-tab-on" : ""}" type="button" role="tab"
+                data-auto-pick-role="${role.id}" aria-selected="${selected}" title="${role.label}">
+          ${icon ? `<img class="role-tab-icon" src="${icon}" alt="">` : ""}
+          <span class="role-tab-label">${role.label}</span>
+          <span class="role-tab-count">${count}</span>
+        </button>`;
+    }).join("")}
+    </div>`;
   }
   function renderOrderedChampionPicker({ list, query, pickIds, compact }) {
     const order = new Map(pickIds.map((id, index) => [id, index + 1]));
@@ -2575,12 +2720,16 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
            placeholder="Search champions...">
     <div class="champ-grid${compact ? " champ-grid-sm" : ""}">${cells || '<p class="check-help">No champions match.</p>'}</div>`;
   }
-  function renderAutoPick(settings, { disabled, list, allList, query }) {
-    const pickIds = autoPickOrder(settings);
+  function renderAutoPick(settings, { disabled, list, allList, query, activeRole = "TOP" }) {
+    const role = String(activeRole || "TOP").toUpperCase();
+    const byRole = normalizeAutoPickByRole(settings.auto_pick_by_role);
+    const pickIds = autoPickOrder(settings, role);
     const names = allList || list;
+    const roleMeta = AUTO_PICK_ROLES.find((entry) => entry.id === role);
+    const roleLabel2 = roleMeta?.label || role;
     return `
     <h2 class="screen-title">Auto Pick</h2>
-    <p class="screen-sub">Chooses your champion when your turn comes round. If the first is banned or taken, the second is used.</p>
+    <p class="screen-sub">Up to 2 champions per role. Picks wait until your lane is assigned \u2014 Fill does nothing.</p>
     <div class="rule"></div>
 
     ${renderCheckRow({
@@ -2599,8 +2748,9 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     })}
 
     <div class="field ${settings.auto_pick ? "" : "field-off"}">
+      ${renderRoleTabs(byRole, role)}
       <div class="field-head">
-        <span class="field-label">Champions</span>
+        <span class="field-label">${roleLabel2}</span>
         <span class="field-value">${pickIds.length ? `${pickIds.length} selected` : "none chosen"}</span>
       </div>
       ${renderPickOrderSummary(names, pickIds)}
@@ -2925,7 +3075,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     {
       screen: "auto-pick",
       title: "Auto Pick & Ban",
-      body: "Hover or instalock your picks, and ban a champion when the phase opens."
+      body: "Set up to two champions per role. Auto pick waits until your lane is assigned."
     },
     {
       screen: "status",
@@ -2990,6 +3140,21 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
   // src/ui/whatsNew.js
   var WHATS_NEW = [
+    {
+      version: "0.3.18",
+      items: [
+        {
+          title: "Auto Pick by role",
+          body: "Choose up to 2 champions for Top, Jungle, Mid, ADC, and Support. Picks wait until your role is assigned \u2014 old global picks were cleared.",
+          screen: "auto-pick"
+        },
+        {
+          title: "Lobby reveal resets between games",
+          body: "Ally names from the last lobby no longer stick when you queue again; scrub only rewrites rows that still show our reveal.",
+          screen: "queue"
+        }
+      ]
+    },
     {
       version: "0.3.17",
       items: [
@@ -4745,28 +4910,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return { rows: next, changed };
   }
 
-  // src/ui/roleIcons.js
-  var ROLE_ICONS = {
-    TOP: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M21%2C14H14v7h7V14Zm5-3V26L11.014%2C26l-4%2C4H30V7.016Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%224%204%204.003%2028.045%209%2023%209%209%2023%209%2028.045%204.003%204%204%22%2F%3E%3C%2Fsvg%3E",
-    JUNGLE: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20fill%3D%22%23c8aa6e%22%20fill-rule%3D%22evenodd%22%20d%3D%22M25%2C3c-2.128%2C3.3-5.147%2C6.851-6.966%2C11.469A42.373%2C42.373%2C0%2C0%2C1%2C20%2C20a27.7%2C27.7%2C0%2C0%2C1%2C1-3C21%2C12.023%2C22.856%2C8.277%2C25%2C3ZM13%2C20c-1.488-4.487-4.76-6.966-9-9%2C3.868%2C3.136%2C4.422%2C7.52%2C5%2C12l3.743%2C3.312C14.215%2C27.917%2C16.527%2C30.451%2C17%2C31c4.555-9.445-3.366-20.8-8-28C11.67%2C9.573%2C13.717%2C13.342%2C13%2C20Zm8%2C5a15.271%2C15.271%2C0%2C0%2C1%2C0%2C2l4-4c0.578-4.48%2C1.132-8.864%2C5-12C24.712%2C13.537%2C22.134%2C18.854%2C21%2C25Z%22%2F%3E%3C%2Fsvg%3E",
-    MIDDLE: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M30%2C12.968l-4.008%2C4L26%2C26H17l-4%2C4H30ZM16.979%2C8L21%2C4H4V20.977L8%2C17%2C8%2C8h8.981Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%2225%204%204%2025%204%2030%209%2030%2030%209%2030%204%2025%204%22%2F%3E%3C%2Fsvg%3E",
-    BOTTOM: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M13%2C20h7V13H13v7ZM4%2C4V26.984l3.955-4L8%2C8%2C22.986%2C8l4-4H4Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%2229.997%205.955%2025%2011%2025%2025%2011%2025%205.955%2029.997%2030%2030%2029.997%205.955%22%2F%3E%3C%2Fsvg%3E",
-    UTILITY: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20fill%3D%22%23c8aa6e%22%20fill-rule%3D%22evenodd%22%20d%3D%22M26%2C13c3.535%2C0%2C8-4%2C8-4H23l-3%2C3%2C2%2C7%2C5-2-3-4h2ZM22%2C5L20.827%2C3H13.062L12%2C5l5%2C6Zm-5%2C9-1-1L13%2C28l4%2C3%2C4-3L18%2C13ZM11%2C9H0s4.465%2C4%2C8%2C4h2L7%2C17l5%2C2%2C2-7Z%22%2F%3E%3C%2Fsvg%3E",
-    FILL: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2234%22%20height%3D%2234%22%20viewBox%3D%220%200%2034%2034%22%3E%3Cpath%20opacity%3D%220.5%22%20fill%3D%22%23785a28%22%20fill-rule%3D%22evenodd%22%20d%3D%22M13%2C20h7V13H13v7ZM4%2C4V26.984l3.955-4L8%2C8%2C22.986%2C8l4-4H4Z%22%2F%3E%3Cpolygon%20fill%3D%22%23c8aa6e%22%20points%3D%2229.997%205.955%2025%2011%2025%2025%2011%2025%205.955%2029.997%2030%2030%2029.997%205.955%22%2F%3E%3C%2Fsvg%3E"
-  };
-  function roleIconUrl(position) {
-    const key = String(position || "").trim().toUpperCase();
-    return ROLE_ICONS[key] || "";
-  }
-  function roleLabel(position) {
-    const key = String(position || "").trim().toUpperCase();
-    if (key === "UTILITY") return "Support";
-    if (key === "MIDDLE") return "Mid";
-    if (key === "FILL") return "Fill";
-    if (!key) return "";
-    return key.charAt(0) + key.slice(1).toLowerCase();
-  }
-
   // src/ui/teamRevealDom.js
   var ORIGINAL_NAME_KEY = "drakeTeamRevealOriginal";
   var APPLIED_KEY = "drakeTeamRevealApplied";
@@ -4984,6 +5127,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return matched;
   }
   var LABEL_SIG_KEY = "drakeRevealSig";
+  function stillShowsOurReveal(label) {
+    if (!label?.dataset?.[APPLIED_KEY] && !label?.dataset?.[LABEL_SIG_KEY]) return false;
+    if (label.querySelector?.(".drake-reveal-name")) return true;
+    const sig = String(label.dataset?.[LABEL_SIG_KEY] || "");
+    const riotId = sig.split("|")[0] || "";
+    if (!riotId) return false;
+    const text = String(label.textContent || "").trim();
+    return text === riotId || text.startsWith(`${riotId} `) || text.startsWith(`${riotId}(`);
+  }
   function applyLabel(label, info) {
     if (!label.dataset) label.dataset = {};
     const wl = readRowWl(info);
@@ -5050,6 +5202,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let lastCardsRenderSig = "";
     let statusPhase = "hidden";
     let lastPhase = "";
+    let pendingScrub = false;
     let loadGen = 0;
     let loadAbort = null;
     let stopPhase = null;
@@ -5063,6 +5216,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function clearReveal() {
       stopRevealLoad();
       restoreRows();
+      pendingScrub = true;
       snapshot = [];
       lastSessionSig = "";
       lastLobbyKey = "";
@@ -5071,6 +5225,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
       open = false;
       renderVisibility();
       setStatus("hidden");
+    }
+    function scrubStaleRows() {
+      if (!pendingScrub) return;
+      restoreRows();
+      pendingScrub = false;
     }
     function handlePhase(payload) {
       if (!enabled) return;
@@ -5082,7 +5241,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
         clearReveal();
         return;
       }
-      if (previous && previous !== "ChampSelect") restoreRows();
+      if (previous && previous !== "ChampSelect") {
+        restoreRows();
+        pendingScrub = false;
+      } else {
+        scrubStaleRows();
+      }
     }
     function needsReapply() {
       if (!snapshot.length) return false;
@@ -5359,13 +5523,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
       boundLabels = /* @__PURE__ */ new Map();
     }
     function restoreLabel(label) {
-      if (typeof label.innerHTML === "string") {
-        label.innerHTML = label.dataset[ORIGINAL_HTML_KEY] || label.dataset[ORIGINAL_NAME_KEY] || "";
-      } else {
-        label.textContent = label.dataset[ORIGINAL_NAME_KEY];
-      }
-      if (label.style) {
-        label.style.cssText = label.dataset[ORIGINAL_STYLE_KEY] || "";
+      if (stillShowsOurReveal(label)) {
+        if (typeof label.innerHTML === "string") {
+          label.innerHTML = label.dataset[ORIGINAL_HTML_KEY] || label.dataset[ORIGINAL_NAME_KEY] || "";
+        } else {
+          label.textContent = label.dataset[ORIGINAL_NAME_KEY];
+        }
+        if (label.style) {
+          label.style.cssText = label.dataset[ORIGINAL_STYLE_KEY] || "";
+        }
       }
       delete label.dataset[ORIGINAL_NAME_KEY];
       delete label.dataset[ORIGINAL_HTML_KEY];
@@ -5436,11 +5602,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
         clearReveal();
         return;
       }
+      scrubStaleRows();
       const lobbyKey = readLobbyKey(session);
       const team = teamFingerprint(session);
       const newLobby = Boolean(lobbyKey && lastLobbyKey && lobbyKey !== lastLobbyKey);
-      if (newLobby) clearReveal();
-      else if (snapshot.length && lastTeam.length && sameTeamIdentity(lastTeam, team)) {
+      if (newLobby) {
+        clearReveal();
+        pendingScrub = false;
+      } else if (snapshot.length && lastTeam.length && sameTeamIdentity(lastTeam, team)) {
         mergeRowsByCell(session);
         applyPickRefresh(session);
         if (needsReapply()) applyRows(snapshot);
@@ -5588,6 +5757,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let teamRevealLastLoadMs = 0;
     let teamRevealLastConcurrency = 1;
     let inGameIdle = false;
+    let autoPickRole = "TOP";
     const queries = {
       auto_pick_champion_id: "",
       auto_ban_champion_id: "",
@@ -5874,7 +6044,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
             disabled: trayDown,
             list: searchChampions(champions, queries.auto_pick_champion_id),
             allList: champions,
-            query: queries.auto_pick_champion_id
+            query: queries.auto_pick_champion_id,
+            activeRole: autoPickRole
           });
         } else if (screen === "auto-ban") {
           content.innerHTML = renderAutoBan(settings, {
@@ -6136,22 +6307,24 @@ button.bug-report-button[data-drake-toggle]:disabled {
           return;
         }
         const applyPickToggle = (id) => {
-          const previous = {
-            auto_pick_champion_id: settings.auto_pick_champion_id,
-            auto_pick_champion_id_2: settings.auto_pick_champion_id_2
-          };
-          settings = toggleAutoPickChampion(settings, id);
+          const previous = settings.auto_pick_by_role;
+          settings = toggleAutoPickChampion(settings, autoPickRole, id);
           paint();
           commit(
             {
-              auto_pick_champion_id: settings.auto_pick_champion_id,
-              auto_pick_champion_id_2: settings.auto_pick_champion_id_2
+              auto_pick_by_role: settings.auto_pick_by_role
             },
             () => {
-              settings = { ...settings, ...previous };
+              settings = { ...settings, auto_pick_by_role: previous };
             }
           );
         };
+        const roleTab = e.target.closest("[data-auto-pick-role]");
+        if (roleTab) {
+          autoPickRole = roleTab.dataset.autoPickRole || "TOP";
+          paint();
+          return;
+        }
         const removePick = e.target.closest("[data-remove-pick]");
         if (removePick) {
           applyPickToggle(Number(removePick.dataset.removePick));
@@ -6532,16 +6705,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
 
   // src/features/autoPick.js
   var CHAMP_SELECT_POLL_MS = 500;
-  function pickCandidates(settings) {
-    const ids = [];
-    for (const id of [settings.auto_pick_champion_id, settings.auto_pick_champion_id_2]) {
-      if (id && !ids.includes(id)) ids.push(id);
-    }
-    return ids;
+  function pickCandidates(session, settings) {
+    const role = localPlayerPickRole(session);
+    if (!role) return [];
+    return autoPickOrder(settings, role);
   }
   function choosePickChampion(session, settings, skipped) {
     const taken = unavailableChampionIds(session);
-    for (const id of pickCandidates(settings)) {
+    for (const id of pickCandidates(session, settings)) {
       if (taken.has(id) || skipped.has(id)) continue;
       return id;
     }
