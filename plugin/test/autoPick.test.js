@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { decideAction, startChampSelectAutomation } from '../src/features/autoPick.js';
 import { SESSION_ROUTE } from '../src/features/champSelect.js';
 import { GAMEFLOW_PHASE_ROUTE } from '../src/features/dodge.js';
-import { renderAutoPick, autoPickOrder, toggleAutoPickChampion } from '../src/ui/panel.js';
+import { renderAutoPick, renderAutoBan, autoPickOrder, toggleAutoPickChampion } from '../src/ui/panel.js';
 import { emptyAutoPickByRole } from '../src/features/autoPickRoles.js';
 
 const act = (over = {}) => ({
@@ -595,6 +595,48 @@ describe('renderAutoPick', () => {
     expect(html).toContain('champ-slot');
     expect(html).toContain('data-for="auto_pick"');
     expect(html).not.toContain('Yasuo');
+  });
+});
+
+describe('renderAutoBan', () => {
+  const champs = [
+    { id: 55, name: 'Katarina' },
+    { id: 157, name: 'Yasuo' },
+  ];
+
+  it('shows selected champion chip with remove control', () => {
+    const html = renderAutoBan(
+      { auto_ban: true, auto_ban_champion_id: 55 },
+      {
+        disabled: false,
+        list: [{ id: 157, name: 'Yasuo' }],
+        allList: champs,
+        query: 'yas',
+      },
+    );
+    expect(html).toContain('pick-order-item');
+    expect(html).toContain('Katarina');
+    expect(html).toContain('data-remove-ban="55"');
+    expect(html).toContain('data-for="auto_ban_champion_id"');
+    expect(html).not.toContain('champ-on');
+  });
+
+  it('highlights the selected champion in the grid', () => {
+    const html = renderAutoBan(
+      { auto_ban: true, auto_ban_champion_id: 55 },
+      { disabled: false, list: champs, allList: champs, query: '' },
+    );
+    expect(html).toContain('champ-on');
+    expect(html).toContain('data-champ="55"');
+  });
+
+  it('shows empty state when no ban champion is chosen', () => {
+    const html = renderAutoBan(
+      { auto_ban: true, auto_ban_champion_id: 0 },
+      { disabled: false, list: champs, allList: champs, query: '' },
+    );
+    expect(html).toContain('none chosen');
+    expect(html).not.toContain('data-remove-ban');
   });
 });
 

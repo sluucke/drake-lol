@@ -443,6 +443,7 @@
   // src/autoAccept.js
   var ACCEPT_ROUTE = "/lol-matchmaking/v1/ready-check/accept";
   var DECLINE_ROUTE = "/lol-matchmaking/v1/ready-check/decline";
+  var CANCEL_SEARCH_ROUTE = "/lol-lobby/v2/lobby/matchmaking/search";
   function shouldAccept(payload) {
     if (!payload) return false;
     return payload.state === "InProgress" && payload.playerResponse === "None";
@@ -450,6 +451,13 @@
   function canCancel(payload) {
     if (!payload) return false;
     return payload.state === "InProgress" && payload.playerResponse === "Accepted";
+  }
+  async function cancelQueue(lcu2) {
+    try {
+      await lcu2.post(DECLINE_ROUTE);
+    } catch {
+    }
+    await lcu2.delete(CANCEL_SEARCH_ROUTE);
   }
   function startAutoAccept({
     enabled,
@@ -2757,7 +2765,22 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
       ${renderOrderedChampionPicker({ list, query, pickIds, compact: true })}
     </div>`;
   }
-  function renderAutoBan(settings, { disabled, list, query }) {
+  function renderBanSummary(list, banId) {
+    const id = Number(banId) || 0;
+    if (!id) {
+      return '<p class="pick-order pick-order-empty">Click a champion to ban \u2014 click again or \u2715 to clear.</p>';
+    }
+    return `<div class="pick-order">
+    <span class="pick-order-item">
+      <img class="pick-order-icon" src="${iconUrl(id)}" alt="">
+      ${championName(list, id)}
+      <button class="close pick-order-remove" type="button" data-remove-ban="${id}" aria-label="Remove">\u2715</button>
+    </span>
+  </div>`;
+  }
+  function renderAutoBan(settings, { disabled, list, allList, query }) {
+    const names = allList || list;
+    const banId = Number(settings.auto_ban_champion_id) || 0;
     return `
     <h2 class="screen-title">Auto Ban</h2>
     <p class="screen-sub">Bans a champion for you when the ban phase reaches your turn.</p>
@@ -2774,13 +2797,14 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     <div class="field ${settings.auto_ban ? "" : "field-off"}">
       <div class="field-head">
         <span class="field-label">Champion</span>
-        <span class="field-value">${championName(list, settings.auto_ban_champion_id)}</span>
+        <span class="field-value">${banId ? "1 selected" : "none chosen"}</span>
       </div>
+      ${renderBanSummary(names, banId)}
       ${renderChampionPicker({
       id: "auto_ban_champion_id",
       list,
       query,
-      selectedId: settings.auto_ban_champion_id
+      selectedId: banId
     })}
     </div>`;
   }
@@ -3140,6 +3164,25 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
   // src/ui/whatsNew.js
   var WHATS_NEW = [
+    {
+      version: "0.3.19",
+      items: [
+        {
+          title: "Reveal follows swaps with you",
+          body: "In-client team reveal remaps names when you trade cells with an ally, including when their identity is still obfuscated.",
+          screen: "queue"
+        },
+        {
+          title: "Auto Ban clear control",
+          body: "Selected ban shows as a chip with icon and \u2715 \u2014 no need to search the champion again to deselect.",
+          screen: "auto-ban"
+        },
+        {
+          title: "Cancel Queue leaves search",
+          body: "Cancel Queue declines the ready check and also exits matchmaking search so you are fully out of queue."
+        }
+      ]
+    },
     {
       version: "0.3.18",
       items: [
@@ -5332,9 +5375,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
       return prev.every((left, index) => {
         const right = next[index];
         if (left.cellId !== right.cellId) return false;
-        if (left.summonerId && right.summonerId && left.summonerId !== right.summonerId) return false;
         if (left.puuid && right.puuid && left.puuid !== right.puuid) return false;
+        if (left.summonerId && right.summonerId && left.summonerId !== right.summonerId) return false;
         if (left.obf && right.obf && left.obf !== right.obf) return false;
+        const shared = left.puuid && right.puuid || left.summonerId && right.summonerId || left.obf && right.obf;
+        if (shared) return true;
+        const leftHas = Boolean(left.puuid || left.summonerId || left.obf);
+        const rightHas = Boolean(right.puuid || right.summonerId || right.obf);
+        if (leftHas && rightHas) return false;
         return true;
       });
     }
@@ -6051,6 +6099,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           content.innerHTML = renderAutoBan(settings, {
             disabled: trayDown,
             list: searchChampions(champions, queries.auto_ban_champion_id),
+            allList: champions,
             query: queries.auto_ban_champion_id
           });
         } else if (screen === "profile") {
@@ -6330,6 +6379,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
           applyPickToggle(Number(removePick.dataset.removePick));
           return;
         }
+        const removeBan = e.target.closest("[data-remove-ban]");
+        if (removeBan) {
+          const previous = settings.auto_ban_champion_id;
+          settings = { ...settings, auto_ban_champion_id: 0 };
+          paint();
+          commit({ auto_ban_champion_id: 0 }, () => {
+            settings = { ...settings, auto_ban_champion_id: previous };
+          });
+          return;
+        }
         const champ = e.target.closest("[data-champ]");
         if (champ) {
           const key = champ.dataset.for;
@@ -6598,7 +6657,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         const dock = shadow.getElementById("cancel-dock");
         dock.hidden = true;
         try {
-          await lcu2.post(DECLINE_ROUTE);
+          await cancelQueue(lcu2);
         } catch {
           console.log(TAG, "could not cancel the queue");
         }

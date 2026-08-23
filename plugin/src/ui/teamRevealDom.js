@@ -500,9 +500,19 @@ export function makeTeamRevealDom({
     return prev.every((left, index) => {
       const right = next[index];
       if (left.cellId !== right.cellId) return false;
-      if (left.summonerId && right.summonerId && left.summonerId !== right.summonerId) return false;
       if (left.puuid && right.puuid && left.puuid !== right.puuid) return false;
+      if (left.summonerId && right.summonerId && left.summonerId !== right.summonerId) return false;
       if (left.obf && right.obf && left.obf !== right.obf) return false;
+
+      const shared =
+        (left.puuid && right.puuid) ||
+        (left.summonerId && right.summonerId) ||
+        (left.obf && right.obf);
+      if (shared) return true;
+
+      const leftHas = Boolean(left.puuid || left.summonerId || left.obf);
+      const rightHas = Boolean(right.puuid || right.summonerId || right.obf);
+      if (leftHas && rightHas) return false;
       return true;
     });
   }

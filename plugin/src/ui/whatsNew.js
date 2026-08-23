@@ -1,5 +1,24 @@
 export const WHATS_NEW = [
   {
+    version: '0.3.19',
+    items: [
+      {
+        title: 'Reveal follows swaps with you',
+        body: 'In-client team reveal remaps names when you trade cells with an ally, including when their identity is still obfuscated.',
+        screen: 'queue',
+      },
+      {
+        title: 'Auto Ban clear control',
+        body: 'Selected ban shows as a chip with icon and ✕ — no need to search the champion again to deselect.',
+        screen: 'auto-ban',
+      },
+      {
+        title: 'Cancel Queue leaves search',
+        body: 'Cancel Queue declines the ready check and also exits matchmaking search so you are fully out of queue.',
+      },
+    ],
+  },
+  {
     version: '0.3.18',
     items: [
       {

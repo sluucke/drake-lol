@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { shouldAccept, startAutoAccept } from '../src/autoAccept.js';
+import { shouldAccept, startAutoAccept, cancelQueue } from '../src/autoAccept.js';
 
 const PHASE_ROUTE = '/lol-gameflow/v1/gameflow-phase';
 const READY_CHECK_ROUTE = '/lol-matchmaking/v1/ready-check';
@@ -152,5 +152,30 @@ describe('startAutoAccept', () => {
 
     expect(setTimeoutImpl).not.toHaveBeenCalled();
     expect(lcu.post).toHaveBeenCalledWith('/lol-matchmaking/v1/ready-check/accept');
+  });
+});
+
+describe('cancelQueue', () => {
+  it('declines the ready check and leaves matchmaking search', async () => {
+    const lcu = {
+      post: vi.fn().mockResolvedValue({ ok: true }),
+      delete: vi.fn().mockResolvedValue({ ok: true }),
+    };
+
+    await cancelQueue(lcu);
+
+    expect(lcu.post).toHaveBeenCalledWith('/lol-matchmaking/v1/ready-check/decline');
+    expect(lcu.delete).toHaveBeenCalledWith('/lol-lobby/v2/lobby/matchmaking/search');
+  });
+
+  it('still leaves the queue when decline fails', async () => {
+    const lcu = {
+      post: vi.fn().mockRejectedValue(new Error('already gone')),
+      delete: vi.fn().mockResolvedValue({ ok: true }),
+    };
+
+    await cancelQueue(lcu);
+
+    expect(lcu.delete).toHaveBeenCalledWith('/lol-lobby/v2/lobby/matchmaking/search');
   });
 });
