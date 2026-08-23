@@ -428,7 +428,25 @@ export function renderAutoPick(settings, { disabled, list, allList, query, activ
     </div>`;
 }
 
-export function renderAutoBan(settings, { disabled, list, query }) {
+function renderBanSummary(list, banId) {
+  const id = Number(banId) || 0;
+  if (!id) {
+    return '<p class="pick-order pick-order-empty">Click a champion to ban — click again or ✕ to clear.</p>';
+  }
+
+  return `<div class="pick-order">
+    <span class="pick-order-item">
+      <img class="pick-order-icon" src="${iconUrl(id)}" alt="">
+      ${championName(list, id)}
+      <button class="close pick-order-remove" type="button" data-remove-ban="${id}" aria-label="Remove">✕</button>
+    </span>
+  </div>`;
+}
+
+export function renderAutoBan(settings, { disabled, list, allList, query }) {
+  const names = allList || list;
+  const banId = Number(settings.auto_ban_champion_id) || 0;
+
   return `
     <h2 class="screen-title">Auto Ban</h2>
     <p class="screen-sub">Bans a champion for you when the ban phase reaches your turn.</p>
@@ -445,13 +463,14 @@ export function renderAutoBan(settings, { disabled, list, query }) {
     <div class="field ${settings.auto_ban ? '' : 'field-off'}">
       <div class="field-head">
         <span class="field-label">Champion</span>
-        <span class="field-value">${championName(list, settings.auto_ban_champion_id)}</span>
+        <span class="field-value">${banId ? '1 selected' : 'none chosen'}</span>
       </div>
+      ${renderBanSummary(names, banId)}
       ${renderChampionPicker({
         id: 'auto_ban_champion_id',
         list,
         query,
-        selectedId: settings.auto_ban_champion_id,
+        selectedId: banId,
       })}
     </div>`;
 }

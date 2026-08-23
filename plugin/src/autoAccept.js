@@ -3,6 +3,7 @@ import { isReadyCheckPhase, readGameflowPhase } from './features/inGameIdle.js';
 
 export const ACCEPT_ROUTE = '/lol-matchmaking/v1/ready-check/accept';
 export const DECLINE_ROUTE = '/lol-matchmaking/v1/ready-check/decline';
+export const CANCEL_SEARCH_ROUTE = '/lol-lobby/v2/lobby/matchmaking/search';
 
 export function shouldAccept(payload) {
   if (!payload) return false;
@@ -12,6 +13,13 @@ export function shouldAccept(payload) {
 export function canCancel(payload) {
   if (!payload) return false;
   return payload.state === 'InProgress' && payload.playerResponse === 'Accepted';
+}
+
+export async function cancelQueue(lcu) {
+  try {
+    await lcu.post(DECLINE_ROUTE);
+  } catch {}
+  await lcu.delete(CANCEL_SEARCH_ROUTE);
 }
 
 export function startAutoAccept({

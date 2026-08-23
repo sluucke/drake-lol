@@ -1078,6 +1078,66 @@ describe('teamRevealDom', () => {
     expect(row1._label.textContent).toContain('8W/2L');
   });
 
+  it('moves revealed names when local swaps with an obfuscated ally', async () => {
+    const row0 = makeRow(0, 'MaskedMe');
+    const row1 = makeRow(1, 'MaskedAlly');
+    const rows = [row0, row1];
+    const doc = { querySelectorAll: () => rows };
+    const loadSnapshot = vi.fn(async () => [
+      {
+        cellId: 0,
+        riotId: 'Me#TAG',
+        puuid: 'me',
+        wins: 8,
+        losses: 2,
+        winRate: 80,
+        matchesUsed: 10,
+        assignedPosition: 'TOP',
+      },
+      {
+        cellId: 1,
+        riotId: 'Ally#TAG',
+        obfuscatedPuuid: 'ally-obf',
+        wins: 1,
+        losses: 9,
+        winRate: 10,
+        matchesUsed: 10,
+        assignedPosition: 'MIDDLE',
+      },
+    ]);
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot,
+      overlayRoot: makeOverlayRoot(),
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [
+        { cellId: 0, puuid: 'me', assignedPosition: 'TOP' },
+        { cellId: 1, obfuscatedPuuid: 'ally-obf', assignedPosition: 'MIDDLE' },
+      ],
+      localPlayerCellId: 0,
+    });
+    expect(row0._label.textContent).toContain('Me#TAG');
+    expect(row1._label.textContent).toContain('Ally#TAG');
+
+    await ctl.handleSession({
+      myTeam: [
+        { cellId: 0, obfuscatedPuuid: 'ally-obf', assignedPosition: 'TOP' },
+        { cellId: 1, puuid: 'me', assignedPosition: 'MIDDLE' },
+      ],
+      localPlayerCellId: 1,
+    });
+
+    expect(loadSnapshot).toHaveBeenCalledTimes(1);
+    expect(row0._label.textContent).toContain('Ally#TAG');
+    expect(row0._label.textContent).toContain('1W/9L');
+    expect(row1._label.textContent).toContain('Me#TAG');
+    expect(row1._label.textContent).toContain('8W/2L');
+  });
+
   it('does not reload when game id or puuid fill in after the first reveal', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };

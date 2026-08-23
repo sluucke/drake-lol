@@ -51,7 +51,7 @@ import { makeSfx, sfxFor } from './sfx.js';
 import { makeSettingsClient } from './settingsClient.js';
 import { makeUpdater } from '../features/update.js';
 import { loadConfig } from '../config.js';
-import { canCancel, DECLINE_ROUTE } from '../autoAccept.js';
+import { canCancel, cancelQueue } from '../autoAccept.js';
 import { findAnchor, inChampSelect, layoutDock, watchAnchor } from './dodgeDock.js';
 import { mountSocialToggle, syncSocialToggle, watchSocialToggle } from './socialToggle.js';
 import { subscribe } from '../subscribe.js';
@@ -428,6 +428,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         content.innerHTML = renderAutoBan(settings, {
           disabled: trayDown,
           list: searchChampions(champions, queries.auto_ban_champion_id),
+          allList: champions,
           query: queries.auto_ban_champion_id,
         });
       } else if (screen === 'profile') {
@@ -752,6 +753,17 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         return;
       }
 
+      const removeBan = e.target.closest('[data-remove-ban]');
+      if (removeBan) {
+        const previous = settings.auto_ban_champion_id;
+        settings = { ...settings, auto_ban_champion_id: 0 };
+        paint();
+        commit({ auto_ban_champion_id: 0 }, () => {
+          settings = { ...settings, auto_ban_champion_id: previous };
+        });
+        return;
+      }
+
       const champ = e.target.closest('[data-champ]');
       if (champ) {
         const key = champ.dataset.for;
@@ -1059,7 +1071,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       const dock = shadow.getElementById('cancel-dock');
       dock.hidden = true;
       try {
-        await lcu.post(DECLINE_ROUTE);
+        await cancelQueue(lcu);
       } catch {
         console.log(TAG, 'could not cancel the queue');
       }
