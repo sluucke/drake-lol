@@ -182,7 +182,7 @@ function makeDoc(authors = []) {
     },
   };
 
-  return { doc, chatRoot, listeners, createElement };
+  return { doc, chatRoot, body, listeners, createElement };
 }
 
 describe('makeTeamRevealChat', () => {
@@ -232,5 +232,39 @@ describe('makeTeamRevealChat', () => {
       'arongejo → other#br1',
     );
     expect(doc.querySelector('.name').textContent).toBe('other#br1');
+  });
+
+  it('retries until the champ select chat connects after setEntries', () => {
+    vi.useFakeTimers();
+    const { doc, body, createElement } = makeDoc([]);
+    body.children = [];
+
+    const chat = makeTeamRevealChat({
+      doc,
+      MutationObserverImpl: null,
+      pollMs: 250,
+    });
+    chat.setEntries([{ from: 'arongejo', to: 'xyz#br1' }]);
+    expect(doc.querySelector('[data-drake-chat-map]')).toBeNull();
+
+    const chatRoot = createElement('div');
+    chatRoot.className = 'chat-window';
+    const author = createElement('div');
+    author.className = 'name';
+    author.textContent = 'arongejo';
+    chatRoot.appendChild(author);
+    body.appendChild(chatRoot);
+
+    vi.advanceTimersByTime(249);
+    expect(doc.querySelector('[data-drake-chat-map]')).toBeNull();
+
+    vi.advanceTimersByTime(1);
+    expect(doc.querySelector('[data-drake-chat-map]')?.textContent).toBe(
+      'arongejo → xyz#br1',
+    );
+    expect(author.textContent).toBe('xyz#br1');
+
+    chat.clear();
+    vi.useRealTimers();
   });
 });
