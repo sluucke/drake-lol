@@ -11,6 +11,7 @@ import {
 import { iconUrl } from '../features/champions.js';
 import { roleIconUrl, roleLabel } from './roleIcons.js';
 import { RANK_ICONS } from './assets.js';
+import { collectRevealChatPairs, makeTeamRevealChat } from './teamRevealChat.js';
 
 const ORIGINAL_NAME_KEY = 'drakeTeamRevealOriginal';
 const APPLIED_KEY = 'drakeTeamRevealApplied';
@@ -325,8 +326,10 @@ export function makeTeamRevealDom({
   clearTimeoutImpl = clearTimeout,
   statusReadyMs = STATUS_READY_MS,
   onRevealTiming,
+  MutationObserverImpl,
 }) {
   const renderCards = makeRenderCards((id) => getChampName(Number(id)));
+  const chat = makeTeamRevealChat({ doc, MutationObserverImpl });
   let enabled = false;
   let stopSession = null;
   let snapshot = [];
@@ -361,6 +364,7 @@ export function makeTeamRevealDom({
   function clearReveal() {
     stopRevealLoad();
     restoreRows();
+    chat.clear();
     // Exit cleanup often runs after the client has already detached the rows.
     // Those same nodes come back marked on the next lobby, so remember to scrub
     // even if the next ChampSelect event has no previous phase (e.g. after the
@@ -775,7 +779,10 @@ export function makeTeamRevealDom({
     }
 
     const unmatched = remaining.filter((row) => !used.has(row));
-    if (!unmatched.length) return;
+    if (!unmatched.length) {
+      syncChat();
+      return;
+    }
 
     const labels = readLabelNodes(doc).filter((label) => {
       if (!label?.dataset) label.dataset = {};
@@ -788,6 +795,11 @@ export function makeTeamRevealDom({
       applyLabel(label, info);
       boundLabels.set(Number(info.cellId), label);
     }
+    syncChat();
+  }
+
+  function syncChat() {
+    chat.setEntries(collectRevealChatPairs(boundLabels, snapshot, ORIGINAL_NAME_KEY));
   }
 
   function closeCards() {

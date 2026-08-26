@@ -149,6 +149,49 @@ pub async fn check_for_update(current: &str) -> Result<UpdateStatus, UpdateError
     Ok(status_from_plan(current, plan_update(&release, current)))
 }
 
+pub fn prompt_version_for_manual_update(
+    auto_update: bool,
+    is_startup: bool,
+    status: &UpdateStatus,
+) -> Option<String> {
+    if auto_update || !is_startup {
+        return None;
+    }
+    match status {
+        UpdateStatus::Available { version, .. } => Some(version.clone()),
+        _ => None,
+    }
+}
+
+pub fn update_available_prompt_text(version: &str) -> String {
+    format!("Drake {version} is available.\n\nUpdate now?")
+}
+
+pub fn update_available_prompt_title() -> &'static str {
+    "Drake"
+}
+
+fn to_wide(value: &str) -> Vec<u16> {
+    value.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
+pub fn ask_to_install_update(version: &str) -> bool {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        MessageBoxW, IDYES, MB_ICONQUESTION, MB_YESNO,
+    };
+    let title = to_wide(update_available_prompt_title());
+    let message = to_wide(&update_available_prompt_text(version));
+    let result = unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            message.as_ptr(),
+            title.as_ptr(),
+            MB_YESNO | MB_ICONQUESTION,
+        )
+    };
+    result == IDYES
+}
+
 pub fn plan_update(rel: &GithubRelease, current: &str) -> UpdatePlan {
     if !is_newer(&rel.tag_name, current) {
         return UpdatePlan::UpToDate;
@@ -761,5 +804,67 @@ mod tests {
                 version: "v0.2.0".into(),
             }
         );
+    }
+
+    #[test]
+    fn prompts_on_startup_when_auto_update_is_off_and_an_installer_exists() {
+        let status = UpdateStatus::Available {
+            current: "0.3.0".into(),
+            version: "v0.3.1".into(),
+        };
+        assert_eq!(
+            prompt_version_for_manual_update(false, true, &status).as_deref(),
+            Some("v0.3.1")
+        );
+    }
+
+    #[test]
+    fn does_not_prompt_when_auto_update_is_on() {
+        let status = UpdateStatus::Available {
+            current: "0.3.0".into(),
+            version: "v0.3.1".into(),
+        };
+        assert_eq!(prompt_version_for_manual_update(true, true, &status), None);
+    }
+
+    #[test]
+    fn does_not_prompt_on_periodic_ticks_only_on_startup() {
+        let status = UpdateStatus::Available {
+            current: "0.3.0".into(),
+            version: "v0.3.1".into(),
+        };
+        assert_eq!(prompt_version_for_manual_update(false, false, &status), None);
+    }
+
+    #[test]
+    fn does_not_prompt_when_current_or_missing_installer() {
+        assert_eq!(
+            prompt_version_for_manual_update(
+                false,
+                true,
+                &UpdateStatus::Current {
+                    current: "0.3.0".into()
+                }
+            ),
+            None
+        );
+        assert_eq!(
+            prompt_version_for_manual_update(
+                false,
+                true,
+                &UpdateStatus::NoInstaller {
+                    current: "0.3.0".into(),
+                    version: "v0.3.1".into()
+                }
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn update_available_prompt_asks_to_install() {
+        let text = update_available_prompt_text("v0.3.1");
+        assert!(text.contains("v0.3.1"));
+        assert!(text.to_lowercase().contains("update"));
     }
 }

@@ -77,6 +77,7 @@ export const CSS = `
 }
 
 .window {
+  position: relative;
   width: 720px;
   max-width: 92vw;
   height: 86vh;
@@ -130,6 +131,13 @@ export const CSS = `
   text-transform: uppercase;
 }
 
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
+
 .close {
   width: 24px;
   height: 24px;
@@ -139,10 +147,102 @@ export const CSS = `
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 .close:hover { color: #f0e6d2; border-color: #c8aa6e; }
 
-
+.credits-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.credits-modal[hidden] { display: none; }
+.credits-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 10, 19, 0.72);
+}
+.credits-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 360px);
+  padding: 28px 24px 22px;
+  border: 1px solid #785a28;
+  background:
+    linear-gradient(180deg, rgba(30, 35, 40, 0.98), rgba(1, 10, 19, 0.98));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+.credits-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.credits-title {
+  font-family: ${DISPLAY};
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f0e6d2;
+  margin-bottom: 10px;
+}
+.credits-disclaimer {
+  margin: 0 auto 18px;
+  max-width: 280px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a09b8c;
+}
+.credits-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.credit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+.credit-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #c8aa6e;
+}
+.credit-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+.credit-link {
+  border: 0;
+  background: transparent;
+  color: #f0e6d2;
+  font-family: ${DISPLAY};
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 0;
+}
+.credit-link:hover { color: #c8aa6e; }
+.credit-link-large { font-size: 18px; letter-spacing: 0.06em; }
+.credits-actions {
+  display: flex;
+  justify-content: center;
+}
 
 .body {
   position: relative;

@@ -19,6 +19,7 @@ import {
   renderWhatsNew,
   renderTourCard,
   SCREENS,
+  CREDITS,
 } from './panel.js';
 import {
   decideOpenMode,
@@ -167,13 +168,39 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       if (!shadowRoot) return;
       shadowRoot.getElementById('scrim').style.display = open ? 'grid' : 'none';
       syncSocialToggle(document, open);
+      if (!open) closeCredits();
     },
     onTeamRevealCardsToggle: () => {
       if (teamRevealDom) teamRevealDom.toggleCards();
     },
+    onEscape: () => {
+      if (!shadowRoot) return false;
+      const modal = shadowRoot.getElementById('credits-modal');
+      if (!modal || modal.hidden) return false;
+      closeCredits();
+      return true;
+    },
     onMount: wire,
   });
 
+  function closeCredits() {
+    if (!shadowRoot) return;
+    const modal = shadowRoot.getElementById('credits-modal');
+    if (modal) modal.hidden = true;
+  }
+
+  function openCredits() {
+    if (!shadowRoot) return;
+    const modal = shadowRoot.getElementById('credits-modal');
+    if (modal) modal.hidden = false;
+  }
+
+  function openCreditUrl(url) {
+    if (!url) return;
+    void opener.open(url).then((r) => {
+      if (!r.ok) say(r.reason, false);
+    });
+  }
   
   
   
@@ -1085,7 +1112,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     
     
     
-    const INTERACTIVE = '.navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .select-field, .slider, [data-onboard], [data-whats-new-screen]';
+    const INTERACTIVE = '.navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .credit-link, .select-field, .slider, [data-onboard], [data-whats-new-screen]';
 
     shadow.addEventListener(
       'mouseover',
@@ -1125,6 +1152,22 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     );
 
     shadow.getElementById('close').addEventListener('click', () => api.close());
+    shadow.getElementById('credits-open').addEventListener('click', () => openCredits());
+    shadow.getElementById('credits-close').addEventListener('click', () => closeCredits());
+    shadow.getElementById('credits-modal').addEventListener('click', (e) => {
+      if (e.target.closest('[data-credits-dismiss]')) {
+        closeCredits();
+        return;
+      }
+      const link = e.target.closest('[data-credit-href]');
+      if (link) {
+        openCreditUrl(link.getAttribute('data-credit-href'));
+        return;
+      }
+      if (e.target.closest('[data-credit-open-repo]')) {
+        openCreditUrl(CREDITS.repoUrl);
+      }
+    });
 
     shadow.getElementById('scrim').addEventListener('click', (e) => {
       if (e.target.id === 'scrim') api.close();

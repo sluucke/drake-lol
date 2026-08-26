@@ -1274,4 +1274,135 @@ describe('revealed status auto dismiss', () => {
   it('uses an eight-second default dismiss', () => {
     expect(STATUS_READY_MS).toBe(8000);
   });
+
+  it('injects a local chat name map and rewrites chat authors from reveal originals', async () => {
+    const rows = [makeRow(1, 'arongejo'), makeRow(2, 'bob')];
+    const chatRoot = {
+      className: 'chat-window',
+      children: [],
+      parentNode: null,
+      appendChild(child) {
+        this.children.push(child);
+        child.parentNode = this;
+        return child;
+      },
+      querySelector(sel) {
+        if (sel === '[data-drake-chat-map]') {
+          return this.children.find((c) => c.dataset?.drakeChatMap === '1') || null;
+        }
+        return null;
+      },
+    };
+    const authorA = { className: 'name', textContent: 'arongejo', dataset: {}, children: [] };
+    const authorB = { className: 'name', textContent: 'bob', dataset: {}, children: [] };
+    const msgA = { className: 'chat-message', children: [authorA], dataset: {} };
+    const msgB = { className: 'chat-message', children: [authorB], dataset: {} };
+    chatRoot.children.push(msgA, msgB);
+    authorA.parentNode = msgA;
+    authorB.parentNode = msgB;
+
+    const body = { children: [chatRoot], className: '', dataset: {} };
+    chatRoot.parentNode = body;
+
+    function walk(node, visit) {
+      visit(node);
+      for (const child of node.children || []) walk(child, visit);
+    }
+
+    const doc = {
+      body,
+      querySelectorAll(sel) {
+        if (sel === '[data-cell-id]' || sel === undefined) return rows;
+        const out = [];
+        walk(body, (node) => {
+          if (sel === '.chat-window' && node.className === 'chat-window') out.push(node);
+          if (sel === '.name' && node.className === 'name') out.push(node);
+          if (sel === '[data-drake-chat-map]' && node.dataset?.drakeChatMap === '1') out.push(node);
+          if (sel?.includes?.('chat-window') && String(node.className || '').includes('chat-window')) {
+            out.push(node);
+          }
+        });
+        if (sel === '[data-cell-id]') return rows;
+        return out;
+      },
+      querySelector(sel) {
+        return this.querySelectorAll(sel)[0] || null;
+      },
+      createElement() {
+        return {
+          className: '',
+          textContent: '',
+          dataset: {},
+          style: {},
+          children: [],
+          parentNode: null,
+          isConnected: true,
+          setAttribute(name, value) {
+            if (name.startsWith('data-')) {
+              const key = name
+                .slice(5)
+                .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+              this.dataset[key] = value;
+            }
+          },
+          getAttribute(name) {
+            if (name.startsWith('data-')) {
+              const key = name
+                .slice(5)
+                .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+              return this.dataset[key] ?? null;
+            }
+            return null;
+          },
+          removeAttribute() {},
+          appendChild(child) {
+            this.children.push(child);
+            child.parentNode = this;
+            return child;
+          },
+          remove() {
+            if (!this.parentNode) return;
+            this.parentNode.children = this.parentNode.children.filter((c) => c !== this);
+            this.parentNode = null;
+            this.isConnected = false;
+          },
+          querySelector(sel) {
+            if (sel === '[data-drake-chat-map]') {
+              return this.children.find((c) => c.dataset?.drakeChatMap === '1') || null;
+            }
+            return null;
+          },
+        };
+      },
+    };
+
+    // toLabelNode uses row.querySelector — makeRow already provides that.
+    rows.forEach((row) => {
+      row.isConnected = true;
+    });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        { cellId: 1, riotId: 'xyz#br1', wins: 1, losses: 0, winRate: 100 },
+        { cellId: 2, riotId: 'bob#na1', wins: 0, losses: 1, winRate: 0 },
+      ],
+      overlayRoot: makeOverlayRoot(),
+      MutationObserverImpl: null,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 1 }, { cellId: 2 }] });
+
+    const mapNode = chatRoot.children.find((c) => c.dataset?.drakeChatMap === '1');
+    expect(mapNode?.textContent).toBe('arongejo → xyz#br1\nbob → bob#na1');
+    expect(authorA.textContent).toBe('xyz#br1');
+    expect(authorB.textContent).toBe('bob#na1');
+
+    ctl.setEnabled(false);
+    expect(chatRoot.children.find((c) => c.dataset?.drakeChatMap === '1')).toBeFalsy();
+    expect(authorA.textContent).toBe('arongejo');
+    expect(authorB.textContent).toBe('bob');
+  });
 });

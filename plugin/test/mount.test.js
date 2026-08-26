@@ -146,6 +146,18 @@ describe('mountUI', () => {
     expect(ui.isOpen()).toBe(false);
   });
 
+  it('lets onEscape consume Escape without closing the panel', () => {
+    const onEscape = vi.fn(() => true);
+    const ui = mountUI({ doc, win, render: () => '<div></div>', onEscape });
+
+    win.dispatch('keydown', { ctrlKey: true, key: 'd', preventDefault() {} });
+    expect(ui.isOpen()).toBe(true);
+
+    win.dispatch('keydown', { key: 'Escape', preventDefault() {} });
+    expect(onEscape).toHaveBeenCalledTimes(1);
+    expect(ui.isOpen()).toBe(true);
+  });
+
   it('calls team reveal cards toggle on Ctrl+Shift+D only', () => {
     const onTeamRevealCardsToggle = vi.fn();
     const ui = mountUI({ doc, win, render: () => '<div></div>', onTeamRevealCardsToggle });

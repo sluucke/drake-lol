@@ -1,5 +1,29 @@
 export const WHATS_NEW = [
   {
+    version: '0.3.20',
+    items: [
+      {
+        title: 'Reveal names in champ select chat',
+        body: 'Team reveal posts a private name map in chat and rewrites message authors to Riot IDs while you are in champ select.',
+        screen: 'queue',
+      },
+      {
+        title: 'Credits',
+        body: 'A ? next to Close opens credits for Drake and the tools that inspired it.',
+      },
+      {
+        title: 'Fresh lobby W/L each queue',
+        body: 'Match history is fetched without HTTP cache so your W/L updates after the last game.',
+        screen: 'queue',
+      },
+      {
+        title: 'Update prompt when auto-update is off',
+        body: 'Starting Drake asks whether to install a newer release if automatic updates are disabled.',
+        screen: 'settings',
+      },
+    ],
+  },
+  {
     version: '0.3.19',
     items: [
       {

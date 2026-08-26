@@ -103,6 +103,31 @@ async fn try_apply_update(
     }
 }
 
+async fn try_prompt_manual_update(
+    state: &Arc<configd::ConfigdState>,
+    note: Arc<Mutex<Option<String>>>,
+    is_startup: bool,
+) {
+    let auto_update = state.settings.lock().unwrap().auto_update;
+    if auto_update || !is_startup {
+        return;
+    }
+    match update::check_for_update(env!("CARGO_PKG_VERSION")).await {
+        Ok(status) => {
+            let Some(version) = update::prompt_version_for_manual_update(false, true, &status)
+            else {
+                return;
+            };
+            if update::ask_to_install_update(&version) {
+                try_apply_update(state, note, false, update::UpdateTrigger::Manual).await;
+            }
+        }
+        Err(e) => {
+            eprintln!("[Drake] update check failed: {e}");
+        }
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
@@ -398,6 +423,7 @@ pub fn run() {
                         break;
                     }
                     tokio::time::sleep(next_auto_update_delay(first_check)).await;
+                    let is_startup = first_check;
                     first_check = false;
                     if periodic_shutdown.load(Ordering::SeqCst) {
                         break;
@@ -409,6 +435,13 @@ pub fn run() {
                             periodic_note.clone(),
                             false,
                             update::UpdateTrigger::Automatic,
+                        )
+                        .await;
+                    } else {
+                        try_prompt_manual_update(
+                            &periodic_state,
+                            periodic_note.clone(),
+                            is_startup,
                         )
                         .await;
                     }
