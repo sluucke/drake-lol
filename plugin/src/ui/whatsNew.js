@@ -1,5 +1,15 @@
 export const WHATS_NEW = [
   {
+    version: '0.3.21',
+    items: [
+      {
+        title: 'Chat reveal waits for connect',
+        body: 'Team reveal keeps retrying until champ select chat connects, then posts the name map and rewrites authors.',
+        screen: 'queue',
+      },
+    ],
+  },
+  {
     version: '0.3.20',
     items: [
       {

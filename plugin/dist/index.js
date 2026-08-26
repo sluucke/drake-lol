@@ -3309,6 +3309,16 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   // src/ui/whatsNew.js
   var WHATS_NEW = [
     {
+      version: "0.3.21",
+      items: [
+        {
+          title: "Chat reveal waits for connect",
+          body: "Team reveal keeps retrying until champ select chat connects, then posts the name map and rewrites authors.",
+          screen: "queue"
+        }
+      ]
+    },
+    {
       version: "0.3.20",
       items: [
         {
@@ -5260,21 +5270,36 @@ button.bug-report-button[data-drake-toggle]:disabled {
     delete node.dataset[CHAT_AUTHOR_APPLIED_KEY];
     node.removeAttribute?.("data-drake-chat-applied");
   }
-  function makeTeamRevealChat({ doc, MutationObserverImpl = typeof MutationObserver !== "undefined" ? MutationObserver : null } = {}) {
+  function makeTeamRevealChat({
+    doc,
+    MutationObserverImpl = typeof MutationObserver !== "undefined" ? MutationObserver : null,
+    pollMs = 500,
+    setIntervalImpl = typeof setInterval !== "undefined" ? setInterval : null,
+    clearIntervalImpl = typeof clearInterval !== "undefined" ? clearInterval : null
+  } = {}) {
     let entries = [];
     let entriesByFrom = /* @__PURE__ */ new Map();
     let mapNode = null;
     let observer = null;
+    let pollTimer = null;
     function indexEntries(list) {
       entries = buildChatNameEntries(list);
       entriesByFrom = new Map(entries.map((entry) => [normalizeName(entry.from), entry]));
     }
     function ensureMapNode(root) {
-      if (mapNode?.isConnected) return mapNode;
+      if (mapNode?.isConnected) {
+        if (mapNode.parentNode === root) return mapNode;
+        mapNode.remove?.();
+        mapNode = null;
+      }
       const existing = root.querySelector?.(`[${CHAT_MAP_ATTR}]`) || doc.querySelector?.(`[${CHAT_MAP_ATTR}]`);
       if (existing) {
-        mapNode = existing;
-        return mapNode;
+        if (existing.parentNode !== root) {
+          existing.remove?.();
+        } else {
+          mapNode = existing;
+          return mapNode;
+        }
       }
       const node = doc.createElement("div");
       node.className = "drake-chat-map";
@@ -5292,14 +5317,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     function syncMapMessage() {
       const root = findChatRoot(doc);
-      if (!root) return;
+      if (!root) return false;
       if (!entries.length) {
         removeMapMessage();
-        return;
+        return false;
       }
       const node = ensureMapNode(root);
       const next = formatChatMapMessage(entries);
       if (node.textContent !== next) node.textContent = next;
+      return true;
     }
     function rewriteAuthors() {
       if (!entries.length) return;
@@ -5332,13 +5358,29 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
     }
     function sync() {
-      syncMapMessage();
+      const mapped = syncMapMessage();
       rewriteAuthors();
+      if (mapped && mapNode?.isConnected) stopPoll();
     }
     function stopObserver() {
       if (!observer) return;
       observer.disconnect?.();
       observer = null;
+    }
+    function stopPoll() {
+      if (pollTimer == null) return;
+      clearIntervalImpl?.(pollTimer);
+      pollTimer = null;
+    }
+    function startPoll() {
+      if (!setIntervalImpl || pollTimer != null || !(pollMs > 0)) return;
+      pollTimer = setIntervalImpl(() => {
+        if (!entries.length) {
+          stopPoll();
+          return;
+        }
+        sync();
+      }, pollMs);
     }
     function startObserver() {
       if (!MutationObserverImpl || observer) return;
@@ -5347,7 +5389,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
       observer = new MutationObserverImpl(() => {
         sync();
       });
-      observer.observe(root, { childList: true, subtree: true, characterData: true });
+      observer.observe(root, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: true
+      });
     }
     function setEntries(next) {
       indexEntries(next);
@@ -5355,13 +5402,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
         restoreAuthors();
         removeMapMessage();
         stopObserver();
+        stopPoll();
         return;
       }
       sync();
       startObserver();
+      if (!mapNode?.isConnected) startPoll();
     }
     function clear() {
       stopObserver();
+      stopPoll();
       restoreAuthors();
       removeMapMessage();
       indexEntries([]);
