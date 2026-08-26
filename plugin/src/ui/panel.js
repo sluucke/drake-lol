@@ -32,10 +32,45 @@ export const SCREENS = [
   { id: 'settings', label: 'Settings' },
 ];
 
+export const CREDITS = {
+  createdBy: { label: 'David William', href: 'https://github.com/sluucke' },
+  specialThanks: { label: 'Bieelyi', href: 'https://twitch.tv/bieelyi' },
+  inspiredBy: [
+    { label: 'Tiamat', href: 'https://github.com/369gabriel/tiamat' },
+    { label: 'Sona', href: 'https://github.com/WJZ-P/sona' },
+  ],
+  assets: { label: 'Community Dragon', href: 'https://www.communitydragon.org' },
+  repoUrl: 'https://github.com/sluucke/drake-lol',
+};
 
+function creditLink(entry, { large = false } = {}) {
+  const cls = large ? 'credit-link credit-link-large' : 'credit-link';
+  return `<button type="button" class="${cls}" data-credit-href="${escapeHtml(entry.href)}">${escapeHtml(entry.label)}</button>`;
+}
 
+function creditBlock(title, bodyHtml) {
+  return `<div class="credit-block"><span class="credit-label">${escapeHtml(title)}</span>${bodyHtml}</div>`;
+}
 
-export function renderShell() {
+export function renderCreditsModal() {
+  const inspired = CREDITS.inspiredBy.map((entry) => creditLink(entry)).join('');
+  return `
+    <div class="credits-backdrop" data-credits-dismiss="1"></div>
+    <div class="credits-card" role="dialog" aria-modal="true" aria-labelledby="credits-title">
+      <button type="button" class="close credits-close" id="credits-close" aria-label="Close">✕</button>
+      <div id="credits-title" class="credits-title">Credits</div>
+      <p class="credits-disclaimer">Drake is unofficial open source software. Not affiliated with Riot Games.</p>
+      <div class="credits-body">
+        ${creditBlock('Created by', creditLink(CREDITS.createdBy, { large: true }))}
+        ${creditBlock('Special thanks', creditLink(CREDITS.specialThanks, { large: true }))}
+        ${creditBlock('Inspired by', `<div class="credit-links">${inspired}</div>`)}
+        ${creditBlock('Assets', creditLink(CREDITS.assets))}
+      </div>
+      <div class="credits-actions">
+        <button type="button" class="hextech-btn" data-credit-open-repo>GitHub</button>
+      </div>
+    </div>`;
+}export function renderShell() {
   const nav = SCREENS.map(
     (s, i) =>
       `<button class="navitem" role="tab" data-screen="${s.id}" aria-selected="${i === 0}">${s.label}</button>`,
@@ -60,7 +95,10 @@ export function renderShell() {
           <img class="mark" src="${DRAKE_ICON}" alt="" aria-hidden="true">
           <div class="title">Drake</div>
           <div class="hint">Ctrl + D</div>
-          <button class="close" id="close" aria-label="Close">✕</button>
+          <div class="titlebar-actions">
+            <button type="button" class="close" id="credits-open" aria-label="Credits">?</button>
+            <button type="button" class="close" id="close" aria-label="Close">✕</button>
+          </div>
         </div>
 
         <div class="body">
@@ -72,6 +110,10 @@ export function renderShell() {
         <div class="footer">
           <span id="host-label">—</span>
           <span id="status">—</span>
+        </div>
+
+        <div class="credits-modal" id="credits-modal" hidden>
+          ${renderCreditsModal()}
         </div>
       </div>
     </div>`;

@@ -231,6 +231,7 @@ export async function fetchQueueMatchHistory({
     if (!url) return [];
     const resp = await fetchImpl(url, {
       headers: { Authorization: `Bearer ${ctx.accessToken}` },
+      cache: 'no-store',
       signal,
     });
     if (!resp?.ok) return [];

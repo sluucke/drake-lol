@@ -20,14 +20,14 @@ const SENTINEL = '__drakeUIMounted';
 
 
 
-export function mountUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle }) {
+export function mountUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape }) {
   if (win[SENTINEL]) return win[SENTINEL];
-  const ui = createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle });
+  const ui = createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape });
   win[SENTINEL] = ui;
   return ui;
 }
 
-function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle }) {
+function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape }) {
   let host = null;
   let open = false;
 
@@ -89,6 +89,7 @@ function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsTo
         if (onTeamRevealCardsToggle) onTeamRevealCardsToggle();
       } else if (open && matchesClose(event)) {
         event.preventDefault();
+        if (typeof onEscape === 'function' && onEscape()) return;
         api.close();
       }
     },

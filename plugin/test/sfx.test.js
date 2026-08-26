@@ -122,6 +122,10 @@ describe('sfxFor', () => {
     expect(sfxFor(el('close')).click).toBe('sfx-uikit-button-circlex-click');
   });
 
+  it('uses the text-button click for credit links', () => {
+    expect(sfxFor(el('credit-link')).click).toBe('sfx-uikit-button-text-click');
+  });
+
   it('uses the text-button click for nav tabs', () => {
     expect(sfxFor(el('navitem')).click).toBe('sfx-uikit-button-text-click');
   });

@@ -631,13 +631,13 @@
   // src/ui/mount.js
   var HOST_ID = "drake-ui-host";
   var SENTINEL = "__drakeUIMounted";
-  function mountUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle }) {
+  function mountUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape }) {
     if (win[SENTINEL]) return win[SENTINEL];
-    const ui2 = createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle });
+    const ui2 = createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape });
     win[SENTINEL] = ui2;
     return ui2;
   }
-  function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle }) {
+  function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape }) {
     let host = null;
     let open = false;
     const api = {
@@ -686,6 +686,7 @@
           if (onTeamRevealCardsToggle) onTeamRevealCardsToggle();
         } else if (open && matchesClose(event)) {
           event.preventDefault();
+          if (typeof onEscape === "function" && onEscape()) return;
           api.close();
         }
       },
@@ -780,6 +781,7 @@
 }
 
 .window {
+  position: relative;
   width: 720px;
   max-width: 92vw;
   height: 86vh;
@@ -833,6 +835,13 @@
   text-transform: uppercase;
 }
 
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
+
 .close {
   width: 24px;
   height: 24px;
@@ -842,10 +851,102 @@
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 .close:hover { color: #f0e6d2; border-color: #c8aa6e; }
 
-
+.credits-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.credits-modal[hidden] { display: none; }
+.credits-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 10, 19, 0.72);
+}
+.credits-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 360px);
+  padding: 28px 24px 22px;
+  border: 1px solid #785a28;
+  background:
+    linear-gradient(180deg, rgba(30, 35, 40, 0.98), rgba(1, 10, 19, 0.98));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+.credits-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.credits-title {
+  font-family: ${DISPLAY};
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f0e6d2;
+  margin-bottom: 10px;
+}
+.credits-disclaimer {
+  margin: 0 auto 18px;
+  max-width: 280px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a09b8c;
+}
+.credits-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.credit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+.credit-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #c8aa6e;
+}
+.credit-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+.credit-link {
+  border: 0;
+  background: transparent;
+  color: #f0e6d2;
+  font-family: ${DISPLAY};
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 0;
+}
+.credit-link:hover { color: #c8aa6e; }
+.credit-link-large { font-size: 18px; letter-spacing: 0.06em; }
+.credits-actions {
+  display: flex;
+  justify-content: center;
+}
 
 .body {
   position: relative;
@@ -2419,6 +2520,42 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     { id: "whats-new", label: "What's New" },
     { id: "settings", label: "Settings" }
   ];
+  var CREDITS = {
+    createdBy: { label: "David William", href: "https://github.com/sluucke" },
+    specialThanks: { label: "Bieelyi", href: "https://twitch.tv/bieelyi" },
+    inspiredBy: [
+      { label: "Tiamat", href: "https://github.com/369gabriel/tiamat" },
+      { label: "Sona", href: "https://github.com/WJZ-P/sona" }
+    ],
+    assets: { label: "Community Dragon", href: "https://www.communitydragon.org" },
+    repoUrl: "https://github.com/sluucke/drake-lol"
+  };
+  function creditLink(entry, { large = false } = {}) {
+    const cls = large ? "credit-link credit-link-large" : "credit-link";
+    return `<button type="button" class="${cls}" data-credit-href="${escapeHtml(entry.href)}">${escapeHtml(entry.label)}</button>`;
+  }
+  function creditBlock(title, bodyHtml) {
+    return `<div class="credit-block"><span class="credit-label">${escapeHtml(title)}</span>${bodyHtml}</div>`;
+  }
+  function renderCreditsModal() {
+    const inspired = CREDITS.inspiredBy.map((entry) => creditLink(entry)).join("");
+    return `
+    <div class="credits-backdrop" data-credits-dismiss="1"></div>
+    <div class="credits-card" role="dialog" aria-modal="true" aria-labelledby="credits-title">
+      <button type="button" class="close credits-close" id="credits-close" aria-label="Close">\u2715</button>
+      <div id="credits-title" class="credits-title">Credits</div>
+      <p class="credits-disclaimer">Drake is unofficial open source software. Not affiliated with Riot Games.</p>
+      <div class="credits-body">
+        ${creditBlock("Created by", creditLink(CREDITS.createdBy, { large: true }))}
+        ${creditBlock("Special thanks", creditLink(CREDITS.specialThanks, { large: true }))}
+        ${creditBlock("Inspired by", `<div class="credit-links">${inspired}</div>`)}
+        ${creditBlock("Assets", creditLink(CREDITS.assets))}
+      </div>
+      <div class="credits-actions">
+        <button type="button" class="hextech-btn" data-credit-open-repo>GitHub</button>
+      </div>
+    </div>`;
+  }
   function renderShell() {
     const nav = SCREENS.map(
       (s, i) => `<button class="navitem" role="tab" data-screen="${s.id}" aria-selected="${i === 0}">${s.label}</button>`
@@ -2442,7 +2579,10 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
           <img class="mark" src="${DRAKE_ICON}" alt="" aria-hidden="true">
           <div class="title">Drake</div>
           <div class="hint">Ctrl + D</div>
-          <button class="close" id="close" aria-label="Close">\u2715</button>
+          <div class="titlebar-actions">
+            <button type="button" class="close" id="credits-open" aria-label="Credits">?</button>
+            <button type="button" class="close" id="close" aria-label="Close">\u2715</button>
+          </div>
         </div>
 
         <div class="body">
@@ -2454,6 +2594,10 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         <div class="footer">
           <span id="host-label">\u2014</span>
           <span id="status">\u2014</span>
+        </div>
+
+        <div class="credits-modal" id="credits-modal" hidden>
+          ${renderCreditsModal()}
         </div>
       </div>
     </div>`;
@@ -3165,6 +3309,30 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   // src/ui/whatsNew.js
   var WHATS_NEW = [
     {
+      version: "0.3.20",
+      items: [
+        {
+          title: "Reveal names in champ select chat",
+          body: "Team reveal posts a private name map in chat and rewrites message authors to Riot IDs while you are in champ select.",
+          screen: "queue"
+        },
+        {
+          title: "Credits",
+          body: "A ? next to Close opens credits for Drake and the tools that inspired it."
+        },
+        {
+          title: "Fresh lobby W/L each queue",
+          body: "Match history is fetched without HTTP cache so your W/L updates after the last game.",
+          screen: "queue"
+        },
+        {
+          title: "Update prompt when auto-update is off",
+          body: "Starting Drake asks whether to install a newer release if automatic updates are disabled.",
+          screen: "settings"
+        }
+      ]
+    },
+    {
       version: "0.3.19",
       items: [
         {
@@ -3609,6 +3777,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   function sfxFor(el) {
     const has = (c) => !!el?.classList?.contains(c);
     if (has("close")) return { click: SFX.close, hover: SFX.hover };
+    if (has("credit-link")) return { click: SFX.tab, hover: SFX.hover };
     if (has("check-row")) return { click: SFX.check, hover: SFX.hover };
     if (has("select-field")) return { click: SFX.select, hover: SFX.hover };
     if (has("pill")) return { click: SFX.radio, hover: SFX.radioHover };
@@ -4174,6 +4343,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (!url) return [];
       const resp = await fetchImpl(url, {
         headers: { Authorization: `Bearer ${ctx.accessToken}` },
+        cache: "no-store",
         signal
       });
       if (!resp?.ok) return [];
@@ -4953,6 +5123,256 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return { rows: next, changed };
   }
 
+  // src/ui/teamRevealChat.js
+  var CHAT_MAP_ATTR = "data-drake-chat-map";
+  var CHAT_AUTHOR_ORIGINAL_KEY = "drakeChatOriginal";
+  var CHAT_AUTHOR_APPLIED_KEY = "drakeChatApplied";
+  function normalizeName(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+  function buildChatNameEntries(pairs) {
+    if (!Array.isArray(pairs)) return [];
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const pair of pairs) {
+      const from = String(pair?.from || "").trim();
+      const to = String(pair?.to || "").trim();
+      if (!from || !to) continue;
+      if (normalizeName(from) === normalizeName(to)) continue;
+      const key = `${normalizeName(from)}=>${normalizeName(to)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ from, to });
+    }
+    return out;
+  }
+  function formatChatMapMessage(entries) {
+    return buildChatNameEntries(entries).map((entry) => `${entry.from} \u2192 ${entry.to}`).join("\n");
+  }
+  function collectRevealChatPairs(boundLabels, rows, originalKey = "drakeTeamRevealOriginal") {
+    if (!boundLabels || typeof boundLabels.entries !== "function") return [];
+    const byCell = new Map(
+      (Array.isArray(rows) ? rows : []).map((row) => [Number(row?.cellId), row])
+    );
+    const pairs = [];
+    for (const [cellId, label] of boundLabels.entries()) {
+      const from = String(label?.dataset?.[originalKey] || "").trim();
+      const to = String(byCell.get(Number(cellId))?.riotId || "").trim();
+      if (!from || !to) continue;
+      pairs.push({ from, to });
+    }
+    return buildChatNameEntries(pairs);
+  }
+  function matchesClassContains(node, token) {
+    return String(node?.className || "").includes(token);
+  }
+  function isChatRoot(node) {
+    if (!node) return false;
+    if (matchesClassContains(node, "chat-window")) return true;
+    if (matchesClassContains(node, "chat-room")) return true;
+    if (matchesClassContains(node, "ChatWindow")) return true;
+    if (matchesClassContains(node, "conversation")) return true;
+    return false;
+  }
+  function findChatRoot(doc) {
+    const selectors = [
+      ".chat-window",
+      '[class*="chat-window"]',
+      '[class*="ChatWindow"]',
+      '[class*="chat-room"]',
+      '[class*="conversation-window"]'
+    ];
+    for (const selector of selectors) {
+      const node = doc.querySelector?.(selector);
+      if (node) return node;
+    }
+    for (const node of doc.querySelectorAll?.('[class*="chat"]') || []) {
+      if (isChatRoot(node)) return node;
+    }
+    return null;
+  }
+  function isMapNode(node) {
+    if (!node) return false;
+    if (node.dataset?.drakeChatMap != null) return true;
+    return node.getAttribute?.(CHAT_MAP_ATTR) != null;
+  }
+  function isAuthorLike(node) {
+    if (!node || isMapNode(node)) return false;
+    const cls = String(node.className || "");
+    if (!cls) return false;
+    const lower = cls.toLowerCase();
+    if (!lower.includes("name")) return false;
+    if (lower.includes("username") || lower.includes("filename") || lower.includes("cname")) return false;
+    const text = String(node.textContent || "").trim();
+    return Boolean(text) && text.length <= 48;
+  }
+  function walkNodes(root, visit) {
+    if (!root) return;
+    visit(root);
+    for (const child of root.children || []) walkNodes(child, visit);
+  }
+  function readAuthorCandidates(doc) {
+    const roots = [];
+    const chatRoot = findChatRoot(doc);
+    if (chatRoot) roots.push(chatRoot);
+    if (!roots.length && doc.body) roots.push(doc.body);
+    const seen = /* @__PURE__ */ new Set();
+    const out = [];
+    for (const root of roots) {
+      walkNodes(root, (node) => {
+        if (seen.has(node) || !isAuthorLike(node)) return;
+        seen.add(node);
+        out.push(node);
+      });
+    }
+    return out;
+  }
+  function lookupEntry(entriesByFrom, text) {
+    const key = normalizeName(text);
+    if (!key) return null;
+    return entriesByFrom.get(key) || null;
+  }
+  function applyAuthor(node, entry) {
+    if (!node || !entry) return;
+    if (!node.dataset) node.dataset = {};
+    const current = String(node.textContent || "").trim();
+    if (normalizeName(current) === normalizeName(entry.to)) {
+      if (!node.dataset[CHAT_AUTHOR_ORIGINAL_KEY]) {
+        node.dataset[CHAT_AUTHOR_ORIGINAL_KEY] = entry.from;
+      }
+      node.dataset[CHAT_AUTHOR_APPLIED_KEY] = "1";
+      node.setAttribute?.("data-drake-chat-applied", "1");
+      return;
+    }
+    if (!node.dataset[CHAT_AUTHOR_ORIGINAL_KEY]) {
+      node.dataset[CHAT_AUTHOR_ORIGINAL_KEY] = current || entry.from;
+    }
+    node.textContent = entry.to;
+    node.dataset[CHAT_AUTHOR_APPLIED_KEY] = "1";
+    node.setAttribute?.("data-drake-chat-applied", "1");
+  }
+  function restoreAuthor(node) {
+    if (!node?.dataset) return;
+    if (node.dataset[CHAT_AUTHOR_ORIGINAL_KEY] != null) {
+      node.textContent = node.dataset[CHAT_AUTHOR_ORIGINAL_KEY];
+    }
+    delete node.dataset[CHAT_AUTHOR_ORIGINAL_KEY];
+    delete node.dataset[CHAT_AUTHOR_APPLIED_KEY];
+    node.removeAttribute?.("data-drake-chat-applied");
+  }
+  function makeTeamRevealChat({ doc, MutationObserverImpl = typeof MutationObserver !== "undefined" ? MutationObserver : null } = {}) {
+    let entries = [];
+    let entriesByFrom = /* @__PURE__ */ new Map();
+    let mapNode = null;
+    let observer = null;
+    function indexEntries(list) {
+      entries = buildChatNameEntries(list);
+      entriesByFrom = new Map(entries.map((entry) => [normalizeName(entry.from), entry]));
+    }
+    function ensureMapNode(root) {
+      if (mapNode?.isConnected) return mapNode;
+      const existing = root.querySelector?.(`[${CHAT_MAP_ATTR}]`) || doc.querySelector?.(`[${CHAT_MAP_ATTR}]`);
+      if (existing) {
+        mapNode = existing;
+        return mapNode;
+      }
+      const node = doc.createElement("div");
+      node.className = "drake-chat-map";
+      node.setAttribute(CHAT_MAP_ATTR, "1");
+      node.dataset.drakeChatMap = "1";
+      if (node.style) {
+        node.style.whiteSpace = "pre-wrap";
+        node.style.opacity = "0.85";
+        node.style.fontSize = "12px";
+        node.style.padding = "6px 8px";
+      }
+      root.appendChild(node);
+      mapNode = node;
+      return mapNode;
+    }
+    function syncMapMessage() {
+      const root = findChatRoot(doc);
+      if (!root) return;
+      if (!entries.length) {
+        removeMapMessage();
+        return;
+      }
+      const node = ensureMapNode(root);
+      const next = formatChatMapMessage(entries);
+      if (node.textContent !== next) node.textContent = next;
+    }
+    function rewriteAuthors() {
+      if (!entries.length) return;
+      for (const node of readAuthorCandidates(doc)) {
+        if (isMapNode(node)) continue;
+        const original = node.dataset?.[CHAT_AUTHOR_ORIGINAL_KEY];
+        const current = String(node.textContent || "").trim();
+        const entry = lookupEntry(entriesByFrom, original) || lookupEntry(entriesByFrom, current);
+        if (!entry) continue;
+        applyAuthor(node, entry);
+      }
+    }
+    function restoreAuthors() {
+      const seen = /* @__PURE__ */ new Set();
+      const visit = (node) => {
+        if (!node || seen.has(node)) return;
+        seen.add(node);
+        if (node.dataset?.[CHAT_AUTHOR_APPLIED_KEY] || node.dataset?.[CHAT_AUTHOR_ORIGINAL_KEY]) {
+          restoreAuthor(node);
+        }
+      };
+      for (const node of doc.querySelectorAll?.("[data-drake-chat-applied]") || []) visit(node);
+      for (const node of readAuthorCandidates(doc)) visit(node);
+    }
+    function removeMapMessage() {
+      if (mapNode?.remove) mapNode.remove();
+      mapNode = null;
+      for (const node of doc.querySelectorAll?.(`[${CHAT_MAP_ATTR}]`) || []) {
+        node.remove?.();
+      }
+    }
+    function sync() {
+      syncMapMessage();
+      rewriteAuthors();
+    }
+    function stopObserver() {
+      if (!observer) return;
+      observer.disconnect?.();
+      observer = null;
+    }
+    function startObserver() {
+      if (!MutationObserverImpl || observer) return;
+      const root = doc.body || findChatRoot(doc);
+      if (!root) return;
+      observer = new MutationObserverImpl(() => {
+        sync();
+      });
+      observer.observe(root, { childList: true, subtree: true, characterData: true });
+    }
+    function setEntries(next) {
+      indexEntries(next);
+      if (!entries.length) {
+        restoreAuthors();
+        removeMapMessage();
+        stopObserver();
+        return;
+      }
+      sync();
+      startObserver();
+    }
+    function clear() {
+      stopObserver();
+      restoreAuthors();
+      removeMapMessage();
+      indexEntries([]);
+    }
+    return {
+      setEntries,
+      clear,
+      sync
+    };
+  }
+
   // src/ui/teamRevealDom.js
   var ORIGINAL_NAME_KEY = "drakeTeamRevealOriginal";
   var APPLIED_KEY = "drakeTeamRevealApplied";
@@ -5224,9 +5644,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
     setTimeoutImpl = setTimeout,
     clearTimeoutImpl = clearTimeout,
     statusReadyMs = STATUS_READY_MS,
-    onRevealTiming
+    onRevealTiming,
+    MutationObserverImpl
   }) {
     const renderCards = makeRenderCards((id) => getChampName(Number(id)));
+    const chat = makeTeamRevealChat({ doc, MutationObserverImpl });
     let enabled = false;
     let stopSession = null;
     let snapshot = [];
@@ -5259,6 +5681,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function clearReveal() {
       stopRevealLoad();
       restoreRows();
+      chat.clear();
       pendingScrub = true;
       snapshot = [];
       lastSessionSig = "";
@@ -5618,7 +6041,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
         used.add(row);
       }
       const unmatched = remaining.filter((row) => !used.has(row));
-      if (!unmatched.length) return;
+      if (!unmatched.length) {
+        syncChat();
+        return;
+      }
       const labels = readLabelNodes(doc).filter((label) => {
         if (!label?.dataset) label.dataset = {};
         return !label.dataset[APPLIED_KEY];
@@ -5630,6 +6056,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
         applyLabel(label, info);
         boundLabels.set(Number(info.cellId), label);
       }
+      syncChat();
+    }
+    function syncChat() {
+      chat.setEntries(collectRevealChatPairs(boundLabels, snapshot, ORIGINAL_NAME_KEY));
     }
     function closeCards() {
       open = false;
@@ -5860,12 +6290,36 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (!shadowRoot) return;
         shadowRoot.getElementById("scrim").style.display = open ? "grid" : "none";
         syncSocialToggle(document, open);
+        if (!open) closeCredits();
       },
       onTeamRevealCardsToggle: () => {
         if (teamRevealDom) teamRevealDom.toggleCards();
       },
+      onEscape: () => {
+        if (!shadowRoot) return false;
+        const modal = shadowRoot.getElementById("credits-modal");
+        if (!modal || modal.hidden) return false;
+        closeCredits();
+        return true;
+      },
       onMount: wire
     });
+    function closeCredits() {
+      if (!shadowRoot) return;
+      const modal = shadowRoot.getElementById("credits-modal");
+      if (modal) modal.hidden = true;
+    }
+    function openCredits() {
+      if (!shadowRoot) return;
+      const modal = shadowRoot.getElementById("credits-modal");
+      if (modal) modal.hidden = false;
+    }
+    function openCreditUrl(url) {
+      if (!url) return;
+      void opener.open(url).then((r) => {
+        if (!r.ok) say(r.reason, false);
+      });
+    }
     function setReadyCheck(payload) {
       if (inGameIdle || !shadowRoot) return;
       shadowRoot.getElementById("cancel-dock").hidden = !canCancel(payload);
@@ -6666,7 +7120,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         e.stopPropagation();
         void runDodge(e.currentTarget);
       });
-      const INTERACTIVE = ".navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .select-field, .slider, [data-onboard], [data-whats-new-screen]";
+      const INTERACTIVE = ".navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .credit-link, .select-field, .slider, [data-onboard], [data-whats-new-screen]";
       shadow.addEventListener(
         "mouseover",
         (e) => {
@@ -6698,6 +7152,22 @@ button.bug-report-button[data-drake-toggle]:disabled {
         true
       );
       shadow.getElementById("close").addEventListener("click", () => api.close());
+      shadow.getElementById("credits-open").addEventListener("click", () => openCredits());
+      shadow.getElementById("credits-close").addEventListener("click", () => closeCredits());
+      shadow.getElementById("credits-modal").addEventListener("click", (e) => {
+        if (e.target.closest("[data-credits-dismiss]")) {
+          closeCredits();
+          return;
+        }
+        const link = e.target.closest("[data-credit-href]");
+        if (link) {
+          openCreditUrl(link.getAttribute("data-credit-href"));
+          return;
+        }
+        if (e.target.closest("[data-credit-open-repo]")) {
+          openCreditUrl(CREDITS.repoUrl);
+        }
+      });
       shadow.getElementById("scrim").addEventListener("click", (e) => {
         if (e.target.id === "scrim") api.close();
       });

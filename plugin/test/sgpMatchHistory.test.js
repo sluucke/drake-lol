@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   queueIdToTag,
   resolveSgpServerId,
   sgpMatchHistoryUrl,
   normalizeMatchGames,
+  fetchQueueMatchHistory,
 } from '../src/features/sgpMatchHistory.js';
 
 describe('sgpMatchHistory', () => {
@@ -76,5 +77,25 @@ describe('sgpMatchHistory', () => {
     expect(games[0].participants[0].puuid).toBe('abc');
     expect(games[0].participants[0].challenges).toBeUndefined();
     expect(games[0].participants[0].stats.kills).toBe(8);
+  });
+
+  it('bypasses HTTP cache so the local player W/L refreshes each queue', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ games: [] }),
+    }));
+
+    await fetchQueueMatchHistory({
+      lcu: { get: async () => ({}) },
+      fetchImpl,
+      puuid: 'abc',
+      queueId: 420,
+      count: 50,
+      sgp: { accessToken: 'tok', serverId: 'BR1' },
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(init.cache).toBe('no-store');
   });
 });

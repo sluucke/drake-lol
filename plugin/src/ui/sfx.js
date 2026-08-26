@@ -42,6 +42,7 @@ export function sfxFor(el) {
   const has = (c) => !!el?.classList?.contains(c);
 
   if (has('close')) return { click: SFX.close, hover: SFX.hover };
+  if (has('credit-link')) return { click: SFX.tab, hover: SFX.hover };
   if (has('check-row')) return { click: SFX.check, hover: SFX.hover };
   if (has('select-field')) return { click: SFX.select, hover: SFX.hover };
   if (has('pill')) return { click: SFX.radio, hover: SFX.radioHover };
