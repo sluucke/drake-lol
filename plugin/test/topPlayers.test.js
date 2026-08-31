@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  formatMcpChampionName,
   parseMcpLeaderboard,
   parsePlayerBuild,
   fetchChampionLeaderboard,
@@ -118,5 +119,23 @@ describe('fetchPlayerBuild', () => {
     const body = JSON.parse(fetchFn.mock.calls[0][1].body);
     expect(body.params.arguments.game_name).toBe('Hide on bush');
     expect(body.params.arguments.tag_line).toBe('KR1');
+  });
+});
+
+describe('formatMcpChampionName', () => {
+  it('maps punctuated champion names to their MCP identifiers', () => {
+    expect(formatMcpChampionName("Cho'Gath")).toBe('CHOGATH');
+    expect(formatMcpChampionName('Nunu & Willump')).toBe('NUNU');
+    expect(formatMcpChampionName('Wukong')).toBe('MONKEY_KING');
+  });
+
+  it('upper-snakes anything not in the map', () => {
+    expect(formatMcpChampionName('Miss Fortune')).toBe('MISS_FORTUNE');
+    expect(formatMcpChampionName('Ahri')).toBe('AHRI');
+  });
+
+  it('returns an empty string for blank input', () => {
+    expect(formatMcpChampionName('')).toBe('');
+    expect(formatMcpChampionName(null)).toBe('');
   });
 });

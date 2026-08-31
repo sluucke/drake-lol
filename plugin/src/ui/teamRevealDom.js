@@ -12,17 +12,6 @@ import { iconUrl } from '../features/champions.js';
 import { roleIconUrl, roleLabel } from './roleIcons.js';
 import { RANK_ICONS } from './assets.js';
 import { collectRevealChatPairs, makeTeamRevealChat } from './teamRevealChat.js';
-import { fetchOpggMatchup, formatMcpChampionName, normalizeOpggLane } from '../features/opggMatchup.js';
-import { fetchLeagueOfGraphsData, parseMcpLeaderboard } from '../features/leagueOfGraphs.js';
-import {
-  applyRunePage,
-  perkIconUrl,
-  perkName,
-  perkRelativePath,
-  perkStyleIconUrl,
-  perkStyleName,
-  STYLE_ICONS,
-} from '../features/runes.js';
 import { readMapSide, formatMapSideBadge } from '../features/mapSide.js';
 import { muteTeammates } from '../features/muteAll.js';
 import { sendChampSelectMessage } from '../features/champSelectChat.js';
@@ -191,455 +180,12 @@ function renderRecentGames(row, getChampName) {
     .join('')}</div>`;
 }
 
-function renderAdvantageBadge(winRate) {
-  if (winRate === null || winRate === undefined) return '';
-  if (winRate >= 50.5) {
-    return `<span class="team-reveal-advantage is-advantage">Advantage</span>`;
-  }
-  if (winRate <= 49.5) {
-    return `<span class="team-reveal-advantage is-disadvantage">Disadvantage</span>`;
-  }
-  return `<span class="team-reveal-advantage is-even">Even</span>`;
-}
-
-function renderSkillsRow(skills) {
-  if (!Array.isArray(skills) || !skills.length) return '<span class="team-reveal-recent-empty">—</span>';
-  return `<div class="team-reveal-skills-row">${skills
-    .map((s) => `<span class="team-reveal-skill-badge">${s}</span>`)
-    .join('<span class="team-reveal-skill-arrow">&gt;</span>')}</div>`;
-}
-
-function renderItemsRow(items) {
-  if (!Array.isArray(items) || !items.length) return '<span class="team-reveal-recent-empty">—</span>';
-  return `<div class="team-reveal-items-row">${items
-    .map(
-      (id) =>
-        `<span class="team-reveal-item-badge" title="Item ${id}"><img class="team-reveal-item-icon" src="https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${id}.png" alt="${id}" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline';"><span class="team-reveal-item-fallback" style="display:none;">${id}</span></span>`,
-    )
-    .join('')}</div>`;
-}
-
-function renderTopPlayersTable(topPlayers, loadingBuildPlayer = '', currentViewedPlayer = '') {
-  if (!Array.isArray(topPlayers) || !topPlayers.length) {
-    return `<div class="team-reveal-empty-card">No ranking data available</div>`;
-  }
-  const rows = topPlayers
-    .map(
-      (p) => {
-        const isCurrent = currentViewedPlayer && currentViewedPlayer === p.name;
-        const isLoading = loadingBuildPlayer && loadingBuildPlayer === p.name;
-        let btnText = 'View Build';
-        let btnClass = 'team-reveal-view-build-btn';
-        if (isLoading) {
-          btnText = 'Loading…';
-          btnClass += ' is-loading';
-        } else if (isCurrent) {
-          btnText = '✓ Viewing';
-          btnClass += ' is-viewing';
-        }
-
-        return `<tr>
-          <td class="col-rank">#${p.ranking ?? '—'}</td>
-          <td class="col-name">${p.name || 'Unknown'}</td>
-          <td class="col-region">${p.region || '—'}</td>
-          <td class="col-tier">${p.tier || '—'}</td>
-          <td class="col-winrate">${p.winRate != null ? `${p.winRate}%` : '—'}</td>
-          <td class="col-played">${p.played != null ? `${p.played}g` : '—'}</td>
-          <td class="col-action">
-            <button type="button" class="${btnClass}" data-team-reveal-player-build="${p.name}" data-team-reveal-player-region="${p.region || 'kr'}" ${isLoading ? 'disabled' : ''}>${btnText}</button>
-          </td>
-        </tr>`;
-      },
-    )
-    .join('');
-
-  return `<table class="team-reveal-top-players-table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Player</th>
-        <th>Region</th>
-        <th>Tier</th>
-        <th>Win Rate</th>
-        <th>Played</th>
-        <th>Build</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>`;
-}
-
-function isStatShard(id) {
-  const n = Number(id);
-  return n >= 5000 && n < 6000;
-}
-
-function renderRunesCard(opgg, runeApplyStatus, selectedRuneSlot = 0) {
-  const runePages =
-    Array.isArray(opgg?.runePages) && opgg.runePages.length > 0
-      ? opgg.runePages
-      : opgg?.runes
-      ? [opgg.runes]
-      : [];
-
-  if (!runePages.length) {
-    return `<section class="team-reveal-runes-card">
-      <div class="team-reveal-matchup-card-title">Recommended Runes (OP.GG)</div>
-      <div class="team-reveal-empty-card">No rune recommendation available</div>
-    </section>`;
-  }
-
-  const activeRunePage = runePages[selectedRuneSlot] || runePages[0];
-  const primaryStyleId = activeRunePage.primaryStyleId;
-  const subStyleId = activeRunePage.subStyleId;
-  const allPerks = Array.isArray(activeRunePage.selectedPerkIds)
-    ? activeRunePage.selectedPerkIds
-    : [];
-
-  const shards = allPerks.filter(isStatShard);
-  const regularPerks = allPerks.filter((id) => !isStatShard(id));
-  const keystoneId = regularPerks[0];
-  const primaryMinors = regularPerks.slice(1, 4);
-  const secondaryMinors = regularPerks.slice(4, 6);
-
-  let slotTabsHtml = '';
-  if (runePages.length > 1) {
-    slotTabsHtml = `<div class="team-reveal-rune-slots">
-      ${runePages
-        .slice(0, 2)
-        .map((page, idx) => {
-          const isSelected = selectedRuneSlot === idx;
-          const wrLabel = page.winRate != null ? `${page.winRate}% WR` : `Slot ${idx + 1}`;
-          const kId = page.selectedPerkIds?.find((id) => !isStatShard(id));
-          const kName = kId ? perkName(kId) : `Page ${idx + 1}`;
-          return `<button type="button" class="team-reveal-rune-slot-btn ${
-            isSelected ? 'is-selected' : ''
-          }" data-team-reveal-rune-slot="${idx}">
-            <span class="team-reveal-rune-slot-num">${idx + 1}</span>
-            <span class="team-reveal-rune-slot-label">${kName} · ${wrLabel}</span>
-          </button>`;
-        })
-        .join('')}
-    </div>`;
-  }
-
-  let applyText = '⚡ Apply Runes';
-  let applyClass = 'team-reveal-apply-runes-btn hextech-btn';
-  if (runeApplyStatus === 'applying') {
-    applyText = 'Applying…';
-  } else if (runeApplyStatus === 'applied') {
-    applyText = '✓ Applied';
-    applyClass += ' is-applied';
-  } else if (runeApplyStatus === 'failed') {
-    applyText = 'Failed (Retry)';
-  }
-
-  const primaryStyleHtml = primaryStyleId
-    ? `<div class="team-reveal-rune-tree-head">
-        <img class="team-reveal-rune-style-icon" src="${perkStyleIconUrl(
-          primaryStyleId
-        )}" alt="${perkStyleName(primaryStyleId)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-style-path') || '');}" data-style-path="${STYLE_ICONS[primaryStyleId]?.replace('/lol-game-data/assets/v1/', '') || ''}">
-        <span class="team-reveal-rune-style-name">${perkStyleName(primaryStyleId)}</span>
-      </div>`
-    : '';
-
-  const secondaryStyleHtml = subStyleId
-    ? `<div class="team-reveal-rune-tree-head">
-        <img class="team-reveal-rune-style-icon" src="${perkStyleIconUrl(
-          subStyleId
-        )}" alt="${perkStyleName(subStyleId)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-style-path') || '');}" data-style-path="${STYLE_ICONS[subStyleId]?.replace('/lol-game-data/assets/v1/', '') || ''}">
-        <span class="team-reveal-rune-style-name">${perkStyleName(subStyleId)}</span>
-      </div>`
-    : '';
-
-  const keystoneHtml = keystoneId
-    ? `<div class="team-reveal-keystone-slot" title="${perkName(keystoneId)}">
-        <img class="team-reveal-keystone-icon" src="${perkIconUrl(
-          keystoneId
-        )}" alt="${perkName(keystoneId)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(keystoneId)}">
-        <span class="team-reveal-keystone-name">${perkName(keystoneId)}</span>
-      </div>`
-    : '';
-
-  const primaryMinorsHtml = primaryMinors
-    .map(
-      (id) =>
-        `<div class="team-reveal-perk-slot" title="${perkName(id)}">
-          <img class="team-reveal-perk-icon" src="${perkIconUrl(id)}" alt="${perkName(id)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(id)}">
-        </div>`
-    )
-    .join('');
-
-  const secondaryMinorsHtml = secondaryMinors
-    .map(
-      (id) =>
-        `<div class="team-reveal-perk-slot" title="${perkName(id)}">
-          <img class="team-reveal-perk-icon" src="${perkIconUrl(id)}" alt="${perkName(id)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(id)}">
-        </div>`
-    )
-    .join('');
-
-  const shardsHtml = shards
-    .map(
-      (id) =>
-        `<div class="team-reveal-shard-slot" title="${perkName(id)}">
-          <img class="team-reveal-shard-icon" src="${perkIconUrl(id)}" alt="${perkName(id)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(id)}">
-        </div>`
-    )
-    .join('');
-
-  const cardWr =
-    activeRunePage.winRate != null
-      ? `<span class="team-reveal-rune-card-wr">${activeRunePage.winRate}% WR</span>`
-      : '';
-
-  return `<section class="team-reveal-runes-card">
-    <div class="team-reveal-matchup-card-title">
-      <span>Runes</span>
-      ${cardWr}
-    </div>
-    ${slotTabsHtml}
-    <div class="team-reveal-runes-display">
-      <div class="team-reveal-rune-tree primary">
-        ${primaryStyleHtml}
-        <div class="team-reveal-rune-tree-items">
-          ${keystoneHtml}
-          <div class="team-reveal-primary-minors">${primaryMinorsHtml}</div>
-        </div>
-      </div>
-      <div class="team-reveal-rune-tree secondary">
-        ${secondaryStyleHtml}
-        <div class="team-reveal-secondary-minors">${secondaryMinorsHtml}</div>
-      </div>
-      <div class="team-reveal-rune-tree shards">
-        <div class="team-reveal-rune-tree-head">
-          <span class="team-reveal-rune-style-name shards-title">Shards</span>
-        </div>
-        <div class="team-reveal-shards-row">${shardsHtml}</div>
-      </div>
-    </div>
-    <button class="${applyClass}" type="button" data-team-reveal-apply-runes="1" ${
-    runeApplyStatus === 'applying' ? 'disabled' : ''
-  }>${applyText}</button>
-  </section>`;
-}
-
-function getLocalPlayerInfo(snapshot, session) {
-  const localCellId = Number(session?.localPlayerCellId ?? -1);
-  const localRow = snapshot.find((r) => r.isLocalPlayer) || snapshot.find((r) => Number(r.cellId) === localCellId);
-  const localSessionPlayer = Array.isArray(session?.myTeam)
-    ? session.myTeam.find((p) => Number(p?.cellId) === localCellId)
-    : null;
-
-  const pickedChampionId =
-    Number(localRow?.pickedChampionId) ||
-    Number(localSessionPlayer?.championId) ||
-    0;
-
-  const assignedPosition =
-    localRow?.assignedPosition ||
-    readAssignedPosition(localSessionPlayer) ||
-    '';
-
-  return {
-    cellId: localCellId,
-    riotId: localRow?.riotId || '',
-    pickedChampionId,
-    assignedPosition,
-  };
-}
-
-function getEnemyPlayerInfo(session, localLane) {
-  if (!session || !Array.isArray(session.theirTeam) || !session.theirTeam.length) {
-    return null;
-  }
-  const normLocalLane = normalizeOpggLane(localLane);
-  if (normLocalLane) {
-    const sameLane = session.theirTeam.find((p) => {
-      const pLane = normalizeOpggLane(readAssignedPosition(p));
-      return pLane && pLane === normLocalLane && Number(p?.championId) > 0;
-    });
-    if (sameLane) {
-      return {
-        championId: Number(sameLane.championId),
-        assignedPosition: readAssignedPosition(sameLane),
-      };
-    }
-  }
-
-  const enemiesWithChamp = session.theirTeam.filter((p) => Number(p?.championId) > 0);
-  if (enemiesWithChamp.length === 1) {
-    return {
-      championId: Number(enemiesWithChamp[0].championId),
-      assignedPosition: readAssignedPosition(enemiesWithChamp[0]),
-    };
-  }
-
-  return null;
-}
-
-export function getEnemyTeamChampions(session, getChampName) {
-  if (!session || !Array.isArray(session.theirTeam)) return [];
-  const list = [];
-  const seen = new Set();
-  for (const p of session.theirTeam) {
-    const id = Number(p?.championId) || 0;
-    if (id > 0 && !seen.has(id)) {
-      seen.add(id);
-      const name = (typeof getChampName === 'function' && getChampName(id)) || `Champion ${id}`;
-      const pos = readAssignedPosition(p);
-      list.push({ id, name, pos });
-    }
-  }
-  return list;
-}
-
-function renderMatchupContent({
-  localChampId,
-  localLane,
-  enemyChampId,
-  autoEnemyChampId = 0,
-  manualEnemyChampId = 0,
-  enemyTeamChampions = [],
-  enemyLane,
-  getChampName,
-  matchupState,
-  runeApplyStatus,
-  selectedRuneSlot = 0,
-  sideBadge = '',
-  loadingBuildPlayer = '',
-  currentViewedPlayer = '',
-}) {
-  if (!localChampId) {
-    return `<div class="team-reveal-matchup-empty">Pick a champion to view matchup &amp; builds</div>`;
-  }
-
-  if (matchupState.loading) {
-    return `<div class="team-reveal-matchup-loading">${SPINNER_SVG} <span>Loading matchup and build data…</span></div>`;
-  }
-
-  const localName = getChampName(localChampId) || 'Your Champion';
-  const localRoleIcon = renderRoleIcon(localLane);
-  const localRoleText = roleLabel(localLane) || localLane;
-
-  const enemyName = enemyChampId ? getChampName(enemyChampId) || 'Enemy' : 'Unknown Opponent';
-  const enemyRoleIcon = renderRoleIcon(enemyLane || localLane);
-  const enemyRoleText = roleLabel(enemyLane || localLane) || enemyLane || localLane;
-
-  const enemyChampIcon = enemyChampId
-    ? `<img class="team-reveal-matchup-champ-icon" src="${iconUrl(enemyChampId)}" alt="${enemyName}">`
-    : `<div class="team-reveal-matchup-champ-placeholder">?</div>`;
-
-  const opgg = matchupState.data?.opgg;
-  const log = matchupState.data?.log;
-
-  const wrVsSuffix = opgg?.isCounterMatchup && enemyChampId ? ` vs ${enemyName}` : '';
-  const wrText =
-    opgg?.winRate != null
-      ? `<span class="team-reveal-matchup-wr">${opgg.winRate}% WR${wrVsSuffix}${opgg.totalMatches ? ` · ${opgg.totalMatches.toLocaleString()} games` : ''}</span>`
-      : `<span class="team-reveal-matchup-wr">No matchup stats</span>`;
-
-  const advantageBadge = renderAdvantageBadge(opgg?.winRate);
-
-  const skills = (opgg?.skills && opgg.skills.length ? opgg.skills : log?.proBuild?.skills) || [];
-  const items = (opgg?.coreItems && opgg.coreItems.length ? opgg.coreItems : log?.proBuild?.items) || [];
-  const topPlayers = log?.topPlayers || [];
-
-  const autoEnemyName = autoEnemyChampId ? (getChampName(autoEnemyChampId) || 'Detected') : 'None';
-
-  let enemyPickerHtml = '';
-  if (enemyTeamChampions.length > 0) {
-    const autoSelected = !manualEnemyChampId ? 'is-selected' : '';
-    const autoBtn = `<button type="button" class="team-reveal-enemy-chip ${autoSelected}" data-team-reveal-enemy-select="0" title="Auto detect opponent">
-      <span class="team-reveal-enemy-chip-auto-icon">🎯</span>
-      <span class="team-reveal-enemy-chip-name">Auto (${autoEnemyName})</span>
-    </button>`;
-
-    const champBtns = enemyTeamChampions
-      .map((c) => {
-        const isSelected = Number(manualEnemyChampId) === Number(c.id);
-        const roleIcon = renderRoleIcon(c.pos);
-        return `<button type="button" class="team-reveal-enemy-chip ${isSelected ? 'is-selected' : ''}" data-team-reveal-enemy-select="${c.id}" title="${c.name}">
-          <img class="team-reveal-enemy-chip-icon" src="${iconUrl(c.id)}" alt="${c.name}">
-          ${roleIcon}
-          <span class="team-reveal-enemy-chip-name">${c.name}</span>
-        </button>`;
-      })
-      .join('');
-
-    enemyPickerHtml = `<div class="team-reveal-enemy-picker-bar">
-      <span class="team-reveal-enemy-picker-label">Opponent:</span>
-      <div class="team-reveal-enemy-picker-list">
-        ${autoBtn}
-        ${champBtns}
-      </div>
-    </div>`;
-  } else {
-    enemyPickerHtml = `<div class="team-reveal-enemy-picker-bar">
-      <span class="team-reveal-enemy-picker-label">Opponent:</span>
-      <span class="team-reveal-enemy-picker-empty">Waiting for enemy picks in champion select…</span>
-    </div>`;
-  }
-
-  return `<div class="team-reveal-matchup-head">
-    <div class="team-reveal-matchup-champs">
-      <div class="team-reveal-matchup-side">
-        <img class="team-reveal-matchup-champ-icon" src="${iconUrl(localChampId)}" alt="${localName}">
-        <div class="team-reveal-matchup-side-meta">
-          <div class="team-reveal-matchup-side-name">${localName}</div>
-          <div class="team-reveal-matchup-side-role">${localRoleIcon} ${localRoleText}</div>
-        </div>
-      </div>
-      <div class="team-reveal-matchup-vs">VS</div>
-      <div class="team-reveal-matchup-side">
-        ${enemyChampIcon}
-        <div class="team-reveal-matchup-side-meta">
-          <div class="team-reveal-matchup-side-name">${enemyName}</div>
-          <div class="team-reveal-matchup-side-role">${enemyRoleIcon} ${enemyRoleText}</div>
-        </div>
-      </div>
-    </div>
-    <div class="team-reveal-matchup-meta">
-      ${sideBadge}
-      ${wrText}
-      ${advantageBadge}
-    </div>
-  </div>
-  ${enemyPickerHtml}
-  <div class="team-reveal-matchup-grid">
-    ${renderRunesCard(opgg, runeApplyStatus, selectedRuneSlot)}
-    <section class="team-reveal-items-card">
-      <div class="team-reveal-matchup-card-title">Skill Order &amp; Core Items</div>
-      <div class="team-reveal-card-row">
-        <span class="team-reveal-card-label">Skill Order</span>
-        <div class="team-reveal-card-value">${renderSkillsRow(skills)}</div>
-      </div>
-      <div class="team-reveal-card-row">
-        <span class="team-reveal-card-label">Core Items</span>
-        <div class="team-reveal-card-value">${renderItemsRow(items)}</div>
-      </div>
-    </section>
-    <section class="team-reveal-top-players-card">
-      <div class="team-reveal-matchup-card-title">Top Players (League of Graphs)</div>
-      ${renderTopPlayersTable(topPlayers, loadingBuildPlayer, currentViewedPlayer)}
-    </section>
-  </div>`;
-}
-
 function renderOverlayShell({
-  activeTab,
   snapshot,
   currentSession,
   getChampName,
-  getChampions,
-  manualEnemyChampId = 0,
-  matchupState,
-  runeApplyStatus,
-  selectedRuneSlot = 0,
   muteStatus = 'idle',
   showMapSide = true,
-  loadingBuildPlayer = '',
-  currentViewedPlayer = '',
 }) {
   const sideInfo = showMapSide ? readMapSide(currentSession) : null;
   const sideBadge = sideInfo?.label ? formatMapSideBadge(sideInfo) : '';
@@ -686,81 +232,29 @@ function renderOverlayShell({
     })
     .join('');
 
-  const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-  const autoEnemyInfo = getEnemyPlayerInfo(currentSession, localInfo.assignedPosition);
-  const enemyTeamChampions = getEnemyTeamChampions(currentSession, getChampName);
-  const effectiveEnemyChampId = manualEnemyChampId > 0 ? manualEnemyChampId : (autoEnemyInfo?.championId || 0);
-
-  const matchupContent =
-    activeTab === 'matchup'
-      ? `<div class="team-reveal-matchup-view">${renderMatchupContent({
-          localChampId: localInfo.pickedChampionId,
-          localLane: localInfo.assignedPosition,
-          enemyChampId: effectiveEnemyChampId,
-          autoEnemyChampId: autoEnemyInfo?.championId || 0,
-          manualEnemyChampId,
-          enemyTeamChampions,
-          enemyLane: autoEnemyInfo?.assignedPosition || '',
-          getChampName,
-          matchupState,
-          runeApplyStatus,
-          selectedRuneSlot,
-          sideBadge,
-          loadingBuildPlayer,
-          currentViewedPlayer,
-        })}</div>`
-      : `<div class="team-reveal-panel">${cards}</div>`;
-
   return `<div class="team-reveal-shell" data-team-reveal-panel="1">
     <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === 'muting' ? 'disabled' : ''}>${muteText}</button>
     <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">Close</button>
     <div class="team-reveal-tabs">
-      <button class="team-reveal-tab ${activeTab === 'scouting' ? 'is-active' : ''}" type="button" data-team-reveal-tab="scouting" ${activeTab === 'scouting' ? 'aria-selected="true"' : ''}>Team Scouting</button>
-      <button class="team-reveal-tab ${activeTab === 'matchup' ? 'is-active' : ''}" type="button" data-team-reveal-tab="matchup" ${activeTab === 'matchup' ? 'aria-selected="true"' : ''}>Matchup &amp; Builds</button>
+      <button class="team-reveal-tab is-active" type="button" aria-selected="true">Team Scouting</button>
       ${sideBadge}
     </div>
-    ${matchupContent}
+    <div class="team-reveal-panel">${cards}</div>
   </div>`;
 }
 
 function overlayRenderSig({
-  activeTab,
   snapshot,
   currentSession,
-  matchupState,
-  runeApplyStatus,
-  selectedRuneSlot = 0,
   muteStatus = 'idle',
   showMapSide = true,
-  manualEnemyChampId = 0,
-  loadingBuildPlayer = '',
-  currentViewedPlayer = '',
 }) {
-  const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-  const autoEnemyInfo = getEnemyPlayerInfo(currentSession, localInfo.assignedPosition);
-  const effectiveEnemyChampId = manualEnemyChampId > 0 ? manualEnemyChampId : (autoEnemyInfo?.championId || 0);
   const sideInfo = showMapSide ? readMapSide(currentSession) : null;
-  const enemyTeamChampions = getEnemyTeamChampions(currentSession);
-  const enemyPicksSig = enemyTeamChampions.map((c) => `${c.id}:${c.pos}`).join(',');
   return JSON.stringify({
-    tab: activeTab,
-    cards: activeTab === 'scouting' ? cardsContentSig(snapshot) : '',
-    localChampId: localInfo.pickedChampionId,
-    localLane: localInfo.assignedPosition,
-    enemyChampId: effectiveEnemyChampId,
-    manualEnemyChampId,
-    enemyPicksSig,
-    loading: matchupState.loading,
-    hasData: Boolean(matchupState.data),
-    opggWr: matchupState.data?.opgg?.winRate,
-    topPlayersCount: matchupState.data?.log?.topPlayers?.length || 0,
-    runeStatus: runeApplyStatus,
-    selectedRuneSlot,
+    cards: cardsContentSig(snapshot),
     muteStatus,
     side: sideInfo?.side || '',
     showMapSide: Boolean(showMapSide),
-    loadingBuildPlayer,
-    currentViewedPlayer,
   });
 }
 
@@ -866,12 +360,7 @@ export function makeTeamRevealDom({
   lcu,
   muteTeammatesImpl = muteTeammates,
   sendChampSelectMessageImpl = sendChampSelectMessage,
-  fetchOpggMatchupImpl = fetchOpggMatchup,
-  fetchLeagueOfGraphsImpl = fetchLeagueOfGraphsData,
-  applyRunePageImpl = applyRunePage,
-  fetchFn = globalThis.fetch,
   getChampName = () => '',
-  getChampions = () => [],
   getRecentPool = () => 'ranked_both',
   getShowMapSide = () => true,
   getAutoMute = () => false,
@@ -906,22 +395,9 @@ export function makeTeamRevealDom({
   let loadGen = 0;
   let loadAbort = null;
   let stopPhase = null;
-  let activeTab = 'scouting';
-  let manualEnemyChampId = 0;
-  let selectedRuneSlot = 0;
-  let matchupGen = 0;
-  let matchupState = {
-    loading: false,
-    error: null,
-    data: null,
-    key: '',
-  };
-  let runeApplyStatus = 'idle';
   let muteStatus = 'idle';
   let autoMutedLobbyKey = '';
   let lastAutoMessageLobbyKey = '';
-  let loadingBuildPlayer = '';
-  let currentViewedPlayer = '';
 
   function stopRevealLoad() {
     loadGen += 1;
@@ -942,17 +418,9 @@ export function makeTeamRevealDom({
     lastLobbyKey = '';
     lastTeam = [];
     lastCardsRenderSig = '';
-    activeTab = 'scouting';
-    manualEnemyChampId = 0;
-    selectedRuneSlot = 0;
-    matchupGen += 1;
-    matchupState = { loading: false, error: null, data: null, key: '' };
-    runeApplyStatus = 'idle';
     muteStatus = 'idle';
     autoMutedLobbyKey = '';
     lastAutoMessageLobbyKey = '';
-    loadingBuildPlayer = '';
-    currentViewedPlayer = '';
     open = false;
     renderVisibility();
     setStatus('hidden');
@@ -997,7 +465,6 @@ export function makeTeamRevealDom({
     if (!changed) return false;
     snapshot = rows;
     lastCardsRenderSig = '';
-    if (open && activeTab === 'matchup') ensureMatchupData();
     if (open) renderVisibility();
     return true;
   }
@@ -1121,228 +588,6 @@ export function makeTeamRevealDom({
     return overlay;
   }
 
-  function ensureMatchupData() {
-    const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-    const autoEnemyInfo = getEnemyPlayerInfo(currentSession, localInfo.assignedPosition);
-    const effectiveEnemyChampId = manualEnemyChampId > 0 ? manualEnemyChampId : (autoEnemyInfo?.championId || 0);
-
-    if (!localInfo.pickedChampionId) {
-      matchupState = { loading: false, error: null, data: null, key: '' };
-      return;
-    }
-
-    const key = `${localInfo.pickedChampionId}_${localInfo.assignedPosition}_${effectiveEnemyChampId}`;
-    if (matchupState.key === key && (matchupState.loading || matchupState.data)) {
-      return;
-    }
-
-    matchupState.key = key;
-    matchupState.loading = true;
-    matchupState.error = null;
-    matchupState.data = null;
-    selectedRuneSlot = 0;
-    runeApplyStatus = 'idle';
-
-    const gen = ++matchupGen;
-    const champName = getChampName(localInfo.pickedChampionId);
-    const mcpName = formatMcpChampionName(champName);
-
-    Promise.all([
-      fetchOpggMatchupImpl({
-        championId: localInfo.pickedChampionId,
-        championName: champName,
-        lane: localInfo.assignedPosition,
-        enemyChampionId: effectiveEnemyChampId,
-        fetchFn,
-      }).catch(() => null),
-      fetchLeagueOfGraphsImpl({
-        championName: champName,
-        lane: localInfo.assignedPosition,
-        fetchFn,
-      }).then(async (logRes) => {
-        // If League of Graphs didn't return top players, fallback to OP.GG leaderboard
-        if ((!logRes?.topPlayers || logRes.topPlayers.length === 0) && mcpName) {
-          try {
-            const mcpLeaderboardRes = await fetchFn('https://mcp-api.op.gg/mcp', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: 3,
-                method: 'tools/call',
-                params: {
-                  name: 'lol_list_champion_leaderboard',
-                  arguments: {
-                    champion: mcpName,
-                    region: region ? String(region).toLowerCase() : 'kr',
-                    lang: 'en_US',
-                  },
-                },
-              }),
-            });
-            if (mcpLeaderboardRes && mcpLeaderboardRes.ok && typeof mcpLeaderboardRes.json === 'function') {
-              const data = await mcpLeaderboardRes.json();
-              const text = data?.result?.content?.[0]?.text || '';
-              const topPlayers = parseMcpLeaderboard(text, region || 'KR');
-              if (topPlayers.length > 0) {
-                return {
-                  ...(logRes || {}),
-                  topPlayers,
-                  hasData: true,
-                };
-              }
-            }
-          } catch {}
-        }
-        return logRes;
-      }).catch(() => null),
-    ])
-      .then(([opgg, log]) => {
-        if (gen !== matchupGen) return;
-        matchupState.loading = false;
-        matchupState.data = {
-          opgg: opgg || null,
-          log: log || null,
-        };
-        lastCardsRenderSig = '';
-        if (open) renderVisibility();
-      })
-      .catch((err) => {
-        if (gen !== matchupGen) return;
-        matchupState.loading = false;
-        matchupState.error = err?.message || 'Failed to load matchup';
-        lastCardsRenderSig = '';
-        if (open) renderVisibility();
-      });
-  }
-
-  async function handleFetchPlayerBuild(playerName, playerRegion = 'kr') {
-    if (loadingBuildPlayer) return;
-    loadingBuildPlayer = playerName;
-    lastCardsRenderSig = '';
-    renderVisibility();
-
-    const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-    const champId = localInfo.pickedChampionId;
-    const parts = String(playerName || '').split('#');
-    const gameName = parts[0] || '';
-    const tagLine = parts[1] || '';
-
-    try {
-      const res = await fetchFn('https://mcp-api.op.gg/mcp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 4,
-          method: 'tools/call',
-          params: {
-            name: 'lol_list_summoner_matches',
-            arguments: {
-              game_name: gameName,
-              tag_line: tagLine,
-              region: String(playerRegion || 'kr').toLowerCase(),
-            },
-          },
-        }),
-      });
-
-      if (res && res.ok && typeof res.json === 'function') {
-        const data = await res.json();
-        const text = data?.result?.content?.[0]?.text || '';
-        if (text) {
-          const participantRegex =
-            /Participant\(Summoner\([^)]+\),(\d+),"([^"]*)","[^"]*","([^"]*)",\[([^\]]*)\],\[([^\]]*)\],Rune\((\d+),(\d+),(\d+)\),\[([^\]]*)\],Stats\([^)]*?"(WIN|LOSE)"/g;
-          let match;
-          const playerRunePages = [];
-          let playerItems = [];
-
-          while ((match = participantRegex.exec(text)) !== null) {
-            const pChampId = Number(match[1]);
-            const pItemsStr = match[4];
-            const pPrimaryStyle = Number(match[6]);
-            const pPrimaryRune = Number(match[7]);
-            const pSecondaryStyle = Number(match[8]);
-
-            if (champId && pChampId === champId) {
-              if (!playerItems.length && pItemsStr) {
-                playerItems = pItemsStr
-                  .split(',')
-                  .map((s) => Number(s.trim()))
-                  .filter((n) => Number.isInteger(n) && n > 0);
-              }
-              if (pPrimaryStyle > 0 && pSecondaryStyle > 0 && pPrimaryRune > 0) {
-                const already = playerRunePages.some(
-                  (p) => p.primaryStyleId === pPrimaryStyle && p.selectedPerkIds[0] === pPrimaryRune
-                );
-                if (!already) {
-                  playerRunePages.push({
-                    primaryStyleId: pPrimaryStyle,
-                    subStyleId: pSecondaryStyle,
-                    selectedPerkIds: [pPrimaryRune],
-                    winRate: null,
-                  });
-                }
-              }
-            }
-          }
-
-          if (playerRunePages.length > 0 || playerItems.length > 0) {
-            currentViewedPlayer = playerName;
-            if (matchupState.data?.opgg) {
-              if (playerRunePages.length > 0) {
-                matchupState.data.opgg.runePages = playerRunePages;
-                matchupState.data.opgg.runes = playerRunePages[0];
-                selectedRuneSlot = 0;
-              }
-              if (playerItems.length > 0) {
-                matchupState.data.opgg.coreItems = playerItems;
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[Drake]', 'Failed to fetch player build:', err);
-    } finally {
-      loadingBuildPlayer = '';
-      lastCardsRenderSig = '';
-      if (open) renderVisibility();
-    }
-  }
-
-  async function handleApplyRunes() {
-    if (runeApplyStatus === 'applying') return;
-    const runePages = matchupState.data?.opgg?.runePages;
-    const runes =
-      (Array.isArray(runePages) && runePages[selectedRuneSlot]) ||
-      matchupState.data?.opgg?.runes;
-    if (!runes || !lcu) {
-      runeApplyStatus = 'failed';
-      lastCardsRenderSig = '';
-      renderVisibility();
-      return;
-    }
-    const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-    const champName = getChampName(localInfo.pickedChampionId);
-    runeApplyStatus = 'applying';
-    lastCardsRenderSig = '';
-    renderVisibility();
-    try {
-      const res = await applyRunePageImpl(lcu, {
-        name: `${champName || 'Drake'} Matchup`,
-        primaryStyleId: runes.primaryStyleId,
-        subStyleId: runes.subStyleId,
-        selectedPerkIds: runes.selectedPerkIds,
-      });
-      runeApplyStatus = res?.success ? 'applied' : 'failed';
-    } catch {
-      runeApplyStatus = 'failed';
-    }
-    lastCardsRenderSig = '';
-    if (open) renderVisibility();
-  }
-
   async function handleMuteAll() {
     if (muteStatus === 'muting' || !currentSession || !lcu) return;
     muteStatus = 'muting';
@@ -1361,91 +606,11 @@ export function makeTeamRevealDom({
   function wireOverlayEvents(node) {
     if (!node?.addEventListener || node.dataset?.drakeRevealWired === '1') return;
     if (node.dataset) node.dataset.drakeRevealWired = '1';
-    node.addEventListener('change', (event) => {
-      const target = event.target;
-      const selectElem =
-        target?.matches?.('[data-team-reveal-enemy-select]') ? target :
-        target?.closest?.('[data-team-reveal-enemy-select]');
-      if (selectElem) {
-        const raw = target.value ?? selectElem.dataset?.teamRevealEnemySelect;
-        const val = Number(raw) || 0;
-        manualEnemyChampId = val > 0 ? val : 0;
-        matchupState = { loading: false, error: null, data: null, key: '' };
-        ensureMatchupData();
-        lastCardsRenderSig = '';
-        renderVisibility();
-      }
-    });
     node.addEventListener('click', async (event) => {
       const target = event.target;
       if (target?.closest?.('[data-team-reveal-close="1"]') || target?.dataset?.teamRevealClose === '1') {
         event.stopPropagation?.();
         closeCards();
-        return;
-      }
-      const enemySelectBtn =
-        target?.matches?.('[data-team-reveal-enemy-select]') ? target :
-        target?.closest?.('[data-team-reveal-enemy-select]');
-      if (enemySelectBtn) {
-        event.stopPropagation?.();
-        const raw = enemySelectBtn.dataset?.teamRevealEnemySelect ?? enemySelectBtn.value;
-        const val = Number(raw) || 0;
-        manualEnemyChampId = val > 0 ? val : 0;
-        matchupState = { loading: false, error: null, data: null, key: '' };
-        ensureMatchupData();
-        lastCardsRenderSig = '';
-        renderVisibility();
-        return;
-      }
-      const tabBtn =
-        target?.closest?.('[data-team-reveal-tab]') ||
-        (target?.dataset?.teamRevealTab ? target : null);
-      if (tabBtn) {
-        event.stopPropagation?.();
-        const tab = tabBtn.dataset?.teamRevealTab || tabBtn.getAttribute?.('data-team-reveal-tab');
-        if (tab && tab !== activeTab) {
-          activeTab = tab;
-          lastCardsRenderSig = '';
-          if (activeTab === 'matchup') {
-            ensureMatchupData();
-          }
-          renderVisibility();
-        }
-        return;
-      }
-      const runeSlotBtn =
-        target?.matches?.('[data-team-reveal-rune-slot]') ? target :
-        target?.closest?.('[data-team-reveal-rune-slot]');
-      if (runeSlotBtn) {
-        event.stopPropagation?.();
-        const raw = runeSlotBtn.dataset?.teamRevealRuneSlot;
-        const idx = Number(raw) || 0;
-        if (selectedRuneSlot !== idx) {
-          selectedRuneSlot = idx;
-          runeApplyStatus = 'idle';
-          lastCardsRenderSig = '';
-          renderVisibility();
-        }
-        return;
-      }
-      const playerBuildBtn =
-        target?.matches?.('[data-team-reveal-player-build]') ? target :
-        target?.closest?.('[data-team-reveal-player-build]');
-      if (playerBuildBtn) {
-        event.stopPropagation?.();
-        const playerName = playerBuildBtn.dataset?.teamRevealPlayerBuild;
-        const playerRegion = playerBuildBtn.dataset?.teamRevealPlayerRegion || 'kr';
-        if (playerName && !loadingBuildPlayer) {
-          await handleFetchPlayerBuild(playerName, playerRegion);
-        }
-        return;
-      }
-      const applyRunesBtn =
-        target?.closest?.('[data-team-reveal-apply-runes="1"]') ||
-        (target?.dataset?.teamRevealApplyRunes === '1' ? target : null);
-      if (applyRunesBtn) {
-        event.stopPropagation?.();
-        await handleApplyRunes();
         return;
       }
       const muteBtn =
@@ -1599,33 +764,18 @@ export function makeTeamRevealDom({
     if (open && snapshot.length > 0) {
       const showMapSide = getShowMapSide();
       const sig = overlayRenderSig({
-        activeTab,
         snapshot,
         currentSession,
-        matchupState,
-        runeApplyStatus,
-        selectedRuneSlot,
         muteStatus,
         showMapSide,
-        manualEnemyChampId,
-        loadingBuildPlayer,
-        currentViewedPlayer,
       });
       if (sig !== lastCardsRenderSig) {
         overlay.innerHTML = renderOverlayShell({
-          activeTab,
           snapshot,
           currentSession,
           getChampName: (id) => getChampName(Number(id)),
-          getChampions,
-          manualEnemyChampId,
-          matchupState,
-          runeApplyStatus,
-          selectedRuneSlot,
           muteStatus,
           showMapSide,
-          loadingBuildPlayer,
-          currentViewedPlayer,
         });
         lastCardsRenderSig = sig;
       }
@@ -1739,7 +889,6 @@ export function makeTeamRevealDom({
     if (!enabled || !snapshot.length) return;
     ensureOverlay();
     open = true;
-    if (activeTab === 'matchup') ensureMatchupData();
     if (needsReapply()) applyRows(snapshot);
     renderVisibility();
     setStatus('ready');
@@ -1787,8 +936,7 @@ export function makeTeamRevealDom({
       mergeRowsByCell(session);
       applyPickRefresh(session);
       if (needsReapply()) applyRows(snapshot);
-      if (open && activeTab === 'matchup') ensureMatchupData();
-      if (open) renderVisibility();
+        if (open) renderVisibility();
       if (lobbyKey) lastLobbyKey = lobbyKey;
       lastTeam = team;
       lastSessionSig = sessionSignature(session);
@@ -1796,8 +944,7 @@ export function makeTeamRevealDom({
     } else if (snapshot.length && applyRemappedSnapshot(session)) {
       applyPickRefresh(session);
       if (needsReapply()) applyRows(snapshot);
-      if (open && activeTab === 'matchup') ensureMatchupData();
-      if (open) renderVisibility();
+        if (open) renderVisibility();
       if (lobbyKey) lastLobbyKey = lobbyKey;
       lastTeam = team;
       lastSessionSig = sessionSignature(session);
@@ -1811,8 +958,7 @@ export function makeTeamRevealDom({
     if (sig && sig === lastSessionSig) {
       mergeRowsByCell(session);
       if (snapshot.length && needsReapply()) applyRows(snapshot);
-      if (open && activeTab === 'matchup') ensureMatchupData();
-      if (open) renderVisibility();
+        if (open) renderVisibility();
       return;
     }
 
@@ -1830,8 +976,7 @@ export function makeTeamRevealDom({
           snapshot = Array.isArray(rows) ? rows : [];
           mergeRowsByCell(session);
           applyRows(snapshot);
-          if (open && activeTab === 'matchup') ensureMatchupData();
-          if (open) renderVisibility();
+                if (open) renderVisibility();
         },
       });
       if (gen !== loadGen) return;
@@ -1840,8 +985,7 @@ export function makeTeamRevealDom({
       applyPickRefresh(session);
       setStatus(snapshot.length ? 'ready' : 'hidden');
       if (snapshot.length) applyRows(snapshot);
-      if (open && activeTab === 'matchup') ensureMatchupData();
-      if (open) renderVisibility();
+        if (open) renderVisibility();
       if (typeof onRevealTiming === 'function' && snapshot.length) {
         onRevealTiming({
           durationMs: Date.now() - startedAt,

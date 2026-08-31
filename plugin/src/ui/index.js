@@ -62,9 +62,30 @@ import {
   recommendFetchConcurrency,
 } from '../features/teamRevealStats.js';
 import { makeTeamRevealDom } from './teamRevealDom.js';
+import { makeBuildPanel } from './buildPanel.js';
 import { makeProxyFetch } from '../features/proxyFetch.js';
 
 const TAG = '[Drake]';
+
+function readLocalCell(session) {
+  const cellId = Number(session?.localPlayerCellId ?? -1);
+  const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+  return team.find((p) => Number(p?.cellId) === cellId) || null;
+}
+
+function readLocalChampionId(session) {
+  return Number(readLocalCell(session)?.championId) || 0;
+}
+
+function readLocalPosition(session) {
+  const cell = readLocalCell(session);
+  return cell?.assignedPosition || cell?.position || '';
+}
+
+// ARAM champ select exposes the reroll bench; Summoner's Rift does not.
+function isAramSession(session) {
+  return Boolean(session?.benchEnabled);
+}
 
 
 
@@ -104,6 +125,8 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let teamRevealChamps = [];
   let teamRevealChampsLoading = null;
   let teamRevealDom = null;
+  let buildPanel = null;
+  let currentSummonerId = 0;
   let teamRevealLastLoadMs = 0;
   let teamRevealLastConcurrency = 1;
   let inGameIdle = false;
@@ -173,6 +196,9 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     },
     onTeamRevealCardsToggle: () => {
       if (teamRevealDom) teamRevealDom.toggleCards();
+    },
+    onBuildPanelToggle: () => {
+      if (buildPanel) buildPanel.toggle();
     },
     onEscape: () => {
       if (!shadowRoot) return false;
@@ -283,6 +309,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         void teamRevealDom.handleSession(null);
         teamRevealDom.setEnabled(false);
       }
+      feedBuildPanel(null);
       if (shadowRoot) {
         const dodge = shadowRoot.getElementById('dodge-dock');
         if (dodge) dodge.hidden = true;
@@ -295,6 +322,51 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     if (teamRevealDom) teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
   }
 
+  async function loadCurrentSummonerId() {
+    if (currentSummonerId) return currentSummonerId;
+    try {
+      const me = await lcu.get('/lol-summoner/v1/current-summoner');
+      currentSummonerId = Number(me?.summonerId) || Number(me?.accountId) || 0;
+    } catch {
+      currentSummonerId = 0;
+    }
+    return currentSummonerId;
+  }
+
+  function ensureBuildButton() {
+    if (!shadowRoot) return null;
+    const existing = shadowRoot.getElementById('drake-build-entry');
+    if (existing) return existing;
+    const node = document.createElement('button');
+    node.id = 'drake-build-entry';
+    node.type = 'button';
+    node.className = 'build-entry-btn';
+    node.textContent = 'Build';
+    node.hidden = true;
+    node.addEventListener('click', () => {
+      if (buildPanel) buildPanel.open();
+    });
+    shadowRoot.appendChild(node);
+    return node;
+  }
+
+  function feedBuildPanel(session) {
+    if (!buildPanel) return;
+    const active = inChampSelect(session);
+    const btn = ensureBuildButton();
+    if (btn) btn.hidden = !active;
+    if (!active) {
+      buildPanel.setSession({ championId: 0, position: '', mode: 'ranked' });
+      buildPanel.close();
+      return;
+    }
+    buildPanel.setSession({
+      championId: readLocalChampionId(session),
+      position: readLocalPosition(session),
+      mode: isAramSession(session) ? 'aram' : 'ranked',
+    });
+  }
+
   function setChampSelect(session) {
     if (inGameIdle) return;
     champSelectSession = session;
@@ -302,6 +374,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     const dock = shadowRoot.getElementById('dodge-dock');
     champSelectActive = inChampSelect(session);
     if (teamRevealDom) void teamRevealDom.handleSession(session);
+    feedBuildPanel(session);
     const showDodge = champSelectActive && settings.queue_dodge_in_client !== false;
     dock.hidden = !showDodge;
     if (stopDodgeReposition) {
@@ -379,9 +452,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       subscribe,
       overlayRoot: shadow,
       lcu,
-      fetchFn: proxyFetch,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
-      getChampions: () => teamRevealChamps,
       getRecentPool: () => settings.queue_team_reveal_recent_pool || 'ranked_both',
       getShowMapSide: () => settings.queue_show_map_side !== false,
       getAutoMute: () => !!settings.queue_mute_all_in_client,
@@ -415,7 +486,21 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       },
     });
     teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+
+    buildPanel = makeBuildPanel({
+      doc: document,
+      overlayRoot: shadow,
+      lcu,
+      fetchFn: proxyFetch,
+      getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
+      getSettings: () => settings,
+      saveSettings: (patch) => client.save(patch),
+      getSummonerId: () => currentSummonerId,
+    });
+    void loadCurrentSummonerId();
+
     if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
+    feedBuildPanel(champSelectSession);
 
     function paintOnboard() {
       const layer = shadow.getElementById('onboard-layer');

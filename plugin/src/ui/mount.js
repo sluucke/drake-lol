@@ -1,4 +1,9 @@
-import { matchesToggle, matchesClose, matchesTeamRevealCardsToggle } from './hotkey.js';
+import {
+  matchesToggle,
+  matchesClose,
+  matchesTeamRevealCardsToggle,
+  matchesBuildPanelToggle,
+} from './hotkey.js';
 
 export const HOST_ID = 'drake-ui-host';
 
@@ -20,14 +25,44 @@ const SENTINEL = '__drakeUIMounted';
 
 
 
-export function mountUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape }) {
+export function mountUI({
+  doc,
+  win,
+  render,
+  onOpenChange,
+  onMount,
+  onTeamRevealCardsToggle,
+  onBuildPanelToggle,
+  isIdle,
+  onEscape,
+}) {
   if (win[SENTINEL]) return win[SENTINEL];
-  const ui = createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape });
+  const ui = createUI({
+    doc,
+    win,
+    render,
+    onOpenChange,
+    onMount,
+    onTeamRevealCardsToggle,
+    onBuildPanelToggle,
+    isIdle,
+    onEscape,
+  });
   win[SENTINEL] = ui;
   return ui;
 }
 
-function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape }) {
+function createUI({
+  doc,
+  win,
+  render,
+  onOpenChange,
+  onMount,
+  onTeamRevealCardsToggle,
+  onBuildPanelToggle,
+  isIdle,
+  onEscape,
+}) {
   let host = null;
   let open = false;
 
@@ -87,6 +122,9 @@ function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsTo
       } else if (matchesTeamRevealCardsToggle(event)) {
         event.preventDefault();
         if (onTeamRevealCardsToggle) onTeamRevealCardsToggle();
+      } else if (matchesBuildPanelToggle(event)) {
+        event.preventDefault();
+        if (onBuildPanelToggle) onBuildPanelToggle();
       } else if (open && matchesClose(event)) {
         event.preventDefault();
         if (typeof onEscape === 'function' && onEscape()) return;

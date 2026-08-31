@@ -28,6 +28,13 @@ export function matchesTeamRevealCardsToggle(event) {
   return true;
 }
 
+export function matchesBuildPanelToggle(event) {
+  if (!event.ctrlKey) return false;
+  if (event.shiftKey) return false;
+  if (event.key !== 'b' && event.key !== 'B' && event.code !== 'KeyB') return false;
+  return !isTextEntry(event.target);
+}
+
 export function matchesClose(event) {
   return event.key === 'Escape';
 }

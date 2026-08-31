@@ -1,4 +1,5 @@
 import { CHECKBOX_SPRITE } from './assets.js';
+import { BUILD_PANEL_CSS } from './buildPanelStyles.js';
 
 
 
@@ -2025,4 +2026,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   gap: 8px;
   flex-wrap: wrap;
 }
+
+${BUILD_PANEL_CSS}
 `;

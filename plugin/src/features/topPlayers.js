@@ -1,6 +1,38 @@
-import { formatMcpChampionName } from './opggMatchup.js';
-
 const TAG = '[Drake]';
+
+const MCP_CHAMPION_NAME_MAP = {
+  "Cho'Gath": 'CHOGATH',
+  "Kai'Sa": 'KAISA',
+  "Kha'Zix": 'KHAZIX',
+  "Kog'Maw": 'KOG_MAW',
+  "Rek'Sai": 'REK_SAI',
+  "Vel'Koz": 'VEL_KOZ',
+  "Bel'Veth": 'BELVETH',
+  "K'Sante": 'KSANTE',
+  Wukong: 'MONKEY_KING',
+  MonkeyKing: 'MONKEY_KING',
+  'Nunu & Willump': 'NUNU',
+  'Nunu and Willump': 'NUNU',
+  Nunu: 'NUNU',
+  'Renata Glasc': 'RENATA',
+  Renata: 'RENATA',
+  'Dr. Mundo': 'DR_MUNDO',
+  DrMundo: 'DR_MUNDO',
+  LeBlanc: 'LEBLANC',
+};
+
+export function formatMcpChampionName(name) {
+  if (!name && name !== 0) return '';
+  const raw = String(name).trim();
+  if (MCP_CHAMPION_NAME_MAP[raw]) {
+    return MCP_CHAMPION_NAME_MAP[raw];
+  }
+  return raw
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .toUpperCase();
+}
 
 export const OP_GG_MCP_URL = 'https://mcp-api.op.gg/mcp';
 

@@ -624,6 +624,12 @@
     if (event.key !== "d" && event.key !== "D" && event.code !== "KeyD") return false;
     return true;
   }
+  function matchesBuildPanelToggle(event) {
+    if (!event.ctrlKey) return false;
+    if (event.shiftKey) return false;
+    if (event.key !== "b" && event.key !== "B" && event.code !== "KeyB") return false;
+    return !isTextEntry(event.target);
+  }
   function matchesClose(event) {
     return event.key === "Escape";
   }
@@ -631,13 +637,43 @@
   // src/ui/mount.js
   var HOST_ID = "drake-ui-host";
   var SENTINEL = "__drakeUIMounted";
-  function mountUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape }) {
+  function mountUI({
+    doc,
+    win,
+    render,
+    onOpenChange,
+    onMount,
+    onTeamRevealCardsToggle,
+    onBuildPanelToggle,
+    isIdle,
+    onEscape
+  }) {
     if (win[SENTINEL]) return win[SENTINEL];
-    const ui2 = createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape });
+    const ui2 = createUI({
+      doc,
+      win,
+      render,
+      onOpenChange,
+      onMount,
+      onTeamRevealCardsToggle,
+      onBuildPanelToggle,
+      isIdle,
+      onEscape
+    });
     win[SENTINEL] = ui2;
     return ui2;
   }
-  function createUI({ doc, win, render, onOpenChange, onMount, onTeamRevealCardsToggle, isIdle, onEscape }) {
+  function createUI({
+    doc,
+    win,
+    render,
+    onOpenChange,
+    onMount,
+    onTeamRevealCardsToggle,
+    onBuildPanelToggle,
+    isIdle,
+    onEscape
+  }) {
     let host = null;
     let open = false;
     const api = {
@@ -684,6 +720,9 @@
         } else if (matchesTeamRevealCardsToggle(event)) {
           event.preventDefault();
           if (onTeamRevealCardsToggle) onTeamRevealCardsToggle();
+        } else if (matchesBuildPanelToggle(event)) {
+          event.preventDefault();
+          if (onBuildPanelToggle) onBuildPanelToggle();
         } else if (open && matchesClose(event)) {
           event.preventDefault();
           if (typeof onEscape === "function" && onEscape()) return;
@@ -714,6 +753,83 @@
     CHALLENGER: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iLTEuNzE4NCAtMi4zODM4IDI0Ljc2NzYgMjQuNzY3NiI+DQogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xLjMzMzMgMC4wMDAwKSBzY2FsZSgxLjMzMzMzMykiPg0KICAgIDxwYXRoIGQ9Ik03LjYxNDg4IDE1QzcuOTAyNzEgMTQuMjQ3MSA4LjE0Mjg3IDEzLjQ3NDQgOC4zMzM3NSAxMi42ODcyQzcuNzUzNTcgMTIuNTYxMSA3LjIxNzUzIDEyLjI2NTcgNi43ODUyNiAxMS44MzM5QzYuMzUzIDExLjQwMiA2LjA0MTQ1IDEwLjg1MDYgNS44ODUyOCAxMC4yNDExQzUuNzI5MTEgOS42MzE1MyA1LjczNDQ1IDguOTg3NjggNS45MDA2OCA4LjM4MTE2QzYuMDY2OTIgNy43NzQ2NCA2LjM4NzU1IDcuMjI5MjQgNi44MjY4OSA2LjgwNTYxQzUuNTYwMjQgNS40MDU3NSAzLjM3MDggMi41NjM2MyAzLjc2NDc5IDBDMy43NjQ3OSAwIDIuNjE1NjQgMS44Mjk1OCAyLjYwMDA5IDQuNjQ1ODlDMi42MDAwOSA0LjY0NTg5IDMuMjY4ODQgNS45NTkwNiAzLjI5MTMxIDcuMjM5MDNDMi4zNzAyNiA2LjM2Mjk3IDEuMzkwNDUgNS4xMDY5NyAxLjM2Nzk5IDMuNzM0NzhDMS4zNjc5OSAzLjczNDc4IDEuMzI0NzkgMy44NDkxMyAxLjI2Nzc2IDQuMDUyMDFMMS4xMzQ3IDQuNjM2NjdDMS4wNTk1NyA1LjA1ODEgMS4wMTk2NyA1LjQ4NTgyIDEuMDE1NDcgNS45MTQ3OUMwLjk5MjI0IDYuMzY3NTQgMC45OTIyNCA2LjgyMTMyIDEuMDE1NDcgNy4yNzQwN0MxLjA3MTAxIDguNTA2MzQgMS4zNTQwNiA5LjcxNDc2IDEuODQ4MzkgMTAuODNDMS44NDgzOSAxMC44MyAyLjA4MTY3IDEwLjg4MTYgMi40NTE0OCAxMC45ODY3QzMuNDE3NDUgMTEuMjQ4NiA0Ljc2MTg4IDExLjcyNDUgNS44MjgwOCAxMi40ODI1TDUuOTI2NTggMTIuNTU0NEM2Ljc1Nzc3IDEzLjE1MDEgNy40MTYxNiAxMy45MTM3IDcuNTIzMyAxNC44NjcyIiBmaWxsPSIjRjRDODc0Ii8+DQo8cGF0aCBkPSJNMTEuMTU5MSA5LjMzOTgxQzExLjE1OTQgOC44NzgzIDExLjAzMTUgOC40MjcwNCAxMC43OTE1IDguMDQzMTJDMTAuNTUxNSA3LjY1OTIgMTAuMjEwMiA3LjM1OTg4IDkuODEwODMgNy4xODMwMUM5LjQxMTQyIDcuMDA2MTQgOC45NzE4NCA2Ljk1OTY3IDguNTQ3NjkgNy4wNDk0OUM4LjEyMzU0IDcuMTM5MyA3LjczMzg3IDcuMzYxMzYgNy40Mjc5OCA3LjY4NzU4QzcuMTIyMDkgOC4wMTM3OSA2LjkxMzczIDguNDI5NSA2LjgyOTI0IDguODgyMTNDNi43NDQ3NSA5LjMzNDc1IDYuNzg3OTQgOS44MDM5NSA2Ljk1MzM0IDEwLjIzMDRDNy4xMTg3NCAxMC42NTY4IDcuMzk4OTMgMTEuMDIxMyA3Ljc1ODQ1IDExLjI3NzdDOC4xMTc5NyAxMS41MzQyIDguNTQwNjcgMTEuNjcxMSA4Ljk3MzA5IDExLjY3MTFDOS41NTI0MSAxMS42NzA2IDEwLjEwNzkgMTEuNDI0OSAxMC41MTc3IDEwLjk4NzhDMTAuOTI3NSAxMC41NTA4IDExLjE1ODIgOS45NTgxMiAxMS4xNTkxIDkuMzM5ODFaIiBmaWxsPSIjM0ZCRkREIi8+DQo8cGF0aCBkPSJNMTAuMzg0OSAxNUMxMC4wOTcxIDE0LjI0NzEgOS44NTY5IDEzLjQ3NDQgOS42NjYwMiAxMi42ODcyQzEwLjI0NjIgMTIuNTYxMSAxMC43ODIyIDEyLjI2NTcgMTEuMjE0NSAxMS44MzM5QzExLjY0NjggMTEuNDAyIDExLjk1ODMgMTAuODUwNiAxMi4xMTQ1IDEwLjI0MTFDMTIuMjcwNyA5LjYzMTUzIDEyLjI2NTMgOC45ODc2OCAxMi4wOTkxIDguMzgxMTZDMTEuOTMyOCA3Ljc3NDY0IDExLjYxMjIgNy4yMjkyNCAxMS4xNzI5IDYuODA1NjFDMTIuNDM5NSA1LjQwNTc1IDE0LjYyOSAyLjU2MzYzIDE0LjIzNSAwQzE0LjIzNSAwIDE1LjM4NDEgMS44Mjk1OCAxNS4zOTggNC42NDU4OUMxNS4zOTggNC42NDU4OSAxNC43MzA5IDUuOTU5MDYgMTQuNzA2NyA3LjIzOTAzQzE1LjYyNzggNi4zNjI5NyAxNi42MDc2IDUuMTA2OTcgMTYuNjMgMy43MzQ3OEMxNi42MyAzLjczNDc4IDE2LjY3MzMgMy44NDkxMyAxNi43MzAzIDQuMDUyMDFMMTYuODYxNiA0LjYzMjk4QzE2LjkzODMgNS4wNTQyMSAxNi45Nzg4IDUuNDgyMDIgMTYuOTgyNiA1LjkxMTFDMTcuMDA1OCA2LjM2Mzg2IDE3LjAwNTggNi44MTc2MyAxNi45ODI2IDcuMjcwMzhDMTYuOTI4NyA4LjUwMjI3IDE2LjY0NzQgOS43MTA2OCAxNi4xNTQ4IDEwLjgyNjNDMTYuMTU0OCAxMC44MjYzIDE1LjkxOTggMTAuODc3OSAxNS41NTE3IDEwLjk4M0MxNC41ODQgMTEuMjQ0OSAxMy4yNDEzIDExLjcyMDggMTIuMTc1MSAxMi40Nzg4TDEyLjA3NDkgMTIuNTUwN0MxMS4yNDM3IDEzLjE0NjQgMTAuNTg1MyAxMy45MSAxMC40NzgyIDE0Ljg2MzUiIGZpbGw9IiNGNEM4NzQiLz4NCiAgPC9nPg0KPC9zdmc+DQo=",
     UNRANKED: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iLTEuNjAwMCAtMi42NzMwIDIzLjIwMDAgMjMuMjAwMCI+DQogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAuMDAwMCAwLjAwMDApIHNjYWxlKDEuMjUwMDAwKSI+DQogICAgPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03Ljk5ODQzIDBMOS45Nzc5MiAyLjI4NTcxSDkuOTU3MDdDOS4zNDAyMiAyLjEwMDE4IDguNjgyNTkgMiA4IDJDNy4zMTc0MSAyIDYuNjU5NzggMi4xMDAxOCA2LjA0MjkzIDIuMjg1NzFINi4wMTg5NUw3Ljk5ODQzIDBaTTggMTRDNy4zMTc0MSAxNCA2LjY1OTc4IDEzLjg5OTggNi4wNDI5MyAxMy43MTQzSDYuMDE4OTVMNy45OTg0MyAxNkw5Ljk3NzkyIDEzLjcxNDNIOS45NTcwN0M5LjM0MDIyIDEzLjg5OTggOC42ODI1OSAxNCA4IDE0Wk0wIDcuOTk5OTlDMCA2LjEyOTk1IDAuNjQxNjM0IDQuNDA5NzcgMS43MTY3NiAzLjA0NzZINC42MTE2OUMzLjAzNDYgNC4xMjg2OCAyIDUuOTQzNTEgMiA3Ljk5OTk5QzIgMTAuMDU2NSAzLjAzNDYxIDExLjg3MTMgNC42MTE3MSAxMi45NTI0SDEuNzE2NzdDMC42NDE2MzkgMTEuNTkwMiAwIDkuODcwMDMgMCA3Ljk5OTk5Wk0xNC4yODMyIDEyLjk1MjRDMTUuMzU4NCAxMS41OTAyIDE2IDkuODcwMDMgMTYgNy45OTk5OUMxNiA2LjEyOTk1IDE1LjM1ODQgNC40MDk3NyAxNC4yODMyIDMuMDQ3NkgxMS4zODgzQzEyLjk2NTQgNC4xMjg2OCAxNCA1Ljk0MzUxIDE0IDcuOTk5OTlDMTQgMTAuMDU2NSAxMi45NjU0IDExLjg3MTMgMTEuMzg4MyAxMi45NTI0SDE0LjI4MzJaTTExIDhDMTEgOS42NTY4NSA5LjY1Njg1IDExIDggMTFDNi4zNDMxNSAxMSA1IDkuNjU2ODUgNSA4QzUgNi4zNDMxNSA2LjM0MzE1IDUgOCA1QzkuNjU2ODUgNSAxMSA2LjM0MzE1IDExIDhaIiBmaWxsPSIjNjM2NjZCIi8+DQogIDwvZz4NCjwvc3ZnPg0K"
   };
+
+  // src/ui/buildPanelStyles.js
+  var BUILD_PANEL_CSS = `
+.build-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); pointer-events: auto; z-index: 20; }
+.build-panel { width: min(1180px, 94vw); max-height: 88vh; overflow-y: auto; background: linear-gradient(180deg, #0a1428 0%, #06101f 100%); border: 1px solid #785a28; border-radius: 4px; color: #f0e6d2; font-family: var(--font-body, 'Spiegel'), 'Segoe UI', system-ui, sans-serif; }
+
+.build-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 18px; border-bottom: 1px solid #1e2328; position: relative; }
+.build-identity { display: flex; align-items: center; gap: 10px; }
+.build-champ-icon { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #c8aa6e; }
+.build-champ-name { font-family: var(--font-display, 'Beaufort for LOL'), serif; font-size: 18px; color: #f0e6d2; }
+.build-identity-sub { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #a09b8c; }
+.build-mode-tag, .build-patch { border: 1px solid #463714; padding: 1px 6px; border-radius: 2px; }
+
+.build-filters { display: flex; gap: 10px; margin-left: auto; }
+.build-filter { display: flex; flex-direction: column; gap: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #a09b8c; }
+.build-filter select { background: #1e2328; color: #f0e6d2; border: 1px solid #785a28; padding: 4px 8px; font-size: 12px; }
+
+.build-stats { display: flex; gap: 14px; width: 100%; font-size: 12px; color: #a09b8c; }
+.build-stat b { color: #f0e6d2; margin-right: 4px; }
+.build-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: #a09b8c; font-size: 20px; cursor: pointer; }
+.build-close:hover { color: #f0e6d2; }
+
+.build-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; padding: 14px 18px; }
+.build-card { background: rgba(30,35,40,0.5); border: 1px solid #1e2328; border-radius: 3px; padding: 10px 12px; }
+.build-card-title { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-display, 'Beaufort for LOL'), serif; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #c8aa6e; margin-bottom: 8px; }
+
+.build-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(30,35,40,0.8); }
+.build-row:last-child { border-bottom: none; }
+.build-icons { display: flex; align-items: center; gap: 4px; }
+.build-item-icon, .build-spell-icon, .build-keystone-icon { width: 30px; height: 30px; border-radius: 2px; border: 1px solid #463714; }
+.build-perk-icon, .build-shard-icon { width: 20px; height: 20px; }
+.build-style-icon { width: 22px; height: 22px; }
+.build-arrow { color: #785a28; font-size: 13px; }
+
+.build-row-stats { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #a09b8c; white-space: nowrap; }
+.build-wr { color: #0acbe6; }
+.build-bar { display: inline-block; width: 54px; height: 4px; background: #1e2328; }
+.build-bar i { display: block; height: 100%; background: #c8aa6e; }
+
+.build-action { background: linear-gradient(180deg, #1e2328, #0a1428); border: 1px solid #785a28; color: #f0e6d2; font-size: 11px; padding: 3px 9px; cursor: pointer; }
+.build-action:hover:not([disabled]) { border-color: #c8aa6e; }
+.build-action[disabled] { opacity: .5; cursor: default; }
+
+.build-trend { display: flex; gap: 8px; overflow-x: auto; }
+.build-trend-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: #0acbe6; }
+.build-skill-priority { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+.build-skill { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1px solid #785a28; color: #f0e6d2; font-size: 11px; }
+.build-skill-order { display: flex; gap: 2px; flex-wrap: wrap; }
+.build-skill-step { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #1e2328; font-size: 10px; color: #a09b8c; }
+
+.build-counters { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.build-counter-head { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.build-counter-head.is-strong { color: #0acbe6; }
+.build-counter-head.is-weak { color: #e84057; }
+.build-counter { display: flex; align-items: center; gap: 7px; padding: 3px 0; font-size: 11px; }
+.build-counter-icon { width: 24px; height: 24px; border-radius: 50%; }
+.build-counter-name { flex: 1; color: #f0e6d2; }
+.build-counter.is-strong .build-counter-wr { color: #0acbe6; }
+.build-counter.is-weak .build-counter-wr { color: #e84057; }
+.build-counter-play { color: #5b5a56; }
+
+.build-players { width: 100%; border-collapse: collapse; font-size: 11px; }
+.build-players th { text-align: left; color: #a09b8c; font-weight: normal; text-transform: uppercase; letter-spacing: .05em; padding: 4px 6px; border-bottom: 1px solid #1e2328; }
+.build-players td { padding: 4px 6px; border-bottom: 1px solid rgba(30,35,40,0.6); }
+.build-viewing-chip { display: flex; align-items: center; gap: 10px; font-size: 11px; color: #c8aa6e; padding: 5px 0; }
+
+.build-placeholder { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 48px 18px; color: #a09b8c; font-size: 13px; }
+.build-placeholder.is-error { color: #e84057; }
+.build-empty { color: #5b5a56; font-size: 11px; padding: 8px 0; }
+.build-loading { display: flex; align-items: center; gap: 8px; color: #a09b8c; font-size: 12px; padding: 12px 0; }
+.build-spinner { animation: build-spin 1s linear infinite; }
+@keyframes build-spin { to { transform: rotate(360deg); } }
+
+.build-entry-btn { position: fixed; right: 18px; bottom: 92px; pointer-events: auto; z-index: 19; background: linear-gradient(180deg, #1e2328, #0a1428); border: 1px solid #785a28; color: #f0e6d2; font-family: var(--font-display, 'Beaufort for LOL'), serif; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; padding: 7px 16px; cursor: pointer; }
+.build-entry-btn:hover { border-color: #c8aa6e; color: #fff; }
+.build-entry-btn[hidden] { display: none; }
+`;
 
   // src/ui/styles.js
   var DISPLAY = `var(--font-display, 'Beaufort for LOL'), serif`;
@@ -2729,6 +2845,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   gap: 8px;
   flex-wrap: wrap;
 }
+
+${BUILD_PANEL_CSS}
 `;
 
   // src/features/champSelectPuuid.js
@@ -2828,15 +2946,15 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     }
     return names;
   }
-  function buildRevealUrl(provider, region2, names) {
-    const r = String(region2 || "").toLowerCase();
+  function buildRevealUrl(provider, region, names) {
+    const r = String(region || "").toLowerCase();
     const encoded = encodeURIComponent(names.join(","));
     if (provider === "opgg") {
       return `https://www.op.gg/multisearch/${r}?summoners=${encoded}`;
     }
     return `https://porofessor.gg/pregame/${r}/${encoded}/soloqueue/season`;
   }
-  function makeReveal({ lcu: lcu2, region: region2, open }) {
+  function makeReveal({ lcu: lcu2, region, open }) {
     return {
       async reveal(provider) {
         let session;
@@ -2849,7 +2967,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         if (names.length === 0) {
           return { ok: false, reason: "you have to be in champ select to reveal a lobby" };
         }
-        open(buildRevealUrl(provider, region2, names));
+        open(buildRevealUrl(provider, region, names));
         return { ok: true, count: names.length };
       }
     };
@@ -3215,8 +3333,8 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   }
   function renderWhatsNew(entry, { version } = {}) {
     const ver = escapeHtml(version || entry?.version || "");
-    const items = Array.isArray(entry?.items) ? entry.items : [];
-    const list = items.length ? `<ul class="whats-new-list">${items.map(renderWhatsNewItem).join("")}</ul>` : `<p class="whats-new-empty">No notes for this version.</p>`;
+    const items2 = Array.isArray(entry?.items) ? entry.items : [];
+    const list = items2.length ? `<ul class="whats-new-list">${items2.map(renderWhatsNewItem).join("")}</ul>` : `<p class="whats-new-empty">No notes for this version.</p>`;
     return `
     <div class="whats-new">
       <h2 class="screen-title">What's New</h2>
@@ -3454,7 +3572,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     if (pickIds.length === 0) {
       return '<p class="pick-order pick-order-empty">Click up to 2 champions for this role \u2014 first is your pick, second is the backup.</p>';
     }
-    const items = pickIds.map(
+    const items2 = pickIds.map(
       (id, index) => `
       <span class="pick-order-item">
         <span class="pick-order-num">${index + 1}</span>
@@ -3463,7 +3581,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         <button class="close pick-order-remove" type="button" data-remove-pick="${id}" aria-label="Remove">\u2715</button>
       </span>`
     ).join("");
-    return `<div class="pick-order">${items}</div>`;
+    return `<div class="pick-order">${items2}</div>`;
   }
   function renderRoleTabs(byRole, activeRole) {
     return `
@@ -5334,17 +5452,17 @@ button.bug-report-button[data-drake-toggle]:disabled {
   function yieldUi() {
     return new Promise((resolve) => setTimeout(resolve, 0));
   }
-  async function mapPool(items, limit, mapper) {
-    const results = new Array(items.length);
+  async function mapPool(items2, limit, mapper) {
+    const results = new Array(items2.length);
     let next = 0;
     async function worker() {
-      while (next < items.length) {
+      while (next < items2.length) {
         const index = next;
         next += 1;
-        results[index] = await mapper(items[index], index);
+        results[index] = await mapper(items2[index], index);
       }
     }
-    const workers = Array.from({ length: Math.min(Math.max(limit, 1), items.length) }, () => worker());
+    const workers = Array.from({ length: Math.min(Math.max(limit, 1), items2.length) }, () => worker());
     if (workers.length) await Promise.all(workers);
     return results;
   }
@@ -6050,1180 +6168,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
     };
   }
 
-  // src/features/opggMatchup.js
-  var SKILL_INDEX_MAP = {
-    1: "Q",
-    2: "W",
-    3: "E",
-    4: "R"
-  };
-  var MCP_CHAMPION_NAME_MAP = {
-    "Cho'Gath": "CHOGATH",
-    "Kai'Sa": "KAISA",
-    "Kha'Zix": "KHAZIX",
-    "Kog'Maw": "KOG_MAW",
-    "Rek'Sai": "REK_SAI",
-    "Vel'Koz": "VEL_KOZ",
-    "Bel'Veth": "BELVETH",
-    "K'Sante": "KSANTE",
-    Wukong: "MONKEY_KING",
-    MonkeyKing: "MONKEY_KING",
-    "Nunu & Willump": "NUNU",
-    "Nunu and Willump": "NUNU",
-    Nunu: "NUNU",
-    "Renata Glasc": "RENATA",
-    Renata: "RENATA",
-    "Dr. Mundo": "DR_MUNDO",
-    DrMundo: "DR_MUNDO",
-    LeBlanc: "LEBLANC"
-  };
-  function formatMcpChampionName(name) {
-    if (!name && name !== 0) return "";
-    const raw = String(name).trim();
-    if (MCP_CHAMPION_NAME_MAP[raw]) {
-      return MCP_CHAMPION_NAME_MAP[raw];
-    }
-    return raw.replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").toUpperCase();
-  }
-  function normalizeOpggLane(lane) {
-    const normalized = String(lane || "").trim().toUpperCase();
-    switch (normalized) {
-      case "TOP":
-        return "top";
-      case "JUNGLE":
-      case "JG":
-        return "jungle";
-      case "MID":
-      case "MIDDLE":
-        return "mid";
-      case "ADC":
-      case "BOTTOM":
-      case "BOT":
-        return "adc";
-      case "SUPPORT":
-      case "UTILITY":
-      case "SUPP":
-      case "SUP":
-        return "support";
-      default:
-        return normalized.toLowerCase();
-    }
-  }
-  function extractItemIds(raw) {
-    if (!raw) return [];
-    const list = Array.isArray(raw) ? raw : [raw];
-    const itemIds = [];
-    for (const entry of list) {
-      if (typeof entry === "number" || typeof entry === "string" && entry.trim() !== "") {
-        const num = Number(entry);
-        if (Number.isInteger(num) && num > 0) {
-          itemIds.push(num);
-        }
-      } else if (entry && typeof entry === "object") {
-        if (Array.isArray(entry.ids)) {
-          itemIds.push(...extractItemIds(entry.ids));
-        } else if (Array.isArray(entry.item_ids)) {
-          itemIds.push(...extractItemIds(entry.item_ids));
-        } else if (entry.id !== void 0 || entry.item_id !== void 0) {
-          const num = Number(entry.id ?? entry.item_id);
-          if (Number.isInteger(num) && num > 0) {
-            itemIds.push(num);
-          }
-        }
-      }
-    }
-    return itemIds;
-  }
-  function normalizeSkillEntry(entry) {
-    if (typeof entry === "number") {
-      return SKILL_INDEX_MAP[entry] || String(entry);
-    }
-    if (typeof entry === "string") {
-      const trimmed = entry.trim();
-      if (!trimmed) return null;
-      if (trimmed.includes(">") || trimmed.includes(",") || trimmed.includes("/")) {
-        return trimmed.split(/[>,/]/).map((s) => s.trim().toUpperCase()).filter(Boolean);
-      }
-      return trimmed.toUpperCase();
-    }
-    if (entry && typeof entry === "object") {
-      const val = entry.id ?? entry.key ?? entry.name ?? entry.skill;
-      return val !== void 0 ? normalizeSkillEntry(val) : null;
-    }
-    return null;
-  }
-  function extractSkills(target) {
-    const rawSkills = target?.skills ?? target?.skill_masteries ?? target?.skill_order ?? target?.skill_builds ?? target?.skill_levels;
-    if (!rawSkills) return [];
-    const rawList = Array.isArray(rawSkills) ? rawSkills : [rawSkills];
-    const out = [];
-    for (const item of rawList) {
-      if (item && typeof item === "object" && (Array.isArray(item.order) || Array.isArray(item.ids) || Array.isArray(item.skills))) {
-        const subList = item.order || item.ids || item.skills;
-        for (const sub of subList) {
-          const normalized = normalizeSkillEntry(sub);
-          if (Array.isArray(normalized)) {
-            out.push(...normalized);
-          } else if (normalized) {
-            out.push(normalized);
-          }
-        }
-        if (out.length > 0) break;
-      } else {
-        const normalized = normalizeSkillEntry(item);
-        if (Array.isArray(normalized)) {
-          out.push(...normalized);
-        } else if (normalized) {
-          out.push(normalized);
-        }
-      }
-    }
-    return out;
-  }
-  function extractRunePages(target) {
-    const rawRunes = target?.runes ?? target?.rune_pages ?? target?.rune_builds ?? target?.rune;
-    if (!rawRunes) return [];
-    const list = Array.isArray(rawRunes) ? rawRunes : [rawRunes];
-    const pages = [];
-    for (const runeObj of list) {
-      if (!runeObj || typeof runeObj !== "object") continue;
-      const primaryStyleId = Number(
-        runeObj.primaryStyleId ?? runeObj.primary_style_id ?? runeObj.primary_page_id ?? runeObj.page_id ?? runeObj.primary_page?.id ?? runeObj.primary_style?.id
-      ) || 0;
-      const subStyleId = Number(
-        runeObj.subStyleId ?? runeObj.sub_style_id ?? runeObj.secondary_style_id ?? runeObj.secondary_page_id ?? runeObj.secondary_page?.id ?? runeObj.secondary_style?.id
-      ) || 0;
-      let perkList = [];
-      const directPerks = runeObj.selectedPerkIds ?? runeObj.selected_perk_ids ?? runeObj.perk_ids;
-      if (Array.isArray(directPerks)) {
-        perkList = directPerks;
-      } else {
-        const primaryRunes = runeObj.primary_rune_ids ?? runeObj.primary_perk_ids ?? runeObj.primary_runes ?? [];
-        const secondaryRunes = runeObj.secondary_rune_ids ?? runeObj.secondary_perk_ids ?? runeObj.secondary_runes ?? [];
-        const statMods = runeObj.stat_mod_ids ?? runeObj.stat_mods ?? runeObj.stat_shards ?? runeObj.shard_ids ?? [];
-        perkList = [...extractItemIds(primaryRunes), ...extractItemIds(secondaryRunes), ...extractItemIds(statMods)];
-      }
-      const selectedPerkIds = perkList.map((id) => typeof id === "object" && id ? Number(id.id ?? id.perk_id) : Number(id)).filter((id) => Number.isInteger(id) && id > 0);
-      if (primaryStyleId > 0 && subStyleId > 0 && selectedPerkIds.length > 0) {
-        const winRate = extractWinRate(runeObj);
-        pages.push({
-          primaryStyleId,
-          subStyleId,
-          selectedPerkIds,
-          winRate
-        });
-      }
-    }
-    return pages;
-  }
-  function extractWinRate(target) {
-    const raw = target?.win_rate ?? target?.winRate ?? target?.summary?.win_rate ?? target?.summary?.winRate ?? target?.play?.win_rate ?? target?.play?.winRate ?? target?.meta?.win_rate ?? target?.meta?.winRate;
-    if (raw !== void 0 && raw !== null) {
-      const parsed = typeof raw === "string" ? parseFloat(raw) : Number(raw);
-      if (!Number.isNaN(parsed)) {
-        const pct = parsed > 0 && parsed <= 1 ? parsed * 100 : parsed;
-        return Math.round(pct * 100) / 100;
-      }
-    }
-    const win = target?.win ?? target?.wins ?? target?.summary?.win ?? target?.summary?.wins;
-    const play = target?.play ?? target?.play_count ?? target?.total_matches ?? target?.totalMatches ?? target?.games ?? target?.summary?.play ?? target?.summary?.total_matches;
-    if (typeof win === "number" && typeof play === "number" && play > 0) {
-      const pct = win / play * 100;
-      return Math.round(pct * 100) / 100;
-    }
-    return null;
-  }
-  function extractTotalMatches(target) {
-    const raw = target?.total_matches ?? target?.totalMatches ?? target?.match_count ?? target?.play_count ?? target?.play ?? target?.games ?? target?.summary?.total_matches ?? target?.summary?.totalMatches ?? target?.summary?.play ?? target?.summary?.match_count ?? target?.meta?.total_matches ?? target?.meta?.play;
-    if (raw !== void 0 && raw !== null) {
-      const num = Number.parseInt(raw, 10);
-      if (!Number.isNaN(num) && num >= 0) {
-        return num;
-      }
-    }
-    return null;
-  }
-  var STYLE_NAME_TO_ID = {
-    precision: 8e3,
-    domination: 8100,
-    sorcery: 8200,
-    inspiration: 8300,
-    resolve: 8400
-  };
-  function resolveStyleId(rawNameOrId) {
-    if (!rawNameOrId) return 0;
-    const num = Number(rawNameOrId);
-    if ([8e3, 8100, 8200, 8300, 8400].includes(num)) return num;
-    const key = String(rawNameOrId).trim().toLowerCase();
-    return STYLE_NAME_TO_ID[key] || 0;
-  }
-  function extractMcpRunePages(text) {
-    if (!text || typeof text !== "string") return [];
-    const pages = [];
-    const runeBlockRegex = /Runes\(([\s\S]*?)\)(?=[,\)\s]|$)/gi;
-    let match;
-    while ((match = runeBlockRegex.exec(text)) !== null) {
-      const content = match[1];
-      const arrayMatches = [...content.matchAll(/\[([^\]]*)\]/g)];
-      if (arrayMatches.length < 2) continue;
-      const numberArrays = arrayMatches.map(
-        (m) => m[1].split(",").map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0)
-      ).filter((arr) => arr.length > 0);
-      if (numberArrays.length < 2) continue;
-      const primaryPerks = numberArrays[0];
-      const subPerks = numberArrays[1];
-      const statMods = numberArrays[2] || [];
-      const stringMatches = [...content.matchAll(/["']([^"']+)["']/g)].map((m) => m[1]);
-      let primaryStyleId = 0;
-      let primaryStyleName = "";
-      let subStyleId = 0;
-      let subStyleName = "";
-      if (stringMatches.length >= 2) {
-        primaryStyleName = stringMatches[0];
-        primaryStyleId = resolveStyleId(primaryStyleName);
-        subStyleName = stringMatches[1];
-        subStyleId = resolveStyleId(subStyleName);
-      }
-      if (!primaryStyleId || !subStyleId) {
-        const styleIdMatches = [...content.matchAll(/\b(8000|8100|8200|8300|8400)\b/g)].map(
-          (m) => Number(m[1])
-        );
-        if (styleIdMatches.length >= 2) {
-          if (!primaryStyleId) primaryStyleId = styleIdMatches[0];
-          if (!subStyleId) subStyleId = styleIdMatches[1];
-        } else if (styleIdMatches.length === 1 && !primaryStyleId) {
-          primaryStyleId = styleIdMatches[0];
-        }
-      }
-      let winRate = null;
-      let totalPlays = null;
-      const statsMatch = content.match(/,\s*(\d{1,8})\s*,\s*(\d{1,8})\s*,\s*([0-9.]+)\s*$/);
-      if (statsMatch) {
-        totalPlays = Number(statsMatch[1]);
-        const rawWr = Number(statsMatch[3]);
-        if (rawWr > 0 && rawWr <= 1) {
-          winRate = Math.round(rawWr * 1e3) / 10;
-        } else if (rawWr > 1 && rawWr <= 100) {
-          winRate = Math.round(rawWr * 10) / 10;
-        }
-      } else {
-        const decimalMatch = content.match(/(?:,\s*|\b)(0\.\d{2,6}|[1-9]\d?\.\d{1,2})\b/);
-        if (decimalMatch) {
-          const val = Number(decimalMatch[1]);
-          if (val > 0 && val <= 1) {
-            winRate = Math.round(val * 1e3) / 10;
-          } else if (val > 1 && val <= 100) {
-            winRate = Math.round(val * 10) / 10;
-          }
-        }
-      }
-      if (primaryStyleId > 0 && subStyleId > 0 && primaryPerks.length > 0) {
-        pages.push({
-          primaryStyleId,
-          primaryStyleName,
-          subStyleId,
-          subStyleName,
-          selectedPerkIds: [...primaryPerks, ...subPerks, ...statMods],
-          winRate,
-          totalPlays
-        });
-      }
-    }
-    return pages;
-  }
-  function parseOpggMcpAnalysis(text, { championId, enemyChampionId } = {}) {
-    const emptyResult = {
-      winRate: null,
-      totalMatches: null,
-      isCounterMatchup: false,
-      skills: [],
-      coreItems: [],
-      startingItems: [],
-      runes: null,
-      runePages: [],
-      hasData: false
-    };
-    if (!text || typeof text !== "string") {
-      return emptyResult;
-    }
-    const runePages = extractMcpRunePages(text);
-    const runes = runePages[0] || null;
-    let coreItems = [];
-    const allCoreMatches = [...text.matchAll(/CoreItems\(\[([\d,\s]+)\]/gi)];
-    if (allCoreMatches.length > 0) {
-      let best = [];
-      for (const cm of allCoreMatches) {
-        const items = cm[1].split(",").map((s) => Number(s.trim())).filter((n) => n > 0);
-        if (items.length > best.length) {
-          best = items;
-        }
-      }
-      coreItems = best;
-    }
-    let skills = [];
-    const skillsMatch = text.match(/SkillMasteries\(\[([^\]]+)\]/i) || text.match(/Skills\(\[([^\]]+)\]/i) || text.match(/SkillOrder\(\[([^\]]+)\]/i);
-    if (skillsMatch) {
-      skills = skillsMatch[1].split(",").map((s) => {
-        const clean = s.trim().replace(/^['"]|['"]$/g, "");
-        const num = Number(clean);
-        if (Number.isInteger(num) && SKILL_INDEX_MAP[num]) {
-          return SKILL_INDEX_MAP[num];
-        }
-        return clean.toUpperCase();
-      }).filter((s) => ["Q", "W", "E", "R"].includes(s));
-    }
-    let winRate = null;
-    let totalMatches = null;
-    let isCounterMatchup = false;
-    if (enemyChampionId && Number(enemyChampionId) > 0) {
-      const targetEnemyId = Number(enemyChampionId);
-      const counterRegex = /StrongCounter\((\d+),\s*"([^"]*)",\s*(\d+),\s*(\d+),\s*([0-9.]+),\s*([0-9.]+)/g;
-      let cm;
-      while ((cm = counterRegex.exec(text)) !== null) {
-        if (Number(cm[1]) === targetEnemyId) {
-          totalMatches = Number(cm[3]);
-          winRate = Math.round(Number(cm[5]) * 1e3) / 10;
-          isCounterMatchup = true;
-          break;
-        }
-      }
-    }
-    if (winRate === null) {
-      const avgStatsMatch = text.match(/AverageStats\((\d+),\s*([0-9.]+)/i);
-      if (avgStatsMatch) {
-        totalMatches = Number(avgStatsMatch[1]);
-        winRate = Math.round(Number(avgStatsMatch[2]) * 1e3) / 10;
-      }
-    }
-    const hasData = Boolean(
-      winRate !== null || totalMatches !== null || skills.length > 0 || coreItems.length > 0 || runes !== null
-    );
-    return {
-      winRate,
-      totalMatches,
-      isCounterMatchup,
-      skills,
-      coreItems,
-      startingItems: [],
-      runes,
-      runePages,
-      hasData
-    };
-  }
-  function normalizeOpggMatchup(rawJson, { championId, enemyChampionId } = {}) {
-    const emptyResult = {
-      winRate: null,
-      totalMatches: null,
-      skills: [],
-      coreItems: [],
-      startingItems: [],
-      runes: null,
-      runePages: [],
-      hasData: false
-    };
-    if (!rawJson || typeof rawJson !== "object") {
-      return emptyResult;
-    }
-    if (typeof rawJson.text === "string") {
-      return parseOpggMcpAnalysis(rawJson.text, { championId, enemyChampionId });
-    }
-    if (Array.isArray(rawJson.result?.content) && rawJson.result.content[0]?.text) {
-      return parseOpggMcpAnalysis(rawJson.result.content[0].text, { championId, enemyChampionId });
-    }
-    let target = rawJson.data ?? rawJson;
-    if (Array.isArray(target)) {
-      if (enemyChampionId) {
-        const match = target.find((item) => {
-          const id = Number(item?.opponent_champion_id ?? item?.champion_id ?? item?.enemy_champion_id);
-          return id === Number(enemyChampionId);
-        });
-        target = match || target[0] || {};
-      } else {
-        target = target[0] || {};
-      }
-    }
-    if (!target || typeof target !== "object") {
-      return emptyResult;
-    }
-    const winRate = extractWinRate(target);
-    const totalMatches = extractTotalMatches(target);
-    const skills = extractSkills(target);
-    const rawCore = target.core_items ?? target.coreItems ?? target.core_item_builds ?? target.item_builds ?? target.items;
-    const coreItems = extractItemIds(rawCore);
-    const rawStarting = target.starter_items ?? target.starting_items ?? target.startingItems ?? target.starter_item_builds ?? target.start_items;
-    const startingItems = extractItemIds(rawStarting);
-    const runePages = extractRunePages(target);
-    const runes = runePages[0] || null;
-    const hasData = Boolean(
-      winRate !== null || totalMatches !== null || skills.length > 0 || coreItems.length > 0 || startingItems.length > 0 || runes !== null
-    );
-    return {
-      winRate,
-      totalMatches,
-      skills,
-      coreItems,
-      startingItems,
-      runes,
-      runePages,
-      hasData
-    };
-  }
-  var TAG = "[Drake]";
-  var OP_GG_MCP_URL = "https://mcp-api.op.gg/mcp";
-  async function fetchOpggMatchup({
-    championId,
-    championName: championName2,
-    lane,
-    enemyChampionId,
-    region: region2 = "global",
-    fetchFn = globalThis.fetch,
-    timeout = 6e3
-  } = {}) {
-    if (typeof fetchFn !== "function") {
-      return normalizeOpggMatchup(null, { championId, enemyChampionId });
-    }
-    const mcpName = formatMcpChampionName(championName2 || championId);
-    const mcpPosition = normalizeOpggLane(lane);
-    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timer = controller && timeout > 0 ? setTimeout(() => controller.abort(), timeout) : null;
-    console.log(TAG, `fetching OP.GG matchup via MCP API: ${mcpName} (${mcpPosition || "auto"}) vs ${enemyChampionId || "all"}`);
-    const primaryPos = mcpPosition && mcpPosition !== "none" && mcpPosition !== "unknown" ? mcpPosition : "";
-    const positionsToTry = primaryPos ? [primaryPos, ...["jungle", "top", "mid", "adc", "support"].filter((p) => p !== primaryPos)] : ["jungle", "mid", "top", "adc", "support"];
-    try {
-      for (const pos of positionsToTry) {
-        if (controller?.signal?.aborted) break;
-        try {
-          const res = await fetchFn(OP_GG_MCP_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              jsonrpc: "2.0",
-              id: 1,
-              method: "tools/call",
-              params: {
-                name: "lol_get_champion_analysis",
-                arguments: {
-                  game_mode: "ranked",
-                  champion: mcpName,
-                  position: pos,
-                  lang: "en_US"
-                }
-              }
-            }),
-            signal: controller?.signal
-          });
-          if (res && res.ok) {
-            const data = await res.json();
-            const contentText = data?.result?.content?.[0]?.text || "";
-            if (contentText) {
-              let parsed = parseOpggMcpAnalysis(contentText, { championId, enemyChampionId });
-              if (parsed.hasData && enemyChampionId && Number(enemyChampionId) > 0) {
-                try {
-                  const guideRes = await fetchFn(OP_GG_MCP_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      jsonrpc: "2.0",
-                      id: 2,
-                      method: "tools/call",
-                      params: {
-                        name: "lol_get_lane_matchup_guide",
-                        arguments: {
-                          my_champion: mcpName,
-                          opponent_champion: formatMcpChampionName(enemyChampionId),
-                          position: pos,
-                          lang: "en_US"
-                        }
-                      }
-                    }),
-                    signal: controller?.signal
-                  });
-                  if (guideRes && guideRes.ok) {
-                    const guideData = await guideRes.json();
-                    const guideText = guideData?.result?.content?.[0]?.text || "";
-                    if (guideText) {
-                      const parsedGuide = JSON.parse(guideText);
-                      const guideRunes = extractRunePages(parsedGuide.data);
-                      if (guideRunes.length > 0) {
-                        parsed.runePages = guideRunes;
-                        parsed.runes = guideRunes[0];
-                      }
-                    }
-                  }
-                } catch {
-                }
-              }
-              if (parsed.hasData) {
-                console.log(
-                  TAG,
-                  `OP.GG matchup loaded: ${mcpName} (${pos}) vs ${enemyChampionId || "all"} (${parsed.winRate != null ? `${parsed.winRate}% WR` : "no WR"})`
-                );
-                return parsed;
-              }
-            }
-          }
-        } catch (innerErr) {
-          if (controller?.signal?.aborted) break;
-        }
-      }
-      return normalizeOpggMatchup(null, { championId, enemyChampionId });
-    } catch (err) {
-      console.warn(TAG, "OP.GG fetch error:", err?.message || err);
-      return normalizeOpggMatchup(null, { championId, enemyChampionId });
-    } finally {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    }
-  }
-
-  // src/features/leagueOfGraphs.js
-  var CHAMPION_ALIAS_MAP = {
-    wukong: "monkeyking",
-    monkeyking: "monkeyking",
-    "nunu & willump": "nunu",
-    "nunu and willump": "nunu",
-    nunuwillump: "nunu",
-    nunowillump: "nunu",
-    nunu: "nunu",
-    "renata glasc": "renata",
-    renataglasc: "renata",
-    renata: "renata"
-  };
-  var MCP_CHAMPION_NAME_MAP2 = {
-    "Cho'Gath": "CHOGATH",
-    "Kai'Sa": "KAISA",
-    "Kha'Zix": "KHAZIX",
-    "Kog'Maw": "KOG_MAW",
-    "Rek'Sai": "REK_SAI",
-    "Vel'Koz": "VEL_KOZ",
-    "Bel'Veth": "BELVETH",
-    "K'Sante": "KSANTE",
-    Wukong: "MONKEY_KING",
-    MonkeyKing: "MONKEY_KING",
-    "Nunu & Willump": "NUNU",
-    "Nunu and Willump": "NUNU",
-    Nunu: "NUNU",
-    "Renata Glasc": "RENATA",
-    Renata: "RENATA",
-    "Dr. Mundo": "DR_MUNDO",
-    DrMundo: "DR_MUNDO",
-    LeBlanc: "LEBLANC"
-  };
-  function formatMcpChampionName2(name) {
-    if (!name && name !== 0) return "";
-    const raw = String(name).trim();
-    if (MCP_CHAMPION_NAME_MAP2[raw]) {
-      return MCP_CHAMPION_NAME_MAP2[raw];
-    }
-    return raw.replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").toUpperCase();
-  }
-  function normalizeChampionSlug(championName2) {
-    if (!championName2 && championName2 !== 0) return "";
-    const raw = String(championName2).trim().toLowerCase();
-    if (!raw) return "";
-    if (CHAMPION_ALIAS_MAP[raw]) {
-      return CHAMPION_ALIAS_MAP[raw];
-    }
-    const stripped = raw.replace(/[^a-z0-9]/g, "");
-    if (CHAMPION_ALIAS_MAP[stripped]) {
-      return CHAMPION_ALIAS_MAP[stripped];
-    }
-    return stripped;
-  }
-  function normalizeLeagueOfGraphsLane(lane) {
-    const normalized = String(lane || "").trim().toUpperCase();
-    switch (normalized) {
-      case "TOP":
-        return "top";
-      case "JUNGLE":
-      case "JG":
-        return "jungle";
-      case "MID":
-      case "MIDDLE":
-        return "middle";
-      case "ADC":
-      case "BOTTOM":
-      case "BOT":
-        return "adc";
-      case "SUPPORT":
-      case "UTILITY":
-      case "SUPP":
-      case "SUP":
-        return "support";
-      default:
-        return normalized.toLowerCase();
-    }
-  }
-  function stripHtml(html) {
-    if (!html) return "";
-    return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "").replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/\s+/g, " ").trim();
-  }
-  function extractRegionFromText(text) {
-    if (!text) return "";
-    const match = text.match(/\b(EUW|KR|NA|EUNE|BR|LAN|LAS|OCE|TR|RU|JP|VN|TW|SG|TH|PH|MEA)\b/i);
-    return match ? match[1].toUpperCase() : "";
-  }
-  function extractTierFromText(text) {
-    if (!text) return null;
-    const match = text.match(/\b(Challenger|GrandMaster|Grandmaster|Master|Diamond|Emerald|Platinum|Gold|Silver|Bronze|Iron)\b/i);
-    if (!match) return null;
-    const tier = match[1];
-    if (tier.toLowerCase() === "grandmaster") return "GrandMaster";
-    return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase();
-  }
-  function parseMcpLeaderboard(text, defaultRegion = "KR") {
-    if (typeof text !== "string" || !text.trim()) {
-      return [];
-    }
-    const regionUpper = String(defaultRegion || "KR").toUpperCase();
-    const playerRegex = /Leaderboard\((\d+),Summoner\(\d+,"[^"]*","[^"]*","[^"]*","([^"]*)","([^"]*)",[^,]*,"[^"]*","[^"]*",\d+,"[^"]*",\[LeagueStat\("[^"]*",TierInfo\("([^"]*)",(\d+),(\d+),[^)]*\),(\d+),(\d+),/g;
-    let pm;
-    const players = [];
-    while ((pm = playerRegex.exec(text)) !== null) {
-      if (players.length >= 5) break;
-      const rank = Number(pm[1]);
-      const name = pm[2];
-      const tag = pm[3];
-      const tierName = pm[4];
-      const div = Number(pm[5]);
-      const lp = Number(pm[6]);
-      const wins = Number(pm[7]) || 0;
-      const losses = Number(pm[8]) || 0;
-      const total = wins + losses;
-      const winRate = total > 0 ? Math.round(wins / total * 1e3) / 10 : null;
-      const tierFormatted = tierName.charAt(0).toUpperCase() + tierName.slice(1).toLowerCase();
-      const riotId = tag ? `${name}#${tag}` : name;
-      players.push({
-        ranking: rank,
-        name: riotId,
-        region: regionUpper,
-        tier: `${tierFormatted} ${div} (${lp} LP)`,
-        winRate,
-        played: total > 0 ? total : null
-      });
-    }
-    return players;
-  }
-  function parseTopPlayers(htmlText) {
-    if (typeof htmlText !== "string" || !htmlText.trim()) {
-      return [];
-    }
-    if (htmlText.includes("Leaderboard(") && htmlText.includes("Summoner(")) {
-      return parseMcpLeaderboard(htmlText);
-    }
-    const rowMatches = htmlText.match(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi);
-    if (!rowMatches) {
-      return [];
-    }
-    const players = [];
-    for (const rowHtml of rowMatches) {
-      if (players.length >= 5) break;
-      if (/<th\b[^>]*>/i.test(rowHtml) && !/<td\b[^>]*>/i.test(rowHtml)) {
-        continue;
-      }
-      const rankAttrMatch = rowHtml.match(/data-ranking=["']?(\d+)["']?/i);
-      const rankCellMatch = rowHtml.match(/<td[^>]*class=["'][^"']*rank[^"']*["'][^>]*>([\s\S]*?)<\/td>/i);
-      let ranking = null;
-      if (rankAttrMatch) {
-        ranking = parseInt(rankAttrMatch[1], 10);
-      } else if (rankCellMatch) {
-        const num = parseInt(stripHtml(rankCellMatch[1]), 10);
-        if (!Number.isNaN(num) && num > 0) {
-          ranking = num;
-        }
-      }
-      let name = "";
-      let region2 = "";
-      const nameCellMatch = rowHtml.match(/<a[^>]*href=["'][^"']*\/summoner\/([^"'/]+)\/([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i) || rowHtml.match(/<a[^>]*href=["'][^"']*\/summoner\/([^"'/]+)\/([^"']+)["']/i);
-      if (nameCellMatch) {
-        region2 = (nameCellMatch[1] || "").toUpperCase();
-        name = decodeURIComponent(nameCellMatch[2] || "").replace(/\+/g, " ").replace(/-/g, "#");
-        if (!name && nameCellMatch[3]) {
-          name = stripHtml(nameCellMatch[3]);
-        }
-      } else {
-        const summonerNameSpan = rowHtml.match(/<span[^>]*class=["'][^"']*name[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
-        if (summonerNameSpan) {
-          name = stripHtml(summonerNameSpan[1]);
-        }
-      }
-      if (!name) {
-        const tdList = rowHtml.match(/<td\b[^>]*>([\s\S]*?)<\/td>/gi) || [];
-        for (const td of tdList) {
-          const text = stripHtml(td);
-          if (text && !/^\d+$/.test(text) && !/^\d+(\.\d+)?%$/.test(text) && !extractTierFromText(text)) {
-            name = text;
-            break;
-          }
-        }
-      }
-      if (!region2) {
-        region2 = extractRegionFromText(rowHtml) || "GLOBAL";
-      }
-      const tier = extractTierFromText(rowHtml);
-      let winRate = null;
-      const wrMatch = rowHtml.match(/(\d+(?:\.\d+)?)\s*%/);
-      if (wrMatch) {
-        winRate = parseFloat(wrMatch[1]);
-      }
-      let totalGames = null;
-      const gamesCellMatch = rowHtml.match(/<td[^>]*class=["'][^"']*games[^"']*["'][^>]*>([\s\S]*?)<\/td>/i);
-      if (gamesCellMatch) {
-        const num = parseInt(stripHtml(gamesCellMatch[1]).replace(/[^\d]/g, ""), 10);
-        if (!Number.isNaN(num) && num > 0) {
-          totalGames = num;
-        }
-      }
-      if (totalGames === null) {
-        const gamesMatch = rowHtml.match(/(\d+)\s*(?:played|games|wins|matches)/i);
-        if (gamesMatch) {
-          totalGames = parseInt(gamesMatch[1], 10);
-        }
-      }
-      if (name) {
-        players.push({
-          ranking: ranking || players.length + 1,
-          name,
-          region: region2,
-          tier,
-          winRate,
-          played: totalGames
-        });
-      }
-    }
-    return players;
-  }
-  function parseProBuilds(htmlText) {
-    const emptyBuild = {
-      items: [],
-      skills: [],
-      winRate: null
-    };
-    if (typeof htmlText !== "string" || !htmlText.trim()) {
-      return emptyBuild;
-    }
-    const items = [];
-    const itemMatches = htmlText.match(/data-item-id=["']?(\d+)["']?/gi) || htmlText.match(/\/(\d{4,6})\.png/gi) || htmlText.match(/items?\/[^\s"']*?(\d{4,6})\.png/gi) || [];
-    for (const m of itemMatches) {
-      const num = parseInt(m.replace(/[^\d]/g, ""), 10);
-      if (Number.isInteger(num) && num > 0 && !items.includes(num)) {
-        items.push(num);
-        if (items.length >= 6) break;
-      }
-    }
-    const skills = [];
-    const skillOrderSection = htmlText.match(/class=["'][^"']*skills?-?order[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) || htmlText.match(/class=["'][^"']*skill-priority[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
-    const searchSource = skillOrderSection ? skillOrderSection[1] : htmlText;
-    const skillMatches = searchSource.match(/\b([QWER])\b/g);
-    if (skillMatches) {
-      for (const letter of skillMatches) {
-        if (!skills.includes(letter)) {
-          skills.push(letter);
-        }
-        if (skills.length >= 3) break;
-      }
-    }
-    let winRate = null;
-    const wrMatch = htmlText.match(/class=["'][^"']*(?:coreItems|proBuilds|build)[^"']*["'][\s\S]*?class=["'][^"']*win[rR]ate[^"']*["'][^>]*>([\s\S]*?)<\/(?:span|div)>/i) || htmlText.match(/class=["'][^"']*win[rR]ate[^"']*["'][^>]*>([\s\S]*?)<\/(?:span|div)>/i);
-    if (wrMatch) {
-      const num = parseFloat(stripHtml(wrMatch[1]).replace("%", "").trim());
-      if (!Number.isNaN(num)) {
-        winRate = num;
-      }
-    }
-    return {
-      items,
-      skills,
-      winRate
-    };
-  }
-  function buildLeagueOfGraphsUrl(options) {
-    const championName2 = options?.championName;
-    const lane = options?.lane;
-    const slug = normalizeChampionSlug(championName2);
-    if (!slug) return "";
-    const lanePath = normalizeLeagueOfGraphsLane(lane);
-    if (lanePath) {
-      return `https://www.leagueofgraphs.com/champions/builds/${slug}/${lanePath}`;
-    }
-    return `https://www.leagueofgraphs.com/champions/builds/${slug}`;
-  }
-  var TAG2 = "[Drake]";
-  var OP_GG_MCP_URL2 = "https://mcp-api.op.gg/mcp";
-  async function fetchLeagueOfGraphsData(options) {
-    const championName2 = options?.championName;
-    const lane = options?.lane;
-    const fetchFn = options?.fetchFn !== void 0 ? options.fetchFn : globalThis.fetch;
-    const timeout = options?.timeout ?? 6e3;
-    const emptyResult = {
-      topPlayers: [],
-      proBuild: {
-        items: [],
-        skills: [],
-        winRate: null
-      },
-      hasData: false
-    };
-    if (typeof fetchFn !== "function" || !championName2) {
-      return emptyResult;
-    }
-    const url = buildLeagueOfGraphsUrl({ championName: championName2, lane });
-    if (!url) {
-      return emptyResult;
-    }
-    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timer = controller && timeout > 0 ? setTimeout(() => controller.abort(), timeout) : null;
-    console.log(TAG2, `fetching League of Graphs: ${url}`);
-    try {
-      const res = await fetchFn(url, {
-        signal: controller?.signal
-      });
-      if (!res || !res.ok) {
-        console.warn(TAG2, `League of Graphs returned status ${res?.status} for:`, url);
-        const mcpName = formatMcpChampionName2(championName2);
-        if (mcpName) {
-          try {
-            const mcpRes = await fetchFn(OP_GG_MCP_URL2, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                jsonrpc: "2.0",
-                id: 2,
-                method: "tools/call",
-                params: {
-                  name: "lol_list_champion_leaderboard",
-                  arguments: { champion: mcpName, region: "kr" }
-                }
-              }),
-              signal: controller?.signal
-            });
-            if (mcpRes && mcpRes.ok && typeof mcpRes.json === "function") {
-              const data = await mcpRes.json();
-              const text = data?.result?.content?.[0]?.text || "";
-              const topPlayers2 = parseMcpLeaderboard(text);
-              if (topPlayers2.length > 0) {
-                console.log(TAG2, `fallback leaderboard loaded: ${championName2} - ${topPlayers2.length} top players`);
-                return {
-                  topPlayers: topPlayers2,
-                  proBuild: { items: [], skills: [], winRate: null },
-                  hasData: true
-                };
-              }
-            }
-          } catch {
-          }
-        }
-        return emptyResult;
-      }
-      const htmlText = await res.text();
-      const topPlayers = parseTopPlayers(htmlText);
-      const proBuild = parseProBuilds(htmlText);
-      const hasData = Boolean(
-        topPlayers.length > 0 || proBuild.items.length > 0 || proBuild.skills.length > 0 || proBuild.winRate !== null
-      );
-      console.log(
-        TAG2,
-        `League of Graphs loaded: ${championName2} (${lane || "all"}) - ${topPlayers.length} top players`
-      );
-      return {
-        topPlayers,
-        proBuild,
-        hasData
-      };
-    } catch (err) {
-      console.warn(TAG2, "League of Graphs fetch error:", err?.message || err);
-      return emptyResult;
-    } finally {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    }
-  }
-
-  // src/features/runes.js
-  var RUNES_PAGES_ROUTE = "/lol-perks/v1/pages";
-  var STYLE_NAMES = {
-    8e3: "Precision",
-    8100: "Domination",
-    8200: "Sorcery",
-    8300: "Inspiration",
-    8400: "Resolve"
-  };
-  var STYLE_ICONS = {
-    8e3: "/lol-game-data/assets/v1/perk-images/Styles/7201_Precision.png",
-    8100: "/lol-game-data/assets/v1/perk-images/Styles/7200_Domination.png",
-    8200: "/lol-game-data/assets/v1/perk-images/Styles/7202_Sorcery.png",
-    8300: "/lol-game-data/assets/v1/perk-images/Styles/7203_Whimsy.png",
-    8400: "/lol-game-data/assets/v1/perk-images/Styles/7204_Resolve.png"
-  };
-  var PERK_PATHS = {
-    // Precision
-    8005: "perk-images/Styles/Precision/PressTheAttack/PressTheAttack.png",
-    8008: "perk-images/Styles/Precision/LethalTempo/LethalTempoTemp.png",
-    8021: "perk-images/Styles/Precision/FleetFootwork/FleetFootwork.png",
-    8010: "perk-images/Styles/Precision/Conqueror/Conqueror.png",
-    9101: "perk-images/Styles/Precision/AbsorbLife/AbsorbLife.png",
-    9102: "perk-images/Styles/Precision/Overheal.png",
-    9111: "perk-images/Styles/Precision/Triumph.png",
-    8009: "perk-images/Styles/Precision/PresenceOfMind/PresenceOfMind.png",
-    9104: "perk-images/Styles/Precision/LegendAlacrity/LegendAlacrity.png",
-    9105: "perk-images/Styles/Precision/LegendHaste/LegendHaste.png",
-    9103: "perk-images/Styles/Precision/LegendBloodline/LegendBloodline.png",
-    8014: "perk-images/Styles/Precision/CoupDeGrace/CoupDeGrace.png",
-    8017: "perk-images/Styles/Precision/CutDown/CutDown.png",
-    8299: "perk-images/Styles/Precision/LastStand/LastStand.png",
-    // Domination
-    8112: "perk-images/Styles/Domination/Electrocute/Electrocute.png",
-    8124: "perk-images/Styles/Domination/Predator/Predator.png",
-    8128: "perk-images/Styles/Domination/DarkHarvest/DarkHarvest.png",
-    9923: "perk-images/Styles/Domination/HailOfBlades/HailOfBlades.png",
-    8126: "perk-images/Styles/Domination/CheapShot/CheapShot.png",
-    8139: "perk-images/Styles/Domination/TasteOfBlood/GreenTerror_TasteOfBlood.png",
-    8143: "perk-images/Styles/Domination/SuddenImpact/SuddenImpact.png",
-    8136: "perk-images/Styles/Domination/ZombieWard/ZombieWard.png",
-    8120: "perk-images/Styles/Domination/GhostPoro/GhostPoro.png",
-    8138: "perk-images/Styles/Domination/EyeballCollection/EyeballCollection.png",
-    8137: "perk-images/Styles/Domination/SixthSense/SixthSense.png",
-    8140: "perk-images/Styles/Domination/GrislyMementos/GrislyMementos.png",
-    8141: "perk-images/Styles/Domination/DeepWard/DeepWard.png",
-    8135: "perk-images/Styles/Domination/TreasureHunter/TreasureHunter.png",
-    8134: "perk-images/Styles/Domination/IngeniousHunter/IngeniousHunter.png",
-    8105: "perk-images/Styles/Domination/RelentlessHunter/RelentlessHunter.png",
-    8106: "perk-images/Styles/Domination/UltimateHunter/UltimateHunter.png",
-    // Sorcery
-    8214: "perk-images/Styles/Sorcery/SummonAery/SummonAery.png",
-    8229: "perk-images/Styles/Sorcery/ArcaneComet/ArcaneComet.png",
-    8230: "perk-images/Styles/Sorcery/PhaseRush/PhaseRush.png",
-    8224: "perk-images/Styles/Sorcery/NullifyingOrb/Pokeshield.png",
-    8226: "perk-images/Styles/Sorcery/ManaflowBand/ManaflowBand.png",
-    8275: "perk-images/Styles/Sorcery/NimbusCloak/6361.png",
-    8210: "perk-images/Styles/Sorcery/Transcendence/Transcendence.png",
-    8234: "perk-images/Styles/Sorcery/Celerity/CelerityTemp.png",
-    8233: "perk-images/Styles/Sorcery/AbsoluteFocus/AbsoluteFocus.png",
-    8237: "perk-images/Styles/Sorcery/Scorch/Scorch.png",
-    8232: "perk-images/Styles/Sorcery/Waterwalking/Waterwalking.png",
-    8236: "perk-images/Styles/Sorcery/GatheringStorm/GatheringStorm.png",
-    // Inspiration
-    8351: "perk-images/Styles/Inspiration/GlacialAugment/GlacialAugment.png",
-    8360: "perk-images/Styles/Inspiration/UnsealedSpellbook/UnsealedSpellbook.png",
-    8369: "perk-images/Styles/Inspiration/FirstStrike/FirstStrike.png",
-    8306: "perk-images/Styles/Inspiration/HextechFlashtraption/HextechFlashtraption.png",
-    8304: "perk-images/Styles/Inspiration/MagicalFootwear/MagicalFootwear.png",
-    8321: "perk-images/Styles/Inspiration/CashBack/CashBack.png",
-    8313: "perk-images/Styles/Inspiration/PerfectTiming/AlchemistCabinet.png",
-    8316: "perk-images/Styles/Inspiration/JackOfAllTrades/JackofAllTrades2.png",
-    8345: "perk-images/Styles/Inspiration/BiscuitDelivery/BiscuitDelivery.png",
-    8347: "perk-images/Styles/Inspiration/CosmicInsight/CosmicInsight.png",
-    8410: "perk-images/Styles/Resolve/ApproachVelocity/ApproachVelocity.png",
-    8352: "perk-images/Styles/Inspiration/TimeWarpTonic/TimeWarpTonic.png",
-    // Resolve
-    8437: "perk-images/Styles/Resolve/GraspOfTheUndying/GraspOfTheUndying.png",
-    8439: "perk-images/Styles/Resolve/VeteranAftershock/VeteranAftershock.png",
-    8465: "perk-images/Styles/Resolve/Guardian/Guardian.png",
-    8446: "perk-images/Styles/Resolve/Demolish/Demolish.png",
-    8463: "perk-images/Styles/Resolve/FontOfLife/FontOfLife.png",
-    8401: "perk-images/Styles/Resolve/MirrorShell/MirrorShell.png",
-    8429: "perk-images/Styles/Resolve/Conditioning/Conditioning.png",
-    8444: "perk-images/Styles/Resolve/SecondWind/SecondWind.png",
-    8473: "perk-images/Styles/Resolve/BonePlating/BonePlating.png",
-    8451: "perk-images/Styles/Resolve/Overgrowth/Overgrowth.png",
-    8453: "perk-images/Styles/Resolve/Revitalize/Revitalize.png",
-    8242: "perk-images/Styles/Sorcery/Unflinching/Unflinching.png",
-    // Stat mods
-    5001: "perk-images/StatMods/StatModsHealthScalingIcon.png",
-    5002: "perk-images/StatMods/StatModsArmorIcon.png",
-    5003: "perk-images/StatMods/StatModsMagicResIcon.png",
-    5005: "perk-images/StatMods/StatModsAttackSpeedIcon.png",
-    5007: "perk-images/StatMods/StatModsCDRIcon.png",
-    5008: "perk-images/StatMods/StatModsAdaptiveForceIcon.png",
-    5010: "perk-images/StatMods/StatModsMovementSpeedIcon.png",
-    5011: "perk-images/StatMods/StatModsHealthFlatIcon.png",
-    5012: "perk-images/StatMods/StatModsTenacityIcon.png",
-    5013: "perk-images/StatMods/StatModsTenacityIcon.png"
-  };
-  var PERK_NAMES = {
-    8005: "Press the Attack",
-    8008: "Lethal Tempo",
-    8021: "Fleet Footwork",
-    8010: "Conqueror",
-    9101: "Absorb Life",
-    9102: "Overheal",
-    9111: "Triumph",
-    8009: "Presence of Mind",
-    9104: "Legend: Alacrity",
-    9105: "Legend: Haste",
-    9103: "Legend: Bloodline",
-    8014: "Coup de Grace",
-    8017: "Cut Down",
-    8299: "Last Stand",
-    8112: "Electrocute",
-    8124: "Predator",
-    8128: "Dark Harvest",
-    9923: "Hail of Blades",
-    8126: "Cheap Shot",
-    8139: "Taste of Blood",
-    8143: "Sudden Impact",
-    8136: "Zombie Ward",
-    8120: "Ghost Poro",
-    8138: "Eyeball Collection",
-    8137: "Sixth Sense",
-    8140: "Grisly Mementos",
-    8141: "Deep Ward",
-    8135: "Treasure Hunter",
-    8134: "Ingenious Hunter",
-    8105: "Relentless Hunter",
-    8106: "Ultimate Hunter",
-    8214: "Summon Aery",
-    8229: "Arcane Comet",
-    8230: "Phase Rush",
-    8224: "Nullifying Orb",
-    8226: "Manaflow Band",
-    8275: "Nimbus Cloak",
-    8210: "Transcendence",
-    8234: "Celerity",
-    8233: "Absolute Focus",
-    8237: "Scorch",
-    8232: "Waterwalking",
-    8236: "Gathering Storm",
-    8351: "Glacial Augment",
-    8360: "Unsealed Spellbook",
-    8369: "First Strike",
-    8306: "Hextech Flashtraption",
-    8304: "Magical Footwear",
-    8321: "Cash Back",
-    8313: "Triple Tonic",
-    8316: "Jack of All Trades",
-    8345: "Biscuit Delivery",
-    8347: "Cosmic Insight",
-    8410: "Approach Velocity",
-    8352: "Time Warp Tonic",
-    8437: "Grasp of the Undying",
-    8439: "Aftershock",
-    8465: "Guardian",
-    8446: "Demolish",
-    8463: "Font of Life",
-    8401: "Shield Bash",
-    8429: "Conditioning",
-    8444: "Second Wind",
-    8473: "Bone Plating",
-    8451: "Overgrowth",
-    8453: "Revitalize",
-    8242: "Unflinching",
-    5001: "Health Scaling",
-    5002: "Armor",
-    5003: "Magic Resist",
-    5005: "Attack Speed",
-    5007: "Ability Haste",
-    5008: "Adaptive Force",
-    5010: "Movement Speed",
-    5011: "Health",
-    5012: "Tenacity",
-    5013: "Tenacity"
-  };
-  function perkStyleName(styleId) {
-    return STYLE_NAMES[Number(styleId)] || `Tree ${styleId}`;
-  }
-  function perkStyleIconUrl(styleId) {
-    const sid = Number(styleId);
-    return STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`;
-  }
-  function perkRelativePath(perkId) {
-    const id = Number(perkId);
-    return PERK_PATHS[id] || `perk-images/${id}.png`;
-  }
-  function perkIconUrl(perkId) {
-    const id = Number(perkId);
-    const path = PERK_PATHS[id];
-    if (path) {
-      return `/lol-game-data/assets/v1/${path}`;
-    }
-    return `/lol-game-data/assets/v1/perk-images/${id}.png`;
-  }
-  function perkName(perkId) {
-    const id = Number(perkId);
-    return PERK_NAMES[id] || `Rune ${id}`;
-  }
-  function formatRunePagePayload(name, primaryStyleId, subStyleId, selectedPerkIds) {
-    return {
-      name: name ? String(name) : "Drake",
-      primaryStyleId: Number(primaryStyleId) || 0,
-      subStyleId: Number(subStyleId) || 0,
-      selectedPerkIds: Array.isArray(selectedPerkIds) ? selectedPerkIds.map((id) => Number(id) || 0) : [],
-      current: true,
-      isActive: true
-    };
-  }
-  async function parseResponse(res, fallbackId) {
-    if (!res) {
-      return { success: true, ...fallbackId !== void 0 ? { pageId: fallbackId } : {} };
-    }
-    if (res.ok === false) {
-      return { success: false, error: `LCU returned status ${res.status || "unknown"}` };
-    }
-    if (typeof res.json === "function") {
-      try {
-        const data = await res.json();
-        const pageId2 = data?.id ?? fallbackId;
-        return { success: true, ...pageId2 !== void 0 ? { pageId: pageId2 } : {} };
-      } catch {
-        return { success: true, ...fallbackId !== void 0 ? { pageId: fallbackId } : {} };
-      }
-    }
-    const pageId = res.id ?? fallbackId;
-    return { success: true, ...pageId !== void 0 ? { pageId } : {} };
-  }
-  async function applyRunePage(lcu2, pageData) {
-    if (!lcu2) {
-      return { success: false, error: "LCU client is required" };
-    }
-    const payload = formatRunePagePayload(
-      pageData?.name,
-      pageData?.primaryStyleId,
-      pageData?.subStyleId,
-      pageData?.selectedPerkIds
-    );
-    try {
-      let pages = [];
-      try {
-        const res = await lcu2.get(RUNES_PAGES_ROUTE);
-        if (Array.isArray(res)) {
-          pages = res;
-        }
-      } catch {
-        pages = [];
-      }
-      const editablePage = pages.find((p) => p && (p.isDeletable || p.isEditable || p.isCustom));
-      if (editablePage && editablePage.id !== void 0 && editablePage.id !== null) {
-        try {
-          const updateRes = await lcu2.put(`${RUNES_PAGES_ROUTE}/${editablePage.id}`, payload);
-          if (!updateRes || updateRes.ok !== false) {
-            const parsed = await parseResponse(updateRes, editablePage.id);
-            if (parsed.success) {
-              return parsed;
-            }
-          }
-        } catch {
-        }
-        try {
-          if (typeof lcu2.delete === "function") {
-            await lcu2.delete(`${RUNES_PAGES_ROUTE}/${editablePage.id}`);
-          }
-        } catch {
-        }
-      }
-      const createRes = await lcu2.post(RUNES_PAGES_ROUTE, payload);
-      if (!createRes || createRes.ok !== false) {
-        return await parseResponse(createRes);
-      }
-      return { success: false, error: `Failed to create rune page (${createRes.status || "error"})` };
-    } catch (err) {
-      return { success: false, error: err?.message || "Failed to apply rune page" };
-    }
-  }
-
   // src/features/mapSide.js
   function readMapSide(session) {
     const empty = { side: "", label: "", color: "" };
@@ -7518,358 +6462,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
       </div>`;
     }).join("")}</div>`;
   }
-  function renderAdvantageBadge(winRate) {
-    if (winRate === null || winRate === void 0) return "";
-    if (winRate >= 50.5) {
-      return `<span class="team-reveal-advantage is-advantage">Advantage</span>`;
-    }
-    if (winRate <= 49.5) {
-      return `<span class="team-reveal-advantage is-disadvantage">Disadvantage</span>`;
-    }
-    return `<span class="team-reveal-advantage is-even">Even</span>`;
-  }
-  function renderSkillsRow(skills) {
-    if (!Array.isArray(skills) || !skills.length) return '<span class="team-reveal-recent-empty">\u2014</span>';
-    return `<div class="team-reveal-skills-row">${skills.map((s) => `<span class="team-reveal-skill-badge">${s}</span>`).join('<span class="team-reveal-skill-arrow">&gt;</span>')}</div>`;
-  }
-  function renderItemsRow(items) {
-    if (!Array.isArray(items) || !items.length) return '<span class="team-reveal-recent-empty">\u2014</span>';
-    return `<div class="team-reveal-items-row">${items.map(
-      (id) => `<span class="team-reveal-item-badge" title="Item ${id}"><img class="team-reveal-item-icon" src="https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${id}.png" alt="${id}" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline';"><span class="team-reveal-item-fallback" style="display:none;">${id}</span></span>`
-    ).join("")}</div>`;
-  }
-  function renderTopPlayersTable(topPlayers, loadingBuildPlayer = "", currentViewedPlayer = "") {
-    if (!Array.isArray(topPlayers) || !topPlayers.length) {
-      return `<div class="team-reveal-empty-card">No ranking data available</div>`;
-    }
-    const rows = topPlayers.map(
-      (p) => {
-        const isCurrent = currentViewedPlayer && currentViewedPlayer === p.name;
-        const isLoading = loadingBuildPlayer && loadingBuildPlayer === p.name;
-        let btnText = "View Build";
-        let btnClass = "team-reveal-view-build-btn";
-        if (isLoading) {
-          btnText = "Loading\u2026";
-          btnClass += " is-loading";
-        } else if (isCurrent) {
-          btnText = "\u2713 Viewing";
-          btnClass += " is-viewing";
-        }
-        return `<tr>
-          <td class="col-rank">#${p.ranking ?? "\u2014"}</td>
-          <td class="col-name">${p.name || "Unknown"}</td>
-          <td class="col-region">${p.region || "\u2014"}</td>
-          <td class="col-tier">${p.tier || "\u2014"}</td>
-          <td class="col-winrate">${p.winRate != null ? `${p.winRate}%` : "\u2014"}</td>
-          <td class="col-played">${p.played != null ? `${p.played}g` : "\u2014"}</td>
-          <td class="col-action">
-            <button type="button" class="${btnClass}" data-team-reveal-player-build="${p.name}" data-team-reveal-player-region="${p.region || "kr"}" ${isLoading ? "disabled" : ""}>${btnText}</button>
-          </td>
-        </tr>`;
-      }
-    ).join("");
-    return `<table class="team-reveal-top-players-table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Player</th>
-        <th>Region</th>
-        <th>Tier</th>
-        <th>Win Rate</th>
-        <th>Played</th>
-        <th>Build</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>`;
-  }
-  function isStatShard(id) {
-    const n = Number(id);
-    return n >= 5e3 && n < 6e3;
-  }
-  function renderRunesCard(opgg, runeApplyStatus, selectedRuneSlot = 0) {
-    const runePages = Array.isArray(opgg?.runePages) && opgg.runePages.length > 0 ? opgg.runePages : opgg?.runes ? [opgg.runes] : [];
-    if (!runePages.length) {
-      return `<section class="team-reveal-runes-card">
-      <div class="team-reveal-matchup-card-title">Recommended Runes (OP.GG)</div>
-      <div class="team-reveal-empty-card">No rune recommendation available</div>
-    </section>`;
-    }
-    const activeRunePage = runePages[selectedRuneSlot] || runePages[0];
-    const primaryStyleId = activeRunePage.primaryStyleId;
-    const subStyleId = activeRunePage.subStyleId;
-    const allPerks = Array.isArray(activeRunePage.selectedPerkIds) ? activeRunePage.selectedPerkIds : [];
-    const shards = allPerks.filter(isStatShard);
-    const regularPerks = allPerks.filter((id) => !isStatShard(id));
-    const keystoneId = regularPerks[0];
-    const primaryMinors = regularPerks.slice(1, 4);
-    const secondaryMinors = regularPerks.slice(4, 6);
-    let slotTabsHtml = "";
-    if (runePages.length > 1) {
-      slotTabsHtml = `<div class="team-reveal-rune-slots">
-      ${runePages.slice(0, 2).map((page, idx) => {
-        const isSelected = selectedRuneSlot === idx;
-        const wrLabel = page.winRate != null ? `${page.winRate}% WR` : `Slot ${idx + 1}`;
-        const kId = page.selectedPerkIds?.find((id) => !isStatShard(id));
-        const kName = kId ? perkName(kId) : `Page ${idx + 1}`;
-        return `<button type="button" class="team-reveal-rune-slot-btn ${isSelected ? "is-selected" : ""}" data-team-reveal-rune-slot="${idx}">
-            <span class="team-reveal-rune-slot-num">${idx + 1}</span>
-            <span class="team-reveal-rune-slot-label">${kName} \xB7 ${wrLabel}</span>
-          </button>`;
-      }).join("")}
-    </div>`;
-    }
-    let applyText = "\u26A1 Apply Runes";
-    let applyClass = "team-reveal-apply-runes-btn hextech-btn";
-    if (runeApplyStatus === "applying") {
-      applyText = "Applying\u2026";
-    } else if (runeApplyStatus === "applied") {
-      applyText = "\u2713 Applied";
-      applyClass += " is-applied";
-    } else if (runeApplyStatus === "failed") {
-      applyText = "Failed (Retry)";
-    }
-    const primaryStyleHtml = primaryStyleId ? `<div class="team-reveal-rune-tree-head">
-        <img class="team-reveal-rune-style-icon" src="${perkStyleIconUrl(
-      primaryStyleId
-    )}" alt="${perkStyleName(primaryStyleId)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-style-path') || '');}" data-style-path="${STYLE_ICONS[primaryStyleId]?.replace("/lol-game-data/assets/v1/", "") || ""}">
-        <span class="team-reveal-rune-style-name">${perkStyleName(primaryStyleId)}</span>
-      </div>` : "";
-    const secondaryStyleHtml = subStyleId ? `<div class="team-reveal-rune-tree-head">
-        <img class="team-reveal-rune-style-icon" src="${perkStyleIconUrl(
-      subStyleId
-    )}" alt="${perkStyleName(subStyleId)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-style-path') || '');}" data-style-path="${STYLE_ICONS[subStyleId]?.replace("/lol-game-data/assets/v1/", "") || ""}">
-        <span class="team-reveal-rune-style-name">${perkStyleName(subStyleId)}</span>
-      </div>` : "";
-    const keystoneHtml = keystoneId ? `<div class="team-reveal-keystone-slot" title="${perkName(keystoneId)}">
-        <img class="team-reveal-keystone-icon" src="${perkIconUrl(
-      keystoneId
-    )}" alt="${perkName(keystoneId)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(keystoneId)}">
-        <span class="team-reveal-keystone-name">${perkName(keystoneId)}</span>
-      </div>` : "";
-    const primaryMinorsHtml = primaryMinors.map(
-      (id) => `<div class="team-reveal-perk-slot" title="${perkName(id)}">
-          <img class="team-reveal-perk-icon" src="${perkIconUrl(id)}" alt="${perkName(id)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(id)}">
-        </div>`
-    ).join("");
-    const secondaryMinorsHtml = secondaryMinors.map(
-      (id) => `<div class="team-reveal-perk-slot" title="${perkName(id)}">
-          <img class="team-reveal-perk-icon" src="${perkIconUrl(id)}" alt="${perkName(id)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(id)}">
-        </div>`
-    ).join("");
-    const shardsHtml = shards.map(
-      (id) => `<div class="team-reveal-shard-slot" title="${perkName(id)}">
-          <img class="team-reveal-shard-icon" src="${perkIconUrl(id)}" alt="${perkName(id)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(id)}">
-        </div>`
-    ).join("");
-    const cardWr = activeRunePage.winRate != null ? `<span class="team-reveal-rune-card-wr">${activeRunePage.winRate}% WR</span>` : "";
-    return `<section class="team-reveal-runes-card">
-    <div class="team-reveal-matchup-card-title">
-      <span>Runes</span>
-      ${cardWr}
-    </div>
-    ${slotTabsHtml}
-    <div class="team-reveal-runes-display">
-      <div class="team-reveal-rune-tree primary">
-        ${primaryStyleHtml}
-        <div class="team-reveal-rune-tree-items">
-          ${keystoneHtml}
-          <div class="team-reveal-primary-minors">${primaryMinorsHtml}</div>
-        </div>
-      </div>
-      <div class="team-reveal-rune-tree secondary">
-        ${secondaryStyleHtml}
-        <div class="team-reveal-secondary-minors">${secondaryMinorsHtml}</div>
-      </div>
-      <div class="team-reveal-rune-tree shards">
-        <div class="team-reveal-rune-tree-head">
-          <span class="team-reveal-rune-style-name shards-title">Shards</span>
-        </div>
-        <div class="team-reveal-shards-row">${shardsHtml}</div>
-      </div>
-    </div>
-    <button class="${applyClass}" type="button" data-team-reveal-apply-runes="1" ${runeApplyStatus === "applying" ? "disabled" : ""}>${applyText}</button>
-  </section>`;
-  }
-  function getLocalPlayerInfo(snapshot, session) {
-    const localCellId = Number(session?.localPlayerCellId ?? -1);
-    const localRow = snapshot.find((r) => r.isLocalPlayer) || snapshot.find((r) => Number(r.cellId) === localCellId);
-    const localSessionPlayer = Array.isArray(session?.myTeam) ? session.myTeam.find((p) => Number(p?.cellId) === localCellId) : null;
-    const pickedChampionId = Number(localRow?.pickedChampionId) || Number(localSessionPlayer?.championId) || 0;
-    const assignedPosition = localRow?.assignedPosition || readAssignedPosition(localSessionPlayer) || "";
-    return {
-      cellId: localCellId,
-      riotId: localRow?.riotId || "",
-      pickedChampionId,
-      assignedPosition
-    };
-  }
-  function getEnemyPlayerInfo(session, localLane) {
-    if (!session || !Array.isArray(session.theirTeam) || !session.theirTeam.length) {
-      return null;
-    }
-    const normLocalLane = normalizeOpggLane(localLane);
-    if (normLocalLane) {
-      const sameLane = session.theirTeam.find((p) => {
-        const pLane = normalizeOpggLane(readAssignedPosition(p));
-        return pLane && pLane === normLocalLane && Number(p?.championId) > 0;
-      });
-      if (sameLane) {
-        return {
-          championId: Number(sameLane.championId),
-          assignedPosition: readAssignedPosition(sameLane)
-        };
-      }
-    }
-    const enemiesWithChamp = session.theirTeam.filter((p) => Number(p?.championId) > 0);
-    if (enemiesWithChamp.length === 1) {
-      return {
-        championId: Number(enemiesWithChamp[0].championId),
-        assignedPosition: readAssignedPosition(enemiesWithChamp[0])
-      };
-    }
-    return null;
-  }
-  function getEnemyTeamChampions(session, getChampName) {
-    if (!session || !Array.isArray(session.theirTeam)) return [];
-    const list = [];
-    const seen = /* @__PURE__ */ new Set();
-    for (const p of session.theirTeam) {
-      const id = Number(p?.championId) || 0;
-      if (id > 0 && !seen.has(id)) {
-        seen.add(id);
-        const name = typeof getChampName === "function" && getChampName(id) || `Champion ${id}`;
-        const pos = readAssignedPosition(p);
-        list.push({ id, name, pos });
-      }
-    }
-    return list;
-  }
-  function renderMatchupContent({
-    localChampId,
-    localLane,
-    enemyChampId,
-    autoEnemyChampId = 0,
-    manualEnemyChampId = 0,
-    enemyTeamChampions = [],
-    enemyLane,
-    getChampName,
-    matchupState,
-    runeApplyStatus,
-    selectedRuneSlot = 0,
-    sideBadge = "",
-    loadingBuildPlayer = "",
-    currentViewedPlayer = ""
-  }) {
-    if (!localChampId) {
-      return `<div class="team-reveal-matchup-empty">Pick a champion to view matchup &amp; builds</div>`;
-    }
-    if (matchupState.loading) {
-      return `<div class="team-reveal-matchup-loading">${SPINNER_SVG} <span>Loading matchup and build data\u2026</span></div>`;
-    }
-    const localName = getChampName(localChampId) || "Your Champion";
-    const localRoleIcon = renderRoleIcon(localLane);
-    const localRoleText = roleLabel(localLane) || localLane;
-    const enemyName = enemyChampId ? getChampName(enemyChampId) || "Enemy" : "Unknown Opponent";
-    const enemyRoleIcon = renderRoleIcon(enemyLane || localLane);
-    const enemyRoleText = roleLabel(enemyLane || localLane) || enemyLane || localLane;
-    const enemyChampIcon = enemyChampId ? `<img class="team-reveal-matchup-champ-icon" src="${iconUrl(enemyChampId)}" alt="${enemyName}">` : `<div class="team-reveal-matchup-champ-placeholder">?</div>`;
-    const opgg = matchupState.data?.opgg;
-    const log = matchupState.data?.log;
-    const wrVsSuffix = opgg?.isCounterMatchup && enemyChampId ? ` vs ${enemyName}` : "";
-    const wrText = opgg?.winRate != null ? `<span class="team-reveal-matchup-wr">${opgg.winRate}% WR${wrVsSuffix}${opgg.totalMatches ? ` \xB7 ${opgg.totalMatches.toLocaleString()} games` : ""}</span>` : `<span class="team-reveal-matchup-wr">No matchup stats</span>`;
-    const advantageBadge = renderAdvantageBadge(opgg?.winRate);
-    const skills = (opgg?.skills && opgg.skills.length ? opgg.skills : log?.proBuild?.skills) || [];
-    const items = (opgg?.coreItems && opgg.coreItems.length ? opgg.coreItems : log?.proBuild?.items) || [];
-    const topPlayers = log?.topPlayers || [];
-    const autoEnemyName = autoEnemyChampId ? getChampName(autoEnemyChampId) || "Detected" : "None";
-    let enemyPickerHtml = "";
-    if (enemyTeamChampions.length > 0) {
-      const autoSelected = !manualEnemyChampId ? "is-selected" : "";
-      const autoBtn = `<button type="button" class="team-reveal-enemy-chip ${autoSelected}" data-team-reveal-enemy-select="0" title="Auto detect opponent">
-      <span class="team-reveal-enemy-chip-auto-icon">\u{1F3AF}</span>
-      <span class="team-reveal-enemy-chip-name">Auto (${autoEnemyName})</span>
-    </button>`;
-      const champBtns = enemyTeamChampions.map((c) => {
-        const isSelected = Number(manualEnemyChampId) === Number(c.id);
-        const roleIcon = renderRoleIcon(c.pos);
-        return `<button type="button" class="team-reveal-enemy-chip ${isSelected ? "is-selected" : ""}" data-team-reveal-enemy-select="${c.id}" title="${c.name}">
-          <img class="team-reveal-enemy-chip-icon" src="${iconUrl(c.id)}" alt="${c.name}">
-          ${roleIcon}
-          <span class="team-reveal-enemy-chip-name">${c.name}</span>
-        </button>`;
-      }).join("");
-      enemyPickerHtml = `<div class="team-reveal-enemy-picker-bar">
-      <span class="team-reveal-enemy-picker-label">Opponent:</span>
-      <div class="team-reveal-enemy-picker-list">
-        ${autoBtn}
-        ${champBtns}
-      </div>
-    </div>`;
-    } else {
-      enemyPickerHtml = `<div class="team-reveal-enemy-picker-bar">
-      <span class="team-reveal-enemy-picker-label">Opponent:</span>
-      <span class="team-reveal-enemy-picker-empty">Waiting for enemy picks in champion select\u2026</span>
-    </div>`;
-    }
-    return `<div class="team-reveal-matchup-head">
-    <div class="team-reveal-matchup-champs">
-      <div class="team-reveal-matchup-side">
-        <img class="team-reveal-matchup-champ-icon" src="${iconUrl(localChampId)}" alt="${localName}">
-        <div class="team-reveal-matchup-side-meta">
-          <div class="team-reveal-matchup-side-name">${localName}</div>
-          <div class="team-reveal-matchup-side-role">${localRoleIcon} ${localRoleText}</div>
-        </div>
-      </div>
-      <div class="team-reveal-matchup-vs">VS</div>
-      <div class="team-reveal-matchup-side">
-        ${enemyChampIcon}
-        <div class="team-reveal-matchup-side-meta">
-          <div class="team-reveal-matchup-side-name">${enemyName}</div>
-          <div class="team-reveal-matchup-side-role">${enemyRoleIcon} ${enemyRoleText}</div>
-        </div>
-      </div>
-    </div>
-    <div class="team-reveal-matchup-meta">
-      ${sideBadge}
-      ${wrText}
-      ${advantageBadge}
-    </div>
-  </div>
-  ${enemyPickerHtml}
-  <div class="team-reveal-matchup-grid">
-    ${renderRunesCard(opgg, runeApplyStatus, selectedRuneSlot)}
-    <section class="team-reveal-items-card">
-      <div class="team-reveal-matchup-card-title">Skill Order &amp; Core Items</div>
-      <div class="team-reveal-card-row">
-        <span class="team-reveal-card-label">Skill Order</span>
-        <div class="team-reveal-card-value">${renderSkillsRow(skills)}</div>
-      </div>
-      <div class="team-reveal-card-row">
-        <span class="team-reveal-card-label">Core Items</span>
-        <div class="team-reveal-card-value">${renderItemsRow(items)}</div>
-      </div>
-    </section>
-    <section class="team-reveal-top-players-card">
-      <div class="team-reveal-matchup-card-title">Top Players (League of Graphs)</div>
-      ${renderTopPlayersTable(topPlayers, loadingBuildPlayer, currentViewedPlayer)}
-    </section>
-  </div>`;
-  }
   function renderOverlayShell({
-    activeTab,
     snapshot,
     currentSession,
     getChampName,
-    getChampions,
-    manualEnemyChampId = 0,
-    matchupState,
-    runeApplyStatus,
-    selectedRuneSlot = 0,
     muteStatus = "idle",
-    showMapSide = true,
-    loadingBuildPlayer = "",
-    currentViewedPlayer = ""
+    showMapSide = true
   }) {
     const sideInfo = showMapSide ? readMapSide(currentSession) : null;
     const sideBadge = sideInfo?.label ? formatMapSideBadge(sideInfo) : "";
@@ -7913,75 +6511,28 @@ button.bug-report-button[data-drake-toggle]:disabled {
         </div>
       </section>`;
     }).join("");
-    const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-    const autoEnemyInfo = getEnemyPlayerInfo(currentSession, localInfo.assignedPosition);
-    const enemyTeamChampions = getEnemyTeamChampions(currentSession, getChampName);
-    const effectiveEnemyChampId = manualEnemyChampId > 0 ? manualEnemyChampId : autoEnemyInfo?.championId || 0;
-    const matchupContent = activeTab === "matchup" ? `<div class="team-reveal-matchup-view">${renderMatchupContent({
-      localChampId: localInfo.pickedChampionId,
-      localLane: localInfo.assignedPosition,
-      enemyChampId: effectiveEnemyChampId,
-      autoEnemyChampId: autoEnemyInfo?.championId || 0,
-      manualEnemyChampId,
-      enemyTeamChampions,
-      enemyLane: autoEnemyInfo?.assignedPosition || "",
-      getChampName,
-      matchupState,
-      runeApplyStatus,
-      selectedRuneSlot,
-      sideBadge,
-      loadingBuildPlayer,
-      currentViewedPlayer
-    })}</div>` : `<div class="team-reveal-panel">${cards}</div>`;
     return `<div class="team-reveal-shell" data-team-reveal-panel="1">
     <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === "muting" ? "disabled" : ""}>${muteText}</button>
     <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">Close</button>
     <div class="team-reveal-tabs">
-      <button class="team-reveal-tab ${activeTab === "scouting" ? "is-active" : ""}" type="button" data-team-reveal-tab="scouting" ${activeTab === "scouting" ? 'aria-selected="true"' : ""}>Team Scouting</button>
-      <button class="team-reveal-tab ${activeTab === "matchup" ? "is-active" : ""}" type="button" data-team-reveal-tab="matchup" ${activeTab === "matchup" ? 'aria-selected="true"' : ""}>Matchup &amp; Builds</button>
+      <button class="team-reveal-tab is-active" type="button" aria-selected="true">Team Scouting</button>
       ${sideBadge}
     </div>
-    ${matchupContent}
+    <div class="team-reveal-panel">${cards}</div>
   </div>`;
   }
   function overlayRenderSig({
-    activeTab,
     snapshot,
     currentSession,
-    matchupState,
-    runeApplyStatus,
-    selectedRuneSlot = 0,
     muteStatus = "idle",
-    showMapSide = true,
-    manualEnemyChampId = 0,
-    loadingBuildPlayer = "",
-    currentViewedPlayer = ""
+    showMapSide = true
   }) {
-    const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-    const autoEnemyInfo = getEnemyPlayerInfo(currentSession, localInfo.assignedPosition);
-    const effectiveEnemyChampId = manualEnemyChampId > 0 ? manualEnemyChampId : autoEnemyInfo?.championId || 0;
     const sideInfo = showMapSide ? readMapSide(currentSession) : null;
-    const enemyTeamChampions = getEnemyTeamChampions(currentSession);
-    const enemyPicksSig = enemyTeamChampions.map((c) => `${c.id}:${c.pos}`).join(",");
     return JSON.stringify({
-      tab: activeTab,
-      cards: activeTab === "scouting" ? cardsContentSig(snapshot) : "",
-      localChampId: localInfo.pickedChampionId,
-      localLane: localInfo.assignedPosition,
-      enemyChampId: effectiveEnemyChampId,
-      manualEnemyChampId,
-      enemyPicksSig,
-      loading: matchupState.loading,
-      hasData: Boolean(matchupState.data),
-      opggWr: matchupState.data?.opgg?.winRate,
-      topPlayersCount: matchupState.data?.log?.topPlayers?.length || 0,
-      runeStatus: runeApplyStatus,
-      selectedRuneSlot,
+      cards: cardsContentSig(snapshot),
       muteStatus,
       side: sideInfo?.side || "",
-      showMapSide: Boolean(showMapSide),
-      loadingBuildPlayer,
-      currentViewedPlayer
+      showMapSide: Boolean(showMapSide)
     });
   }
   function readLabelNodes(doc) {
@@ -8079,12 +6630,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     lcu: lcu2,
     muteTeammatesImpl = muteTeammates,
     sendChampSelectMessageImpl = sendChampSelectMessage,
-    fetchOpggMatchupImpl = fetchOpggMatchup,
-    fetchLeagueOfGraphsImpl = fetchLeagueOfGraphsData,
-    applyRunePageImpl = applyRunePage,
-    fetchFn = globalThis.fetch,
     getChampName = () => "",
-    getChampions = () => [],
     getRecentPool = () => "ranked_both",
     getShowMapSide = () => true,
     getAutoMute = () => false,
@@ -8119,22 +6665,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let loadGen = 0;
     let loadAbort = null;
     let stopPhase = null;
-    let activeTab = "scouting";
-    let manualEnemyChampId = 0;
-    let selectedRuneSlot = 0;
-    let matchupGen = 0;
-    let matchupState = {
-      loading: false,
-      error: null,
-      data: null,
-      key: ""
-    };
-    let runeApplyStatus = "idle";
     let muteStatus = "idle";
     let autoMutedLobbyKey = "";
     let lastAutoMessageLobbyKey = "";
-    let loadingBuildPlayer = "";
-    let currentViewedPlayer = "";
     function stopRevealLoad() {
       loadGen += 1;
       if (loadAbort) {
@@ -8153,17 +6686,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
       lastLobbyKey = "";
       lastTeam = [];
       lastCardsRenderSig = "";
-      activeTab = "scouting";
-      manualEnemyChampId = 0;
-      selectedRuneSlot = 0;
-      matchupGen += 1;
-      matchupState = { loading: false, error: null, data: null, key: "" };
-      runeApplyStatus = "idle";
       muteStatus = "idle";
       autoMutedLobbyKey = "";
       lastAutoMessageLobbyKey = "";
-      loadingBuildPlayer = "";
-      currentViewedPlayer = "";
       open = false;
       renderVisibility();
       setStatus("hidden");
@@ -8204,7 +6729,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (!changed) return false;
       snapshot = rows;
       lastCardsRenderSig = "";
-      if (open && activeTab === "matchup") ensureMatchupData();
       if (open) renderVisibility();
       return true;
     }
@@ -8308,206 +6832,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
       wireOverlayEvents(overlay);
       return overlay;
     }
-    function ensureMatchupData() {
-      const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-      const autoEnemyInfo = getEnemyPlayerInfo(currentSession, localInfo.assignedPosition);
-      const effectiveEnemyChampId = manualEnemyChampId > 0 ? manualEnemyChampId : autoEnemyInfo?.championId || 0;
-      if (!localInfo.pickedChampionId) {
-        matchupState = { loading: false, error: null, data: null, key: "" };
-        return;
-      }
-      const key = `${localInfo.pickedChampionId}_${localInfo.assignedPosition}_${effectiveEnemyChampId}`;
-      if (matchupState.key === key && (matchupState.loading || matchupState.data)) {
-        return;
-      }
-      matchupState.key = key;
-      matchupState.loading = true;
-      matchupState.error = null;
-      matchupState.data = null;
-      selectedRuneSlot = 0;
-      runeApplyStatus = "idle";
-      const gen = ++matchupGen;
-      const champName = getChampName(localInfo.pickedChampionId);
-      const mcpName = formatMcpChampionName(champName);
-      Promise.all([
-        fetchOpggMatchupImpl({
-          championId: localInfo.pickedChampionId,
-          championName: champName,
-          lane: localInfo.assignedPosition,
-          enemyChampionId: effectiveEnemyChampId,
-          fetchFn
-        }).catch(() => null),
-        fetchLeagueOfGraphsImpl({
-          championName: champName,
-          lane: localInfo.assignedPosition,
-          fetchFn
-        }).then(async (logRes) => {
-          if ((!logRes?.topPlayers || logRes.topPlayers.length === 0) && mcpName) {
-            try {
-              const mcpLeaderboardRes = await fetchFn("https://mcp-api.op.gg/mcp", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  jsonrpc: "2.0",
-                  id: 3,
-                  method: "tools/call",
-                  params: {
-                    name: "lol_list_champion_leaderboard",
-                    arguments: {
-                      champion: mcpName,
-                      region: region ? String(region).toLowerCase() : "kr",
-                      lang: "en_US"
-                    }
-                  }
-                })
-              });
-              if (mcpLeaderboardRes && mcpLeaderboardRes.ok && typeof mcpLeaderboardRes.json === "function") {
-                const data = await mcpLeaderboardRes.json();
-                const text = data?.result?.content?.[0]?.text || "";
-                const topPlayers = parseMcpLeaderboard(text, region || "KR");
-                if (topPlayers.length > 0) {
-                  return {
-                    ...logRes || {},
-                    topPlayers,
-                    hasData: true
-                  };
-                }
-              }
-            } catch {
-            }
-          }
-          return logRes;
-        }).catch(() => null)
-      ]).then(([opgg, log]) => {
-        if (gen !== matchupGen) return;
-        matchupState.loading = false;
-        matchupState.data = {
-          opgg: opgg || null,
-          log: log || null
-        };
-        lastCardsRenderSig = "";
-        if (open) renderVisibility();
-      }).catch((err) => {
-        if (gen !== matchupGen) return;
-        matchupState.loading = false;
-        matchupState.error = err?.message || "Failed to load matchup";
-        lastCardsRenderSig = "";
-        if (open) renderVisibility();
-      });
-    }
-    async function handleFetchPlayerBuild(playerName, playerRegion = "kr") {
-      if (loadingBuildPlayer) return;
-      loadingBuildPlayer = playerName;
-      lastCardsRenderSig = "";
-      renderVisibility();
-      const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-      const champId = localInfo.pickedChampionId;
-      const parts = String(playerName || "").split("#");
-      const gameName = parts[0] || "";
-      const tagLine = parts[1] || "";
-      try {
-        const res = await fetchFn("https://mcp-api.op.gg/mcp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jsonrpc: "2.0",
-            id: 4,
-            method: "tools/call",
-            params: {
-              name: "lol_list_summoner_matches",
-              arguments: {
-                game_name: gameName,
-                tag_line: tagLine,
-                region: String(playerRegion || "kr").toLowerCase()
-              }
-            }
-          })
-        });
-        if (res && res.ok && typeof res.json === "function") {
-          const data = await res.json();
-          const text = data?.result?.content?.[0]?.text || "";
-          if (text) {
-            const participantRegex = /Participant\(Summoner\([^)]+\),(\d+),"([^"]*)","[^"]*","([^"]*)",\[([^\]]*)\],\[([^\]]*)\],Rune\((\d+),(\d+),(\d+)\),\[([^\]]*)\],Stats\([^)]*?"(WIN|LOSE)"/g;
-            let match;
-            const playerRunePages = [];
-            let playerItems = [];
-            while ((match = participantRegex.exec(text)) !== null) {
-              const pChampId = Number(match[1]);
-              const pItemsStr = match[4];
-              const pPrimaryStyle = Number(match[6]);
-              const pPrimaryRune = Number(match[7]);
-              const pSecondaryStyle = Number(match[8]);
-              if (champId && pChampId === champId) {
-                if (!playerItems.length && pItemsStr) {
-                  playerItems = pItemsStr.split(",").map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
-                }
-                if (pPrimaryStyle > 0 && pSecondaryStyle > 0 && pPrimaryRune > 0) {
-                  const already = playerRunePages.some(
-                    (p) => p.primaryStyleId === pPrimaryStyle && p.selectedPerkIds[0] === pPrimaryRune
-                  );
-                  if (!already) {
-                    playerRunePages.push({
-                      primaryStyleId: pPrimaryStyle,
-                      subStyleId: pSecondaryStyle,
-                      selectedPerkIds: [pPrimaryRune],
-                      winRate: null
-                    });
-                  }
-                }
-              }
-            }
-            if (playerRunePages.length > 0 || playerItems.length > 0) {
-              currentViewedPlayer = playerName;
-              if (matchupState.data?.opgg) {
-                if (playerRunePages.length > 0) {
-                  matchupState.data.opgg.runePages = playerRunePages;
-                  matchupState.data.opgg.runes = playerRunePages[0];
-                  selectedRuneSlot = 0;
-                }
-                if (playerItems.length > 0) {
-                  matchupState.data.opgg.coreItems = playerItems;
-                }
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("[Drake]", "Failed to fetch player build:", err);
-      } finally {
-        loadingBuildPlayer = "";
-        lastCardsRenderSig = "";
-        if (open) renderVisibility();
-      }
-    }
-    async function handleApplyRunes() {
-      if (runeApplyStatus === "applying") return;
-      const runePages = matchupState.data?.opgg?.runePages;
-      const runes = Array.isArray(runePages) && runePages[selectedRuneSlot] || matchupState.data?.opgg?.runes;
-      if (!runes || !lcu2) {
-        runeApplyStatus = "failed";
-        lastCardsRenderSig = "";
-        renderVisibility();
-        return;
-      }
-      const localInfo = getLocalPlayerInfo(snapshot, currentSession);
-      const champName = getChampName(localInfo.pickedChampionId);
-      runeApplyStatus = "applying";
-      lastCardsRenderSig = "";
-      renderVisibility();
-      try {
-        const res = await applyRunePageImpl(lcu2, {
-          name: `${champName || "Drake"} Matchup`,
-          primaryStyleId: runes.primaryStyleId,
-          subStyleId: runes.subStyleId,
-          selectedPerkIds: runes.selectedPerkIds
-        });
-        runeApplyStatus = res?.success ? "applied" : "failed";
-      } catch {
-        runeApplyStatus = "failed";
-      }
-      lastCardsRenderSig = "";
-      if (open) renderVisibility();
-    }
     async function handleMuteAll() {
       if (muteStatus === "muting" || !currentSession || !lcu2) return;
       muteStatus = "muting";
@@ -8525,79 +6849,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function wireOverlayEvents(node) {
       if (!node?.addEventListener || node.dataset?.drakeRevealWired === "1") return;
       if (node.dataset) node.dataset.drakeRevealWired = "1";
-      node.addEventListener("change", (event) => {
-        const target = event.target;
-        const selectElem = target?.matches?.("[data-team-reveal-enemy-select]") ? target : target?.closest?.("[data-team-reveal-enemy-select]");
-        if (selectElem) {
-          const raw = target.value ?? selectElem.dataset?.teamRevealEnemySelect;
-          const val = Number(raw) || 0;
-          manualEnemyChampId = val > 0 ? val : 0;
-          matchupState = { loading: false, error: null, data: null, key: "" };
-          ensureMatchupData();
-          lastCardsRenderSig = "";
-          renderVisibility();
-        }
-      });
       node.addEventListener("click", async (event) => {
         const target = event.target;
         if (target?.closest?.('[data-team-reveal-close="1"]') || target?.dataset?.teamRevealClose === "1") {
           event.stopPropagation?.();
           closeCards();
-          return;
-        }
-        const enemySelectBtn = target?.matches?.("[data-team-reveal-enemy-select]") ? target : target?.closest?.("[data-team-reveal-enemy-select]");
-        if (enemySelectBtn) {
-          event.stopPropagation?.();
-          const raw = enemySelectBtn.dataset?.teamRevealEnemySelect ?? enemySelectBtn.value;
-          const val = Number(raw) || 0;
-          manualEnemyChampId = val > 0 ? val : 0;
-          matchupState = { loading: false, error: null, data: null, key: "" };
-          ensureMatchupData();
-          lastCardsRenderSig = "";
-          renderVisibility();
-          return;
-        }
-        const tabBtn = target?.closest?.("[data-team-reveal-tab]") || (target?.dataset?.teamRevealTab ? target : null);
-        if (tabBtn) {
-          event.stopPropagation?.();
-          const tab = tabBtn.dataset?.teamRevealTab || tabBtn.getAttribute?.("data-team-reveal-tab");
-          if (tab && tab !== activeTab) {
-            activeTab = tab;
-            lastCardsRenderSig = "";
-            if (activeTab === "matchup") {
-              ensureMatchupData();
-            }
-            renderVisibility();
-          }
-          return;
-        }
-        const runeSlotBtn = target?.matches?.("[data-team-reveal-rune-slot]") ? target : target?.closest?.("[data-team-reveal-rune-slot]");
-        if (runeSlotBtn) {
-          event.stopPropagation?.();
-          const raw = runeSlotBtn.dataset?.teamRevealRuneSlot;
-          const idx = Number(raw) || 0;
-          if (selectedRuneSlot !== idx) {
-            selectedRuneSlot = idx;
-            runeApplyStatus = "idle";
-            lastCardsRenderSig = "";
-            renderVisibility();
-          }
-          return;
-        }
-        const playerBuildBtn = target?.matches?.("[data-team-reveal-player-build]") ? target : target?.closest?.("[data-team-reveal-player-build]");
-        if (playerBuildBtn) {
-          event.stopPropagation?.();
-          const playerName = playerBuildBtn.dataset?.teamRevealPlayerBuild;
-          const playerRegion = playerBuildBtn.dataset?.teamRevealPlayerRegion || "kr";
-          if (playerName && !loadingBuildPlayer) {
-            await handleFetchPlayerBuild(playerName, playerRegion);
-          }
-          return;
-        }
-        const applyRunesBtn = target?.closest?.('[data-team-reveal-apply-runes="1"]') || (target?.dataset?.teamRevealApplyRunes === "1" ? target : null);
-        if (applyRunesBtn) {
-          event.stopPropagation?.();
-          await handleApplyRunes();
           return;
         }
         const muteBtn = target?.closest?.('[data-team-reveal-mute="1"]') || (target?.dataset?.teamRevealMute === "1" ? target : null);
@@ -8714,19 +6970,19 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const visible = enabled && (phase === "loading" || phase === "ready") && !open;
       node.hidden = !visible;
       if (node.style) node.style.display = visible ? "flex" : "none";
-      const loading = phase === "loading";
+      const loading2 = phase === "loading";
       if (statusSpinner) {
-        statusSpinner.hidden = !loading || !visible;
-        if (statusSpinner.style) statusSpinner.style.display = loading && visible ? "inline-flex" : "none";
+        statusSpinner.hidden = !loading2 || !visible;
+        if (statusSpinner.style) statusSpinner.style.display = loading2 && visible ? "inline-flex" : "none";
       }
       if (statusOpenBtn) {
-        statusOpenBtn.hidden = loading || !visible;
-        if (statusOpenBtn.style) statusOpenBtn.style.display = !loading && visible ? "inline-flex" : "none";
+        statusOpenBtn.hidden = loading2 || !visible;
+        if (statusOpenBtn.style) statusOpenBtn.style.display = !loading2 && visible ? "inline-flex" : "none";
       }
       if (statusText) {
         const sideInfo = getShowMapSide() ? readMapSide(currentSession) : null;
         const readyMsg = sideInfo?.label ? `Session revealed \xB7 ${sideInfo.label} \xB7 Press Ctrl+Shift+D to view it.` : "Session revealed. Press Ctrl+Shift+D to view it.";
-        statusText.textContent = loading ? "Revealing lobby" : readyMsg;
+        statusText.textContent = loading2 ? "Revealing lobby" : readyMsg;
       }
       if (visible && phase === "ready") startReadyDismiss();
       else stopReadyDismiss();
@@ -8736,33 +6992,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (open && snapshot.length > 0) {
         const showMapSide = getShowMapSide();
         const sig = overlayRenderSig({
-          activeTab,
           snapshot,
           currentSession,
-          matchupState,
-          runeApplyStatus,
-          selectedRuneSlot,
           muteStatus,
-          showMapSide,
-          manualEnemyChampId,
-          loadingBuildPlayer,
-          currentViewedPlayer
+          showMapSide
         });
         if (sig !== lastCardsRenderSig) {
           overlay.innerHTML = renderOverlayShell({
-            activeTab,
             snapshot,
             currentSession,
             getChampName: (id) => getChampName(Number(id)),
-            getChampions,
-            manualEnemyChampId,
-            matchupState,
-            runeApplyStatus,
-            selectedRuneSlot,
             muteStatus,
-            showMapSide,
-            loadingBuildPlayer,
-            currentViewedPlayer
+            showMapSide
           });
           lastCardsRenderSig = sig;
         }
@@ -8864,7 +7105,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (!enabled || !snapshot.length) return;
       ensureOverlay();
       open = true;
-      if (activeTab === "matchup") ensureMatchupData();
       if (needsReapply()) applyRows(snapshot);
       renderVisibility();
       setStatus("ready");
@@ -8906,7 +7146,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
         mergeRowsByCell(session);
         applyPickRefresh(session);
         if (needsReapply()) applyRows(snapshot);
-        if (open && activeTab === "matchup") ensureMatchupData();
         if (open) renderVisibility();
         if (lobbyKey) lastLobbyKey = lobbyKey;
         lastTeam = team;
@@ -8915,7 +7154,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
       } else if (snapshot.length && applyRemappedSnapshot(session)) {
         applyPickRefresh(session);
         if (needsReapply()) applyRows(snapshot);
-        if (open && activeTab === "matchup") ensureMatchupData();
         if (open) renderVisibility();
         if (lobbyKey) lastLobbyKey = lobbyKey;
         lastTeam = team;
@@ -8928,7 +7166,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (sig && sig === lastSessionSig) {
         mergeRowsByCell(session);
         if (snapshot.length && needsReapply()) applyRows(snapshot);
-        if (open && activeTab === "matchup") ensureMatchupData();
         if (open) renderVisibility();
         return;
       }
@@ -8946,7 +7183,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
             snapshot = Array.isArray(rows) ? rows : [];
             mergeRowsByCell(session);
             applyRows(snapshot);
-            if (open && activeTab === "matchup") ensureMatchupData();
             if (open) renderVisibility();
           }
         });
@@ -8956,7 +7192,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
         applyPickRefresh(session);
         setStatus(snapshot.length ? "ready" : "hidden");
         if (snapshot.length) applyRows(snapshot);
-        if (open && activeTab === "matchup") ensureMatchupData();
         if (open) renderVisibility();
         if (typeof onRevealTiming === "function" && snapshot.length) {
           onRevealTiming({
@@ -9018,6 +7253,1459 @@ button.bug-report-button[data-drake-toggle]:disabled {
       closeCards,
       openCards,
       teardown
+    };
+  }
+
+  // src/features/opggApi.js
+  var TAG = "[Drake]";
+  var OPGG_BASE = "https://lol-api-champion.op.gg";
+  var DEFAULT_TIER = "emerald_plus";
+  var DEFAULT_REGION = "global";
+  var DEFAULT_MODE = "ranked";
+  var OPGG_MODES = ["ranked", "aram"];
+  var OPGG_TIERS = [
+    { value: "all", label: "All Ranks" },
+    { value: "ibsg", label: "Iron\u2013Silver" },
+    { value: "gold_plus", label: "Gold+" },
+    { value: "platinum_plus", label: "Platinum+" },
+    { value: "emerald_plus", label: "Emerald+" },
+    { value: "diamond_plus", label: "Diamond+" },
+    { value: "master", label: "Master" },
+    { value: "grandmaster", label: "Grandmaster" },
+    { value: "challenger", label: "Challenger" }
+  ];
+  var OPGG_REGIONS = [
+    { value: "global", label: "Global" },
+    { value: "br", label: "BR" },
+    { value: "na", label: "NA" },
+    { value: "euw", label: "EUW" },
+    { value: "eune", label: "EUNE" },
+    { value: "kr", label: "KR" },
+    { value: "jp", label: "JP" },
+    { value: "lan", label: "LAN" },
+    { value: "las", label: "LAS" },
+    { value: "oce", label: "OCE" },
+    { value: "tr", label: "TR" },
+    { value: "ru", label: "RU" },
+    { value: "vn", label: "VN" }
+  ];
+  var POSITION_MAP = {
+    TOP: "top",
+    JUNGLE: "jungle",
+    JG: "jungle",
+    MID: "mid",
+    MIDDLE: "mid",
+    ADC: "adc",
+    BOTTOM: "adc",
+    BOT: "adc",
+    SUPPORT: "support",
+    UTILITY: "support",
+    SUPP: "support",
+    SUP: "support"
+  };
+  function normalizeOpggPosition(lane) {
+    const key = String(lane || "").trim().toUpperCase();
+    return POSITION_MAP[key] || "none";
+  }
+  function normalizeMode(mode) {
+    const value = String(mode || DEFAULT_MODE).trim().toLowerCase();
+    return OPGG_MODES.includes(value) ? value : DEFAULT_MODE;
+  }
+  function normalizeRegion(region) {
+    const value = String(region || DEFAULT_REGION).trim().toLowerCase();
+    return OPGG_REGIONS.some((r) => r.value === value) ? value : DEFAULT_REGION;
+  }
+  function normalizeTier(tier) {
+    const value = String(tier || DEFAULT_TIER).trim().toLowerCase();
+    return OPGG_TIERS.some((t) => t.value === value) ? value : DEFAULT_TIER;
+  }
+  function buildChampionUrl({ region, mode, championId, position, tier, version } = {}) {
+    const reg = normalizeRegion(region);
+    const gameMode = normalizeMode(mode);
+    const pos = gameMode === "aram" ? "none" : normalizeOpggPosition(position);
+    const id = Number(championId) || 0;
+    const params = new URLSearchParams();
+    params.set("tier", normalizeTier(tier));
+    if (version) params.set("version", String(version));
+    return `${OPGG_BASE}/api/${reg}/champions/${gameMode}/${id}/${pos}?${params.toString()}`;
+  }
+  async function requestJson(url, { fetchFn, timeout }) {
+    if (typeof fetchFn !== "function") return null;
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller && timeout > 0 ? setTimeout(() => controller.abort(), timeout) : null;
+    try {
+      const res = await fetchFn(url, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        signal: controller?.signal
+      });
+      if (!res || !res.ok) {
+        console.warn(TAG, `OP.GG API returned ${res?.status} for ${url}`);
+        return null;
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn(TAG, "OP.GG API error:", err?.message || err);
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+  async function fetchChampionBuild(options = {}, { fetchFn = globalThis.fetch, timeout = 8e3 } = {}) {
+    return requestJson(buildChampionUrl(options), { fetchFn, timeout });
+  }
+
+  // src/features/buildData.js
+  var MIN_COUNTER_GAMES = 50;
+  var COUNTER_PLAY_RATIO = 0.01;
+  var COUNTER_LIMIT = 5;
+  var ITEM_BUCKET_LIMIT = 3;
+  var RUNE_PAGE_LIMIT = 3;
+  var SPELL_LIMIT = 3;
+  var EMPTY_BUILD = Object.freeze({
+    patch: "",
+    cachedAt: "",
+    stats: null,
+    spells: [],
+    items: { starter: [], boots: [], core: [], last: [] },
+    runePages: [],
+    skills: { masteries: [], order: [] },
+    counters: { strong: [], weak: [] },
+    hasData: false
+  });
+  function toPercent(rate) {
+    const num = Number(rate);
+    if (!Number.isFinite(num)) return null;
+    return Math.round(num * 1e3) / 10;
+  }
+  function ratio(win, play) {
+    const w = Number(win);
+    const p = Number(play);
+    if (!Number.isFinite(w) || !Number.isFinite(p) || p <= 0) return null;
+    return Math.round(w / p * 1e3) / 10;
+  }
+  function toIds(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0);
+  }
+  function normalizeEntries(list, limit) {
+    if (!Array.isArray(list)) return [];
+    return list.map((entry) => ({
+      ids: toIds(entry?.ids),
+      play: Number(entry?.play) || 0,
+      winRate: ratio(entry?.win, entry?.play),
+      pickRate: toPercent(entry?.pick_rate)
+    })).filter((entry) => entry.ids.length > 0).sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0)).slice(0, limit);
+  }
+  function normalizeStats(summary) {
+    const raw = summary?.average_stats;
+    if (!raw || typeof raw !== "object") return null;
+    return {
+      winRate: toPercent(raw.win_rate),
+      pickRate: toPercent(raw.pick_rate),
+      banRate: toPercent(raw.ban_rate),
+      kda: Number.isFinite(Number(raw.kda)) ? Math.round(Number(raw.kda) * 100) / 100 : null,
+      play: Number(raw.play) || 0,
+      tier: Number(raw.tier) || null,
+      rank: Number(raw.rank) || null
+    };
+  }
+  function normalizeRunePages(runePages) {
+    if (!Array.isArray(runePages)) return [];
+    const flattened = [];
+    for (const page of runePages) {
+      const primaryStyleId = Number(page?.primary_page_id) || 0;
+      const subStyleId = Number(page?.secondary_page_id) || 0;
+      const pagePickRate = Number(page?.pick_rate) || 0;
+      const builds = Array.isArray(page?.builds) ? page.builds : [];
+      for (const build of builds) {
+        const selectedPerkIds = [
+          ...toIds(build?.primary_rune_ids),
+          ...toIds(build?.secondary_rune_ids),
+          ...toIds(build?.stat_mod_ids)
+        ];
+        if (!primaryStyleId || !subStyleId || selectedPerkIds.length === 0) continue;
+        const buildPickRate = Number(build?.pick_rate) || 0;
+        flattened.push({
+          primaryStyleId,
+          subStyleId,
+          selectedPerkIds,
+          play: Number(build?.play) || 0,
+          winRate: ratio(build?.win, build?.play),
+          pickRate: toPercent(buildPickRate * pagePickRate)
+        });
+      }
+    }
+    return flattened.sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0)).slice(0, RUNE_PAGE_LIMIT);
+  }
+  function normalizeSkills(skillMasteries) {
+    const first = Array.isArray(skillMasteries) ? skillMasteries[0] : null;
+    if (!first) return { masteries: [], order: [] };
+    const masteries = Array.isArray(first.ids) ? first.ids.map((s) => String(s).toUpperCase()) : [];
+    const builds = Array.isArray(first.builds) ? first.builds : [];
+    const best = builds.slice().sort((a, b) => (Number(b?.pick_rate) || 0) - (Number(a?.pick_rate) || 0))[0];
+    const order = Array.isArray(best?.order) ? best.order.map((s) => String(s).toUpperCase()) : [];
+    return { masteries, order };
+  }
+  function normalizeCounters(counters, totalPlay) {
+    if (!Array.isArray(counters) || counters.length === 0) {
+      return { strong: [], weak: [] };
+    }
+    const floor = Math.max(MIN_COUNTER_GAMES, Math.round((Number(totalPlay) || 0) * COUNTER_PLAY_RATIO));
+    const entries = counters.map((entry) => ({
+      championId: Number(entry?.champion_id) || 0,
+      play: Number(entry?.play) || 0,
+      winRate: ratio(entry?.win, entry?.play)
+    })).filter((entry) => entry.championId > 0 && entry.winRate !== null && entry.play >= floor);
+    const strong = entries.filter((entry) => entry.winRate >= 50).sort((a, b) => b.winRate - a.winRate).slice(0, COUNTER_LIMIT);
+    const weak = entries.filter((entry) => entry.winRate < 50).sort((a, b) => a.winRate - b.winRate).slice(0, COUNTER_LIMIT);
+    return { strong, weak };
+  }
+  function normalizeChampionBuild(json, { mode = "ranked" } = {}) {
+    if (!json || typeof json !== "object") return EMPTY_BUILD;
+    const data = json.data;
+    if (!data || typeof data !== "object") return EMPTY_BUILD;
+    const stats = normalizeStats(data.summary);
+    const items2 = {
+      starter: normalizeEntries(data.starter_items, ITEM_BUCKET_LIMIT),
+      boots: normalizeEntries(data.boots, ITEM_BUCKET_LIMIT),
+      core: normalizeEntries(data.core_items, ITEM_BUCKET_LIMIT),
+      last: normalizeEntries(data.last_items, 12)
+    };
+    const spells2 = normalizeEntries(data.summoner_spells, SPELL_LIMIT);
+    const runePages = normalizeRunePages(data.rune_pages);
+    const skills = normalizeSkills(data.skill_masteries);
+    const counters = mode === "aram" ? { strong: [], weak: [] } : normalizeCounters(data.counters, stats?.play);
+    const hasData = Boolean(
+      stats || spells2.length || runePages.length || skills.masteries.length || items2.core.length || items2.starter.length
+    );
+    return {
+      patch: String(json.meta?.version || ""),
+      cachedAt: String(json.meta?.cached_at || ""),
+      stats,
+      spells: spells2,
+      items: items2,
+      runePages,
+      skills,
+      counters,
+      hasData
+    };
+  }
+
+  // src/features/topPlayers.js
+  var TAG2 = "[Drake]";
+  var MCP_CHAMPION_NAME_MAP = {
+    "Cho'Gath": "CHOGATH",
+    "Kai'Sa": "KAISA",
+    "Kha'Zix": "KHAZIX",
+    "Kog'Maw": "KOG_MAW",
+    "Rek'Sai": "REK_SAI",
+    "Vel'Koz": "VEL_KOZ",
+    "Bel'Veth": "BELVETH",
+    "K'Sante": "KSANTE",
+    Wukong: "MONKEY_KING",
+    MonkeyKing: "MONKEY_KING",
+    "Nunu & Willump": "NUNU",
+    "Nunu and Willump": "NUNU",
+    Nunu: "NUNU",
+    "Renata Glasc": "RENATA",
+    Renata: "RENATA",
+    "Dr. Mundo": "DR_MUNDO",
+    DrMundo: "DR_MUNDO",
+    LeBlanc: "LEBLANC"
+  };
+  function formatMcpChampionName(name) {
+    if (!name && name !== 0) return "";
+    const raw = String(name).trim();
+    if (MCP_CHAMPION_NAME_MAP[raw]) {
+      return MCP_CHAMPION_NAME_MAP[raw];
+    }
+    return raw.replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").toUpperCase();
+  }
+  var OP_GG_MCP_URL = "https://mcp-api.op.gg/mcp";
+  var LEADERBOARD_LIMIT = 5;
+  function fail(reason, empty) {
+    return { ok: false, data: empty, reason };
+  }
+  function succeed(data) {
+    return { ok: true, data, reason: "" };
+  }
+  function parseMcpLeaderboard(text, defaultRegion = "KR") {
+    if (typeof text !== "string" || !text.trim()) {
+      return [];
+    }
+    const regionUpper = String(defaultRegion || "KR").toUpperCase();
+    const playerRegex = /Leaderboard\((\d+),Summoner\(\d+,"[^"]*","[^"]*","[^"]*","([^"]*)","([^"]*)",[^,]*,"[^"]*","[^"]*",\d+,"[^"]*",\[LeagueStat\("[^"]*",TierInfo\("([^"]*)",(\d+),(\d+),[^)]*\),(\d+),(\d+),/g;
+    let pm;
+    const players = [];
+    while ((pm = playerRegex.exec(text)) !== null) {
+      if (players.length >= LEADERBOARD_LIMIT) break;
+      const rank = Number(pm[1]);
+      const name = pm[2];
+      const tag = pm[3];
+      const tierName = pm[4];
+      const div = Number(pm[5]);
+      const lp = Number(pm[6]);
+      const wins = Number(pm[7]) || 0;
+      const losses = Number(pm[8]) || 0;
+      const total = wins + losses;
+      const winRate = total > 0 ? Math.round(wins / total * 1e3) / 10 : null;
+      const tierFormatted = tierName.charAt(0).toUpperCase() + tierName.slice(1).toLowerCase();
+      const riotId = tag ? `${name}#${tag}` : name;
+      players.push({
+        ranking: rank,
+        name: riotId,
+        region: regionUpper,
+        tier: `${tierFormatted} ${div} (${lp} LP)`,
+        winRate,
+        played: total > 0 ? total : null
+      });
+    }
+    return players;
+  }
+  function parsePlayerBuild(text, championId) {
+    const empty = { runePages: [], items: [] };
+    if (typeof text !== "string" || !text.trim()) return empty;
+    const champId = Number(championId) || 0;
+    if (!champId) return empty;
+    const participantRegex = /Participant\(Summoner\([^)]+\),(\d+),"([^"]*)","[^"]*","([^"]*)",\[([^\]]*)\],\[([^\]]*)\],Rune\((\d+),(\d+),(\d+)\),\[([^\]]*)\],Stats\([^)]*?"(WIN|LOSE)"/g;
+    const runePages = [];
+    let items2 = [];
+    let match;
+    while ((match = participantRegex.exec(text)) !== null) {
+      if (Number(match[1]) !== champId) continue;
+      const itemsStr = match[4];
+      const primaryStyle = Number(match[6]);
+      const primaryRune = Number(match[7]);
+      const secondaryStyle = Number(match[8]);
+      if (!items2.length && itemsStr) {
+        items2 = itemsStr.split(",").map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
+      }
+      if (primaryStyle > 0 && secondaryStyle > 0 && primaryRune > 0) {
+        const already = runePages.some(
+          (p) => p.primaryStyleId === primaryStyle && p.selectedPerkIds[0] === primaryRune
+        );
+        if (!already) {
+          runePages.push({
+            primaryStyleId: primaryStyle,
+            subStyleId: secondaryStyle,
+            selectedPerkIds: [primaryRune],
+            winRate: null
+          });
+        }
+      }
+    }
+    return { runePages, items: items2 };
+  }
+  async function callMcp(name, args, { fetchFn, id }) {
+    const res = await fetchFn(OP_GG_MCP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id,
+        method: "tools/call",
+        params: { name, arguments: args }
+      })
+    });
+    if (!res || !res.ok || typeof res.json !== "function") {
+      throw new Error(`MCP returned ${res?.status ?? "no response"}`);
+    }
+    const data = await res.json();
+    return data?.result?.content?.[0]?.text || "";
+  }
+  async function fetchChampionLeaderboard({ championName: championName2, region = "kr" } = {}, { fetchFn = globalThis.fetch } = {}) {
+    const mcpName = formatMcpChampionName(championName2);
+    if (!mcpName) return fail("No champion selected", []);
+    if (typeof fetchFn !== "function") return fail("No network client available", []);
+    try {
+      const text = await callMcp(
+        "lol_list_champion_leaderboard",
+        { champion: mcpName, region: String(region || "kr").toLowerCase(), lang: "en_US" },
+        { fetchFn, id: 3 }
+      );
+      const players = parseMcpLeaderboard(text, region);
+      if (!players.length) return fail("No ranking data available", []);
+      return succeed(players);
+    } catch (err) {
+      console.warn(TAG2, "leaderboard fetch failed:", err?.message || err);
+      return fail("Ranking service unavailable", []);
+    }
+  }
+  async function fetchPlayerBuild({ riotId, region = "kr", championId } = {}, { fetchFn = globalThis.fetch } = {}) {
+    const empty = { runePages: [], items: [] };
+    const parts = String(riotId || "").split("#");
+    const gameName = parts[0] || "";
+    const tagLine = parts[1] || "";
+    if (!gameName) return fail("Invalid player name", empty);
+    if (typeof fetchFn !== "function") return fail("No network client available", empty);
+    try {
+      const text = await callMcp(
+        "lol_list_summoner_matches",
+        { game_name: gameName, tag_line: tagLine, region: String(region || "kr").toLowerCase() },
+        { fetchFn, id: 4 }
+      );
+      const build = parsePlayerBuild(text, championId);
+      if (!build.items.length && !build.runePages.length) {
+        return fail("No recent games on this champion", empty);
+      }
+      return succeed(build);
+    } catch (err) {
+      console.warn(TAG2, "player build fetch failed:", err?.message || err);
+      return fail("Match history unavailable", empty);
+    }
+  }
+
+  // src/features/gameAssets.js
+  var TAG3 = "[Drake]";
+  var ITEMS_ROUTE = "/lol-game-data/assets/v1/items.json";
+  var SUMMONER_SPELLS_ROUTE = "/lol-game-data/assets/v1/summoner-spells.json";
+  var items = /* @__PURE__ */ new Map();
+  var spells = /* @__PURE__ */ new Map();
+  var loaded = false;
+  var loading = null;
+  function ingest(target, list) {
+    if (!Array.isArray(list)) return 0;
+    let count = 0;
+    for (const entry of list) {
+      const id = Number(entry?.id);
+      if (!Number.isInteger(id) || id <= 0) continue;
+      target.set(id, {
+        name: String(entry?.name || ""),
+        iconPath: String(entry?.iconPath || "").toLowerCase()
+      });
+      count += 1;
+    }
+    return count;
+  }
+  function resetGameAssets() {
+    items.clear();
+    spells.clear();
+    loaded = false;
+    loading = null;
+  }
+  async function loadGameAssets(lcu2) {
+    if (loaded) return true;
+    if (loading) return loading;
+    loading = (async () => {
+      try {
+        const [itemList, spellList] = await Promise.all([
+          lcu2.get(ITEMS_ROUTE),
+          lcu2.get(SUMMONER_SPELLS_ROUTE)
+        ]);
+        const itemCount = ingest(items, itemList);
+        ingest(spells, spellList);
+        loaded = itemCount > 0;
+        if (!loaded) console.warn(TAG3, "game assets loaded but contained no items");
+        return loaded;
+      } catch (err) {
+        console.warn(TAG3, "failed to load game assets:", err?.message || err);
+        resetGameAssets();
+        return false;
+      } finally {
+        loading = null;
+      }
+    })();
+    return loading;
+  }
+  function iconFor(map, id, fallbackRoute) {
+    const num = Number(id);
+    if (!Number.isInteger(num) || num <= 0) return "";
+    const entry = map.get(num);
+    if (entry?.iconPath) return entry.iconPath;
+    return `${fallbackRoute}/${num}.png`;
+  }
+  function nameFor(map, id, prefix) {
+    const num = Number(id);
+    if (!Number.isInteger(num) || num <= 0) return "";
+    return map.get(num)?.name || `${prefix} ${num}`;
+  }
+  function itemIconUrl(id) {
+    return iconFor(items, id, "/lol-game-data/assets/v1/item-icons");
+  }
+  function spellIconUrl(id) {
+    return iconFor(spells, id, "/lol-game-data/assets/v1/summoner-spell-icons");
+  }
+  function itemName(id) {
+    return nameFor(items, id, "Item");
+  }
+  function spellName(id) {
+    return nameFor(spells, id, "Spell");
+  }
+
+  // src/features/runes.js
+  var RUNES_PAGES_ROUTE = "/lol-perks/v1/pages";
+  var STYLE_NAMES = {
+    8e3: "Precision",
+    8100: "Domination",
+    8200: "Sorcery",
+    8300: "Inspiration",
+    8400: "Resolve"
+  };
+  var STYLE_ICONS = {
+    8e3: "/lol-game-data/assets/v1/perk-images/Styles/7201_Precision.png",
+    8100: "/lol-game-data/assets/v1/perk-images/Styles/7200_Domination.png",
+    8200: "/lol-game-data/assets/v1/perk-images/Styles/7202_Sorcery.png",
+    8300: "/lol-game-data/assets/v1/perk-images/Styles/7203_Whimsy.png",
+    8400: "/lol-game-data/assets/v1/perk-images/Styles/7204_Resolve.png"
+  };
+  var PERK_PATHS = {
+    // Precision
+    8005: "perk-images/Styles/Precision/PressTheAttack/PressTheAttack.png",
+    8008: "perk-images/Styles/Precision/LethalTempo/LethalTempoTemp.png",
+    8021: "perk-images/Styles/Precision/FleetFootwork/FleetFootwork.png",
+    8010: "perk-images/Styles/Precision/Conqueror/Conqueror.png",
+    9101: "perk-images/Styles/Precision/AbsorbLife/AbsorbLife.png",
+    9102: "perk-images/Styles/Precision/Overheal.png",
+    9111: "perk-images/Styles/Precision/Triumph.png",
+    8009: "perk-images/Styles/Precision/PresenceOfMind/PresenceOfMind.png",
+    9104: "perk-images/Styles/Precision/LegendAlacrity/LegendAlacrity.png",
+    9105: "perk-images/Styles/Precision/LegendHaste/LegendHaste.png",
+    9103: "perk-images/Styles/Precision/LegendBloodline/LegendBloodline.png",
+    8014: "perk-images/Styles/Precision/CoupDeGrace/CoupDeGrace.png",
+    8017: "perk-images/Styles/Precision/CutDown/CutDown.png",
+    8299: "perk-images/Styles/Precision/LastStand/LastStand.png",
+    // Domination
+    8112: "perk-images/Styles/Domination/Electrocute/Electrocute.png",
+    8124: "perk-images/Styles/Domination/Predator/Predator.png",
+    8128: "perk-images/Styles/Domination/DarkHarvest/DarkHarvest.png",
+    9923: "perk-images/Styles/Domination/HailOfBlades/HailOfBlades.png",
+    8126: "perk-images/Styles/Domination/CheapShot/CheapShot.png",
+    8139: "perk-images/Styles/Domination/TasteOfBlood/GreenTerror_TasteOfBlood.png",
+    8143: "perk-images/Styles/Domination/SuddenImpact/SuddenImpact.png",
+    8136: "perk-images/Styles/Domination/ZombieWard/ZombieWard.png",
+    8120: "perk-images/Styles/Domination/GhostPoro/GhostPoro.png",
+    8138: "perk-images/Styles/Domination/EyeballCollection/EyeballCollection.png",
+    8137: "perk-images/Styles/Domination/SixthSense/SixthSense.png",
+    8140: "perk-images/Styles/Domination/GrislyMementos/GrislyMementos.png",
+    8141: "perk-images/Styles/Domination/DeepWard/DeepWard.png",
+    8135: "perk-images/Styles/Domination/TreasureHunter/TreasureHunter.png",
+    8134: "perk-images/Styles/Domination/IngeniousHunter/IngeniousHunter.png",
+    8105: "perk-images/Styles/Domination/RelentlessHunter/RelentlessHunter.png",
+    8106: "perk-images/Styles/Domination/UltimateHunter/UltimateHunter.png",
+    // Sorcery
+    8214: "perk-images/Styles/Sorcery/SummonAery/SummonAery.png",
+    8229: "perk-images/Styles/Sorcery/ArcaneComet/ArcaneComet.png",
+    8230: "perk-images/Styles/Sorcery/PhaseRush/PhaseRush.png",
+    8224: "perk-images/Styles/Sorcery/NullifyingOrb/Pokeshield.png",
+    8226: "perk-images/Styles/Sorcery/ManaflowBand/ManaflowBand.png",
+    8275: "perk-images/Styles/Sorcery/NimbusCloak/6361.png",
+    8210: "perk-images/Styles/Sorcery/Transcendence/Transcendence.png",
+    8234: "perk-images/Styles/Sorcery/Celerity/CelerityTemp.png",
+    8233: "perk-images/Styles/Sorcery/AbsoluteFocus/AbsoluteFocus.png",
+    8237: "perk-images/Styles/Sorcery/Scorch/Scorch.png",
+    8232: "perk-images/Styles/Sorcery/Waterwalking/Waterwalking.png",
+    8236: "perk-images/Styles/Sorcery/GatheringStorm/GatheringStorm.png",
+    // Inspiration
+    8351: "perk-images/Styles/Inspiration/GlacialAugment/GlacialAugment.png",
+    8360: "perk-images/Styles/Inspiration/UnsealedSpellbook/UnsealedSpellbook.png",
+    8369: "perk-images/Styles/Inspiration/FirstStrike/FirstStrike.png",
+    8306: "perk-images/Styles/Inspiration/HextechFlashtraption/HextechFlashtraption.png",
+    8304: "perk-images/Styles/Inspiration/MagicalFootwear/MagicalFootwear.png",
+    8321: "perk-images/Styles/Inspiration/CashBack/CashBack.png",
+    8313: "perk-images/Styles/Inspiration/PerfectTiming/AlchemistCabinet.png",
+    8316: "perk-images/Styles/Inspiration/JackOfAllTrades/JackofAllTrades2.png",
+    8345: "perk-images/Styles/Inspiration/BiscuitDelivery/BiscuitDelivery.png",
+    8347: "perk-images/Styles/Inspiration/CosmicInsight/CosmicInsight.png",
+    8410: "perk-images/Styles/Resolve/ApproachVelocity/ApproachVelocity.png",
+    8352: "perk-images/Styles/Inspiration/TimeWarpTonic/TimeWarpTonic.png",
+    // Resolve
+    8437: "perk-images/Styles/Resolve/GraspOfTheUndying/GraspOfTheUndying.png",
+    8439: "perk-images/Styles/Resolve/VeteranAftershock/VeteranAftershock.png",
+    8465: "perk-images/Styles/Resolve/Guardian/Guardian.png",
+    8446: "perk-images/Styles/Resolve/Demolish/Demolish.png",
+    8463: "perk-images/Styles/Resolve/FontOfLife/FontOfLife.png",
+    8401: "perk-images/Styles/Resolve/MirrorShell/MirrorShell.png",
+    8429: "perk-images/Styles/Resolve/Conditioning/Conditioning.png",
+    8444: "perk-images/Styles/Resolve/SecondWind/SecondWind.png",
+    8473: "perk-images/Styles/Resolve/BonePlating/BonePlating.png",
+    8451: "perk-images/Styles/Resolve/Overgrowth/Overgrowth.png",
+    8453: "perk-images/Styles/Resolve/Revitalize/Revitalize.png",
+    8242: "perk-images/Styles/Sorcery/Unflinching/Unflinching.png",
+    // Stat mods
+    5001: "perk-images/StatMods/StatModsHealthScalingIcon.png",
+    5002: "perk-images/StatMods/StatModsArmorIcon.png",
+    5003: "perk-images/StatMods/StatModsMagicResIcon.png",
+    5005: "perk-images/StatMods/StatModsAttackSpeedIcon.png",
+    5007: "perk-images/StatMods/StatModsCDRIcon.png",
+    5008: "perk-images/StatMods/StatModsAdaptiveForceIcon.png",
+    5010: "perk-images/StatMods/StatModsMovementSpeedIcon.png",
+    5011: "perk-images/StatMods/StatModsHealthFlatIcon.png",
+    5012: "perk-images/StatMods/StatModsTenacityIcon.png",
+    5013: "perk-images/StatMods/StatModsTenacityIcon.png"
+  };
+  var PERK_NAMES = {
+    8005: "Press the Attack",
+    8008: "Lethal Tempo",
+    8021: "Fleet Footwork",
+    8010: "Conqueror",
+    9101: "Absorb Life",
+    9102: "Overheal",
+    9111: "Triumph",
+    8009: "Presence of Mind",
+    9104: "Legend: Alacrity",
+    9105: "Legend: Haste",
+    9103: "Legend: Bloodline",
+    8014: "Coup de Grace",
+    8017: "Cut Down",
+    8299: "Last Stand",
+    8112: "Electrocute",
+    8124: "Predator",
+    8128: "Dark Harvest",
+    9923: "Hail of Blades",
+    8126: "Cheap Shot",
+    8139: "Taste of Blood",
+    8143: "Sudden Impact",
+    8136: "Zombie Ward",
+    8120: "Ghost Poro",
+    8138: "Eyeball Collection",
+    8137: "Sixth Sense",
+    8140: "Grisly Mementos",
+    8141: "Deep Ward",
+    8135: "Treasure Hunter",
+    8134: "Ingenious Hunter",
+    8105: "Relentless Hunter",
+    8106: "Ultimate Hunter",
+    8214: "Summon Aery",
+    8229: "Arcane Comet",
+    8230: "Phase Rush",
+    8224: "Nullifying Orb",
+    8226: "Manaflow Band",
+    8275: "Nimbus Cloak",
+    8210: "Transcendence",
+    8234: "Celerity",
+    8233: "Absolute Focus",
+    8237: "Scorch",
+    8232: "Waterwalking",
+    8236: "Gathering Storm",
+    8351: "Glacial Augment",
+    8360: "Unsealed Spellbook",
+    8369: "First Strike",
+    8306: "Hextech Flashtraption",
+    8304: "Magical Footwear",
+    8321: "Cash Back",
+    8313: "Triple Tonic",
+    8316: "Jack of All Trades",
+    8345: "Biscuit Delivery",
+    8347: "Cosmic Insight",
+    8410: "Approach Velocity",
+    8352: "Time Warp Tonic",
+    8437: "Grasp of the Undying",
+    8439: "Aftershock",
+    8465: "Guardian",
+    8446: "Demolish",
+    8463: "Font of Life",
+    8401: "Shield Bash",
+    8429: "Conditioning",
+    8444: "Second Wind",
+    8473: "Bone Plating",
+    8451: "Overgrowth",
+    8453: "Revitalize",
+    8242: "Unflinching",
+    5001: "Health Scaling",
+    5002: "Armor",
+    5003: "Magic Resist",
+    5005: "Attack Speed",
+    5007: "Ability Haste",
+    5008: "Adaptive Force",
+    5010: "Movement Speed",
+    5011: "Health",
+    5012: "Tenacity",
+    5013: "Tenacity"
+  };
+  function perkStyleName(styleId) {
+    return STYLE_NAMES[Number(styleId)] || `Tree ${styleId}`;
+  }
+  function perkStyleIconUrl(styleId) {
+    const sid = Number(styleId);
+    return STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`;
+  }
+  function perkIconUrl(perkId) {
+    const id = Number(perkId);
+    const path = PERK_PATHS[id];
+    if (path) {
+      return `/lol-game-data/assets/v1/${path}`;
+    }
+    return `/lol-game-data/assets/v1/perk-images/${id}.png`;
+  }
+  function perkName(perkId) {
+    const id = Number(perkId);
+    return PERK_NAMES[id] || `Rune ${id}`;
+  }
+  function formatRunePagePayload(name, primaryStyleId, subStyleId, selectedPerkIds) {
+    return {
+      name: name ? String(name) : "Drake",
+      primaryStyleId: Number(primaryStyleId) || 0,
+      subStyleId: Number(subStyleId) || 0,
+      selectedPerkIds: Array.isArray(selectedPerkIds) ? selectedPerkIds.map((id) => Number(id) || 0) : [],
+      current: true,
+      isActive: true
+    };
+  }
+  async function parseResponse(res, fallbackId) {
+    if (!res) {
+      return { success: true, ...fallbackId !== void 0 ? { pageId: fallbackId } : {} };
+    }
+    if (res.ok === false) {
+      return { success: false, error: `LCU returned status ${res.status || "unknown"}` };
+    }
+    if (typeof res.json === "function") {
+      try {
+        const data = await res.json();
+        const pageId2 = data?.id ?? fallbackId;
+        return { success: true, ...pageId2 !== void 0 ? { pageId: pageId2 } : {} };
+      } catch {
+        return { success: true, ...fallbackId !== void 0 ? { pageId: fallbackId } : {} };
+      }
+    }
+    const pageId = res.id ?? fallbackId;
+    return { success: true, ...pageId !== void 0 ? { pageId } : {} };
+  }
+  async function applyRunePage(lcu2, pageData) {
+    if (!lcu2) {
+      return { success: false, error: "LCU client is required" };
+    }
+    const payload = formatRunePagePayload(
+      pageData?.name,
+      pageData?.primaryStyleId,
+      pageData?.subStyleId,
+      pageData?.selectedPerkIds
+    );
+    try {
+      let pages = [];
+      try {
+        const res = await lcu2.get(RUNES_PAGES_ROUTE);
+        if (Array.isArray(res)) {
+          pages = res;
+        }
+      } catch {
+        pages = [];
+      }
+      const editablePage = pages.find((p) => p && (p.isDeletable || p.isEditable || p.isCustom));
+      if (editablePage && editablePage.id !== void 0 && editablePage.id !== null) {
+        try {
+          const updateRes = await lcu2.put(`${RUNES_PAGES_ROUTE}/${editablePage.id}`, payload);
+          if (!updateRes || updateRes.ok !== false) {
+            const parsed = await parseResponse(updateRes, editablePage.id);
+            if (parsed.success) {
+              return parsed;
+            }
+          }
+        } catch {
+        }
+        try {
+          if (typeof lcu2.delete === "function") {
+            await lcu2.delete(`${RUNES_PAGES_ROUTE}/${editablePage.id}`);
+          }
+        } catch {
+        }
+      }
+      const createRes = await lcu2.post(RUNES_PAGES_ROUTE, payload);
+      if (!createRes || createRes.ok !== false) {
+        return await parseResponse(createRes);
+      }
+      return { success: false, error: `Failed to create rune page (${createRes.status || "error"})` };
+    } catch (err) {
+      return { success: false, error: err?.message || "Failed to apply rune page" };
+    }
+  }
+
+  // src/features/itemSets.js
+  var TAG4 = "[Drake]";
+  var ITEM_SETS_ROUTE = (summonerId) => `/lol-item-sets/v1/item-sets/${summonerId}/sets`;
+  var MY_SELECTION_ROUTE = "/lol-champ-select/v1/session/my-selection";
+  var DRAKE_SET_MARKER = "Drake \xB7";
+  var BLOCK_ORDER = [
+    { bucket: "starter", type: "Starter Items" },
+    { bucket: "core", type: "Core Build" },
+    { bucket: "boots", type: "Boots" },
+    { bucket: "last", type: "Final Items" }
+  ];
+  function toBlock(entries, type) {
+    const first = Array.isArray(entries) ? entries[0] : null;
+    const ids = Array.isArray(first?.ids) ? first.ids : [];
+    if (!ids.length) return null;
+    const counts = /* @__PURE__ */ new Map();
+    for (const raw of ids) {
+      const id = Number(raw);
+      if (!Number.isInteger(id) || id <= 0) continue;
+      counts.set(id, (counts.get(id) || 0) + 1);
+    }
+    if (!counts.size) return null;
+    return {
+      type,
+      items: [...counts.entries()].map(([id, count]) => ({ id: String(id), count }))
+    };
+  }
+  function buildItemSet({ championId, championName: championName2, build } = {}) {
+    const id = Number(championId) || 0;
+    const items2 = build?.items;
+    if (!items2 || typeof items2 !== "object") return null;
+    const blocks = [];
+    for (const { bucket, type } of BLOCK_ORDER) {
+      const block = toBlock(items2[bucket], type);
+      if (block) blocks.push(block);
+    }
+    if (!blocks.length) return null;
+    return {
+      title: `${DRAKE_SET_MARKER} ${championName2 || `Champion ${id}`}`,
+      type: "custom",
+      map: "any",
+      mode: "any",
+      priority: false,
+      sortrank: 1,
+      associatedChampions: id > 0 ? [id] : [],
+      associatedMaps: [],
+      blocks
+    };
+  }
+  async function applyItemSet(lcu2, summonerId, itemSet) {
+    const id = Number(summonerId) || 0;
+    if (!lcu2 || typeof lcu2.get !== "function" || typeof lcu2.put !== "function") {
+      return { success: false, error: "LCU client is required" };
+    }
+    if (!id) return { success: false, error: "Summoner id is required" };
+    if (!itemSet) return { success: false, error: "No item set to apply" };
+    let existing;
+    try {
+      const res = await lcu2.get(ITEM_SETS_ROUTE(id));
+      existing = res && typeof res === "object" ? res : { itemSets: [] };
+    } catch (err) {
+      console.warn(TAG4, "item set read failed:", err?.message || err);
+      return { success: false, error: "Could not read existing item sets" };
+    }
+    try {
+      const kept = (Array.isArray(existing.itemSets) ? existing.itemSets : []).filter(
+        (set) => !String(set?.title || "").includes(DRAKE_SET_MARKER)
+      );
+      const payload = {
+        ...existing,
+        accountId: existing.accountId ?? id,
+        timestamp: Date.now(),
+        itemSets: [...kept, itemSet]
+      };
+      const res = await lcu2.put(ITEM_SETS_ROUTE(id), payload);
+      if (res && res.ok === false) {
+        return { success: false, error: `Client rejected the item set (${res.status})` };
+      }
+      return { success: true };
+    } catch (err) {
+      console.warn(TAG4, "item set apply failed:", err?.message || err);
+      return { success: false, error: err?.message || "Failed to apply item set" };
+    }
+  }
+  async function applySummonerSpells(lcu2, { spell1Id, spell2Id } = {}) {
+    const first = Number(spell1Id) || 0;
+    const second = Number(spell2Id) || 0;
+    if (!lcu2 || typeof lcu2.patch !== "function") {
+      return { success: false, error: "LCU client is required" };
+    }
+    if (!first || !second) return { success: false, error: "Two summoner spells are required" };
+    if (first === second) return { success: false, error: "Summoner spells must differ" };
+    try {
+      const res = await lcu2.patch(MY_SELECTION_ROUTE, { spell1Id: first, spell2Id: second });
+      if (res && res.ok === false) {
+        return { success: false, error: `Client rejected the spells (${res.status})` };
+      }
+      return { success: true };
+    } catch (err) {
+      console.warn(TAG4, "summoner spell apply failed:", err?.message || err);
+      return { success: false, error: err?.message || "Failed to apply summoner spells" };
+    }
+  }
+
+  // src/ui/buildPanelRender.js
+  var SPINNER = `<svg class="build-spinner" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="26" stroke-dashoffset="8"/></svg>`;
+  function esc(value) {
+    return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function pct(value) {
+    if (value === null || value === void 0 || Number.isNaN(Number(value))) return "\u2014";
+    const num = Number(value);
+    return `${Number.isInteger(num) ? num : Math.round(num * 10) / 10}%`;
+  }
+  function statusLabel(status, idle, done) {
+    if (status === "applying") return "Applying\u2026";
+    if (status === "applied") return done;
+    if (status === "failed") return "Failed \u2014 retry";
+    return idle;
+  }
+  function itemIcon(id) {
+    return `<span class="build-item" title="${esc(itemName(id))}"><img class="build-item-icon" src="${esc(itemIconUrl(id))}" alt="${esc(itemName(id))}"></span>`;
+  }
+  function renderPanelHeader(state) {
+    const tierOptions = OPGG_TIERS.map(
+      (tier) => `<option value="${tier.value}"${tier.value === state.tier ? " selected" : ""}>${esc(tier.label)}</option>`
+    ).join("");
+    const regionOptions = OPGG_REGIONS.map(
+      (region) => `<option value="${region.value}"${region.value === state.region ? " selected" : ""}>${esc(region.label)}</option>`
+    ).join("");
+    const stats = state.build?.stats;
+    const statsHtml = stats ? `<div class="build-stats">
+        <span class="build-stat"><b>${pct(stats.winRate)}</b> Win</span>
+        <span class="build-stat"><b>${pct(stats.pickRate)}</b> Pick</span>
+        <span class="build-stat"><b>${pct(stats.banRate)}</b> Ban</span>
+        <span class="build-stat"><b>${esc(stats.kda ?? "\u2014")}</b> KDA</span>
+        <span class="build-stat"><b>${esc(stats.play?.toLocaleString?.() || stats.play || 0)}</b> Games</span>
+      </div>` : "";
+    const role = state.position ? `<span class="build-role">${roleIconUrl(state.position) ? `<img src="${esc(roleIconUrl(state.position))}" alt="">` : ""}${esc(roleLabel(state.position) || state.position)}</span>` : "";
+    return `<header class="build-header">
+    <div class="build-identity">
+      ${state.championId ? `<img class="build-champ-icon" src="${esc(iconUrl(state.championId))}" alt="${esc(state.championName)}">` : ""}
+      <div class="build-identity-meta">
+        <div class="build-champ-name">${esc(state.championName || "Champion")}</div>
+        <div class="build-identity-sub">${role}<span class="build-mode-tag">${state.mode === "aram" ? "ARAM" : "Ranked"}</span>${state.patch ? `<span class="build-patch">Patch ${esc(state.patch)}</span>` : ""}</div>
+      </div>
+    </div>
+    <div class="build-filters">
+      <label class="build-filter"><span>Rank</span>
+        <select data-build-tier>${tierOptions}</select>
+      </label>
+      <label class="build-filter"><span>Region</span>
+        <select data-build-region>${regionOptions}</select>
+      </label>
+    </div>
+    ${statsHtml}
+    <button class="build-close" type="button" data-build-close aria-label="Close">\xD7</button>
+  </header>`;
+  }
+  function renderItemsCard(state) {
+    const core = state.build?.items?.core || [];
+    const rows = core.map(
+      (entry) => `<div class="build-row">
+        <div class="build-icons">${entry.ids.map(itemIcon).join('<span class="build-arrow">\u203A</span>')}</div>
+        <div class="build-row-stats">
+          <span class="build-wr">${pct(entry.winRate)} WR</span>
+          <span class="build-pr">${pct(entry.pickRate)}</span>
+          <span class="build-bar"><i style="width:${Math.min(100, Number(entry.pickRate) || 0)}%"></i></span>
+        </div>
+      </div>`
+    ).join("");
+    const applying = state.itemSetStatus === "applying";
+    return `<section class="build-card build-items-card">
+    <div class="build-card-title">
+      <span>Core Items</span>
+      <button class="build-action" type="button" data-build-apply-items${applying ? " disabled" : ""}>${esc(
+      statusLabel(state.itemSetStatus, "Create Item Set", "Applied")
+    )}</button>
+    </div>
+    ${rows || '<div class="build-empty">No item data</div>'}
+  </section>`;
+  }
+  function renderRunesCard(state) {
+    const pages = state.build?.runePages || [];
+    if (!pages.length) {
+      return `<section class="build-card build-runes-card">
+      <div class="build-card-title"><span>Runes</span></div>
+      <div class="build-empty">No rune data</div>
+    </section>`;
+    }
+    const applying = state.runeStatus === "applying";
+    const rows = pages.map((page, index) => {
+      const shards = page.selectedPerkIds.filter((id) => id >= 5e3 && id < 6e3);
+      const perks = page.selectedPerkIds.filter((id) => id < 5e3 || id >= 6e3);
+      const keystone = perks[0];
+      const perkIcons = perks.slice(1).map(
+        (id) => `<img class="build-perk-icon" src="${esc(perkIconUrl(id))}" alt="${esc(perkName(id))}" title="${esc(perkName(id))}">`
+      ).join("");
+      const shardIcons = shards.map(
+        (id) => `<img class="build-shard-icon" src="${esc(perkIconUrl(id))}" alt="${esc(perkName(id))}" title="${esc(perkName(id))}">`
+      ).join("");
+      return `<div class="build-row build-rune-row">
+        <div class="build-rune-styles">
+          <img class="build-style-icon" src="${esc(perkStyleIconUrl(page.primaryStyleId))}" alt="${esc(perkStyleName(page.primaryStyleId))}" title="${esc(perkStyleName(page.primaryStyleId))}">
+          <img class="build-keystone-icon" src="${esc(perkIconUrl(keystone))}" alt="${esc(perkName(keystone))}" title="${esc(perkName(keystone))}">
+          <span class="build-perks">${perkIcons}</span>
+          <img class="build-style-icon secondary" src="${esc(perkStyleIconUrl(page.subStyleId))}" alt="${esc(perkStyleName(page.subStyleId))}" title="${esc(perkStyleName(page.subStyleId))}">
+          <span class="build-shards">${shardIcons}</span>
+        </div>
+        <div class="build-row-stats">
+          <span class="build-wr">${pct(page.winRate)} WR</span>
+          <span class="build-pr">${pct(page.pickRate)}</span>
+          <button class="build-action" type="button" data-build-apply-runes="${index}"${applying ? " disabled" : ""}>${esc(
+        statusLabel(state.runeStatus, "Apply", "Applied")
+      )}</button>
+        </div>
+      </div>`;
+    }).join("");
+    return `<section class="build-card build-runes-card">
+    <div class="build-card-title"><span>Runes</span></div>
+    ${rows}
+  </section>`;
+  }
+  function renderSpellsCard(state) {
+    const spells2 = state.build?.spells || [];
+    const applying = state.spellStatus === "applying";
+    const rows = spells2.map(
+      (entry, index) => `<div class="build-row">
+        <div class="build-icons">${entry.ids.map(
+        (id) => `<img class="build-spell-icon" src="${esc(spellIconUrl(id))}" alt="${esc(spellName(id))}" title="${esc(spellName(id))}">`
+      ).join("")}</div>
+        <div class="build-row-stats">
+          <span class="build-wr">${pct(entry.winRate)} WR</span>
+          <span class="build-pr">${pct(entry.pickRate)}</span>
+          <button class="build-action" type="button" data-build-apply-spells="${index}"${applying ? " disabled" : ""}>${esc(
+        statusLabel(state.spellStatus, "Apply", "Applied")
+      )}</button>
+        </div>
+      </div>`
+    ).join("");
+    return `<section class="build-card build-spells-card">
+    <div class="build-card-title"><span>Summoner Spells</span></div>
+    ${rows || '<div class="build-empty">No spell data</div>'}
+  </section>`;
+  }
+  function renderItemTrend(state) {
+    const last = state.build?.items?.last || [];
+    if (!last.length) return "";
+    const cells = last.map(
+      (entry) => `<div class="build-trend-cell">
+        <span class="build-trend-rate">${pct(entry.pickRate)}</span>
+        ${entry.ids.slice(0, 1).map(itemIcon).join("")}
+      </div>`
+    ).join("");
+    return `<section class="build-card build-trend-card">
+    <div class="build-card-title"><span>Item Trend</span></div>
+    <div class="build-trend">${cells}</div>
+  </section>`;
+  }
+  function renderSkillOrder(state) {
+    const skills = state.build?.skills;
+    if (!skills?.masteries?.length) return "";
+    const priority = skills.masteries.map((s) => `<span class="build-skill">${esc(s)}</span>`).join('<span class="build-arrow">\u203A</span>');
+    const order = skills.order.map((s, i) => `<span class="build-skill-step" title="Level ${i + 1}">${esc(s)}</span>`).join("");
+    return `<section class="build-card build-skills-card">
+    <div class="build-card-title"><span>Skill Order</span></div>
+    <div class="build-skill-priority">${priority}</div>
+    <div class="build-skill-order">${order}</div>
+  </section>`;
+  }
+  function counterList(entries, getChampName, className) {
+    if (!entries.length) return `<div class="build-empty">No data</div>`;
+    return entries.map(
+      (entry) => `<div class="build-counter ${className}">
+        <img class="build-counter-icon" src="${esc(iconUrl(entry.championId))}" alt="">
+        <span class="build-counter-name">${esc(getChampName(entry.championId))}</span>
+        <span class="build-counter-wr">${pct(entry.winRate)}</span>
+        <span class="build-counter-play">${esc(entry.play)}</span>
+      </div>`
+    ).join("");
+  }
+  function renderCounters(state) {
+    if (state.mode === "aram") return "";
+    const counters = state.build?.counters;
+    if (!counters) return "";
+    const getChampName = state.getChampName || ((id) => `Champion ${id}`);
+    return `<section class="build-card build-counters-card">
+    <div class="build-card-title"><span>Matchups</span></div>
+    <div class="build-counters">
+      <div class="build-counter-col">
+        <div class="build-counter-head is-strong">Strong Against</div>
+        ${counterList(counters.strong || [], getChampName, "is-strong")}
+      </div>
+      <div class="build-counter-col">
+        <div class="build-counter-head is-weak">Weak Against</div>
+        ${counterList(counters.weak || [], getChampName, "is-weak")}
+      </div>
+    </div>
+  </section>`;
+  }
+  function renderTopPlayers(state) {
+    const top = state.topPlayers || { loading: false, ok: false, players: [], reason: "" };
+    const viewingChip = state.viewingPlayer ? `<div class="build-viewing-chip">Viewing ${esc(state.viewingPlayer)}'s build
+        <button class="build-action" type="button" data-build-clear-player>Back to average</button>
+      </div>` : "";
+    let body;
+    if (top.loading) {
+      body = `<div class="build-loading">${SPINNER} <span>Loading players\u2026</span></div>`;
+    } else if (!top.ok || !top.players?.length) {
+      body = `<div class="build-empty">${esc(top.reason || "Unavailable")}</div>`;
+    } else {
+      const rows = top.players.map(
+        (player) => `<tr>
+          <td>#${esc(player.ranking ?? "\u2014")}</td>
+          <td>${esc(player.name || "Unknown")}</td>
+          <td>${esc(player.tier || "\u2014")}</td>
+          <td>${player.winRate != null ? pct(player.winRate) : "\u2014"}</td>
+          <td>${esc(player.played ?? "\u2014")}</td>
+          <td><button class="build-action" type="button" data-build-player="${esc(player.name)}" data-build-player-region="${esc(player.region || "kr")}">View Build</button></td>
+        </tr>`
+      ).join("");
+      body = `<table class="build-players">
+      <thead><tr><th>#</th><th>Player</th><th>Rank</th><th>Win Rate</th><th>Games</th><th>Build</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+    }
+    return `<section class="build-card build-players-card">
+    <div class="build-card-title"><span>Top Players</span></div>
+    ${viewingChip}
+    ${body}
+  </section>`;
+  }
+  function renderBuildPanel(state) {
+    if (!state.championId) {
+      return `<div class="build-panel">
+      ${renderPanelHeader(state)}
+      <div class="build-placeholder">Pick a champion to see build recommendations</div>
+    </div>`;
+    }
+    if (state.loading) {
+      return `<div class="build-panel">
+      ${renderPanelHeader(state)}
+      <div class="build-placeholder">${SPINNER} <span>Loading build data\u2026</span></div>
+    </div>`;
+    }
+    if (state.error) {
+      return `<div class="build-panel">
+      ${renderPanelHeader(state)}
+      <div class="build-placeholder is-error">
+        <span>${esc(state.error)}</span>
+        <button class="build-action" type="button" data-build-retry>Retry</button>
+      </div>
+    </div>`;
+    }
+    if (!state.build?.hasData) {
+      const tierLabel = OPGG_TIERS.find((t) => t.value === state.tier)?.label || state.tier;
+      return `<div class="build-panel">
+      ${renderPanelHeader(state)}
+      <div class="build-placeholder">
+        <span>No data for ${esc(tierLabel)}</span>
+        <button class="build-action" type="button" data-build-tier-all>See All Ranks</button>
+      </div>
+    </div>`;
+    }
+    return `<div class="build-panel">
+    ${renderPanelHeader(state)}
+    <div class="build-grid">
+      ${renderItemsCard(state)}
+      ${renderRunesCard(state)}
+      ${renderSpellsCard(state)}
+    </div>
+    ${renderItemTrend(state)}
+    ${renderSkillOrder(state)}
+    ${renderCounters(state)}
+    ${renderTopPlayers(state)}
+  </div>`;
+  }
+
+  // src/ui/buildPanel.js
+  var TAG5 = "[Drake]";
+  var CACHE_TTL_MS = 10 * 60 * 1e3;
+  function makeBuildPanel({
+    doc,
+    overlayRoot,
+    lcu: lcu2,
+    fetchFn = globalThis.fetch,
+    getChampName = () => "",
+    getSettings = () => ({}),
+    saveSettings = async () => ({ ok: true }),
+    getSummonerId = () => 0,
+    fetchChampionBuildImpl = fetchChampionBuild,
+    normalizeChampionBuildImpl = normalizeChampionBuild,
+    fetchChampionLeaderboardImpl = fetchChampionLeaderboard,
+    fetchPlayerBuildImpl = fetchPlayerBuild,
+    applyRunePageImpl = applyRunePage,
+    applyItemSetImpl = applyItemSet,
+    applySummonerSpellsImpl = applySummonerSpells,
+    loadGameAssetsImpl = loadGameAssets,
+    nowFn = () => Date.now()
+  } = {}) {
+    const settings = getSettings() || {};
+    let open = false;
+    let enabled = true;
+    let overlay = null;
+    let generation = 0;
+    const cache = /* @__PURE__ */ new Map();
+    let state = {
+      championId: 0,
+      championName: "",
+      position: "",
+      mode: "ranked",
+      tier: settings.build_tier || DEFAULT_TIER,
+      region: settings.build_region || DEFAULT_REGION,
+      patch: "",
+      loading: false,
+      error: "",
+      build: null,
+      averageBuild: null,
+      topPlayers: { loading: false, ok: false, players: [], reason: "" },
+      viewingPlayer: "",
+      runeStatus: "idle",
+      itemSetStatus: "idle",
+      spellStatus: "idle",
+      getChampName
+    };
+    function cacheKey() {
+      return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}`;
+    }
+    function ensureOverlay() {
+      if (overlay) return overlay;
+      const owner = overlayRoot?.ownerDocument || doc;
+      const node = owner?.createElement?.("div");
+      if (!node) return null;
+      node.className = "build-overlay";
+      node.hidden = true;
+      if (node.style) node.style.display = "none";
+      overlayRoot?.appendChild?.(node);
+      overlay = node;
+      wireEvents(node);
+      return node;
+    }
+    function paint() {
+      const node = ensureOverlay();
+      if (!node) return;
+      node.hidden = !open;
+      if (node.style) node.style.display = open ? "flex" : "none";
+      if (open) node.innerHTML = renderBuildPanel(state);
+    }
+    async function loadBuild({ force = false } = {}) {
+      if (!state.championId) {
+        state.build = null;
+        paint();
+        return;
+      }
+      const key = cacheKey();
+      const cached = cache.get(key);
+      if (!force && cached && nowFn() - cached.at < CACHE_TTL_MS) {
+        const gen2 = ++generation;
+        state.build = cached.build;
+        state.averageBuild = cached.build;
+        state.patch = cached.build?.patch || "";
+        state.loading = false;
+        state.error = "";
+        state.viewingPlayer = "";
+        if (cached.topPlayers) {
+          state.topPlayers = cached.topPlayers;
+          paint();
+          return;
+        }
+        paint();
+        void loadTopPlayers(gen2, key);
+        return;
+      }
+      const gen = ++generation;
+      state.loading = true;
+      state.error = "";
+      state.viewingPlayer = "";
+      paint();
+      try {
+        await loadGameAssetsImpl(lcu2);
+      } catch (err) {
+        console.warn(TAG5, "asset load failed:", err?.message || err);
+      }
+      let json = null;
+      try {
+        json = await fetchChampionBuildImpl(
+          {
+            championId: state.championId,
+            position: state.position,
+            mode: state.mode,
+            tier: state.tier,
+            region: state.region
+          },
+          { fetchFn }
+        );
+      } catch (err) {
+        console.warn(TAG5, "build fetch failed:", err?.message || err);
+      }
+      if (gen !== generation) return;
+      if (!json) {
+        state.loading = false;
+        state.error = "Could not reach OP.GG";
+        paint();
+        return;
+      }
+      const build = normalizeChampionBuildImpl(json, { mode: state.mode });
+      cache.set(key, { build, at: nowFn() });
+      state.loading = false;
+      state.build = build;
+      state.averageBuild = build;
+      state.patch = build.patch || "";
+      paint();
+      void loadTopPlayers(gen, key);
+    }
+    async function loadTopPlayers(gen, key) {
+      state.topPlayers = { loading: true, ok: false, players: [], reason: "" };
+      paint();
+      const res = await fetchChampionLeaderboardImpl(
+        { championName: state.championName, region: state.region === "global" ? "kr" : state.region },
+        { fetchFn }
+      );
+      const topPlayers = { loading: false, ok: res.ok, players: res.data || [], reason: res.reason };
+      const entry = cache.get(key);
+      if (entry) entry.topPlayers = topPlayers;
+      if (gen !== generation) return;
+      state.topPlayers = topPlayers;
+      paint();
+    }
+    async function handlePlayerBuild(riotId, playerRegion) {
+      const gen = ++generation;
+      const res = await fetchPlayerBuildImpl(
+        { riotId, region: playerRegion, championId: state.championId },
+        { fetchFn }
+      );
+      if (gen !== generation) return;
+      if (!res.ok) {
+        state.topPlayers = { ...state.topPlayers, reason: res.reason, ok: false };
+        paint();
+        return;
+      }
+      const base = state.averageBuild;
+      state.viewingPlayer = riotId;
+      state.build = {
+        ...base,
+        runePages: res.data.runePages?.length ? res.data.runePages : base.runePages,
+        items: res.data.items?.length ? { ...base.items, core: [{ ids: res.data.items, winRate: null, pickRate: null, play: 0 }] } : base.items
+      };
+      paint();
+    }
+    async function runAction(statusKey, fn) {
+      state[statusKey] = "applying";
+      paint();
+      try {
+        const res = await fn();
+        state[statusKey] = res?.success ? "applied" : "failed";
+      } catch (err) {
+        console.warn(TAG5, "action failed:", err?.message || err);
+        state[statusKey] = "failed";
+      }
+      paint();
+    }
+    function wireEvents(node) {
+      if (!node?.addEventListener || node.dataset?.drakeBuildWired === "1") return;
+      if (node.dataset) node.dataset.drakeBuildWired = "1";
+      node.addEventListener("change", (event) => {
+        const target = event.target;
+        if (target?.matches?.("[data-build-tier]") || target?.dataset?.buildTier !== void 0) {
+          state.tier = target.value;
+          void saveSettings({ build_tier: state.tier });
+          void loadBuild();
+          return;
+        }
+        if (target?.matches?.("[data-build-region]") || target?.dataset?.buildRegion !== void 0) {
+          state.region = target.value;
+          void saveSettings({ build_region: state.region });
+          void loadBuild();
+        }
+      });
+      node.addEventListener("click", (event) => {
+        const target = event.target;
+        const hit = (attr) => target?.closest?.(`[${attr}]`);
+        if (hit("data-build-close")) {
+          event.stopPropagation?.();
+          close();
+          return;
+        }
+        if (hit("data-build-retry")) {
+          event.stopPropagation?.();
+          void loadBuild({ force: true });
+          return;
+        }
+        if (hit("data-build-tier-all")) {
+          event.stopPropagation?.();
+          state.tier = "all";
+          void saveSettings({ build_tier: "all" });
+          void loadBuild();
+          return;
+        }
+        if (hit("data-build-clear-player")) {
+          event.stopPropagation?.();
+          generation += 1;
+          state.viewingPlayer = "";
+          state.build = state.averageBuild;
+          paint();
+          return;
+        }
+        const playerBtn = hit("data-build-player");
+        if (playerBtn) {
+          event.stopPropagation?.();
+          void handlePlayerBuild(
+            playerBtn.dataset.buildPlayer,
+            playerBtn.dataset.buildPlayerRegion || "kr"
+          );
+          return;
+        }
+        const runeBtn = hit("data-build-apply-runes");
+        if (runeBtn) {
+          event.stopPropagation?.();
+          const page = state.build?.runePages?.[Number(runeBtn.dataset.buildApplyRunes) || 0];
+          if (!page) return;
+          void runAction(
+            "runeStatus",
+            () => applyRunePageImpl(lcu2, {
+              name: `${state.championName || "Drake"} Build`,
+              primaryStyleId: page.primaryStyleId,
+              subStyleId: page.subStyleId,
+              selectedPerkIds: page.selectedPerkIds
+            })
+          );
+          return;
+        }
+        const spellBtn = hit("data-build-apply-spells");
+        if (spellBtn) {
+          event.stopPropagation?.();
+          const entry = state.build?.spells?.[Number(spellBtn.dataset.buildApplySpells) || 0];
+          if (!entry?.ids?.length) return;
+          void runAction(
+            "spellStatus",
+            () => applySummonerSpellsImpl(lcu2, { spell1Id: entry.ids[0], spell2Id: entry.ids[1] })
+          );
+          return;
+        }
+        if (hit("data-build-apply-items")) {
+          event.stopPropagation?.();
+          const itemSet = buildItemSet({
+            championId: state.championId,
+            championName: state.championName,
+            build: state.build
+          });
+          if (!itemSet) return;
+          void runAction("itemSetStatus", () => applyItemSetImpl(lcu2, getSummonerId(), itemSet));
+        }
+      });
+    }
+    function setSession(session) {
+      const championId = Number(session?.championId) || 0;
+      const position = session?.position || "";
+      const mode = session?.mode === "aram" ? "aram" : "ranked";
+      if (championId === state.championId && position === state.position && mode === state.mode) return;
+      state.championId = championId;
+      state.championName = championId ? getChampName(championId) : "";
+      state.position = position;
+      state.mode = mode;
+      state.viewingPlayer = "";
+      state.runeStatus = "idle";
+      state.itemSetStatus = "idle";
+      state.spellStatus = "idle";
+      if (open) void loadBuild();
+    }
+    function openPanel() {
+      if (!enabled || open) return;
+      open = true;
+      paint();
+      void loadBuild();
+    }
+    function close() {
+      if (!open) return;
+      open = false;
+      paint();
+    }
+    function destroy() {
+      close();
+      cache.clear();
+      generation += 1;
+    }
+    return {
+      open: openPanel,
+      close,
+      toggle: () => open ? close() : openPanel(),
+      isOpen: () => open,
+      setSession,
+      setEnabled: (value) => {
+        enabled = !!value;
+        if (!enabled) close();
+      },
+      destroy
     };
   }
 
@@ -9088,7 +8776,22 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/ui/index.js
-  var TAG3 = "[Drake]";
+  var TAG6 = "[Drake]";
+  function readLocalCell(session) {
+    const cellId = Number(session?.localPlayerCellId ?? -1);
+    const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
+    return team.find((p) => Number(p?.cellId) === cellId) || null;
+  }
+  function readLocalChampionId(session) {
+    return Number(readLocalCell(session)?.championId) || 0;
+  }
+  function readLocalPosition(session) {
+    const cell = readLocalCell(session);
+    return cell?.assignedPosition || cell?.position || "";
+  }
+  function isAramSession(session) {
+    return Boolean(session?.benchEnabled);
+  }
   var MAX_DELAY_MS = 8e3;
   function startUI({ cfg, onSettingsChanged, lcu: lcu2 }) {
     let settings = { ...cfg.settings };
@@ -9118,6 +8821,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let teamRevealChamps = [];
     let teamRevealChampsLoading = null;
     let teamRevealDom = null;
+    let buildPanel = null;
+    let currentSummonerId = 0;
     let teamRevealLastLoadMs = 0;
     let teamRevealLastConcurrency = 1;
     let inGameIdle = false;
@@ -9128,8 +8833,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       skins: ""
     };
     const status = makeStatus({ lcu: lcu2 });
-    let dodgeStatus = (detail) => console.log(TAG3, "dodge", detail);
-    let say = (text, good) => console.log(TAG3, text, good ? "ok" : "err");
+    let dodgeStatus = (detail) => console.log(TAG6, "dodge", detail);
+    let say = (text, good) => console.log(TAG6, text, good ? "ok" : "err");
     const dodger = makeDodge({
       onStatus: (detail) => dodgeStatus(detail)
     });
@@ -9180,6 +8885,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
       },
       onTeamRevealCardsToggle: () => {
         if (teamRevealDom) teamRevealDom.toggleCards();
+      },
+      onBuildPanelToggle: () => {
+        if (buildPanel) buildPanel.toggle();
       },
       onEscape: () => {
         if (!shadowRoot) return false;
@@ -9277,6 +8985,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           void teamRevealDom.handleSession(null);
           teamRevealDom.setEnabled(false);
         }
+        feedBuildPanel(null);
         if (shadowRoot) {
           const dodge = shadowRoot.getElementById("dodge-dock");
           if (dodge) dodge.hidden = true;
@@ -9288,6 +8997,48 @@ button.bug-report-button[data-drake-toggle]:disabled {
       startSocialWatch();
       if (teamRevealDom) teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
     }
+    async function loadCurrentSummonerId() {
+      if (currentSummonerId) return currentSummonerId;
+      try {
+        const me = await lcu2.get("/lol-summoner/v1/current-summoner");
+        currentSummonerId = Number(me?.summonerId) || Number(me?.accountId) || 0;
+      } catch {
+        currentSummonerId = 0;
+      }
+      return currentSummonerId;
+    }
+    function ensureBuildButton() {
+      if (!shadowRoot) return null;
+      const existing = shadowRoot.getElementById("drake-build-entry");
+      if (existing) return existing;
+      const node = document.createElement("button");
+      node.id = "drake-build-entry";
+      node.type = "button";
+      node.className = "build-entry-btn";
+      node.textContent = "Build";
+      node.hidden = true;
+      node.addEventListener("click", () => {
+        if (buildPanel) buildPanel.open();
+      });
+      shadowRoot.appendChild(node);
+      return node;
+    }
+    function feedBuildPanel(session) {
+      if (!buildPanel) return;
+      const active = inChampSelect(session);
+      const btn = ensureBuildButton();
+      if (btn) btn.hidden = !active;
+      if (!active) {
+        buildPanel.setSession({ championId: 0, position: "", mode: "ranked" });
+        buildPanel.close();
+        return;
+      }
+      buildPanel.setSession({
+        championId: readLocalChampionId(session),
+        position: readLocalPosition(session),
+        mode: isAramSession(session) ? "aram" : "ranked"
+      });
+    }
     function setChampSelect(session) {
       if (inGameIdle) return;
       champSelectSession = session;
@@ -9295,6 +9046,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const dock = shadowRoot.getElementById("dodge-dock");
       champSelectActive = inChampSelect(session);
       if (teamRevealDom) void teamRevealDom.handleSession(session);
+      feedBuildPanel(session);
       const showDodge = champSelectActive && settings.queue_dodge_in_client !== false;
       dock.hidden = !showDodge;
       if (stopDodgeReposition) {
@@ -9310,21 +9062,21 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     async function runDodge(btn) {
       if (!btn || dodgeBusy || btn.disabled) {
-        console.log(TAG3, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
+        console.log(TAG6, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
         return;
       }
       dodgeBusy = true;
       btn.disabled = true;
       btn.textContent = "Dodging\u2026";
       say("Dodging\u2026", true);
-      console.log(TAG3, "dodge click", btn.id);
+      console.log(TAG6, "dodge click", btn.id);
       if (stopDodgeReposition) {
         stopDodgeReposition();
         stopDodgeReposition = null;
       }
       try {
         const result = await dodger.dodge();
-        console.log(TAG3, "dodge result", result);
+        console.log(TAG6, "dodge result", result);
         const msg = result.ok ? `Dodged champ select${result.detail ? ` (${result.detail})` : ""}` : result.reason;
         say(msg, result.ok);
         btn.textContent = result.ok ? "Dodged!" : "Failed";
@@ -9345,7 +9097,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       say = sayUi;
       dodgeStatus = (detail) => {
         sayUi(detail, true);
-        console.log(TAG3, "dodge", detail);
+        console.log(TAG6, "dodge", detail);
       };
       shadow.getElementById("scrim").style.display = "none";
       startSocialWatch(api);
@@ -9363,9 +9115,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         subscribe,
         overlayRoot: shadow,
         lcu: lcu2,
-        fetchFn: proxyFetch,
         getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || "",
-        getChampions: () => teamRevealChamps,
         getRecentPool: () => settings.queue_team_reveal_recent_pool || "ranked_both",
         getShowMapSide: () => settings.queue_show_map_side !== false,
         getAutoMute: () => !!settings.queue_mute_all_in_client,
@@ -9399,7 +9149,19 @@ button.bug-report-button[data-drake-toggle]:disabled {
         }
       });
       teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+      buildPanel = makeBuildPanel({
+        doc: document,
+        overlayRoot: shadow,
+        lcu: lcu2,
+        fetchFn: proxyFetch,
+        getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || "",
+        getSettings: () => settings,
+        saveSettings: (patch) => client.save(patch),
+        getSummonerId: () => currentSummonerId
+      });
+      void loadCurrentSummonerId();
       if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
+      feedBuildPanel(champSelectSession);
       function paintOnboard() {
         const layer = shadow.getElementById("onboard-layer");
         if (!layer) return;
@@ -9542,7 +9304,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         paint();
         statusEl.textContent = result.reason;
         statusEl.className = "status-bad";
-        console.log(TAG3, "could not save -", result.reason);
+        console.log(TAG6, "could not save -", result.reason);
         return { ok: false, reason: result.reason };
       }
       async function goToScreen(next) {
@@ -9765,14 +9527,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (e.target.id === "reveal") {
           const btn2 = e.target;
           btn2.disabled = true;
-          let region2 = "";
+          let region = "";
           try {
-            region2 = (await lcu2.get("/riotclient/region-locale")).region || "";
+            region = (await lcu2.get("/riotclient/region-locale")).region || "";
           } catch {
           }
           const reveal = makeReveal({
             lcu: lcu2,
-            region: region2,
+            region,
             open: (url) => opener.open(url).then((r) => {
               if (!r.ok) say(r.reason, false);
             })
@@ -10023,7 +9785,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         try {
           await cancelQueue(lcu2);
         } catch {
-          console.log(TAG3, "could not cancel the queue");
+          console.log(TAG6, "could not cancel the queue");
         }
       });
       shadow.getElementById("dodge-champ-select").addEventListener("click", (e) => {
@@ -10408,7 +10170,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/index.js
-  var TAG4 = "[Drake]";
+  var TAG7 = "[Drake]";
   var lcu = makeLcu();
   var presence = makePresence({ lcu });
   var stopFeatures = () => {
@@ -10450,7 +10212,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         subscribe,
         getSession: () => lcu.get("/lol-champ-select/v1/session"),
         onResult: (d, r, was) => console.log(
-          TAG4,
+          TAG7,
           d.kind,
           d.championId,
           r.ok ? "ok" : "failed: " + r.reason,
@@ -10465,7 +10227,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     const stopUnlocks = startUnlocks({
       enabled: !!settings.unlock_status_message,
-      onFirstUnlock: (n) => console.log(TAG4, "unlocked the status message input", n > 1 ? n : "")
+      onFirstUnlock: (n) => console.log(TAG7, "unlocked the status message input", n > 1 ? n : "")
     });
     stopProfileRank = startProfileRankRefresh({
       subscribe,
@@ -10489,7 +10251,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   async function start() {
     const cfg = await loadConfig();
     if (!cfg) {
-      console.log(TAG4, "no config.json found; the tray app may not be running");
+      console.log(TAG7, "no config.json found; the tray app may not be running");
       ui = startUI({ cfg: { port: 0, token: "", settings: {} }, lcu });
       return;
     }
@@ -10502,20 +10264,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
     });
     const host = typeof Pengu !== "undefined" && Pengu.version ? `pengu ${Pengu.version}` : "unknown";
     const ok = await startHeartbeat({ checkIn: transport.checkIn, host });
-    console.log(TAG4, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
-    console.log(TAG4, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
+    console.log(TAG7, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
+    console.log(TAG7, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
     ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
     wireFeatures(cfg.settings);
     startInGameIdle({
       subscribe,
       onChange(idle) {
         idleInGame = idle;
-        console.log(TAG4, idle ? "idle in game" : "active in client");
+        console.log(TAG7, idle ? "idle in game" : "active in client");
         if (idle) sleepPlugin();
         else wakePlugin();
       }
     });
-    console.log(TAG4, "UI ready \u2014 press Ctrl+D");
+    console.log(TAG7, "UI ready \u2014 press Ctrl+D");
   }
   if (document.readyState === "complete") start();
   else window.addEventListener("load", start);

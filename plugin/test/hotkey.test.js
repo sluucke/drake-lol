@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { matchesToggle, matchesClose, matchesTeamRevealCardsToggle } from '../src/ui/hotkey.js';
+import {
+  matchesToggle,
+  matchesClose,
+  matchesTeamRevealCardsToggle,
+  matchesBuildPanelToggle,
+} from '../src/ui/hotkey.js';
 
 const ev = (over = {}) => ({
   ctrlKey: false,
@@ -83,5 +88,22 @@ describe('matchesClose', () => {
 
   it('does not fire on other keys', () => {
     expect(matchesClose(ev({ key: 'Enter' }))).toBe(false);
+  });
+});
+
+describe('matchesBuildPanelToggle', () => {
+  it('matches ctrl+b outside text entry', () => {
+    expect(matchesBuildPanelToggle({ ctrlKey: true, shiftKey: false, key: 'b', target: {} })).toBe(true);
+  });
+
+  it('ignores ctrl+b inside an input', () => {
+    expect(
+      matchesBuildPanelToggle({ ctrlKey: true, shiftKey: false, key: 'b', target: { tagName: 'INPUT' } })
+    ).toBe(false);
+  });
+
+  it('ignores plain b and ctrl+shift+b', () => {
+    expect(matchesBuildPanelToggle({ ctrlKey: false, key: 'b', target: {} })).toBe(false);
+    expect(matchesBuildPanelToggle({ ctrlKey: true, shiftKey: true, key: 'b', target: {} })).toBe(false);
   });
 });

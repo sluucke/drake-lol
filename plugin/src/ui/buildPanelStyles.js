@@ -68,4 +68,8 @@ export const BUILD_PANEL_CSS = `
 .build-loading { display: flex; align-items: center; gap: 8px; color: #a09b8c; font-size: 12px; padding: 12px 0; }
 .build-spinner { animation: build-spin 1s linear infinite; }
 @keyframes build-spin { to { transform: rotate(360deg); } }
+
+.build-entry-btn { position: fixed; right: 18px; bottom: 92px; pointer-events: auto; z-index: 19; background: linear-gradient(180deg, #1e2328, #0a1428); border: 1px solid #785a28; color: #f0e6d2; font-family: var(--font-display, 'Beaufort for LOL'), serif; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; padding: 7px 16px; cursor: pointer; }
+.build-entry-btn:hover { border-color: #c8aa6e; color: #fff; }
+.build-entry-btn[hidden] { display: none; }
 `;
