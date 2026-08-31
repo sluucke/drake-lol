@@ -105,6 +105,18 @@ describe('applyItemSet', () => {
     expect((await applyItemSet({ get: vi.fn(), put: vi.fn() }, 42, null)).success).toBe(false);
   });
 
+  it('does not write when reading existing sets fails', async () => {
+    const lcu = {
+      get: vi.fn().mockRejectedValue(new Error('client restarting')),
+      put: vi.fn(),
+    };
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
+    const res = await applyItemSet(lcu, 42, set);
+    expect(res.success).toBe(false);
+    expect(res.error).toBeTruthy();
+    expect(lcu.put).not.toHaveBeenCalled();
+  });
+
   it('reports failure when the client rejects the write', async () => {
     const lcu = {
       get: vi.fn().mockResolvedValue({ itemSets: [] }),

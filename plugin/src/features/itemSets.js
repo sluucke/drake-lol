@@ -63,15 +63,16 @@ export async function applyItemSet(lcu, summonerId, itemSet) {
   if (!id) return { success: false, error: 'Summoner id is required' };
   if (!itemSet) return { success: false, error: 'No item set to apply' };
 
+  let existing;
   try {
-    let existing = { itemSets: [] };
-    try {
-      const res = await lcu.get(ITEM_SETS_ROUTE(id));
-      if (res && typeof res === 'object') existing = res;
-    } catch {
-      existing = { itemSets: [] };
-    }
+    const res = await lcu.get(ITEM_SETS_ROUTE(id));
+    existing = res && typeof res === 'object' ? res : { itemSets: [] };
+  } catch (err) {
+    console.warn(TAG, 'item set read failed:', err?.message || err);
+    return { success: false, error: 'Could not read existing item sets' };
+  }
 
+  try {
     const kept = (Array.isArray(existing.itemSets) ? existing.itemSets : []).filter(
       (set) => !String(set?.title || '').includes(DRAKE_SET_MARKER)
     );
