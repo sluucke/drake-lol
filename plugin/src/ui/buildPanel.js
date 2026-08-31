@@ -93,12 +93,22 @@ export function makeBuildPanel({
     const key = cacheKey();
     const cached = cache.get(key);
     if (!force && cached && nowFn() - cached.at < CACHE_TTL_MS) {
+      const gen = ++generation;
       state.build = cached.build;
       state.averageBuild = cached.build;
       state.patch = cached.build?.patch || '';
       state.loading = false;
       state.error = '';
+      state.viewingPlayer = '';
+
+      if (cached.topPlayers) {
+        state.topPlayers = cached.topPlayers;
+        paint();
+        return;
+      }
+
       paint();
+      void loadTopPlayers(gen, key);
       return;
     }
 
@@ -148,10 +158,10 @@ export function makeBuildPanel({
     state.patch = build.patch || '';
     paint();
 
-    void loadTopPlayers(gen);
+    void loadTopPlayers(gen, key);
   }
 
-  async function loadTopPlayers(gen) {
+  async function loadTopPlayers(gen, key) {
     state.topPlayers = { loading: true, ok: false, players: [], reason: '' };
     paint();
 
@@ -160,13 +170,18 @@ export function makeBuildPanel({
       { fetchFn }
     );
 
+    const topPlayers = { loading: false, ok: res.ok, players: res.data || [], reason: res.reason };
+
+    const entry = cache.get(key);
+    if (entry) entry.topPlayers = topPlayers;
+
     if (gen !== generation) return;
-    state.topPlayers = { loading: false, ok: res.ok, players: res.data || [], reason: res.reason };
+    state.topPlayers = topPlayers;
     paint();
   }
 
   async function handlePlayerBuild(riotId, playerRegion) {
-    const gen = generation;
+    const gen = ++generation;
     const res = await fetchPlayerBuildImpl(
       { riotId, region: playerRegion, championId: state.championId },
       { fetchFn }
@@ -246,6 +261,7 @@ export function makeBuildPanel({
       }
       if (hit('data-build-clear-player')) {
         event.stopPropagation?.();
+        generation += 1;
         state.viewingPlayer = '';
         state.build = state.averageBuild;
         paint();

@@ -240,4 +240,59 @@ describe('makeBuildPanel', () => {
       expect.anything()
     );
   });
+
+  it('does not let a stale player-build fetch overwrite a cleared selection', async () => {
+    const deps = makeDeps();
+    let resolvePlayerBuild;
+    deps.fetchPlayerBuildImpl = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePlayerBuild = resolve;
+        })
+    );
+    const panel = makeBuildPanel(deps);
+    panel.setSession(SESSION);
+    panel.open();
+    await flush();
+
+    const overlay = deps.overlayRoot.children[0];
+    overlay.emit('click', clickEvent({ buildPlayer: 'Hide on bush#KR1', buildPlayerRegion: 'kr' }));
+    await flush();
+
+    // Clear the selection before the in-flight player-build fetch resolves.
+    overlay.emit('click', clickEvent({ buildClearPlayer: '' }));
+    await flush();
+    expect(overlay.innerHTML).not.toContain('data-build-clear-player');
+
+    resolvePlayerBuild({ ok: true, data: { runePages: [], items: [9999] } });
+    await flush();
+
+    // The stale response must not resurrect the "viewing player" state.
+    expect(overlay.innerHTML).not.toContain('data-build-clear-player');
+  });
+
+  it('keeps top players scoped to the champion when the build is restored from cache', async () => {
+    const deps = makeDeps({
+      fetchChampionLeaderboardImpl: vi.fn().mockImplementation(({ championName }) => {
+        if (championName === 'Yasuo') {
+          return Promise.resolve({ ok: true, data: [{ name: 'YasuoPlayer#KR1', ranking: 1 }], reason: '' });
+        }
+        return Promise.resolve({ ok: true, data: [{ name: 'AhriPlayer#KR1', ranking: 1 }], reason: '' });
+      }),
+    });
+    const panel = makeBuildPanel(deps);
+    panel.setSession(SESSION);
+    panel.open();
+    await flush();
+
+    panel.setSession({ championId: 103, position: 'MIDDLE', mode: 'ranked' });
+    await flush();
+
+    panel.setSession(SESSION);
+    await flush();
+
+    const overlay = deps.overlayRoot.children[0];
+    expect(overlay.innerHTML).toContain('YasuoPlayer#KR1');
+    expect(overlay.innerHTML).not.toContain('AhriPlayer#KR1');
+  });
 });
