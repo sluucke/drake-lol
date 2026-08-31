@@ -296,3 +296,96 @@ describe('makeBuildPanel', () => {
     expect(overlay.innerHTML).not.toContain('AhriPlayer#KR1');
   });
 });
+
+describe('makeBuildPanel late champion names', () => {
+  // The champion list loads lazily and is shared with team reveal, so it can
+  // still be empty when champ select hands us a session.
+  function makeLateNameDeps(overrides = {}) {
+    const champs = [];
+    const deps = makeDeps({
+      getChampName: (id) => champs.find((c) => c.id === id)?.name || '',
+      ...overrides,
+    });
+    return { deps, arrive: () => champs.push({ id: 157, name: 'Yasuo' }) };
+  }
+
+  it('renders the real champion name once the list arrives after setSession', async () => {
+    const { deps, arrive } = makeLateNameDeps();
+    const panel = makeBuildPanel(deps);
+
+    panel.setSession(SESSION);
+    panel.open();
+    await flush();
+
+    const overlay = deps.overlayRoot.children[0];
+    expect(overlay.innerHTML).toContain('Champion');
+    expect(overlay.innerHTML).not.toContain('Yasuo');
+
+    // The names land, and champ select re-feeds the identical session.
+    arrive();
+    panel.setSession(SESSION);
+    await flush();
+
+    expect(overlay.innerHTML).toContain('Yasuo');
+    expect(overlay.innerHTML).not.toContain('>Champion<');
+  });
+
+  it('re-queries the leaderboard with the real name after it arrives', async () => {
+    const { deps, arrive } = makeLateNameDeps({
+      fetchChampionLeaderboardImpl: vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, data: [], reason: 'no champion' })
+        .mockResolvedValue({ ok: true, data: [], reason: '' }),
+    });
+    const panel = makeBuildPanel(deps);
+
+    panel.setSession(SESSION);
+    panel.open();
+    await flush();
+
+    expect(deps.fetchChampionLeaderboardImpl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ championName: '' }),
+      expect.anything()
+    );
+
+    arrive();
+    panel.setSession(SESSION);
+    await flush();
+
+    expect(deps.fetchChampionLeaderboardImpl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ championName: 'Yasuo' }),
+      expect.anything()
+    );
+  });
+
+  it('does not re-fetch the build itself when only the name was backfilled', async () => {
+    const { deps, arrive } = makeLateNameDeps();
+    const panel = makeBuildPanel(deps);
+
+    panel.setSession(SESSION);
+    panel.open();
+    await flush();
+    expect(deps.fetchChampionBuildImpl).toHaveBeenCalledTimes(1);
+
+    arrive();
+    panel.setSession(SESSION);
+    await flush();
+    expect(deps.fetchChampionBuildImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('still ignores a repeated session once the name is already resolved', async () => {
+    const deps = makeDeps();
+    const panel = makeBuildPanel(deps);
+
+    panel.setSession(SESSION);
+    panel.open();
+    await flush();
+    const leaderboardCalls = deps.fetchChampionLeaderboardImpl.mock.calls.length;
+
+    panel.setSession(SESSION);
+    await flush();
+
+    expect(deps.fetchChampionBuildImpl).toHaveBeenCalledTimes(1);
+    expect(deps.fetchChampionLeaderboardImpl.mock.calls.length).toBe(leaderboardCalls);
+  });
+});

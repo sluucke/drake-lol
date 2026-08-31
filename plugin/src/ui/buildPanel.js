@@ -75,9 +75,21 @@ export function makeBuildPanel({
     return node;
   }
 
+  // The champion list can arrive after the session does (it loads lazily and is
+  // shared with team reveal). An empty name must never stick: re-resolve it
+  // wherever it is about to be used.
+  function refreshChampionName() {
+    if (!state.championId || state.championName) return false;
+    const name = getChampName(state.championId) || '';
+    if (!name) return false;
+    state.championName = name;
+    return true;
+  }
+
   function paint() {
     const node = ensureOverlay();
     if (!node) return;
+    refreshChampionName();
     node.hidden = !open;
     if (node.style) node.style.display = open ? 'flex' : 'none';
     if (open) node.innerHTML = renderBuildPanel(state);
@@ -162,6 +174,7 @@ export function makeBuildPanel({
   }
 
   async function loadTopPlayers(gen, key) {
+    refreshChampionName();
     state.topPlayers = { loading: true, ok: false, players: [], reason: '' };
     paint();
 
@@ -323,7 +336,16 @@ export function makeBuildPanel({
     const position = session?.position || '';
     const mode = session?.mode === 'aram' ? 'aram' : 'ranked';
 
-    if (championId === state.championId && position === state.position && mode === state.mode) return;
+    if (championId === state.championId && position === state.position && mode === state.mode) {
+      // Same session, but the champion list may have loaded in the meantime.
+      if (refreshChampionName() && open) {
+        paint();
+        if (!state.topPlayers.ok && !state.topPlayers.loading) {
+          void loadTopPlayers(generation, cacheKey());
+        }
+      }
+      return;
+    }
 
     state.championId = championId;
     state.championName = championId ? getChampName(championId) : '';

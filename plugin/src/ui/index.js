@@ -64,6 +64,7 @@ import {
 import { makeTeamRevealDom } from './teamRevealDom.js';
 import { makeBuildPanel } from './buildPanel.js';
 import { makeProxyFetch } from '../features/proxyFetch.js';
+import { makeSummonerIdLoader } from '../features/summonerId.js';
 
 const TAG = '[Drake]';
 
@@ -126,7 +127,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let teamRevealChampsLoading = null;
   let teamRevealDom = null;
   let buildPanel = null;
-  let currentSummonerId = 0;
+  const summonerIdLoader = makeSummonerIdLoader({ lcu });
   let teamRevealLastLoadMs = 0;
   let teamRevealLastConcurrency = 1;
   let inGameIdle = false;
@@ -322,15 +323,24 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     if (teamRevealDom) teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
   }
 
-  async function loadCurrentSummonerId() {
-    if (currentSummonerId) return currentSummonerId;
-    try {
-      const me = await lcu.get('/lol-summoner/v1/current-summoner');
-      currentSummonerId = Number(me?.summonerId) || Number(me?.accountId) || 0;
-    } catch {
-      currentSummonerId = 0;
+  // Champion names are shared with team reveal, but the build panel must not
+  // depend on that feature being enabled - either caller may kick the load off.
+  function ensureChampNames() {
+    if (teamRevealChamps.length) return Promise.resolve(teamRevealChamps);
+    if (!teamRevealChampsLoading) {
+      teamRevealChampsLoading = loadChampions(lcu)
+        .then((list) => {
+          teamRevealChamps = Array.isArray(list) ? list : [];
+          teamRevealChampsLoading = null;
+          return teamRevealChamps;
+        })
+        .catch((err) => {
+          console.log(TAG, 'could not load champion names -', err?.message || err);
+          teamRevealChampsLoading = null;
+          return [];
+        });
     }
-    return currentSummonerId;
+    return teamRevealChampsLoading;
   }
 
   function ensureBuildButton() {
@@ -360,11 +370,22 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       buildPanel.close();
       return;
     }
-    buildPanel.setSession({
+    // Both of these are cheap no-ops once they have succeeded, and champ select
+    // is the first moment the client is reliably logged in and answering.
+    void summonerIdLoader.load();
+    const payload = {
       championId: readLocalChampionId(session),
       position: readLocalPosition(session),
       mode: isAramSession(session) ? 'aram' : 'ranked',
-    });
+    };
+    buildPanel.setSession(payload);
+    if (payload.championId && !teamRevealChamps.length) {
+      // Re-feed once the names land so the header and the leaderboard query
+      // pick up the real champion name instead of an empty string.
+      void ensureChampNames().then(() => {
+        if (buildPanel) buildPanel.setSession(payload);
+      });
+    }
   }
 
   function setChampSelect(session) {
@@ -463,16 +484,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         if (screen === 'queue') paint();
       },
       loadSnapshot: async (session, hooks) => {
-        if (!teamRevealChamps.length) {
-          if (!teamRevealChampsLoading) {
-            teamRevealChampsLoading = loadChampions(lcu).then((list) => {
-              teamRevealChamps = list;
-              teamRevealChampsLoading = null;
-              return list;
-            });
-          }
-          await teamRevealChampsLoading;
-        }
+        await ensureChampNames();
         return buildTeamRevealSnapshot({
           session,
           lcu,
@@ -495,9 +507,9 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
       getSettings: () => settings,
       saveSettings: (patch) => client.save(patch),
-      getSummonerId: () => currentSummonerId,
+      getSummonerId: () => summonerIdLoader.get(),
     });
-    void loadCurrentSummonerId();
+    void summonerIdLoader.load();
 
     if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
     feedBuildPanel(champSelectSession);

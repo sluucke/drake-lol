@@ -6515,7 +6515,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === "muting" ? "disabled" : ""}>${muteText}</button>
     <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">Close</button>
     <div class="team-reveal-tabs">
-      <button class="team-reveal-tab is-active" type="button" aria-selected="true">Team Scouting</button>
+      <div class="team-reveal-tab is-active">Team Scouting</div>
       ${sideBadge}
     </div>
     <div class="team-reveal-panel">${cards}</div>
@@ -8451,9 +8451,17 @@ button.bug-report-button[data-drake-toggle]:disabled {
       wireEvents(node);
       return node;
     }
+    function refreshChampionName() {
+      if (!state.championId || state.championName) return false;
+      const name = getChampName(state.championId) || "";
+      if (!name) return false;
+      state.championName = name;
+      return true;
+    }
     function paint() {
       const node = ensureOverlay();
       if (!node) return;
+      refreshChampionName();
       node.hidden = !open;
       if (node.style) node.style.display = open ? "flex" : "none";
       if (open) node.innerHTML = renderBuildPanel(state);
@@ -8525,6 +8533,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       void loadTopPlayers(gen, key);
     }
     async function loadTopPlayers(gen, key) {
+      refreshChampionName();
       state.topPlayers = { loading: true, ok: false, players: [], reason: "" };
       paint();
       const res = await fetchChampionLeaderboardImpl(
@@ -8668,7 +8677,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const championId = Number(session?.championId) || 0;
       const position = session?.position || "";
       const mode = session?.mode === "aram" ? "aram" : "ranked";
-      if (championId === state.championId && position === state.position && mode === state.mode) return;
+      if (championId === state.championId && position === state.position && mode === state.mode) {
+        if (refreshChampionName() && open) {
+          paint();
+          if (!state.topPlayers.ok && !state.topPlayers.loading) {
+            void loadTopPlayers(generation, cacheKey());
+          }
+        }
+        return;
+      }
       state.championId = championId;
       state.championName = championId ? getChampName(championId) : "";
       state.position = position;
@@ -8775,6 +8792,29 @@ button.bug-report-button[data-drake-toggle]:disabled {
     };
   }
 
+  // src/features/summonerId.js
+  var CURRENT_SUMMONER_ROUTE = "/lol-summoner/v1/current-summoner";
+  function makeSummonerIdLoader({ lcu: lcu2, route = CURRENT_SUMMONER_ROUTE } = {}) {
+    let summonerId = 0;
+    let inFlight = null;
+    async function load() {
+      if (summonerId) return summonerId;
+      if (inFlight) return inFlight;
+      inFlight = (async () => {
+        try {
+          const me = await lcu2.get(route);
+          summonerId = Number(me?.summonerId) || Number(me?.accountId) || 0;
+        } catch {
+          summonerId = 0;
+        }
+        inFlight = null;
+        return summonerId;
+      })();
+      return inFlight;
+    }
+    return { load, get: () => summonerId };
+  }
+
   // src/ui/index.js
   var TAG6 = "[Drake]";
   function readLocalCell(session) {
@@ -8822,7 +8862,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let teamRevealChampsLoading = null;
     let teamRevealDom = null;
     let buildPanel = null;
-    let currentSummonerId = 0;
+    const summonerIdLoader = makeSummonerIdLoader({ lcu: lcu2 });
     let teamRevealLastLoadMs = 0;
     let teamRevealLastConcurrency = 1;
     let inGameIdle = false;
@@ -8997,15 +9037,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
       startSocialWatch();
       if (teamRevealDom) teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
     }
-    async function loadCurrentSummonerId() {
-      if (currentSummonerId) return currentSummonerId;
-      try {
-        const me = await lcu2.get("/lol-summoner/v1/current-summoner");
-        currentSummonerId = Number(me?.summonerId) || Number(me?.accountId) || 0;
-      } catch {
-        currentSummonerId = 0;
+    function ensureChampNames() {
+      if (teamRevealChamps.length) return Promise.resolve(teamRevealChamps);
+      if (!teamRevealChampsLoading) {
+        teamRevealChampsLoading = loadChampions(lcu2).then((list) => {
+          teamRevealChamps = Array.isArray(list) ? list : [];
+          teamRevealChampsLoading = null;
+          return teamRevealChamps;
+        }).catch((err) => {
+          console.log(TAG6, "could not load champion names -", err?.message || err);
+          teamRevealChampsLoading = null;
+          return [];
+        });
       }
-      return currentSummonerId;
+      return teamRevealChampsLoading;
     }
     function ensureBuildButton() {
       if (!shadowRoot) return null;
@@ -9033,11 +9078,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
         buildPanel.close();
         return;
       }
-      buildPanel.setSession({
+      void summonerIdLoader.load();
+      const payload = {
         championId: readLocalChampionId(session),
         position: readLocalPosition(session),
         mode: isAramSession(session) ? "aram" : "ranked"
-      });
+      };
+      buildPanel.setSession(payload);
+      if (payload.championId && !teamRevealChamps.length) {
+        void ensureChampNames().then(() => {
+          if (buildPanel) buildPanel.setSession(payload);
+        });
+      }
     }
     function setChampSelect(session) {
       if (inGameIdle) return;
@@ -9126,16 +9178,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           if (screen === "queue") paint();
         },
         loadSnapshot: async (session, hooks) => {
-          if (!teamRevealChamps.length) {
-            if (!teamRevealChampsLoading) {
-              teamRevealChampsLoading = loadChampions(lcu2).then((list) => {
-                teamRevealChamps = list;
-                teamRevealChampsLoading = null;
-                return list;
-              });
-            }
-            await teamRevealChampsLoading;
-          }
+          await ensureChampNames();
           return buildTeamRevealSnapshot({
             session,
             lcu: lcu2,
@@ -9157,9 +9200,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
         getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || "",
         getSettings: () => settings,
         saveSettings: (patch) => client.save(patch),
-        getSummonerId: () => currentSummonerId
+        getSummonerId: () => summonerIdLoader.get()
       });
-      void loadCurrentSummonerId();
+      void summonerIdLoader.load();
       if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
       feedBuildPanel(champSelectSession);
       function paintOnboard() {

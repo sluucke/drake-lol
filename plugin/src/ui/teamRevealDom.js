@@ -236,7 +236,7 @@ function renderOverlayShell({
     <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === 'muting' ? 'disabled' : ''}>${muteText}</button>
     <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">Close</button>
     <div class="team-reveal-tabs">
-      <button class="team-reveal-tab is-active" type="button" aria-selected="true">Team Scouting</button>
+      <div class="team-reveal-tab is-active">Team Scouting</div>
       ${sideBadge}
     </div>
     <div class="team-reveal-panel">${cards}</div>
@@ -936,7 +936,7 @@ export function makeTeamRevealDom({
       mergeRowsByCell(session);
       applyPickRefresh(session);
       if (needsReapply()) applyRows(snapshot);
-        if (open) renderVisibility();
+      if (open) renderVisibility();
       if (lobbyKey) lastLobbyKey = lobbyKey;
       lastTeam = team;
       lastSessionSig = sessionSignature(session);
@@ -944,7 +944,7 @@ export function makeTeamRevealDom({
     } else if (snapshot.length && applyRemappedSnapshot(session)) {
       applyPickRefresh(session);
       if (needsReapply()) applyRows(snapshot);
-        if (open) renderVisibility();
+      if (open) renderVisibility();
       if (lobbyKey) lastLobbyKey = lobbyKey;
       lastTeam = team;
       lastSessionSig = sessionSignature(session);
@@ -958,7 +958,7 @@ export function makeTeamRevealDom({
     if (sig && sig === lastSessionSig) {
       mergeRowsByCell(session);
       if (snapshot.length && needsReapply()) applyRows(snapshot);
-        if (open) renderVisibility();
+      if (open) renderVisibility();
       return;
     }
 
@@ -976,7 +976,7 @@ export function makeTeamRevealDom({
           snapshot = Array.isArray(rows) ? rows : [];
           mergeRowsByCell(session);
           applyRows(snapshot);
-                if (open) renderVisibility();
+          if (open) renderVisibility();
         },
       });
       if (gen !== loadGen) return;
@@ -985,7 +985,7 @@ export function makeTeamRevealDom({
       applyPickRefresh(session);
       setStatus(snapshot.length ? 'ready' : 'hidden');
       if (snapshot.length) applyRows(snapshot);
-        if (open) renderVisibility();
+      if (open) renderVisibility();
       if (typeof onRevealTiming === 'function' && snapshot.length) {
         onRevealTiming({
           durationMs: Date.now() - startedAt,
