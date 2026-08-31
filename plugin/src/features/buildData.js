@@ -69,40 +69,44 @@ function normalizeRunePages(runePages) {
 
   // A build's own pick_rate is relative to its parent page (how often that
   // exact perk combo is chosen among players who picked this page), not
-  // comparable across pages. Rank pages by the page-level pick_rate/play
-  // (which IS globally comparable) and take the single most popular build
-  // within each page — sorting flattened builds by their local pick_rate
-  // would scramble page order (a niche page's top build can have a higher
-  // local rate than a dominant page's top build).
-  const pages = runePages
-    .map((page) => {
-      const primaryStyleId = Number(page?.primary_page_id) || 0;
-      const subStyleId = Number(page?.secondary_page_id) || 0;
-      const builds = Array.isArray(page?.builds) ? page.builds : [];
-      const bestBuild = builds
-        .slice()
-        .sort((a, b) => (Number(b?.pick_rate) || 0) - (Number(a?.pick_rate) || 0))[0];
-      if (!primaryStyleId || !subStyleId || !bestBuild) return null;
+  // comparable across pages: page 8008's top build has local pick_rate
+  // 0.4226 despite the page itself being picked 0.7757 of the time, while
+  // a minority page (0.129) can have a top build with local pick_rate as
+  // high as 0.475. Sorting on the local rate would put the minority page's
+  // build first. Fix: flatten every build, but compute each one's GLOBAL
+  // pick rate as build.pick_rate * page.pick_rate (this reproduces the
+  // fixture's own top-level `runes` global-frequency list, e.g.
+  // 0.4226 * 0.7757 = 0.3278) and sort on that instead. winRate and play
+  // stay build-level so each row's numbers describe the exact perks shown.
+  const flattened = [];
+  for (const page of runePages) {
+    const primaryStyleId = Number(page?.primary_page_id) || 0;
+    const subStyleId = Number(page?.secondary_page_id) || 0;
+    const pagePickRate = Number(page?.pick_rate) || 0;
+    const builds = Array.isArray(page?.builds) ? page.builds : [];
 
+    for (const build of builds) {
       const selectedPerkIds = [
-        ...toIds(bestBuild?.primary_rune_ids),
-        ...toIds(bestBuild?.secondary_rune_ids),
-        ...toIds(bestBuild?.stat_mod_ids),
+        ...toIds(build?.primary_rune_ids),
+        ...toIds(build?.secondary_rune_ids),
+        ...toIds(build?.stat_mod_ids),
       ];
-      if (selectedPerkIds.length === 0) return null;
+      if (!primaryStyleId || !subStyleId || selectedPerkIds.length === 0) continue;
 
-      return {
+      const buildPickRate = Number(build?.pick_rate) || 0;
+
+      flattened.push({
         primaryStyleId,
         subStyleId,
         selectedPerkIds,
-        play: Number(page?.play) || 0,
-        winRate: ratio(page?.win, page?.play),
-        pickRate: toPercent(page?.pick_rate),
-      };
-    })
-    .filter(Boolean);
+        play: Number(build?.play) || 0,
+        winRate: ratio(build?.win, build?.play),
+        pickRate: toPercent(buildPickRate * pagePickRate),
+      });
+    }
+  }
 
-  return pages.sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0)).slice(0, RUNE_PAGE_LIMIT);
+  return flattened.sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0)).slice(0, RUNE_PAGE_LIMIT);
 }
 
 function normalizeSkills(skillMasteries) {

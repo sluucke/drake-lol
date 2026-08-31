@@ -68,6 +68,17 @@ describe('normalizeChampionBuild', () => {
     ]);
     // 4 primary + 2 secondary + 3 shards
     expect(page.selectedPerkIds.length).toBe(9);
+
+    // pickRate is the GLOBAL rate (build.pick_rate is relative to its
+    // parent page, not comparable across pages) — build.pick_rate * page.pick_rate.
+    const expectedGlobalPickRate = Math.round(rawBuild.pick_rate * rawPage.pick_rate * 1000) / 10;
+    expect(page.pickRate).toBeCloseTo(expectedGlobalPickRate, 5);
+  });
+
+  it('sorts rune pages by global pick rate, most played first', () => {
+    const build = normalizeChampionBuild(fixture);
+    const rates = build.runePages.map((p) => p.pickRate);
+    expect([...rates].sort((a, b) => b - a)).toEqual(rates);
   });
 
   it('extracts the skill mastery and the level order', () => {
