@@ -13,7 +13,13 @@ const build = {
     starter: [{ ids: [1086, 2003], winRate: 51.2, pickRate: 74.5, play: 100 }],
     boots: [{ ids: [3006], winRate: 49.0, pickRate: 84.6, play: 100 }],
     core: [{ ids: [3153, 6673, 3031], winRate: 55.2, pickRate: 21.0, play: 100 }],
-    last: [{ ids: [6673], winRate: 51.5, pickRate: 68.0, play: 100 }],
+    // buildData.js normalizes last_items into up to 12 separate single-item
+    // entries (Item Trend strip shape), not one multi-id alternative build.
+    last: [
+      { ids: [3072], winRate: 51.5, pickRate: 68.0, play: 100 },
+      { ids: [3036], winRate: 50.1, pickRate: 55.0, play: 90 },
+      { ids: [3026], winRate: 49.0, pickRate: 40.0, play: 70 },
+    ],
   },
 };
 
@@ -27,6 +33,34 @@ describe('buildItemSet', () => {
       'Final Items',
     ]);
     expect(set.blocks[1].items.map((i) => i.id)).toEqual(['3153', '6673', '3031']);
+  });
+
+  it('flattens the last-items bucket into distinct ids from across every entry', () => {
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
+    const finalItems = set.blocks.find((b) => b.type === 'Final Items');
+    expect(finalItems.items.map((i) => i.id)).toEqual(['3072', '3036', '3026']);
+    expect(finalItems.items.every((i) => i.count === 1)).toBe(true);
+  });
+
+  it('caps the last-items block at six items and de-duplicates repeated ids', () => {
+    const manyLast = {
+      items: {
+        ...build.items,
+        last: [
+          { ids: [1], winRate: 1, pickRate: 1, play: 1 },
+          { ids: [2], winRate: 1, pickRate: 1, play: 1 },
+          { ids: [1], winRate: 1, pickRate: 1, play: 1 }, // duplicate of the first
+          { ids: [3], winRate: 1, pickRate: 1, play: 1 },
+          { ids: [4], winRate: 1, pickRate: 1, play: 1 },
+          { ids: [5], winRate: 1, pickRate: 1, play: 1 },
+          { ids: [6], winRate: 1, pickRate: 1, play: 1 },
+          { ids: [7], winRate: 1, pickRate: 1, play: 1 },
+        ],
+      },
+    };
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build: manyLast });
+    const finalItems = set.blocks.find((b) => b.type === 'Final Items');
+    expect(finalItems.items.map((i) => i.id)).toEqual(['1', '2', '3', '4', '5', '6']);
   });
 
   it('marks the set as Drake-owned and binds it to the champion', () => {
