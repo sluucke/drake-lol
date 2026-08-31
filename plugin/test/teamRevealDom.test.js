@@ -709,7 +709,7 @@ describe('teamRevealDom', () => {
 
     expect(loadSnapshot).toHaveBeenCalledTimes(1);
     expect(status.querySelector('.team-reveal-status-text').textContent).toBe(
-      'Session revealed. Press Ctrl+Shift+D to view it.',
+      'Session revealed · Blue Side · Press Ctrl+Shift+D to view it.',
     );
     expect(rows[0]._label.textContent).toBe('RealOne#TAG (8W/2L · 80%)');
   });
@@ -806,7 +806,7 @@ describe('teamRevealDom', () => {
     await pending;
 
     expect(status.querySelector('.team-reveal-status-text').textContent).toBe(
-      'Session revealed. Press Ctrl+Shift+D to view it.',
+      'Session revealed · Blue Side · Press Ctrl+Shift+D to view it.',
     );
     expect(status.querySelector('.team-reveal-status-spinner').hidden).toBe(true);
     expect(status.querySelector('.team-reveal-status-open').hidden).toBe(false);
@@ -1404,5 +1404,1119 @@ describe('revealed status auto dismiss', () => {
     expect(chatRoot.children.find((c) => c.dataset?.drakeChatMap === '1')).toBeFalsy();
     expect(authorA.textContent).toBe('arongejo');
     expect(authorB.textContent).toBe('bob');
+  });
+});
+
+describe('teamRevealDom matchup & builds tab', () => {
+  it('renders tab switcher with scouting and matchup tabs', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    expect(overlay.innerHTML).toContain('team-reveal-tabs');
+    expect(overlay.innerHTML).toContain('Team Scouting');
+    expect(overlay.innerHTML).toContain('Matchup &amp; Builds');
+    expect(overlay.innerHTML).toContain('team-reveal-panel');
+  });
+
+  it('shows prompt in matchup tab when local player has no champion picked', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', isLocalPlayer: true, pickedChampionId: 0 }],
+      overlayRoot,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0, championId: 0 }], localPlayerCellId: 0 });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+
+    expect(overlay.innerHTML).toContain('team-reveal-matchup-view');
+    expect(overlay.innerHTML).toContain('Pick a champion to view matchup');
+  });
+
+  it('fetches and renders matchup, runes, skill order, items, and top players', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+
+    const mockOpggMatchup = {
+      winRate: 53.4,
+      totalMatches: 8420,
+      skills: ['Q', 'E', 'W'],
+      coreItems: [3078, 3053, 6632],
+      runes: {
+        primaryStyleId: 8000,
+        subStyleId: 8100,
+        selectedPerkIds: [8010, 9111, 9104, 8014, 8139, 8135],
+      },
+      hasData: true,
+    };
+
+    const mockLogData = {
+      topPlayers: [
+        {
+          ranking: 1,
+          name: 'Faker#KR1',
+          region: 'KR',
+          tier: 'Challenger',
+          winRate: 68.5,
+          played: 120,
+        },
+      ],
+      proBuild: {
+        items: [3078, 3053],
+        skills: ['Q', 'E', 'W'],
+        winRate: 54.0,
+      },
+      hasData: true,
+    };
+
+    const fetchOpggMatchupImpl = vi.fn().mockResolvedValue(mockOpggMatchup);
+    const fetchLeagueOfGraphsImpl = vi.fn().mockResolvedValue(mockLogData);
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        {
+          cellId: 0,
+          riotId: 'RealOne#TAG',
+          isLocalPlayer: true,
+          pickedChampionId: 103,
+          assignedPosition: 'MIDDLE',
+        },
+      ],
+      overlayRoot,
+      fetchOpggMatchupImpl,
+      fetchLeagueOfGraphsImpl,
+      getChampName: (id) => ({ 103: 'Ahri', 84: 'Akali' }[id] || ''),
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [{ cellId: 0, championId: 103, assignedPosition: 'MIDDLE' }],
+      theirTeam: [{ cellId: 5, championId: 84, assignedPosition: 'MIDDLE' }],
+      localPlayerCellId: 0,
+    });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(fetchOpggMatchupImpl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          championId: 103,
+          lane: 'MIDDLE',
+          enemyChampionId: 84,
+        }),
+      );
+      expect(overlay.innerHTML).toContain('Ahri');
+    });
+
+    expect(overlay.innerHTML).toContain('Akali');
+    expect(overlay.innerHTML).toContain('53.4% WR');
+    expect(overlay.innerHTML).toContain('Advantage');
+    expect(overlay.innerHTML).toContain('⚡ Apply Runes');
+    expect(overlay.innerHTML).toContain('Conqueror');
+    expect(overlay.innerHTML).toContain('team-reveal-keystone-icon');
+    expect(overlay.innerHTML).toContain('Faker#KR1');
+    expect(overlay.innerHTML).toContain('Challenger');
+    expect(overlay.innerHTML).toContain('68.5%');
+    expect(overlay.innerHTML).toContain('View Build');
+  });
+
+  it('allows clicking View Build on a top player to fetch and display their common build', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+
+    const mockOpggMatchup = {
+      winRate: 52.5,
+      totalMatches: 5000,
+      skills: ['Q', 'W', 'E'],
+      coreItems: [3078],
+      runes: {
+        primaryStyleId: 8000,
+        subStyleId: 8100,
+        selectedPerkIds: [8010, 9111, 9104, 8014, 8139, 8135, 5005, 5008, 5001],
+        winRate: 54.2,
+      },
+      runePages: [
+        {
+          primaryStyleId: 8000,
+          subStyleId: 8100,
+          selectedPerkIds: [8010, 9111, 9104, 8014, 8139, 8135, 5005, 5008, 5001],
+          winRate: 54.2,
+        },
+      ],
+      hasData: true,
+    };
+
+    const mockLogData = {
+      topPlayers: [
+        {
+          ranking: 1,
+          name: 'ProPlayer#KR1',
+          region: 'KR',
+          tier: 'Challenger',
+          winRate: 70.0,
+          played: 150,
+        },
+      ],
+      proBuild: {
+        items: [3078],
+        skills: ['Q', 'E', 'W'],
+        winRate: 54.0,
+      },
+      hasData: true,
+    };
+
+    const mockPlayerMatchesText =
+      'LolListSummonerMatches(Data([GameHistory("gid","2026-08-31T03:52:38+09:00","SUMMONERS_RIFT","SOLORANKED",1942,AverageTierInfo("MASTER",1,"url"),[Participant(Summoner("puuid","ProPlayer","KR1","url",null),103,"Ahri","RED","MID",[3089,3157,3135],["Deathcap","Zhonya","Void"],Rune(8200,8229,8100),[3,4],Stats(16,29220,25329,1015,15,0,8,10,9,7,2,4,204,null,null,8,16301,6605,"WIN",5.05,5,OpScoreTimelineAnalysis("UP","UP","FAIR")),3006)],[Team("BLUE",GameStat(false,38,false,0,0,3,0,3,0,0,68417),[55],["Katarina"]),Team("RED",GameStat(true,45,true,1,1,2,1,8,0,0,72100),[58],["Renekton"])]))';
+
+    const fetchFn = vi.fn().mockImplementation(async (url, opts) => {
+      if (typeof opts?.body === 'string' && opts.body.includes('lol_list_summoner_matches')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            result: {
+              content: [{ type: 'text', text: mockPlayerMatchesText }],
+            },
+          }),
+        };
+      }
+      return { ok: false, status: 404 };
+    });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        {
+          cellId: 0,
+          riotId: 'RealOne#TAG',
+          isLocalPlayer: true,
+          pickedChampionId: 103,
+          assignedPosition: 'MID',
+        },
+      ],
+      overlayRoot,
+      fetchFn,
+      fetchOpggMatchupImpl: vi.fn().mockResolvedValue(mockOpggMatchup),
+      fetchLeagueOfGraphsImpl: vi.fn().mockResolvedValue(mockLogData),
+      getChampName: () => 'Ahri',
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [{ cellId: 0, championId: 103, assignedPosition: 'MID' }],
+      localPlayerCellId: 0,
+    });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(overlay.innerHTML).toContain('ProPlayer#KR1');
+      expect(overlay.innerHTML).toContain('View Build');
+    });
+
+    // Click View Build on the player
+    const viewBuildBtn = {
+      dataset: {
+        teamRevealPlayerBuild: 'ProPlayer#KR1',
+        teamRevealPlayerRegion: 'KR',
+      },
+      matches(sel) {
+        return sel.includes('data-team-reveal-player-build');
+      },
+      closest(sel) {
+        return sel.includes('data-team-reveal-player-build') ? this : null;
+      },
+    };
+    await overlay.dispatch('click', { target: viewBuildBtn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(overlay.innerHTML).toContain('Arcane Comet');
+      expect(overlay.innerHTML).toContain('✓ Viewing');
+    });
+  });
+
+  it('allows switching between multiple rune page slots and applies the selected slot', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+
+    const mockOpggMatchup = {
+      winRate: 52.5,
+      totalMatches: 5000,
+      skills: ['Q', 'W', 'E'],
+      coreItems: [3078],
+      runes: {
+        primaryStyleId: 8000,
+        subStyleId: 8100,
+        selectedPerkIds: [8010, 9111, 9104, 8014, 8139, 8135, 5005, 5008, 5001],
+        winRate: 54.2,
+      },
+      runePages: [
+        {
+          primaryStyleId: 8000,
+          subStyleId: 8100,
+          selectedPerkIds: [8010, 9111, 9104, 8014, 8139, 8135, 5005, 5008, 5001],
+          winRate: 54.2,
+        },
+        {
+          primaryStyleId: 8100,
+          subStyleId: 8000,
+          selectedPerkIds: [8112, 8139, 8140, 8106, 9111, 8014, 5008, 5008, 5001],
+          winRate: 51.0,
+        },
+      ],
+      hasData: true,
+    };
+
+    const fetchOpggMatchupImpl = vi.fn().mockResolvedValue(mockOpggMatchup);
+    const fetchLeagueOfGraphsImpl = vi.fn().mockResolvedValue({ topPlayers: [], proBuild: {}, hasData: false });
+    const applyRunePageImpl = vi.fn().mockResolvedValue({ success: true, pageId: 101 });
+    const mockLcu = { get: vi.fn(), post: vi.fn(), put: vi.fn() };
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        {
+          cellId: 0,
+          riotId: 'RealOne#TAG',
+          isLocalPlayer: true,
+          pickedChampionId: 103,
+          assignedPosition: 'MID',
+        },
+      ],
+      overlayRoot,
+      lcu: mockLcu,
+      fetchOpggMatchupImpl,
+      fetchLeagueOfGraphsImpl,
+      applyRunePageImpl,
+      getChampName: () => 'Ahri',
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [{ cellId: 0, championId: 103, assignedPosition: 'MID' }],
+      localPlayerCellId: 0,
+    });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(overlay.innerHTML).toContain('54.2% WR');
+      expect(overlay.innerHTML).toContain('51% WR');
+      expect(overlay.innerHTML).toContain('Conqueror');
+    });
+
+    // Switch to slot 2 (Electrocute · 51% WR)
+    const slot2Btn = {
+      dataset: { teamRevealRuneSlot: '1' },
+      matches(sel) {
+        return sel.includes('data-team-reveal-rune-slot');
+      },
+      closest(sel) {
+        return sel.includes('data-team-reveal-rune-slot') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: slot2Btn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(overlay.innerHTML).toContain('Electrocute');
+    });
+
+    // Click apply runes button
+    const applyRunesBtn = {
+      dataset: { teamRevealApplyRunes: '1' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-apply-runes') ? this : null;
+      },
+    };
+    await overlay.dispatch('click', { target: applyRunesBtn, stopPropagation() {} });
+
+    expect(applyRunePageImpl).toHaveBeenCalledWith(
+      mockLcu,
+      expect.objectContaining({
+        name: 'Ahri Matchup',
+        primaryStyleId: 8100,
+        subStyleId: 8000,
+        selectedPerkIds: [8112, 8139, 8140, 8106, 9111, 8014, 5008, 5008, 5001],
+      }),
+    );
+  });
+
+  it('applies runes when Apply Runes button is clicked', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+
+    const mockOpggMatchup = {
+      winRate: 51.0,
+      totalMatches: 2500,
+      skills: ['Q', 'W', 'E'],
+      coreItems: [3078],
+      runes: {
+        primaryStyleId: 8000,
+        subStyleId: 8100,
+        selectedPerkIds: [8010, 9111, 9104, 8014, 8139, 8135],
+      },
+      hasData: true,
+    };
+
+    const fetchOpggMatchupImpl = vi.fn().mockResolvedValue(mockOpggMatchup);
+    const fetchLeagueOfGraphsImpl = vi.fn().mockResolvedValue({ topPlayers: [], proBuild: {}, hasData: false });
+    const applyRunePageImpl = vi.fn().mockResolvedValue({ success: true, pageId: 99 });
+    const mockLcu = { get: vi.fn(), post: vi.fn(), put: vi.fn() };
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        {
+          cellId: 0,
+          riotId: 'RealOne#TAG',
+          isLocalPlayer: true,
+          pickedChampionId: 103,
+          assignedPosition: 'MID',
+        },
+      ],
+      overlayRoot,
+      lcu: mockLcu,
+      fetchOpggMatchupImpl,
+      fetchLeagueOfGraphsImpl,
+      applyRunePageImpl,
+      getChampName: () => 'Ahri',
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [{ cellId: 0, championId: 103, assignedPosition: 'MID' }],
+      localPlayerCellId: 0,
+    });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(overlay.innerHTML).toContain('⚡ Apply Runes');
+    });
+
+    const applyRunesBtn = {
+      dataset: { teamRevealApplyRunes: '1' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-apply-runes') ? this : null;
+      },
+    };
+    await overlay.dispatch('click', { target: applyRunesBtn, stopPropagation() {} });
+
+    expect(applyRunePageImpl).toHaveBeenCalledWith(
+      mockLcu,
+      expect.objectContaining({
+        name: 'Ahri Matchup',
+        primaryStyleId: 8000,
+        subStyleId: 8100,
+        selectedPerkIds: [8010, 9111, 9104, 8014, 8139, 8135],
+      }),
+    );
+
+    expect(overlay.innerHTML).toContain('✓ Applied');
+  });
+
+  it('handles apply runes failure gracefully', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+
+    const mockOpggMatchup = {
+      winRate: 48.0,
+      totalMatches: 1200,
+      runes: {
+        primaryStyleId: 8000,
+        subStyleId: 8100,
+        selectedPerkIds: [8010],
+      },
+      hasData: true,
+    };
+
+    const fetchOpggMatchupImpl = vi.fn().mockResolvedValue(mockOpggMatchup);
+    const fetchLeagueOfGraphsImpl = vi.fn().mockResolvedValue({ topPlayers: [], proBuild: {}, hasData: false });
+    const applyRunePageImpl = vi.fn().mockResolvedValue({ success: false, error: 'LCU error' });
+    const mockLcu = { get: vi.fn() };
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        {
+          cellId: 0,
+          riotId: 'RealOne#TAG',
+          isLocalPlayer: true,
+          pickedChampionId: 103,
+          assignedPosition: 'MID',
+        },
+      ],
+      overlayRoot,
+      lcu: mockLcu,
+      fetchOpggMatchupImpl,
+      fetchLeagueOfGraphsImpl,
+      applyRunePageImpl,
+      getChampName: () => 'Ahri',
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [{ cellId: 0, championId: 103, assignedPosition: 'MID' }],
+      localPlayerCellId: 0,
+    });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(overlay.innerHTML).toContain('⚡ Apply Runes');
+    });
+
+    const applyRunesBtn = {
+      dataset: { teamRevealApplyRunes: '1' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-apply-runes') ? this : null;
+      },
+    };
+    await overlay.dispatch('click', { target: applyRunesBtn, stopPropagation() {} });
+
+    expect(overlay.innerHTML).toContain('Failed (Retry)');
+  });
+
+  it('switches back to scouting tab when scouting tab is clicked', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', isLocalPlayer: true, pickedChampionId: 0 }],
+      overlayRoot,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+    expect(overlay.innerHTML).toContain('team-reveal-matchup-view');
+
+    const tabScoutingBtn = {
+      dataset: { teamRevealTab: 'scouting' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabScoutingBtn, stopPropagation() {} });
+    expect(overlay.innerHTML).toContain('team-reveal-panel');
+  });
+
+  it('allows selecting an enemy champion manually and refetches matchup vs selected opponent', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+
+    const fetchOpggMatchupImpl = vi.fn().mockImplementation(async ({ enemyChampionId }) => {
+      if (enemyChampionId === 238) {
+        return {
+          winRate: 48.2,
+          totalMatches: 3100,
+          skills: ['Q', 'E', 'W'],
+          coreItems: [3157],
+          hasData: true,
+        };
+      }
+      return {
+        winRate: 53.4,
+        totalMatches: 1200,
+        skills: ['Q', 'W', 'E'],
+        coreItems: [3078],
+        hasData: true,
+      };
+    });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        {
+          cellId: 0,
+          riotId: 'RealOne#TAG',
+          isLocalPlayer: true,
+          pickedChampionId: 103,
+          assignedPosition: 'MIDDLE',
+        },
+      ],
+      overlayRoot,
+      fetchOpggMatchupImpl,
+      fetchLeagueOfGraphsImpl: async () => ({ topPlayers: [], proBuild: { items: [], skills: [] }, hasData: true }),
+      getChampName: (id) => ({ 103: 'Ahri', 84: 'Akali', 238: 'Zed' }[id] || ''),
+      getChampions: () => [
+        { id: 84, name: 'Akali' },
+        { id: 238, name: 'Zed' },
+      ],
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [{ cellId: 0, championId: 103, assignedPosition: 'MIDDLE' }],
+      theirTeam: [
+        { cellId: 5, championId: 84, assignedPosition: 'MIDDLE' },
+        { cellId: 6, championId: 238, assignedPosition: 'TOP' },
+      ],
+      localPlayerCellId: 0,
+    });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(fetchOpggMatchupImpl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          championId: 103,
+          lane: 'MIDDLE',
+          enemyChampionId: 84,
+        }),
+      );
+      expect(overlay.innerHTML).toContain('team-reveal-enemy-chip');
+      expect(overlay.innerHTML).toContain('team-reveal-enemy-chip-icon');
+      expect(overlay.innerHTML).toContain('Akali');
+      expect(overlay.innerHTML).toContain('Zed');
+    });
+
+    const selectTarget = {
+      dataset: { teamRevealEnemySelect: '238' },
+      matches(sel) {
+        return sel.includes('data-team-reveal-enemy-select');
+      },
+      closest(sel) {
+        return sel.includes('data-team-reveal-enemy-select') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: selectTarget, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(fetchOpggMatchupImpl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          championId: 103,
+          lane: 'MIDDLE',
+          enemyChampionId: 238,
+        }),
+      );
+      expect(overlay.innerHTML).toContain('48.2% WR');
+      expect(overlay.innerHTML).toContain('Zed');
+    });
+  });
+});
+
+describe('teamRevealDom map side display', () => {
+  it('renders blue side badge in tabs header when enabled', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      getShowMapSide: () => true,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0, team: 100 }] });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    expect(overlay.innerHTML).toContain('drake-map-side is-blue');
+    expect(overlay.innerHTML).toContain('Blue Side');
+  });
+
+  it('renders red side badge in tabs header when on red side', async () => {
+    const rows = [makeRow(5, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 5, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      getShowMapSide: () => true,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 5, team: 200 }] });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    expect(overlay.innerHTML).toContain('drake-map-side is-red');
+    expect(overlay.innerHTML).toContain('Red Side');
+  });
+
+  it('omits map side badge when getShowMapSide is false', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      getShowMapSide: () => false,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0, team: 1 }] });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    expect(overlay.innerHTML).not.toContain('drake-map-side');
+    expect(overlay.innerHTML).not.toContain('Blue Side');
+  });
+
+  it('renders map side badge in matchup view header when enabled', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        { cellId: 0, riotId: 'RealOne#TAG', isLocalPlayer: true, pickedChampionId: 103, assignedPosition: 'MID' },
+      ],
+      overlayRoot,
+      getShowMapSide: () => true,
+      fetchOpggMatchupImpl: async () => ({ winRate: 50.0, totalMatches: 100, hasData: true }),
+      fetchLeagueOfGraphsImpl: async () => ({ topPlayers: [], proBuild: {}, hasData: false }),
+      getChampName: () => 'Ahri',
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [{ cellId: 0, championId: 103, assignedPosition: 'MID', team: 100 }],
+      localPlayerCellId: 0,
+    });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(overlay.innerHTML).toContain('team-reveal-matchup-head');
+    });
+
+    expect(overlay.innerHTML).toContain('drake-map-side is-blue');
+    expect(overlay.innerHTML).toContain('Blue Side');
+  });
+
+  it('omits map side badge in matchup view when disabled', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [
+        { cellId: 0, riotId: 'RealOne#TAG', isLocalPlayer: true, pickedChampionId: 103, assignedPosition: 'MID' },
+      ],
+      overlayRoot,
+      getShowMapSide: () => false,
+      fetchOpggMatchupImpl: async () => ({ winRate: 50.0, totalMatches: 100, hasData: true }),
+      fetchLeagueOfGraphsImpl: async () => ({ topPlayers: [], proBuild: {}, hasData: false }),
+      getChampName: () => 'Ahri',
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({
+      myTeam: [{ cellId: 0, championId: 103, assignedPosition: 'MID', team: 100 }],
+      localPlayerCellId: 0,
+    });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const tabMatchupBtn = {
+      dataset: { teamRevealTab: 'matchup' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-tab') ? this : null;
+      },
+    };
+    overlay.dispatch('click', { target: tabMatchupBtn, stopPropagation() {} });
+
+    await vi.waitFor(() => {
+      expect(overlay.innerHTML).toContain('team-reveal-matchup-head');
+    });
+
+    expect(overlay.innerHTML).not.toContain('drake-map-side');
+  });
+
+  it('omits side text in status toast when getShowMapSide is false', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      getShowMapSide: () => false,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0, team: 1 }] });
+
+    const status = overlayRoot.querySelector('.team-reveal-status');
+    expect(status.querySelector('.team-reveal-status-text').textContent).toBe(
+      'Session revealed. Press Ctrl+Shift+D to view it.',
+    );
+  });
+});
+
+describe('teamRevealDom mute all', () => {
+  it('renders mute all button in overlay header', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    expect(overlay.innerHTML).toContain('team-reveal-mute-btn');
+    expect(overlay.innerHTML).toContain('data-team-reveal-mute="1"');
+    expect(overlay.innerHTML).toContain('Mute All');
+  });
+
+  it('triggers muteTeammates when mute all button is clicked and shows feedback', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const mockLcu = { get: vi.fn(), post: vi.fn() };
+    const muteTeammatesImpl = vi.fn().mockResolvedValue({ mutedCount: 2, totalTeammates: 2, success: true });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      lcu: mockLcu,
+      muteTeammatesImpl,
+    });
+
+    ctl.setEnabled(true);
+    const session = { myTeam: [{ cellId: 0 }, { cellId: 1 }, { cellId: 2 }], localPlayerCellId: 0 };
+    await ctl.handleSession(session);
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const muteBtn = {
+      dataset: { teamRevealMute: '1' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-mute') ? this : null;
+      },
+    };
+
+    await overlay.dispatch('click', { target: muteBtn, stopPropagation() {} });
+
+    expect(muteTeammatesImpl).toHaveBeenCalledWith(mockLcu, session);
+    expect(overlay.innerHTML).toContain('✓ Muted');
+    expect(overlay.innerHTML).toContain('is-muted');
+  });
+
+  it('shows failure state when muteTeammates fails', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const mockLcu = { get: vi.fn(), post: vi.fn() };
+    const muteTeammatesImpl = vi.fn().mockResolvedValue({ mutedCount: 0, totalTeammates: 2, success: false });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      lcu: mockLcu,
+      muteTeammatesImpl,
+    });
+
+    ctl.setEnabled(true);
+    const session = { myTeam: [{ cellId: 0 }, { cellId: 1 }], localPlayerCellId: 0 };
+    await ctl.handleSession(session);
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    const muteBtn = {
+      dataset: { teamRevealMute: '1' },
+      closest(sel) {
+        return sel.includes('data-team-reveal-mute') ? this : null;
+      },
+    };
+
+    await overlay.dispatch('click', { target: muteBtn, stopPropagation() {} });
+
+    expect(overlay.innerHTML).toContain('Mute Failed');
+  });
+
+  it('automatically triggers muteTeammates once per session when getAutoMute returns true', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const mockLcu = { get: vi.fn(), post: vi.fn() };
+    const muteTeammatesImpl = vi.fn().mockResolvedValue({ mutedCount: 2, totalTeammates: 2, success: true });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      lcu: mockLcu,
+      getAutoMute: () => true,
+      muteTeammatesImpl,
+    });
+
+    ctl.setEnabled(true);
+    const session = {
+      gameId: 12345,
+      myTeam: [{ cellId: 0 }, { cellId: 1 }],
+      localPlayerCellId: 0,
+    };
+
+    await ctl.handleSession(session);
+    expect(muteTeammatesImpl).toHaveBeenCalledTimes(1);
+    expect(muteTeammatesImpl).toHaveBeenCalledWith(mockLcu, session);
+
+    await ctl.handleSession(session);
+    await ctl.handleSession(session);
+    expect(muteTeammatesImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not trigger muteTeammates automatically when getAutoMute is false', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const mockLcu = { get: vi.fn(), post: vi.fn() };
+    const muteTeammatesImpl = vi.fn().mockResolvedValue({ mutedCount: 0, totalTeammates: 0, success: true });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      lcu: mockLcu,
+      getAutoMute: () => false,
+      muteTeammatesImpl,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    expect(muteTeammatesImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe('teamRevealDom auto message', () => {
+  it('triggers sendChampSelectMessage once when auto message is configured', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const mockLcu = { get: vi.fn(), post: vi.fn() };
+    const sendChampSelectMessageImpl = vi.fn().mockResolvedValue({ success: true, conversationId: 'c1' });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      lcu: mockLcu,
+      getAutoMessage: () => 'gl hf team',
+      sendChampSelectMessageImpl,
+    });
+
+    ctl.setEnabled(true);
+    const session = {
+      gameId: 12345,
+      myTeam: [{ cellId: 0 }, { cellId: 1 }],
+      localPlayerCellId: 0,
+    };
+
+    await ctl.handleSession(session);
+    expect(sendChampSelectMessageImpl).toHaveBeenCalledTimes(1);
+    expect(sendChampSelectMessageImpl).toHaveBeenCalledWith(mockLcu, session, 'gl hf team');
+  });
+
+  it('does not re-send message repeatedly on intermediate session updates', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const mockLcu = { get: vi.fn(), post: vi.fn() };
+    const sendChampSelectMessageImpl = vi.fn().mockResolvedValue({ success: true, conversationId: 'c1' });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      lcu: mockLcu,
+      getAutoMessage: () => 'pref mid please',
+      sendChampSelectMessageImpl,
+    });
+
+    ctl.setEnabled(true);
+    const session = {
+      gameId: 12345,
+      myTeam: [{ cellId: 0 }, { cellId: 1 }],
+      localPlayerCellId: 0,
+    };
+
+    await ctl.handleSession(session);
+    await ctl.handleSession({ ...session, timer: { phase: 'BAN_PICK', timeLeft: 20 } });
+    await ctl.handleSession({ ...session, timer: { phase: 'FINALIZATION', timeLeft: 10 } });
+
+    expect(sendChampSelectMessageImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips sending when getAutoMessage is empty or whitespace only', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const mockLcu = { get: vi.fn(), post: vi.fn() };
+    const sendChampSelectMessageImpl = vi.fn();
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      lcu: mockLcu,
+      getAutoMessage: () => '   ',
+      sendChampSelectMessageImpl,
+    });
+
+    ctl.setEnabled(true);
+    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    expect(sendChampSelectMessageImpl).not.toHaveBeenCalled();
+  });
+
+  it('resets lobby tracking when leaving champ select so message is sent on next game', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    const overlayRoot = makeOverlayRoot();
+    const mockLcu = { get: vi.fn(), post: vi.fn() };
+    const sendChampSelectMessageImpl = vi.fn().mockResolvedValue({ success: true, conversationId: 'c1' });
+
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
+      overlayRoot,
+      lcu: mockLcu,
+      getAutoMessage: () => 'hello all',
+      sendChampSelectMessageImpl,
+    });
+
+    ctl.setEnabled(true);
+    const session1 = { gameId: 111, myTeam: [{ cellId: 0 }] };
+    await ctl.handleSession(session1);
+    expect(sendChampSelectMessageImpl).toHaveBeenCalledTimes(1);
+
+    await ctl.handleSession(null);
+
+    const session2 = { gameId: 222, myTeam: [{ cellId: 0 }] };
+    await ctl.handleSession(session2);
+    expect(sendChampSelectMessageImpl).toHaveBeenCalledTimes(2);
   });
 });

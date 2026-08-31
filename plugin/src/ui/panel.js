@@ -346,7 +346,35 @@ export function renderQueue({
     })}
     <div class="status-actions">
       <button class="hextech-btn hextech-btn-danger" id="dodge">Dodge</button>
-    </div>`;
+    </div>
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'queue_show_map_side',
+      label: 'Show map side in champ select',
+      checked: settings.queue_show_map_side !== false,
+      disabled,
+    })}
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: 'queue_mute_all_in_client',
+      label: 'Auto-mute teammates in champ select',
+      checked: !!settings.queue_mute_all_in_client,
+      disabled,
+    })}
+
+    <div class="rule"></div>
+
+    <div class="field-head">
+      <label class="field-label" for="queue_auto_message">Auto-send message on chat connect</label>
+    </div>
+    <input class="hextech-input" type="text" id="queue_auto_message" data-setting="queue_auto_message"
+           value="${escapeHtml(settings.queue_auto_message || '')}"
+           placeholder="Message to send when chat connects..."
+           ${disabled ? 'disabled' : ''}>`;
 }
 
 export function renderChampionPicker({ id, list, query, selectedId, compact }) {

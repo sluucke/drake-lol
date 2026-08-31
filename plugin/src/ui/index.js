@@ -62,6 +62,7 @@ import {
   recommendFetchConcurrency,
 } from '../features/teamRevealStats.js';
 import { makeTeamRevealDom } from './teamRevealDom.js';
+import { makeProxyFetch } from '../features/proxyFetch.js';
 
 const TAG = '[Drake]';
 
@@ -367,12 +368,24 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       appVersion,
       loaderVersion: typeof Pengu !== 'undefined' && Pengu.version ? Pengu.version : '',
     });
+    const proxyFetch = makeProxyFetch({
+      port: cfg.port,
+      token: cfg.token,
+      fetchImpl: fetch,
+    });
+
     teamRevealDom = makeTeamRevealDom({
       doc: document,
       subscribe,
       overlayRoot: shadow,
+      lcu,
+      fetchFn: proxyFetch,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
+      getChampions: () => teamRevealChamps,
       getRecentPool: () => settings.queue_team_reveal_recent_pool || 'ranked_both',
+      getShowMapSide: () => settings.queue_show_map_side !== false,
+      getAutoMute: () => !!settings.queue_mute_all_in_client,
+      getAutoMessage: () => settings.queue_auto_message || '',
       onRevealTiming: ({ durationMs }) => {
         teamRevealLastLoadMs = durationMs;
         teamRevealLastConcurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
@@ -1024,7 +1037,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
 
     content.addEventListener('click', (e) => {
       const row = e.target.closest('[data-setting]');
-      if (!row || row.disabled) return;
+      if (!row || row.disabled || row.tagName === 'INPUT' || row.tagName === 'TEXTAREA') return;
       const key = row.dataset.setting;
       const previous = settings[key];
       settings = { ...settings, [key]: !previous };
@@ -1046,14 +1059,25 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       });
     });
 
-    
-    
     content.addEventListener('input', (e) => {
+      if (e.target.id === 'queue_auto_message') {
+        settings = { ...settings, queue_auto_message: e.target.value };
+        return;
+      }
       if (e.target.id !== 'delay') return;
       shadow.getElementById('delay-value').textContent = formatDelay(Number(e.target.value));
     });
 
     content.addEventListener('change', (e) => {
+      if (e.target.id === 'queue_auto_message') {
+        const previous = settings.queue_auto_message || '';
+        const value = e.target.value;
+        settings = { ...settings, queue_auto_message: value };
+        commit({ queue_auto_message: value }, () => {
+          settings = { ...settings, queue_auto_message: previous };
+        });
+        return;
+      }
       if (e.target.id === 'delay') {
         const previous = settings.auto_accept_delay_ms;
         settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };

@@ -1101,12 +1101,611 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 .team-reveal-close:hover {
   background: rgba(200, 170, 109, 0.16);
 }
+.team-reveal-mute-btn {
+  position: absolute;
+  top: 8px;
+  right: 68px;
+  appearance: none;
+  border: 1px solid rgba(200, 170, 109, 0.4);
+  background: rgba(1, 10, 19, 0.65);
+  color: #c8aa6d;
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  cursor: pointer;
+  z-index: 2;
+}
+.team-reveal-mute-btn:hover {
+  background: rgba(200, 170, 109, 0.16);
+}
+.team-reveal-mute-btn.is-muted {
+  background: rgba(10, 143, 60, 0.25);
+  border-color: #0a8f3c;
+  color: #0acbe6;
+}
+.team-reveal-mute-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.team-reveal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #1e2328;
+  padding-bottom: 8px;
+}
+.drake-map-side {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  line-height: 1.2;
+}
+.drake-map-side.is-blue {
+  background: rgba(10, 203, 230, 0.15);
+  color: #0acbe6;
+  border: 1px solid rgba(10, 203, 230, 0.45);
+  box-shadow: 0 0 8px rgba(10, 203, 230, 0.2);
+}
+.drake-map-side.is-red {
+  background: rgba(195, 60, 60, 0.15);
+  color: #c33c3c;
+  border: 1px solid rgba(195, 60, 60, 0.45);
+  box-shadow: 0 0 8px rgba(195, 60, 60, 0.2);
+}
+.team-reveal-tab {
+  appearance: none;
+  border: 1px solid #3c3c41;
+  background: rgba(1, 10, 19, 0.6);
+  color: #a09b8c;
+  font-family: ${DISPLAY};
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.team-reveal-tab:hover {
+  color: #f0e6d2;
+  border-color: #785a28;
+}
+.team-reveal-tab.is-active,
+.team-reveal-tab[aria-selected='true'] {
+  color: #010a13;
+  background: linear-gradient(to bottom, #c8aa6e, #785a28);
+  border-color: #c8aa6e;
+}
 .team-reveal-panel {
-  max-height: calc(86vh - 36px);
+  max-height: calc(86vh - 84px);
   overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
+}
+.team-reveal-matchup-view {
+  max-height: calc(86vh - 84px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.team-reveal-matchup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #1e2328;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.team-reveal-matchup-champs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.team-reveal-matchup-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.team-reveal-matchup-side-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.team-reveal-matchup-side-name {
+  color: #f0e6d2;
+  font-family: ${DISPLAY};
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.team-reveal-matchup-side-role {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #5c5b57;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.team-reveal-enemy-picker-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(1, 10, 19, 0.65);
+  border: 1px solid #1e2328;
+  flex-wrap: wrap;
+}
+.team-reveal-enemy-picker-label {
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a09b8c;
+  white-space: nowrap;
+}
+.team-reveal-enemy-picker-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.team-reveal-enemy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 4px;
+  background: #010a13;
+  color: #a09b8c;
+  border: 1px solid #3c3c41;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+.team-reveal-enemy-chip:hover {
+  border-color: #785a28;
+  color: #f0e6d2;
+  background: #1e2328;
+}
+.team-reveal-enemy-chip.is-selected {
+  border-color: #c8aa6e;
+  color: #f0e6d2;
+  background: linear-gradient(to bottom, #1e2328, #342a1d);
+  box-shadow: 0 0 8px rgba(200, 170, 110, 0.4), inset 0 0 4px rgba(200, 170, 110, 0.15);
+}
+.team-reveal-enemy-chip-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #785a28;
+  object-fit: cover;
+  display: block;
+}
+.team-reveal-enemy-chip.is-selected .team-reveal-enemy-chip-icon {
+  border-color: #c8aa6e;
+}
+.team-reveal-enemy-chip-auto-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+.team-reveal-enemy-chip-name {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.team-reveal-enemy-picker-empty {
+  color: #5c5b57;
+  font-size: 11px;
+  font-style: italic;
+}
+.team-reveal-matchup-champ-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #785a28;
+  object-fit: cover;
+}
+.team-reveal-matchup-champ-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px dashed #3c3c41;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5c5b57;
+  font-weight: 700;
+  font-size: 16px;
+}
+.team-reveal-matchup-vs {
+  font-family: ${DISPLAY};
+  font-size: 12px;
+  font-weight: 700;
+  color: #c8aa6e;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border: 1px solid #785a28;
+  background: rgba(1, 10, 19, 0.7);
+}
+.team-reveal-matchup-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.team-reveal-matchup-wr {
+  color: #f0e6d2;
+  font-family: ${DISPLAY};
+  font-size: 13px;
+  font-weight: 700;
+}
+.team-reveal-advantage {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
+.team-reveal-advantage.is-advantage {
+  background: rgba(10, 203, 230, 0.15);
+  color: #0acbe6;
+  border: 1px solid rgba(10, 203, 230, 0.4);
+}
+.team-reveal-advantage.is-disadvantage {
+  background: rgba(195, 60, 60, 0.15);
+  color: #c33c3c;
+  border: 1px solid rgba(195, 60, 60, 0.4);
+}
+.team-reveal-advantage.is-even {
+  background: rgba(160, 155, 140, 0.15);
+  color: #a09b8c;
+  border: 1px solid rgba(160, 155, 140, 0.4);
+}
+.team-reveal-matchup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.team-reveal-runes-card,
+.team-reveal-items-card,
+.team-reveal-top-players-card {
+  border: 1px solid #3c3c41;
+  background: linear-gradient(to bottom, rgba(30, 35, 40, 0.35), rgba(0, 0, 0, 0.45));
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.team-reveal-matchup-card-title {
+  color: #c8aa6e;
+  font-family: ${DISPLAY};
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1e2328;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.team-reveal-rune-card-wr {
+  color: #0acbe6;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.team-reveal-rune-slots {
+  display: flex;
+  gap: 6px;
+}
+.team-reveal-rune-slot-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(1, 10, 19, 0.6);
+  border: 1px solid #3c3c41;
+  border-radius: 2px;
+  color: #a09b8c;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+.team-reveal-rune-slot-btn:hover {
+  border-color: #785a28;
+  color: #f0e6d2;
+}
+.team-reveal-rune-slot-btn.is-selected {
+  border-color: #c8aa6e;
+  background: linear-gradient(to bottom, #1e2328, #342a1d);
+  color: #f0e6d2;
+  box-shadow: 0 0 6px rgba(200, 170, 110, 0.3);
+}
+.team-reveal-rune-slot-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1e2328;
+  border: 1px solid #785a28;
+  font-size: 10px;
+  font-weight: 700;
+  color: #c8aa6e;
+}
+.team-reveal-rune-slot-btn.is-selected .team-reveal-rune-slot-num {
+  border-color: #c8aa6e;
+  background: #010a13;
+}
+.team-reveal-rune-slot-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.team-reveal-runes-display {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+.team-reveal-rune-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(120, 90, 40, 0.25);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.team-reveal-rune-tree-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.team-reveal-rune-style-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.team-reveal-rune-style-name {
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #c8aa6e;
+}
+.team-reveal-rune-style-name.shards-title {
+  color: #a09b8c;
+  font-size: 10px;
+}
+.team-reveal-rune-tree-items {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.team-reveal-keystone-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #c8aa6e;
+  padding: 3px 8px 3px 4px;
+  border-radius: 20px;
+}
+.team-reveal-keystone-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #f0e6d2;
+  background: #010a13;
+  object-fit: contain;
+  box-shadow: 0 0 8px rgba(200, 170, 110, 0.45);
+}
+.team-reveal-keystone-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f0e6d2;
+}
+.team-reveal-primary-minors,
+.team-reveal-secondary-minors,
+.team-reveal-shards-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-reveal-perk-slot,
+.team-reveal-shard-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.team-reveal-perk-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #785a28;
+  background: #010a13;
+  object-fit: contain;
+  transition: all 0.15s ease;
+}
+.team-reveal-perk-icon:hover {
+  border-color: #c8aa6e;
+  transform: scale(1.12);
+  box-shadow: 0 0 6px rgba(200, 170, 110, 0.4);
+}
+.team-reveal-shard-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #463714;
+  background: #010a13;
+  object-fit: contain;
+  transition: all 0.15s ease;
+}
+.team-reveal-shard-icon:hover {
+  border-color: #a09b8c;
+  transform: scale(1.1);
+}
+.team-reveal-apply-runes-btn {
+  min-width: 0;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.team-reveal-apply-runes-btn.is-applied {
+  background: rgba(10, 143, 60, 0.25);
+  border-color: #0a8f3c;
+  color: #0acbe6;
+}
+.team-reveal-skills-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.team-reveal-skill-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-family: ${DISPLAY};
+  font-weight: 700;
+  font-size: 12px;
+  color: #f0e6d2;
+  background: #1e2328;
+  border: 1px solid #785a28;
+}
+.team-reveal-skill-arrow {
+  color: #5c5b57;
+  font-size: 11px;
+}
+.team-reveal-items-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.team-reveal-item-badge {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  background: #010a13;
+  border: 1px solid #3c3c41;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.team-reveal-item-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.team-reveal-item-fallback {
+  font-size: 10px;
+  color: #a09b8c;
+}
+.team-reveal-top-players-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.team-reveal-top-players-table th {
+  text-align: left;
+  font-family: ${DISPLAY};
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5c5b57;
+  padding: 4px 6px;
+  border-bottom: 1px solid #1e2328;
+}
+.team-reveal-top-players-table td {
+  padding: 6px;
+  border-bottom: 1px solid rgba(30, 35, 40, 0.4);
+  color: #a09b8c;
+}
+.team-reveal-top-players-table .col-rank {
+  color: #c8aa6e;
+  font-weight: 700;
+  width: 28px;
+}
+.team-reveal-top-players-table .col-name {
+  color: #f0e6d2;
+  font-weight: 600;
+}
+.team-reveal-top-players-table .col-winrate {
+  color: #0acbe6;
+  font-weight: 600;
+}
+.team-reveal-top-players-table .col-action {
+  text-align: right;
+  padding: 4px 6px;
+}
+.team-reveal-view-build-btn {
+  background: rgba(30, 35, 40, 0.8);
+  border: 1px solid #785a28;
+  color: #c8aa6e;
+  font-family: ${DISPLAY};
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.team-reveal-view-build-btn:hover:not(:disabled) {
+  background: rgba(200, 170, 110, 0.15);
+  border-color: #c8aa6e;
+  color: #f0e6d2;
+}
+.team-reveal-view-build-btn.is-viewing {
+  background: rgba(10, 203, 230, 0.15);
+  border-color: #0acbe6;
+  color: #0acbe6;
+}
+.team-reveal-view-build-btn.is-loading {
+  opacity: 0.6;
+  cursor: wait;
+}
+.team-reveal-matchup-empty,
+.team-reveal-matchup-loading,
+.team-reveal-empty-card {
+  padding: 24px;
+  text-align: center;
+  color: #a09b8c;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .team-reveal-card {
   border: 1px solid #3c3c41;

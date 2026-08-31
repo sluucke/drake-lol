@@ -1805,12 +1805,611 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 .team-reveal-close:hover {
   background: rgba(200, 170, 109, 0.16);
 }
+.team-reveal-mute-btn {
+  position: absolute;
+  top: 8px;
+  right: 68px;
+  appearance: none;
+  border: 1px solid rgba(200, 170, 109, 0.4);
+  background: rgba(1, 10, 19, 0.65);
+  color: #c8aa6d;
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  cursor: pointer;
+  z-index: 2;
+}
+.team-reveal-mute-btn:hover {
+  background: rgba(200, 170, 109, 0.16);
+}
+.team-reveal-mute-btn.is-muted {
+  background: rgba(10, 143, 60, 0.25);
+  border-color: #0a8f3c;
+  color: #0acbe6;
+}
+.team-reveal-mute-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.team-reveal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #1e2328;
+  padding-bottom: 8px;
+}
+.drake-map-side {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  line-height: 1.2;
+}
+.drake-map-side.is-blue {
+  background: rgba(10, 203, 230, 0.15);
+  color: #0acbe6;
+  border: 1px solid rgba(10, 203, 230, 0.45);
+  box-shadow: 0 0 8px rgba(10, 203, 230, 0.2);
+}
+.drake-map-side.is-red {
+  background: rgba(195, 60, 60, 0.15);
+  color: #c33c3c;
+  border: 1px solid rgba(195, 60, 60, 0.45);
+  box-shadow: 0 0 8px rgba(195, 60, 60, 0.2);
+}
+.team-reveal-tab {
+  appearance: none;
+  border: 1px solid #3c3c41;
+  background: rgba(1, 10, 19, 0.6);
+  color: #a09b8c;
+  font-family: ${DISPLAY};
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.team-reveal-tab:hover {
+  color: #f0e6d2;
+  border-color: #785a28;
+}
+.team-reveal-tab.is-active,
+.team-reveal-tab[aria-selected='true'] {
+  color: #010a13;
+  background: linear-gradient(to bottom, #c8aa6e, #785a28);
+  border-color: #c8aa6e;
+}
 .team-reveal-panel {
-  max-height: calc(86vh - 36px);
+  max-height: calc(86vh - 84px);
   overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
+}
+.team-reveal-matchup-view {
+  max-height: calc(86vh - 84px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.team-reveal-matchup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #1e2328;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.team-reveal-matchup-champs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.team-reveal-matchup-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.team-reveal-matchup-side-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.team-reveal-matchup-side-name {
+  color: #f0e6d2;
+  font-family: ${DISPLAY};
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.team-reveal-matchup-side-role {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #5c5b57;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.team-reveal-enemy-picker-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(1, 10, 19, 0.65);
+  border: 1px solid #1e2328;
+  flex-wrap: wrap;
+}
+.team-reveal-enemy-picker-label {
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a09b8c;
+  white-space: nowrap;
+}
+.team-reveal-enemy-picker-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.team-reveal-enemy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 4px;
+  background: #010a13;
+  color: #a09b8c;
+  border: 1px solid #3c3c41;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+.team-reveal-enemy-chip:hover {
+  border-color: #785a28;
+  color: #f0e6d2;
+  background: #1e2328;
+}
+.team-reveal-enemy-chip.is-selected {
+  border-color: #c8aa6e;
+  color: #f0e6d2;
+  background: linear-gradient(to bottom, #1e2328, #342a1d);
+  box-shadow: 0 0 8px rgba(200, 170, 110, 0.4), inset 0 0 4px rgba(200, 170, 110, 0.15);
+}
+.team-reveal-enemy-chip-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #785a28;
+  object-fit: cover;
+  display: block;
+}
+.team-reveal-enemy-chip.is-selected .team-reveal-enemy-chip-icon {
+  border-color: #c8aa6e;
+}
+.team-reveal-enemy-chip-auto-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+.team-reveal-enemy-chip-name {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.team-reveal-enemy-picker-empty {
+  color: #5c5b57;
+  font-size: 11px;
+  font-style: italic;
+}
+.team-reveal-matchup-champ-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #785a28;
+  object-fit: cover;
+}
+.team-reveal-matchup-champ-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px dashed #3c3c41;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5c5b57;
+  font-weight: 700;
+  font-size: 16px;
+}
+.team-reveal-matchup-vs {
+  font-family: ${DISPLAY};
+  font-size: 12px;
+  font-weight: 700;
+  color: #c8aa6e;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border: 1px solid #785a28;
+  background: rgba(1, 10, 19, 0.7);
+}
+.team-reveal-matchup-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.team-reveal-matchup-wr {
+  color: #f0e6d2;
+  font-family: ${DISPLAY};
+  font-size: 13px;
+  font-weight: 700;
+}
+.team-reveal-advantage {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
+.team-reveal-advantage.is-advantage {
+  background: rgba(10, 203, 230, 0.15);
+  color: #0acbe6;
+  border: 1px solid rgba(10, 203, 230, 0.4);
+}
+.team-reveal-advantage.is-disadvantage {
+  background: rgba(195, 60, 60, 0.15);
+  color: #c33c3c;
+  border: 1px solid rgba(195, 60, 60, 0.4);
+}
+.team-reveal-advantage.is-even {
+  background: rgba(160, 155, 140, 0.15);
+  color: #a09b8c;
+  border: 1px solid rgba(160, 155, 140, 0.4);
+}
+.team-reveal-matchup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.team-reveal-runes-card,
+.team-reveal-items-card,
+.team-reveal-top-players-card {
+  border: 1px solid #3c3c41;
+  background: linear-gradient(to bottom, rgba(30, 35, 40, 0.35), rgba(0, 0, 0, 0.45));
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.team-reveal-matchup-card-title {
+  color: #c8aa6e;
+  font-family: ${DISPLAY};
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1e2328;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.team-reveal-rune-card-wr {
+  color: #0acbe6;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.team-reveal-rune-slots {
+  display: flex;
+  gap: 6px;
+}
+.team-reveal-rune-slot-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(1, 10, 19, 0.6);
+  border: 1px solid #3c3c41;
+  border-radius: 2px;
+  color: #a09b8c;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+.team-reveal-rune-slot-btn:hover {
+  border-color: #785a28;
+  color: #f0e6d2;
+}
+.team-reveal-rune-slot-btn.is-selected {
+  border-color: #c8aa6e;
+  background: linear-gradient(to bottom, #1e2328, #342a1d);
+  color: #f0e6d2;
+  box-shadow: 0 0 6px rgba(200, 170, 110, 0.3);
+}
+.team-reveal-rune-slot-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1e2328;
+  border: 1px solid #785a28;
+  font-size: 10px;
+  font-weight: 700;
+  color: #c8aa6e;
+}
+.team-reveal-rune-slot-btn.is-selected .team-reveal-rune-slot-num {
+  border-color: #c8aa6e;
+  background: #010a13;
+}
+.team-reveal-rune-slot-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.team-reveal-runes-display {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+.team-reveal-rune-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(120, 90, 40, 0.25);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.team-reveal-rune-tree-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.team-reveal-rune-style-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.team-reveal-rune-style-name {
+  font-family: ${DISPLAY};
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #c8aa6e;
+}
+.team-reveal-rune-style-name.shards-title {
+  color: #a09b8c;
+  font-size: 10px;
+}
+.team-reveal-rune-tree-items {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.team-reveal-keystone-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #c8aa6e;
+  padding: 3px 8px 3px 4px;
+  border-radius: 20px;
+}
+.team-reveal-keystone-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #f0e6d2;
+  background: #010a13;
+  object-fit: contain;
+  box-shadow: 0 0 8px rgba(200, 170, 110, 0.45);
+}
+.team-reveal-keystone-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f0e6d2;
+}
+.team-reveal-primary-minors,
+.team-reveal-secondary-minors,
+.team-reveal-shards-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-reveal-perk-slot,
+.team-reveal-shard-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.team-reveal-perk-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #785a28;
+  background: #010a13;
+  object-fit: contain;
+  transition: all 0.15s ease;
+}
+.team-reveal-perk-icon:hover {
+  border-color: #c8aa6e;
+  transform: scale(1.12);
+  box-shadow: 0 0 6px rgba(200, 170, 110, 0.4);
+}
+.team-reveal-shard-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #463714;
+  background: #010a13;
+  object-fit: contain;
+  transition: all 0.15s ease;
+}
+.team-reveal-shard-icon:hover {
+  border-color: #a09b8c;
+  transform: scale(1.1);
+}
+.team-reveal-apply-runes-btn {
+  min-width: 0;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.team-reveal-apply-runes-btn.is-applied {
+  background: rgba(10, 143, 60, 0.25);
+  border-color: #0a8f3c;
+  color: #0acbe6;
+}
+.team-reveal-skills-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.team-reveal-skill-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-family: ${DISPLAY};
+  font-weight: 700;
+  font-size: 12px;
+  color: #f0e6d2;
+  background: #1e2328;
+  border: 1px solid #785a28;
+}
+.team-reveal-skill-arrow {
+  color: #5c5b57;
+  font-size: 11px;
+}
+.team-reveal-items-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.team-reveal-item-badge {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  background: #010a13;
+  border: 1px solid #3c3c41;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.team-reveal-item-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.team-reveal-item-fallback {
+  font-size: 10px;
+  color: #a09b8c;
+}
+.team-reveal-top-players-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.team-reveal-top-players-table th {
+  text-align: left;
+  font-family: ${DISPLAY};
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5c5b57;
+  padding: 4px 6px;
+  border-bottom: 1px solid #1e2328;
+}
+.team-reveal-top-players-table td {
+  padding: 6px;
+  border-bottom: 1px solid rgba(30, 35, 40, 0.4);
+  color: #a09b8c;
+}
+.team-reveal-top-players-table .col-rank {
+  color: #c8aa6e;
+  font-weight: 700;
+  width: 28px;
+}
+.team-reveal-top-players-table .col-name {
+  color: #f0e6d2;
+  font-weight: 600;
+}
+.team-reveal-top-players-table .col-winrate {
+  color: #0acbe6;
+  font-weight: 600;
+}
+.team-reveal-top-players-table .col-action {
+  text-align: right;
+  padding: 4px 6px;
+}
+.team-reveal-view-build-btn {
+  background: rgba(30, 35, 40, 0.8);
+  border: 1px solid #785a28;
+  color: #c8aa6e;
+  font-family: ${DISPLAY};
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.team-reveal-view-build-btn:hover:not(:disabled) {
+  background: rgba(200, 170, 110, 0.15);
+  border-color: #c8aa6e;
+  color: #f0e6d2;
+}
+.team-reveal-view-build-btn.is-viewing {
+  background: rgba(10, 203, 230, 0.15);
+  border-color: #0acbe6;
+  color: #0acbe6;
+}
+.team-reveal-view-build-btn.is-loading {
+  opacity: 0.6;
+  cursor: wait;
+}
+.team-reveal-matchup-empty,
+.team-reveal-matchup-loading,
+.team-reveal-empty-card {
+  padding: 24px;
+  text-align: center;
+  color: #a09b8c;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .team-reveal-card {
   border: 1px solid #3c3c41;
@@ -2229,15 +2828,15 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     }
     return names;
   }
-  function buildRevealUrl(provider, region, names) {
-    const r = String(region || "").toLowerCase();
+  function buildRevealUrl(provider, region2, names) {
+    const r = String(region2 || "").toLowerCase();
     const encoded = encodeURIComponent(names.join(","));
     if (provider === "opgg") {
       return `https://www.op.gg/multisearch/${r}?summoners=${encoded}`;
     }
     return `https://porofessor.gg/pregame/${r}/${encoded}/soloqueue/season`;
   }
-  function makeReveal({ lcu: lcu2, region, open }) {
+  function makeReveal({ lcu: lcu2, region: region2, open }) {
     return {
       async reveal(provider) {
         let session;
@@ -2250,7 +2849,7 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
         if (names.length === 0) {
           return { ok: false, reason: "you have to be in champ select to reveal a lobby" };
         }
-        open(buildRevealUrl(provider, region, names));
+        open(buildRevealUrl(provider, region2, names));
         return { ok: true, count: names.length };
       }
     };
@@ -2803,7 +3402,35 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
     })}
     <div class="status-actions">
       <button class="hextech-btn hextech-btn-danger" id="dodge">Dodge</button>
-    </div>`;
+    </div>
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: "queue_show_map_side",
+      label: "Show map side in champ select",
+      checked: settings.queue_show_map_side !== false,
+      disabled
+    })}
+
+    <div class="rule"></div>
+
+    ${renderCheckRow({
+      id: "queue_mute_all_in_client",
+      label: "Auto-mute teammates in champ select",
+      checked: !!settings.queue_mute_all_in_client,
+      disabled
+    })}
+
+    <div class="rule"></div>
+
+    <div class="field-head">
+      <label class="field-label" for="queue_auto_message">Auto-send message on chat connect</label>
+    </div>
+    <input class="hextech-input" type="text" id="queue_auto_message" data-setting="queue_auto_message"
+           value="${escapeHtml(settings.queue_auto_message || "")}"
+           placeholder="Message to send when chat connects..."
+           ${disabled ? "disabled" : ""}>`;
   }
   function renderChampionPicker({ id, list, query, selectedId, compact }) {
     const cells = list.map(
@@ -5423,6 +6050,1338 @@ button.bug-report-button[data-drake-toggle]:disabled {
     };
   }
 
+  // src/features/opggMatchup.js
+  var SKILL_INDEX_MAP = {
+    1: "Q",
+    2: "W",
+    3: "E",
+    4: "R"
+  };
+  var MCP_CHAMPION_NAME_MAP = {
+    "Cho'Gath": "CHOGATH",
+    "Kai'Sa": "KAISA",
+    "Kha'Zix": "KHAZIX",
+    "Kog'Maw": "KOG_MAW",
+    "Rek'Sai": "REK_SAI",
+    "Vel'Koz": "VEL_KOZ",
+    "Bel'Veth": "BELVETH",
+    "K'Sante": "KSANTE",
+    Wukong: "MONKEY_KING",
+    MonkeyKing: "MONKEY_KING",
+    "Nunu & Willump": "NUNU",
+    "Nunu and Willump": "NUNU",
+    Nunu: "NUNU",
+    "Renata Glasc": "RENATA",
+    Renata: "RENATA",
+    "Dr. Mundo": "DR_MUNDO",
+    DrMundo: "DR_MUNDO",
+    LeBlanc: "LEBLANC"
+  };
+  function formatMcpChampionName(name) {
+    if (!name && name !== 0) return "";
+    const raw = String(name).trim();
+    if (MCP_CHAMPION_NAME_MAP[raw]) {
+      return MCP_CHAMPION_NAME_MAP[raw];
+    }
+    return raw.replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").toUpperCase();
+  }
+  function normalizeOpggLane(lane) {
+    const normalized = String(lane || "").trim().toUpperCase();
+    switch (normalized) {
+      case "TOP":
+        return "top";
+      case "JUNGLE":
+      case "JG":
+        return "jungle";
+      case "MID":
+      case "MIDDLE":
+        return "mid";
+      case "ADC":
+      case "BOTTOM":
+      case "BOT":
+        return "adc";
+      case "SUPPORT":
+      case "UTILITY":
+      case "SUPP":
+      case "SUP":
+        return "support";
+      default:
+        return normalized.toLowerCase();
+    }
+  }
+  function extractItemIds(raw) {
+    if (!raw) return [];
+    const list = Array.isArray(raw) ? raw : [raw];
+    const itemIds = [];
+    for (const entry of list) {
+      if (typeof entry === "number" || typeof entry === "string" && entry.trim() !== "") {
+        const num = Number(entry);
+        if (Number.isInteger(num) && num > 0) {
+          itemIds.push(num);
+        }
+      } else if (entry && typeof entry === "object") {
+        if (Array.isArray(entry.ids)) {
+          itemIds.push(...extractItemIds(entry.ids));
+        } else if (Array.isArray(entry.item_ids)) {
+          itemIds.push(...extractItemIds(entry.item_ids));
+        } else if (entry.id !== void 0 || entry.item_id !== void 0) {
+          const num = Number(entry.id ?? entry.item_id);
+          if (Number.isInteger(num) && num > 0) {
+            itemIds.push(num);
+          }
+        }
+      }
+    }
+    return itemIds;
+  }
+  function normalizeSkillEntry(entry) {
+    if (typeof entry === "number") {
+      return SKILL_INDEX_MAP[entry] || String(entry);
+    }
+    if (typeof entry === "string") {
+      const trimmed = entry.trim();
+      if (!trimmed) return null;
+      if (trimmed.includes(">") || trimmed.includes(",") || trimmed.includes("/")) {
+        return trimmed.split(/[>,/]/).map((s) => s.trim().toUpperCase()).filter(Boolean);
+      }
+      return trimmed.toUpperCase();
+    }
+    if (entry && typeof entry === "object") {
+      const val = entry.id ?? entry.key ?? entry.name ?? entry.skill;
+      return val !== void 0 ? normalizeSkillEntry(val) : null;
+    }
+    return null;
+  }
+  function extractSkills(target) {
+    const rawSkills = target?.skills ?? target?.skill_masteries ?? target?.skill_order ?? target?.skill_builds ?? target?.skill_levels;
+    if (!rawSkills) return [];
+    const rawList = Array.isArray(rawSkills) ? rawSkills : [rawSkills];
+    const out = [];
+    for (const item of rawList) {
+      if (item && typeof item === "object" && (Array.isArray(item.order) || Array.isArray(item.ids) || Array.isArray(item.skills))) {
+        const subList = item.order || item.ids || item.skills;
+        for (const sub of subList) {
+          const normalized = normalizeSkillEntry(sub);
+          if (Array.isArray(normalized)) {
+            out.push(...normalized);
+          } else if (normalized) {
+            out.push(normalized);
+          }
+        }
+        if (out.length > 0) break;
+      } else {
+        const normalized = normalizeSkillEntry(item);
+        if (Array.isArray(normalized)) {
+          out.push(...normalized);
+        } else if (normalized) {
+          out.push(normalized);
+        }
+      }
+    }
+    return out;
+  }
+  function extractRunePages(target) {
+    const rawRunes = target?.runes ?? target?.rune_pages ?? target?.rune_builds ?? target?.rune;
+    if (!rawRunes) return [];
+    const list = Array.isArray(rawRunes) ? rawRunes : [rawRunes];
+    const pages = [];
+    for (const runeObj of list) {
+      if (!runeObj || typeof runeObj !== "object") continue;
+      const primaryStyleId = Number(
+        runeObj.primaryStyleId ?? runeObj.primary_style_id ?? runeObj.primary_page_id ?? runeObj.page_id ?? runeObj.primary_page?.id ?? runeObj.primary_style?.id
+      ) || 0;
+      const subStyleId = Number(
+        runeObj.subStyleId ?? runeObj.sub_style_id ?? runeObj.secondary_style_id ?? runeObj.secondary_page_id ?? runeObj.secondary_page?.id ?? runeObj.secondary_style?.id
+      ) || 0;
+      let perkList = [];
+      const directPerks = runeObj.selectedPerkIds ?? runeObj.selected_perk_ids ?? runeObj.perk_ids;
+      if (Array.isArray(directPerks)) {
+        perkList = directPerks;
+      } else {
+        const primaryRunes = runeObj.primary_rune_ids ?? runeObj.primary_perk_ids ?? runeObj.primary_runes ?? [];
+        const secondaryRunes = runeObj.secondary_rune_ids ?? runeObj.secondary_perk_ids ?? runeObj.secondary_runes ?? [];
+        const statMods = runeObj.stat_mod_ids ?? runeObj.stat_mods ?? runeObj.stat_shards ?? runeObj.shard_ids ?? [];
+        perkList = [...extractItemIds(primaryRunes), ...extractItemIds(secondaryRunes), ...extractItemIds(statMods)];
+      }
+      const selectedPerkIds = perkList.map((id) => typeof id === "object" && id ? Number(id.id ?? id.perk_id) : Number(id)).filter((id) => Number.isInteger(id) && id > 0);
+      if (primaryStyleId > 0 && subStyleId > 0 && selectedPerkIds.length > 0) {
+        const winRate = extractWinRate(runeObj);
+        pages.push({
+          primaryStyleId,
+          subStyleId,
+          selectedPerkIds,
+          winRate
+        });
+      }
+    }
+    return pages;
+  }
+  function extractWinRate(target) {
+    const raw = target?.win_rate ?? target?.winRate ?? target?.summary?.win_rate ?? target?.summary?.winRate ?? target?.play?.win_rate ?? target?.play?.winRate ?? target?.meta?.win_rate ?? target?.meta?.winRate;
+    if (raw !== void 0 && raw !== null) {
+      const parsed = typeof raw === "string" ? parseFloat(raw) : Number(raw);
+      if (!Number.isNaN(parsed)) {
+        const pct = parsed > 0 && parsed <= 1 ? parsed * 100 : parsed;
+        return Math.round(pct * 100) / 100;
+      }
+    }
+    const win = target?.win ?? target?.wins ?? target?.summary?.win ?? target?.summary?.wins;
+    const play = target?.play ?? target?.play_count ?? target?.total_matches ?? target?.totalMatches ?? target?.games ?? target?.summary?.play ?? target?.summary?.total_matches;
+    if (typeof win === "number" && typeof play === "number" && play > 0) {
+      const pct = win / play * 100;
+      return Math.round(pct * 100) / 100;
+    }
+    return null;
+  }
+  function extractTotalMatches(target) {
+    const raw = target?.total_matches ?? target?.totalMatches ?? target?.match_count ?? target?.play_count ?? target?.play ?? target?.games ?? target?.summary?.total_matches ?? target?.summary?.totalMatches ?? target?.summary?.play ?? target?.summary?.match_count ?? target?.meta?.total_matches ?? target?.meta?.play;
+    if (raw !== void 0 && raw !== null) {
+      const num = Number.parseInt(raw, 10);
+      if (!Number.isNaN(num) && num >= 0) {
+        return num;
+      }
+    }
+    return null;
+  }
+  var STYLE_NAME_TO_ID = {
+    precision: 8e3,
+    domination: 8100,
+    sorcery: 8200,
+    inspiration: 8300,
+    resolve: 8400
+  };
+  function resolveStyleId(rawNameOrId) {
+    if (!rawNameOrId) return 0;
+    const num = Number(rawNameOrId);
+    if ([8e3, 8100, 8200, 8300, 8400].includes(num)) return num;
+    const key = String(rawNameOrId).trim().toLowerCase();
+    return STYLE_NAME_TO_ID[key] || 0;
+  }
+  function extractMcpRunePages(text) {
+    if (!text || typeof text !== "string") return [];
+    const pages = [];
+    const runeBlockRegex = /Runes\(([\s\S]*?)\)(?=[,\)\s]|$)/gi;
+    let match;
+    while ((match = runeBlockRegex.exec(text)) !== null) {
+      const content = match[1];
+      const arrayMatches = [...content.matchAll(/\[([^\]]*)\]/g)];
+      if (arrayMatches.length < 2) continue;
+      const numberArrays = arrayMatches.map(
+        (m) => m[1].split(",").map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0)
+      ).filter((arr) => arr.length > 0);
+      if (numberArrays.length < 2) continue;
+      const primaryPerks = numberArrays[0];
+      const subPerks = numberArrays[1];
+      const statMods = numberArrays[2] || [];
+      const stringMatches = [...content.matchAll(/["']([^"']+)["']/g)].map((m) => m[1]);
+      let primaryStyleId = 0;
+      let primaryStyleName = "";
+      let subStyleId = 0;
+      let subStyleName = "";
+      if (stringMatches.length >= 2) {
+        primaryStyleName = stringMatches[0];
+        primaryStyleId = resolveStyleId(primaryStyleName);
+        subStyleName = stringMatches[1];
+        subStyleId = resolveStyleId(subStyleName);
+      }
+      if (!primaryStyleId || !subStyleId) {
+        const styleIdMatches = [...content.matchAll(/\b(8000|8100|8200|8300|8400)\b/g)].map(
+          (m) => Number(m[1])
+        );
+        if (styleIdMatches.length >= 2) {
+          if (!primaryStyleId) primaryStyleId = styleIdMatches[0];
+          if (!subStyleId) subStyleId = styleIdMatches[1];
+        } else if (styleIdMatches.length === 1 && !primaryStyleId) {
+          primaryStyleId = styleIdMatches[0];
+        }
+      }
+      let winRate = null;
+      let totalPlays = null;
+      const statsMatch = content.match(/,\s*(\d{1,8})\s*,\s*(\d{1,8})\s*,\s*([0-9.]+)\s*$/);
+      if (statsMatch) {
+        totalPlays = Number(statsMatch[1]);
+        const rawWr = Number(statsMatch[3]);
+        if (rawWr > 0 && rawWr <= 1) {
+          winRate = Math.round(rawWr * 1e3) / 10;
+        } else if (rawWr > 1 && rawWr <= 100) {
+          winRate = Math.round(rawWr * 10) / 10;
+        }
+      } else {
+        const decimalMatch = content.match(/(?:,\s*|\b)(0\.\d{2,6}|[1-9]\d?\.\d{1,2})\b/);
+        if (decimalMatch) {
+          const val = Number(decimalMatch[1]);
+          if (val > 0 && val <= 1) {
+            winRate = Math.round(val * 1e3) / 10;
+          } else if (val > 1 && val <= 100) {
+            winRate = Math.round(val * 10) / 10;
+          }
+        }
+      }
+      if (primaryStyleId > 0 && subStyleId > 0 && primaryPerks.length > 0) {
+        pages.push({
+          primaryStyleId,
+          primaryStyleName,
+          subStyleId,
+          subStyleName,
+          selectedPerkIds: [...primaryPerks, ...subPerks, ...statMods],
+          winRate,
+          totalPlays
+        });
+      }
+    }
+    return pages;
+  }
+  function parseOpggMcpAnalysis(text, { championId, enemyChampionId } = {}) {
+    const emptyResult = {
+      winRate: null,
+      totalMatches: null,
+      isCounterMatchup: false,
+      skills: [],
+      coreItems: [],
+      startingItems: [],
+      runes: null,
+      runePages: [],
+      hasData: false
+    };
+    if (!text || typeof text !== "string") {
+      return emptyResult;
+    }
+    const runePages = extractMcpRunePages(text);
+    const runes = runePages[0] || null;
+    let coreItems = [];
+    const allCoreMatches = [...text.matchAll(/CoreItems\(\[([\d,\s]+)\]/gi)];
+    if (allCoreMatches.length > 0) {
+      let best = [];
+      for (const cm of allCoreMatches) {
+        const items = cm[1].split(",").map((s) => Number(s.trim())).filter((n) => n > 0);
+        if (items.length > best.length) {
+          best = items;
+        }
+      }
+      coreItems = best;
+    }
+    let skills = [];
+    const skillsMatch = text.match(/SkillMasteries\(\[([^\]]+)\]/i) || text.match(/Skills\(\[([^\]]+)\]/i) || text.match(/SkillOrder\(\[([^\]]+)\]/i);
+    if (skillsMatch) {
+      skills = skillsMatch[1].split(",").map((s) => {
+        const clean = s.trim().replace(/^['"]|['"]$/g, "");
+        const num = Number(clean);
+        if (Number.isInteger(num) && SKILL_INDEX_MAP[num]) {
+          return SKILL_INDEX_MAP[num];
+        }
+        return clean.toUpperCase();
+      }).filter((s) => ["Q", "W", "E", "R"].includes(s));
+    }
+    let winRate = null;
+    let totalMatches = null;
+    let isCounterMatchup = false;
+    if (enemyChampionId && Number(enemyChampionId) > 0) {
+      const targetEnemyId = Number(enemyChampionId);
+      const counterRegex = /StrongCounter\((\d+),\s*"([^"]*)",\s*(\d+),\s*(\d+),\s*([0-9.]+),\s*([0-9.]+)/g;
+      let cm;
+      while ((cm = counterRegex.exec(text)) !== null) {
+        if (Number(cm[1]) === targetEnemyId) {
+          totalMatches = Number(cm[3]);
+          winRate = Math.round(Number(cm[5]) * 1e3) / 10;
+          isCounterMatchup = true;
+          break;
+        }
+      }
+    }
+    if (winRate === null) {
+      const avgStatsMatch = text.match(/AverageStats\((\d+),\s*([0-9.]+)/i);
+      if (avgStatsMatch) {
+        totalMatches = Number(avgStatsMatch[1]);
+        winRate = Math.round(Number(avgStatsMatch[2]) * 1e3) / 10;
+      }
+    }
+    const hasData = Boolean(
+      winRate !== null || totalMatches !== null || skills.length > 0 || coreItems.length > 0 || runes !== null
+    );
+    return {
+      winRate,
+      totalMatches,
+      isCounterMatchup,
+      skills,
+      coreItems,
+      startingItems: [],
+      runes,
+      runePages,
+      hasData
+    };
+  }
+  function normalizeOpggMatchup(rawJson, { championId, enemyChampionId } = {}) {
+    const emptyResult = {
+      winRate: null,
+      totalMatches: null,
+      skills: [],
+      coreItems: [],
+      startingItems: [],
+      runes: null,
+      runePages: [],
+      hasData: false
+    };
+    if (!rawJson || typeof rawJson !== "object") {
+      return emptyResult;
+    }
+    if (typeof rawJson.text === "string") {
+      return parseOpggMcpAnalysis(rawJson.text, { championId, enemyChampionId });
+    }
+    if (Array.isArray(rawJson.result?.content) && rawJson.result.content[0]?.text) {
+      return parseOpggMcpAnalysis(rawJson.result.content[0].text, { championId, enemyChampionId });
+    }
+    let target = rawJson.data ?? rawJson;
+    if (Array.isArray(target)) {
+      if (enemyChampionId) {
+        const match = target.find((item) => {
+          const id = Number(item?.opponent_champion_id ?? item?.champion_id ?? item?.enemy_champion_id);
+          return id === Number(enemyChampionId);
+        });
+        target = match || target[0] || {};
+      } else {
+        target = target[0] || {};
+      }
+    }
+    if (!target || typeof target !== "object") {
+      return emptyResult;
+    }
+    const winRate = extractWinRate(target);
+    const totalMatches = extractTotalMatches(target);
+    const skills = extractSkills(target);
+    const rawCore = target.core_items ?? target.coreItems ?? target.core_item_builds ?? target.item_builds ?? target.items;
+    const coreItems = extractItemIds(rawCore);
+    const rawStarting = target.starter_items ?? target.starting_items ?? target.startingItems ?? target.starter_item_builds ?? target.start_items;
+    const startingItems = extractItemIds(rawStarting);
+    const runePages = extractRunePages(target);
+    const runes = runePages[0] || null;
+    const hasData = Boolean(
+      winRate !== null || totalMatches !== null || skills.length > 0 || coreItems.length > 0 || startingItems.length > 0 || runes !== null
+    );
+    return {
+      winRate,
+      totalMatches,
+      skills,
+      coreItems,
+      startingItems,
+      runes,
+      runePages,
+      hasData
+    };
+  }
+  var TAG = "[Drake]";
+  var OP_GG_MCP_URL = "https://mcp-api.op.gg/mcp";
+  async function fetchOpggMatchup({
+    championId,
+    championName: championName2,
+    lane,
+    enemyChampionId,
+    region: region2 = "global",
+    fetchFn = globalThis.fetch,
+    timeout = 6e3
+  } = {}) {
+    if (typeof fetchFn !== "function") {
+      return normalizeOpggMatchup(null, { championId, enemyChampionId });
+    }
+    const mcpName = formatMcpChampionName(championName2 || championId);
+    const mcpPosition = normalizeOpggLane(lane);
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller && timeout > 0 ? setTimeout(() => controller.abort(), timeout) : null;
+    console.log(TAG, `fetching OP.GG matchup via MCP API: ${mcpName} (${mcpPosition || "auto"}) vs ${enemyChampionId || "all"}`);
+    const primaryPos = mcpPosition && mcpPosition !== "none" && mcpPosition !== "unknown" ? mcpPosition : "";
+    const positionsToTry = primaryPos ? [primaryPos, ...["jungle", "top", "mid", "adc", "support"].filter((p) => p !== primaryPos)] : ["jungle", "mid", "top", "adc", "support"];
+    try {
+      for (const pos of positionsToTry) {
+        if (controller?.signal?.aborted) break;
+        try {
+          const res = await fetchFn(OP_GG_MCP_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "tools/call",
+              params: {
+                name: "lol_get_champion_analysis",
+                arguments: {
+                  game_mode: "ranked",
+                  champion: mcpName,
+                  position: pos,
+                  lang: "en_US"
+                }
+              }
+            }),
+            signal: controller?.signal
+          });
+          if (res && res.ok) {
+            const data = await res.json();
+            const contentText = data?.result?.content?.[0]?.text || "";
+            if (contentText) {
+              let parsed = parseOpggMcpAnalysis(contentText, { championId, enemyChampionId });
+              if (parsed.hasData && enemyChampionId && Number(enemyChampionId) > 0) {
+                try {
+                  const guideRes = await fetchFn(OP_GG_MCP_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      jsonrpc: "2.0",
+                      id: 2,
+                      method: "tools/call",
+                      params: {
+                        name: "lol_get_lane_matchup_guide",
+                        arguments: {
+                          my_champion: mcpName,
+                          opponent_champion: formatMcpChampionName(enemyChampionId),
+                          position: pos,
+                          lang: "en_US"
+                        }
+                      }
+                    }),
+                    signal: controller?.signal
+                  });
+                  if (guideRes && guideRes.ok) {
+                    const guideData = await guideRes.json();
+                    const guideText = guideData?.result?.content?.[0]?.text || "";
+                    if (guideText) {
+                      const parsedGuide = JSON.parse(guideText);
+                      const guideRunes = extractRunePages(parsedGuide.data);
+                      if (guideRunes.length > 0) {
+                        parsed.runePages = guideRunes;
+                        parsed.runes = guideRunes[0];
+                      }
+                    }
+                  }
+                } catch {
+                }
+              }
+              if (parsed.hasData) {
+                console.log(
+                  TAG,
+                  `OP.GG matchup loaded: ${mcpName} (${pos}) vs ${enemyChampionId || "all"} (${parsed.winRate != null ? `${parsed.winRate}% WR` : "no WR"})`
+                );
+                return parsed;
+              }
+            }
+          }
+        } catch (innerErr) {
+          if (controller?.signal?.aborted) break;
+        }
+      }
+      return normalizeOpggMatchup(null, { championId, enemyChampionId });
+    } catch (err) {
+      console.warn(TAG, "OP.GG fetch error:", err?.message || err);
+      return normalizeOpggMatchup(null, { championId, enemyChampionId });
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
+  }
+
+  // src/features/leagueOfGraphs.js
+  var CHAMPION_ALIAS_MAP = {
+    wukong: "monkeyking",
+    monkeyking: "monkeyking",
+    "nunu & willump": "nunu",
+    "nunu and willump": "nunu",
+    nunuwillump: "nunu",
+    nunowillump: "nunu",
+    nunu: "nunu",
+    "renata glasc": "renata",
+    renataglasc: "renata",
+    renata: "renata"
+  };
+  var MCP_CHAMPION_NAME_MAP2 = {
+    "Cho'Gath": "CHOGATH",
+    "Kai'Sa": "KAISA",
+    "Kha'Zix": "KHAZIX",
+    "Kog'Maw": "KOG_MAW",
+    "Rek'Sai": "REK_SAI",
+    "Vel'Koz": "VEL_KOZ",
+    "Bel'Veth": "BELVETH",
+    "K'Sante": "KSANTE",
+    Wukong: "MONKEY_KING",
+    MonkeyKing: "MONKEY_KING",
+    "Nunu & Willump": "NUNU",
+    "Nunu and Willump": "NUNU",
+    Nunu: "NUNU",
+    "Renata Glasc": "RENATA",
+    Renata: "RENATA",
+    "Dr. Mundo": "DR_MUNDO",
+    DrMundo: "DR_MUNDO",
+    LeBlanc: "LEBLANC"
+  };
+  function formatMcpChampionName2(name) {
+    if (!name && name !== 0) return "";
+    const raw = String(name).trim();
+    if (MCP_CHAMPION_NAME_MAP2[raw]) {
+      return MCP_CHAMPION_NAME_MAP2[raw];
+    }
+    return raw.replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").toUpperCase();
+  }
+  function normalizeChampionSlug(championName2) {
+    if (!championName2 && championName2 !== 0) return "";
+    const raw = String(championName2).trim().toLowerCase();
+    if (!raw) return "";
+    if (CHAMPION_ALIAS_MAP[raw]) {
+      return CHAMPION_ALIAS_MAP[raw];
+    }
+    const stripped = raw.replace(/[^a-z0-9]/g, "");
+    if (CHAMPION_ALIAS_MAP[stripped]) {
+      return CHAMPION_ALIAS_MAP[stripped];
+    }
+    return stripped;
+  }
+  function normalizeLeagueOfGraphsLane(lane) {
+    const normalized = String(lane || "").trim().toUpperCase();
+    switch (normalized) {
+      case "TOP":
+        return "top";
+      case "JUNGLE":
+      case "JG":
+        return "jungle";
+      case "MID":
+      case "MIDDLE":
+        return "middle";
+      case "ADC":
+      case "BOTTOM":
+      case "BOT":
+        return "adc";
+      case "SUPPORT":
+      case "UTILITY":
+      case "SUPP":
+      case "SUP":
+        return "support";
+      default:
+        return normalized.toLowerCase();
+    }
+  }
+  function stripHtml(html) {
+    if (!html) return "";
+    return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "").replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/\s+/g, " ").trim();
+  }
+  function extractRegionFromText(text) {
+    if (!text) return "";
+    const match = text.match(/\b(EUW|KR|NA|EUNE|BR|LAN|LAS|OCE|TR|RU|JP|VN|TW|SG|TH|PH|MEA)\b/i);
+    return match ? match[1].toUpperCase() : "";
+  }
+  function extractTierFromText(text) {
+    if (!text) return null;
+    const match = text.match(/\b(Challenger|GrandMaster|Grandmaster|Master|Diamond|Emerald|Platinum|Gold|Silver|Bronze|Iron)\b/i);
+    if (!match) return null;
+    const tier = match[1];
+    if (tier.toLowerCase() === "grandmaster") return "GrandMaster";
+    return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase();
+  }
+  function parseMcpLeaderboard(text, defaultRegion = "KR") {
+    if (typeof text !== "string" || !text.trim()) {
+      return [];
+    }
+    const regionUpper = String(defaultRegion || "KR").toUpperCase();
+    const playerRegex = /Leaderboard\((\d+),Summoner\(\d+,"[^"]*","[^"]*","[^"]*","([^"]*)","([^"]*)",[^,]*,"[^"]*","[^"]*",\d+,"[^"]*",\[LeagueStat\("[^"]*",TierInfo\("([^"]*)",(\d+),(\d+),[^)]*\),(\d+),(\d+),/g;
+    let pm;
+    const players = [];
+    while ((pm = playerRegex.exec(text)) !== null) {
+      if (players.length >= 5) break;
+      const rank = Number(pm[1]);
+      const name = pm[2];
+      const tag = pm[3];
+      const tierName = pm[4];
+      const div = Number(pm[5]);
+      const lp = Number(pm[6]);
+      const wins = Number(pm[7]) || 0;
+      const losses = Number(pm[8]) || 0;
+      const total = wins + losses;
+      const winRate = total > 0 ? Math.round(wins / total * 1e3) / 10 : null;
+      const tierFormatted = tierName.charAt(0).toUpperCase() + tierName.slice(1).toLowerCase();
+      const riotId = tag ? `${name}#${tag}` : name;
+      players.push({
+        ranking: rank,
+        name: riotId,
+        region: regionUpper,
+        tier: `${tierFormatted} ${div} (${lp} LP)`,
+        winRate,
+        played: total > 0 ? total : null
+      });
+    }
+    return players;
+  }
+  function parseTopPlayers(htmlText) {
+    if (typeof htmlText !== "string" || !htmlText.trim()) {
+      return [];
+    }
+    if (htmlText.includes("Leaderboard(") && htmlText.includes("Summoner(")) {
+      return parseMcpLeaderboard(htmlText);
+    }
+    const rowMatches = htmlText.match(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi);
+    if (!rowMatches) {
+      return [];
+    }
+    const players = [];
+    for (const rowHtml of rowMatches) {
+      if (players.length >= 5) break;
+      if (/<th\b[^>]*>/i.test(rowHtml) && !/<td\b[^>]*>/i.test(rowHtml)) {
+        continue;
+      }
+      const rankAttrMatch = rowHtml.match(/data-ranking=["']?(\d+)["']?/i);
+      const rankCellMatch = rowHtml.match(/<td[^>]*class=["'][^"']*rank[^"']*["'][^>]*>([\s\S]*?)<\/td>/i);
+      let ranking = null;
+      if (rankAttrMatch) {
+        ranking = parseInt(rankAttrMatch[1], 10);
+      } else if (rankCellMatch) {
+        const num = parseInt(stripHtml(rankCellMatch[1]), 10);
+        if (!Number.isNaN(num) && num > 0) {
+          ranking = num;
+        }
+      }
+      let name = "";
+      let region2 = "";
+      const nameCellMatch = rowHtml.match(/<a[^>]*href=["'][^"']*\/summoner\/([^"'/]+)\/([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i) || rowHtml.match(/<a[^>]*href=["'][^"']*\/summoner\/([^"'/]+)\/([^"']+)["']/i);
+      if (nameCellMatch) {
+        region2 = (nameCellMatch[1] || "").toUpperCase();
+        name = decodeURIComponent(nameCellMatch[2] || "").replace(/\+/g, " ").replace(/-/g, "#");
+        if (!name && nameCellMatch[3]) {
+          name = stripHtml(nameCellMatch[3]);
+        }
+      } else {
+        const summonerNameSpan = rowHtml.match(/<span[^>]*class=["'][^"']*name[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+        if (summonerNameSpan) {
+          name = stripHtml(summonerNameSpan[1]);
+        }
+      }
+      if (!name) {
+        const tdList = rowHtml.match(/<td\b[^>]*>([\s\S]*?)<\/td>/gi) || [];
+        for (const td of tdList) {
+          const text = stripHtml(td);
+          if (text && !/^\d+$/.test(text) && !/^\d+(\.\d+)?%$/.test(text) && !extractTierFromText(text)) {
+            name = text;
+            break;
+          }
+        }
+      }
+      if (!region2) {
+        region2 = extractRegionFromText(rowHtml) || "GLOBAL";
+      }
+      const tier = extractTierFromText(rowHtml);
+      let winRate = null;
+      const wrMatch = rowHtml.match(/(\d+(?:\.\d+)?)\s*%/);
+      if (wrMatch) {
+        winRate = parseFloat(wrMatch[1]);
+      }
+      let totalGames = null;
+      const gamesCellMatch = rowHtml.match(/<td[^>]*class=["'][^"']*games[^"']*["'][^>]*>([\s\S]*?)<\/td>/i);
+      if (gamesCellMatch) {
+        const num = parseInt(stripHtml(gamesCellMatch[1]).replace(/[^\d]/g, ""), 10);
+        if (!Number.isNaN(num) && num > 0) {
+          totalGames = num;
+        }
+      }
+      if (totalGames === null) {
+        const gamesMatch = rowHtml.match(/(\d+)\s*(?:played|games|wins|matches)/i);
+        if (gamesMatch) {
+          totalGames = parseInt(gamesMatch[1], 10);
+        }
+      }
+      if (name) {
+        players.push({
+          ranking: ranking || players.length + 1,
+          name,
+          region: region2,
+          tier,
+          winRate,
+          played: totalGames
+        });
+      }
+    }
+    return players;
+  }
+  function parseProBuilds(htmlText) {
+    const emptyBuild = {
+      items: [],
+      skills: [],
+      winRate: null
+    };
+    if (typeof htmlText !== "string" || !htmlText.trim()) {
+      return emptyBuild;
+    }
+    const items = [];
+    const itemMatches = htmlText.match(/data-item-id=["']?(\d+)["']?/gi) || htmlText.match(/\/(\d{4,6})\.png/gi) || htmlText.match(/items?\/[^\s"']*?(\d{4,6})\.png/gi) || [];
+    for (const m of itemMatches) {
+      const num = parseInt(m.replace(/[^\d]/g, ""), 10);
+      if (Number.isInteger(num) && num > 0 && !items.includes(num)) {
+        items.push(num);
+        if (items.length >= 6) break;
+      }
+    }
+    const skills = [];
+    const skillOrderSection = htmlText.match(/class=["'][^"']*skills?-?order[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) || htmlText.match(/class=["'][^"']*skill-priority[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+    const searchSource = skillOrderSection ? skillOrderSection[1] : htmlText;
+    const skillMatches = searchSource.match(/\b([QWER])\b/g);
+    if (skillMatches) {
+      for (const letter of skillMatches) {
+        if (!skills.includes(letter)) {
+          skills.push(letter);
+        }
+        if (skills.length >= 3) break;
+      }
+    }
+    let winRate = null;
+    const wrMatch = htmlText.match(/class=["'][^"']*(?:coreItems|proBuilds|build)[^"']*["'][\s\S]*?class=["'][^"']*win[rR]ate[^"']*["'][^>]*>([\s\S]*?)<\/(?:span|div)>/i) || htmlText.match(/class=["'][^"']*win[rR]ate[^"']*["'][^>]*>([\s\S]*?)<\/(?:span|div)>/i);
+    if (wrMatch) {
+      const num = parseFloat(stripHtml(wrMatch[1]).replace("%", "").trim());
+      if (!Number.isNaN(num)) {
+        winRate = num;
+      }
+    }
+    return {
+      items,
+      skills,
+      winRate
+    };
+  }
+  function buildLeagueOfGraphsUrl(options) {
+    const championName2 = options?.championName;
+    const lane = options?.lane;
+    const slug = normalizeChampionSlug(championName2);
+    if (!slug) return "";
+    const lanePath = normalizeLeagueOfGraphsLane(lane);
+    if (lanePath) {
+      return `https://www.leagueofgraphs.com/champions/builds/${slug}/${lanePath}`;
+    }
+    return `https://www.leagueofgraphs.com/champions/builds/${slug}`;
+  }
+  var TAG2 = "[Drake]";
+  var OP_GG_MCP_URL2 = "https://mcp-api.op.gg/mcp";
+  async function fetchLeagueOfGraphsData(options) {
+    const championName2 = options?.championName;
+    const lane = options?.lane;
+    const fetchFn = options?.fetchFn !== void 0 ? options.fetchFn : globalThis.fetch;
+    const timeout = options?.timeout ?? 6e3;
+    const emptyResult = {
+      topPlayers: [],
+      proBuild: {
+        items: [],
+        skills: [],
+        winRate: null
+      },
+      hasData: false
+    };
+    if (typeof fetchFn !== "function" || !championName2) {
+      return emptyResult;
+    }
+    const url = buildLeagueOfGraphsUrl({ championName: championName2, lane });
+    if (!url) {
+      return emptyResult;
+    }
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller && timeout > 0 ? setTimeout(() => controller.abort(), timeout) : null;
+    console.log(TAG2, `fetching League of Graphs: ${url}`);
+    try {
+      const res = await fetchFn(url, {
+        signal: controller?.signal
+      });
+      if (!res || !res.ok) {
+        console.warn(TAG2, `League of Graphs returned status ${res?.status} for:`, url);
+        const mcpName = formatMcpChampionName2(championName2);
+        if (mcpName) {
+          try {
+            const mcpRes = await fetchFn(OP_GG_MCP_URL2, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                id: 2,
+                method: "tools/call",
+                params: {
+                  name: "lol_list_champion_leaderboard",
+                  arguments: { champion: mcpName, region: "kr" }
+                }
+              }),
+              signal: controller?.signal
+            });
+            if (mcpRes && mcpRes.ok && typeof mcpRes.json === "function") {
+              const data = await mcpRes.json();
+              const text = data?.result?.content?.[0]?.text || "";
+              const topPlayers2 = parseMcpLeaderboard(text);
+              if (topPlayers2.length > 0) {
+                console.log(TAG2, `fallback leaderboard loaded: ${championName2} - ${topPlayers2.length} top players`);
+                return {
+                  topPlayers: topPlayers2,
+                  proBuild: { items: [], skills: [], winRate: null },
+                  hasData: true
+                };
+              }
+            }
+          } catch {
+          }
+        }
+        return emptyResult;
+      }
+      const htmlText = await res.text();
+      const topPlayers = parseTopPlayers(htmlText);
+      const proBuild = parseProBuilds(htmlText);
+      const hasData = Boolean(
+        topPlayers.length > 0 || proBuild.items.length > 0 || proBuild.skills.length > 0 || proBuild.winRate !== null
+      );
+      console.log(
+        TAG2,
+        `League of Graphs loaded: ${championName2} (${lane || "all"}) - ${topPlayers.length} top players`
+      );
+      return {
+        topPlayers,
+        proBuild,
+        hasData
+      };
+    } catch (err) {
+      console.warn(TAG2, "League of Graphs fetch error:", err?.message || err);
+      return emptyResult;
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
+  }
+
+  // src/features/runes.js
+  var RUNES_PAGES_ROUTE = "/lol-perks/v1/pages";
+  var STYLE_NAMES = {
+    8e3: "Precision",
+    8100: "Domination",
+    8200: "Sorcery",
+    8300: "Inspiration",
+    8400: "Resolve"
+  };
+  var STYLE_ICONS = {
+    8e3: "/lol-game-data/assets/v1/perk-images/Styles/7201_Precision.png",
+    8100: "/lol-game-data/assets/v1/perk-images/Styles/7200_Domination.png",
+    8200: "/lol-game-data/assets/v1/perk-images/Styles/7202_Sorcery.png",
+    8300: "/lol-game-data/assets/v1/perk-images/Styles/7203_Whimsy.png",
+    8400: "/lol-game-data/assets/v1/perk-images/Styles/7204_Resolve.png"
+  };
+  var PERK_PATHS = {
+    // Precision
+    8005: "perk-images/Styles/Precision/PressTheAttack/PressTheAttack.png",
+    8008: "perk-images/Styles/Precision/LethalTempo/LethalTempoTemp.png",
+    8021: "perk-images/Styles/Precision/FleetFootwork/FleetFootwork.png",
+    8010: "perk-images/Styles/Precision/Conqueror/Conqueror.png",
+    9101: "perk-images/Styles/Precision/AbsorbLife/AbsorbLife.png",
+    9102: "perk-images/Styles/Precision/Overheal.png",
+    9111: "perk-images/Styles/Precision/Triumph.png",
+    8009: "perk-images/Styles/Precision/PresenceOfMind/PresenceOfMind.png",
+    9104: "perk-images/Styles/Precision/LegendAlacrity/LegendAlacrity.png",
+    9105: "perk-images/Styles/Precision/LegendHaste/LegendHaste.png",
+    9103: "perk-images/Styles/Precision/LegendBloodline/LegendBloodline.png",
+    8014: "perk-images/Styles/Precision/CoupDeGrace/CoupDeGrace.png",
+    8017: "perk-images/Styles/Precision/CutDown/CutDown.png",
+    8299: "perk-images/Styles/Precision/LastStand/LastStand.png",
+    // Domination
+    8112: "perk-images/Styles/Domination/Electrocute/Electrocute.png",
+    8124: "perk-images/Styles/Domination/Predator/Predator.png",
+    8128: "perk-images/Styles/Domination/DarkHarvest/DarkHarvest.png",
+    9923: "perk-images/Styles/Domination/HailOfBlades/HailOfBlades.png",
+    8126: "perk-images/Styles/Domination/CheapShot/CheapShot.png",
+    8139: "perk-images/Styles/Domination/TasteOfBlood/GreenTerror_TasteOfBlood.png",
+    8143: "perk-images/Styles/Domination/SuddenImpact/SuddenImpact.png",
+    8136: "perk-images/Styles/Domination/ZombieWard/ZombieWard.png",
+    8120: "perk-images/Styles/Domination/GhostPoro/GhostPoro.png",
+    8138: "perk-images/Styles/Domination/EyeballCollection/EyeballCollection.png",
+    8137: "perk-images/Styles/Domination/SixthSense/SixthSense.png",
+    8140: "perk-images/Styles/Domination/GrislyMementos/GrislyMementos.png",
+    8141: "perk-images/Styles/Domination/DeepWard/DeepWard.png",
+    8135: "perk-images/Styles/Domination/TreasureHunter/TreasureHunter.png",
+    8134: "perk-images/Styles/Domination/IngeniousHunter/IngeniousHunter.png",
+    8105: "perk-images/Styles/Domination/RelentlessHunter/RelentlessHunter.png",
+    8106: "perk-images/Styles/Domination/UltimateHunter/UltimateHunter.png",
+    // Sorcery
+    8214: "perk-images/Styles/Sorcery/SummonAery/SummonAery.png",
+    8229: "perk-images/Styles/Sorcery/ArcaneComet/ArcaneComet.png",
+    8230: "perk-images/Styles/Sorcery/PhaseRush/PhaseRush.png",
+    8224: "perk-images/Styles/Sorcery/NullifyingOrb/Pokeshield.png",
+    8226: "perk-images/Styles/Sorcery/ManaflowBand/ManaflowBand.png",
+    8275: "perk-images/Styles/Sorcery/NimbusCloak/6361.png",
+    8210: "perk-images/Styles/Sorcery/Transcendence/Transcendence.png",
+    8234: "perk-images/Styles/Sorcery/Celerity/CelerityTemp.png",
+    8233: "perk-images/Styles/Sorcery/AbsoluteFocus/AbsoluteFocus.png",
+    8237: "perk-images/Styles/Sorcery/Scorch/Scorch.png",
+    8232: "perk-images/Styles/Sorcery/Waterwalking/Waterwalking.png",
+    8236: "perk-images/Styles/Sorcery/GatheringStorm/GatheringStorm.png",
+    // Inspiration
+    8351: "perk-images/Styles/Inspiration/GlacialAugment/GlacialAugment.png",
+    8360: "perk-images/Styles/Inspiration/UnsealedSpellbook/UnsealedSpellbook.png",
+    8369: "perk-images/Styles/Inspiration/FirstStrike/FirstStrike.png",
+    8306: "perk-images/Styles/Inspiration/HextechFlashtraption/HextechFlashtraption.png",
+    8304: "perk-images/Styles/Inspiration/MagicalFootwear/MagicalFootwear.png",
+    8321: "perk-images/Styles/Inspiration/CashBack/CashBack.png",
+    8313: "perk-images/Styles/Inspiration/PerfectTiming/AlchemistCabinet.png",
+    8316: "perk-images/Styles/Inspiration/JackOfAllTrades/JackofAllTrades2.png",
+    8345: "perk-images/Styles/Inspiration/BiscuitDelivery/BiscuitDelivery.png",
+    8347: "perk-images/Styles/Inspiration/CosmicInsight/CosmicInsight.png",
+    8410: "perk-images/Styles/Resolve/ApproachVelocity/ApproachVelocity.png",
+    8352: "perk-images/Styles/Inspiration/TimeWarpTonic/TimeWarpTonic.png",
+    // Resolve
+    8437: "perk-images/Styles/Resolve/GraspOfTheUndying/GraspOfTheUndying.png",
+    8439: "perk-images/Styles/Resolve/VeteranAftershock/VeteranAftershock.png",
+    8465: "perk-images/Styles/Resolve/Guardian/Guardian.png",
+    8446: "perk-images/Styles/Resolve/Demolish/Demolish.png",
+    8463: "perk-images/Styles/Resolve/FontOfLife/FontOfLife.png",
+    8401: "perk-images/Styles/Resolve/MirrorShell/MirrorShell.png",
+    8429: "perk-images/Styles/Resolve/Conditioning/Conditioning.png",
+    8444: "perk-images/Styles/Resolve/SecondWind/SecondWind.png",
+    8473: "perk-images/Styles/Resolve/BonePlating/BonePlating.png",
+    8451: "perk-images/Styles/Resolve/Overgrowth/Overgrowth.png",
+    8453: "perk-images/Styles/Resolve/Revitalize/Revitalize.png",
+    8242: "perk-images/Styles/Sorcery/Unflinching/Unflinching.png",
+    // Stat mods
+    5001: "perk-images/StatMods/StatModsHealthScalingIcon.png",
+    5002: "perk-images/StatMods/StatModsArmorIcon.png",
+    5003: "perk-images/StatMods/StatModsMagicResIcon.png",
+    5005: "perk-images/StatMods/StatModsAttackSpeedIcon.png",
+    5007: "perk-images/StatMods/StatModsCDRIcon.png",
+    5008: "perk-images/StatMods/StatModsAdaptiveForceIcon.png",
+    5010: "perk-images/StatMods/StatModsMovementSpeedIcon.png",
+    5011: "perk-images/StatMods/StatModsHealthFlatIcon.png",
+    5012: "perk-images/StatMods/StatModsTenacityIcon.png",
+    5013: "perk-images/StatMods/StatModsTenacityIcon.png"
+  };
+  var PERK_NAMES = {
+    8005: "Press the Attack",
+    8008: "Lethal Tempo",
+    8021: "Fleet Footwork",
+    8010: "Conqueror",
+    9101: "Absorb Life",
+    9102: "Overheal",
+    9111: "Triumph",
+    8009: "Presence of Mind",
+    9104: "Legend: Alacrity",
+    9105: "Legend: Haste",
+    9103: "Legend: Bloodline",
+    8014: "Coup de Grace",
+    8017: "Cut Down",
+    8299: "Last Stand",
+    8112: "Electrocute",
+    8124: "Predator",
+    8128: "Dark Harvest",
+    9923: "Hail of Blades",
+    8126: "Cheap Shot",
+    8139: "Taste of Blood",
+    8143: "Sudden Impact",
+    8136: "Zombie Ward",
+    8120: "Ghost Poro",
+    8138: "Eyeball Collection",
+    8137: "Sixth Sense",
+    8140: "Grisly Mementos",
+    8141: "Deep Ward",
+    8135: "Treasure Hunter",
+    8134: "Ingenious Hunter",
+    8105: "Relentless Hunter",
+    8106: "Ultimate Hunter",
+    8214: "Summon Aery",
+    8229: "Arcane Comet",
+    8230: "Phase Rush",
+    8224: "Nullifying Orb",
+    8226: "Manaflow Band",
+    8275: "Nimbus Cloak",
+    8210: "Transcendence",
+    8234: "Celerity",
+    8233: "Absolute Focus",
+    8237: "Scorch",
+    8232: "Waterwalking",
+    8236: "Gathering Storm",
+    8351: "Glacial Augment",
+    8360: "Unsealed Spellbook",
+    8369: "First Strike",
+    8306: "Hextech Flashtraption",
+    8304: "Magical Footwear",
+    8321: "Cash Back",
+    8313: "Triple Tonic",
+    8316: "Jack of All Trades",
+    8345: "Biscuit Delivery",
+    8347: "Cosmic Insight",
+    8410: "Approach Velocity",
+    8352: "Time Warp Tonic",
+    8437: "Grasp of the Undying",
+    8439: "Aftershock",
+    8465: "Guardian",
+    8446: "Demolish",
+    8463: "Font of Life",
+    8401: "Shield Bash",
+    8429: "Conditioning",
+    8444: "Second Wind",
+    8473: "Bone Plating",
+    8451: "Overgrowth",
+    8453: "Revitalize",
+    8242: "Unflinching",
+    5001: "Health Scaling",
+    5002: "Armor",
+    5003: "Magic Resist",
+    5005: "Attack Speed",
+    5007: "Ability Haste",
+    5008: "Adaptive Force",
+    5010: "Movement Speed",
+    5011: "Health",
+    5012: "Tenacity",
+    5013: "Tenacity"
+  };
+  function perkStyleName(styleId) {
+    return STYLE_NAMES[Number(styleId)] || `Tree ${styleId}`;
+  }
+  function perkStyleIconUrl(styleId) {
+    const sid = Number(styleId);
+    return STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`;
+  }
+  function perkRelativePath(perkId) {
+    const id = Number(perkId);
+    return PERK_PATHS[id] || `perk-images/${id}.png`;
+  }
+  function perkIconUrl(perkId) {
+    const id = Number(perkId);
+    const path = PERK_PATHS[id];
+    if (path) {
+      return `/lol-game-data/assets/v1/${path}`;
+    }
+    return `/lol-game-data/assets/v1/perk-images/${id}.png`;
+  }
+  function perkName(perkId) {
+    const id = Number(perkId);
+    return PERK_NAMES[id] || `Rune ${id}`;
+  }
+  function formatRunePagePayload(name, primaryStyleId, subStyleId, selectedPerkIds) {
+    return {
+      name: name ? String(name) : "Drake",
+      primaryStyleId: Number(primaryStyleId) || 0,
+      subStyleId: Number(subStyleId) || 0,
+      selectedPerkIds: Array.isArray(selectedPerkIds) ? selectedPerkIds.map((id) => Number(id) || 0) : [],
+      current: true,
+      isActive: true
+    };
+  }
+  async function parseResponse(res, fallbackId) {
+    if (!res) {
+      return { success: true, ...fallbackId !== void 0 ? { pageId: fallbackId } : {} };
+    }
+    if (res.ok === false) {
+      return { success: false, error: `LCU returned status ${res.status || "unknown"}` };
+    }
+    if (typeof res.json === "function") {
+      try {
+        const data = await res.json();
+        const pageId2 = data?.id ?? fallbackId;
+        return { success: true, ...pageId2 !== void 0 ? { pageId: pageId2 } : {} };
+      } catch {
+        return { success: true, ...fallbackId !== void 0 ? { pageId: fallbackId } : {} };
+      }
+    }
+    const pageId = res.id ?? fallbackId;
+    return { success: true, ...pageId !== void 0 ? { pageId } : {} };
+  }
+  async function applyRunePage(lcu2, pageData) {
+    if (!lcu2) {
+      return { success: false, error: "LCU client is required" };
+    }
+    const payload = formatRunePagePayload(
+      pageData?.name,
+      pageData?.primaryStyleId,
+      pageData?.subStyleId,
+      pageData?.selectedPerkIds
+    );
+    try {
+      let pages = [];
+      try {
+        const res = await lcu2.get(RUNES_PAGES_ROUTE);
+        if (Array.isArray(res)) {
+          pages = res;
+        }
+      } catch {
+        pages = [];
+      }
+      const editablePage = pages.find((p) => p && (p.isDeletable || p.isEditable || p.isCustom));
+      if (editablePage && editablePage.id !== void 0 && editablePage.id !== null) {
+        try {
+          const updateRes = await lcu2.put(`${RUNES_PAGES_ROUTE}/${editablePage.id}`, payload);
+          if (!updateRes || updateRes.ok !== false) {
+            const parsed = await parseResponse(updateRes, editablePage.id);
+            if (parsed.success) {
+              return parsed;
+            }
+          }
+        } catch {
+        }
+        try {
+          if (typeof lcu2.delete === "function") {
+            await lcu2.delete(`${RUNES_PAGES_ROUTE}/${editablePage.id}`);
+          }
+        } catch {
+        }
+      }
+      const createRes = await lcu2.post(RUNES_PAGES_ROUTE, payload);
+      if (!createRes || createRes.ok !== false) {
+        return await parseResponse(createRes);
+      }
+      return { success: false, error: `Failed to create rune page (${createRes.status || "error"})` };
+    } catch (err) {
+      return { success: false, error: err?.message || "Failed to apply rune page" };
+    }
+  }
+
+  // src/features/mapSide.js
+  function readMapSide(session) {
+    const empty = { side: "", label: "", color: "" };
+    if (!session || !Array.isArray(session.myTeam) || !session.myTeam.length) {
+      return empty;
+    }
+    for (const player of session.myTeam) {
+      const team = Number(player?.team);
+      if (team === 1 || team === 100) {
+        return { side: "BLUE", label: "Blue Side", color: "blue" };
+      }
+      if (team === 2 || team === 200) {
+        return { side: "RED", label: "Red Side", color: "red" };
+      }
+    }
+    const firstCell = session.myTeam[0]?.cellId;
+    if (firstCell !== void 0 && firstCell !== null && firstCell !== "") {
+      const cellId = Number(firstCell);
+      if (cellId >= 0 && cellId < 5) {
+        return { side: "BLUE", label: "Blue Side", color: "blue" };
+      }
+      if (cellId >= 5 && cellId < 10) {
+        return { side: "RED", label: "Red Side", color: "red" };
+      }
+    }
+    return empty;
+  }
+  function formatMapSideBadge(sideInfo) {
+    if (!sideInfo || !sideInfo.side || !sideInfo.label || !sideInfo.color) {
+      return "";
+    }
+    return `<span class="drake-map-side is-${sideInfo.color}">${sideInfo.label}</span>`;
+  }
+
+  // src/features/muteAll.js
+  var MUTE_TOGGLE_ROUTE = "/lol-champ-select/v1/toggle-player-muted";
+  var MUTED_PLAYERS_ROUTE = "/lol-champ-select/v1/muted-players";
+  function isPlayerMuted(player, mutedList) {
+    if (!player || !Array.isArray(mutedList) || !mutedList.length) return false;
+    const pPuuid = player.puuid ? String(player.puuid).trim() : "";
+    const pSummonerId = Number(player.summonerId) || 0;
+    const pObfPuuid = player.obfuscatedPuuid ? String(player.obfuscatedPuuid).trim() : "";
+    const pObfSummonerId = Number(player.obfuscatedSummonerId) || 0;
+    return mutedList.some((m) => {
+      if (!m) return false;
+      const mPuuid = m.puuid ? String(m.puuid).trim() : "";
+      const mSummonerId = Number(m.summonerId) || 0;
+      const mObfPuuid = m.obfuscatedPuuid ? String(m.obfuscatedPuuid).trim() : "";
+      const mObfSummonerId = Number(m.obfuscatedSummonerId) || 0;
+      if (pPuuid && mPuuid && pPuuid === mPuuid) return true;
+      if (pSummonerId && mSummonerId && pSummonerId === mSummonerId) return true;
+      if (pObfPuuid && mObfPuuid && pObfPuuid === mObfPuuid) return true;
+      if (pObfSummonerId && mObfSummonerId && pObfSummonerId === mObfSummonerId) return true;
+      return false;
+    });
+  }
+  async function muteTeammates(lcu2, session) {
+    if (!lcu2) {
+      return { mutedCount: 0, totalTeammates: 0, success: false };
+    }
+    const localCellId = Number(session?.localPlayerCellId ?? -1);
+    const teammates = Array.isArray(session?.myTeam) ? session.myTeam.filter((p) => Number(p?.cellId) !== localCellId) : [];
+    if (!teammates.length) {
+      return { mutedCount: 0, totalTeammates: 0, success: true };
+    }
+    let mutedList = [];
+    try {
+      const res = await lcu2.get(MUTED_PLAYERS_ROUTE);
+      if (Array.isArray(res)) {
+        mutedList = res;
+      } else if (Array.isArray(res?.mutedPlayers)) {
+        mutedList = res.mutedPlayers;
+      }
+    } catch {
+      mutedList = [];
+    }
+    const unmuted = teammates.filter((p) => !isPlayerMuted(p, mutedList));
+    let mutedCount = 0;
+    let success = true;
+    for (const player of unmuted) {
+      const payload = {
+        puuid: player.puuid || "",
+        summonerId: Number(player.summonerId) || 0,
+        obfuscatedPuuid: player.obfuscatedPuuid || "",
+        obfuscatedSummonerId: Number(player.obfuscatedSummonerId) || 0
+      };
+      try {
+        const res = await lcu2.post(MUTE_TOGGLE_ROUTE, payload);
+        if (res && res.ok === false) {
+          success = false;
+        } else {
+          mutedCount += 1;
+        }
+      } catch {
+        success = false;
+      }
+    }
+    return {
+      mutedCount,
+      totalTeammates: teammates.length,
+      success
+    };
+  }
+
+  // src/features/champSelectChat.js
+  var CONVERSATIONS_ROUTE = "/lol-chat/v1/conversations";
+  async function resolveChampSelectConversationId(lcu2, session) {
+    const directId = session?.chatDetails?.chatRoomName || session?.chatDetails?.multiUserChatId || session?.chatDetails?.mucJwtDto?.channelClaim || session?.multiUserChatId || session?.chatRoomName || null;
+    if (typeof directId === "string" && directId.trim() && !directId.includes("@")) {
+      return directId.trim();
+    }
+    if (lcu2 && typeof lcu2.get === "function") {
+      try {
+        const conversations = await lcu2.get(CONVERSATIONS_ROUTE);
+        if (Array.isArray(conversations)) {
+          const match = conversations.find(
+            (c) => c?.type === "championSelect" || c?.type === "champSelect" || directId && (c?.id === directId || c?.name === directId || c?.id === directId.split("@")[0] || c?.name === directId.split("@")[0])
+          );
+          if (match?.id) {
+            return String(match.id);
+          }
+        }
+      } catch {
+      }
+    }
+    if (typeof directId === "string" && directId.trim()) {
+      return directId.trim();
+    }
+    return null;
+  }
+  async function sendChampSelectMessage(lcu2, session, message) {
+    if (typeof message !== "string" || !message.trim()) {
+      return { success: false, error: "Empty message" };
+    }
+    if (!lcu2 || typeof lcu2.post !== "function") {
+      return { success: false, error: "LCU unavailable" };
+    }
+    let conversationId;
+    try {
+      conversationId = await resolveChampSelectConversationId(lcu2, session);
+    } catch (err) {
+      return { success: false, error: err?.message || "Failed to resolve conversation" };
+    }
+    if (!conversationId) {
+      return { success: false, error: "Conversation not found" };
+    }
+    try {
+      const route = `/lol-chat/v1/conversations/${conversationId}/messages`;
+      const res = await lcu2.post(route, { body: message.trim(), type: "chat" });
+      if (res && res.ok === false) {
+        return { success: false, conversationId, error: res.statusText || "Failed to send message" };
+      }
+      return { success: true, conversationId };
+    } catch (err) {
+      return { success: false, conversationId, error: err?.message || "Failed to send message" };
+    }
+  }
+
   // src/ui/teamRevealDom.js
   var ORIGINAL_NAME_KEY = "drakeTeamRevealOriginal";
   var APPLIED_KEY = "drakeTeamRevealApplied";
@@ -5559,43 +7518,471 @@ button.bug-report-button[data-drake-toggle]:disabled {
       </div>`;
     }).join("")}</div>`;
   }
-  function makeRenderCards(getChampName) {
-    return function renderCards(snapshot) {
-      const cards = snapshot.map((row) => {
-        const riotId = row.riotId || "Unknown";
-        const youTag = row.isLocalPlayer ? ' <span class="team-reveal-you">(You)</span>' : "";
-        const recentWl = formatWlHtml(row.wins, row.losses, row.winRate);
-        const kda = row.kda ?? "\u2014";
-        const last12h = formatWlPair(row.last12hWins, row.last12hLosses);
-        const recentNote = row.matchesUsed ? ` \xB7 last ${row.matchesUsed} games` : "";
-        const cardClass = row.isLocalPlayer ? "team-reveal-card is-you" : "team-reveal-card";
-        const roleIcon = renderRoleIcon(row.assignedPosition);
-        return `<section class="${cardClass}">
-          <div class="team-reveal-card-head">
-            <div class="team-reveal-card-title-row">
-              ${roleIcon}
-              <div class="team-reveal-card-title">${riotId}${youTag}</div>
-            </div>
-          </div>
-          <div class="team-reveal-ranks">
-            ${renderRankBlock("Solo/Duo", row.soloRank)}
-            ${renderRankBlock("Flex", row.flexRank)}
-          </div>
-          <div class="team-reveal-card-section">
-            ${formatCardRow(`Recent W/L${recentNote}`, recentWl)}
-            ${formatCardRow("Recent KDA", kda)}
-            ${formatCardRow("Last 12h", last12h)}
-            ${renderPickedChampion(row, getChampName)}
-            ${formatCardRow("Season Main", renderSeasonMain(row, getChampName))}
-            ${formatCardRow("Last 5", renderRecentGames(row, getChampName))}
-          </div>
-        </section>`;
-      }).join("");
-      return `<div class="team-reveal-shell" data-team-reveal-panel="1">
-      <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">Close</button>
-      <div class="team-reveal-panel">${cards}</div>
+  function renderAdvantageBadge(winRate) {
+    if (winRate === null || winRate === void 0) return "";
+    if (winRate >= 50.5) {
+      return `<span class="team-reveal-advantage is-advantage">Advantage</span>`;
+    }
+    if (winRate <= 49.5) {
+      return `<span class="team-reveal-advantage is-disadvantage">Disadvantage</span>`;
+    }
+    return `<span class="team-reveal-advantage is-even">Even</span>`;
+  }
+  function renderSkillsRow(skills) {
+    if (!Array.isArray(skills) || !skills.length) return '<span class="team-reveal-recent-empty">\u2014</span>';
+    return `<div class="team-reveal-skills-row">${skills.map((s) => `<span class="team-reveal-skill-badge">${s}</span>`).join('<span class="team-reveal-skill-arrow">&gt;</span>')}</div>`;
+  }
+  function renderItemsRow(items) {
+    if (!Array.isArray(items) || !items.length) return '<span class="team-reveal-recent-empty">\u2014</span>';
+    return `<div class="team-reveal-items-row">${items.map(
+      (id) => `<span class="team-reveal-item-badge" title="Item ${id}"><img class="team-reveal-item-icon" src="https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${id}.png" alt="${id}" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline';"><span class="team-reveal-item-fallback" style="display:none;">${id}</span></span>`
+    ).join("")}</div>`;
+  }
+  function renderTopPlayersTable(topPlayers, loadingBuildPlayer = "", currentViewedPlayer = "") {
+    if (!Array.isArray(topPlayers) || !topPlayers.length) {
+      return `<div class="team-reveal-empty-card">No ranking data available</div>`;
+    }
+    const rows = topPlayers.map(
+      (p) => {
+        const isCurrent = currentViewedPlayer && currentViewedPlayer === p.name;
+        const isLoading = loadingBuildPlayer && loadingBuildPlayer === p.name;
+        let btnText = "View Build";
+        let btnClass = "team-reveal-view-build-btn";
+        if (isLoading) {
+          btnText = "Loading\u2026";
+          btnClass += " is-loading";
+        } else if (isCurrent) {
+          btnText = "\u2713 Viewing";
+          btnClass += " is-viewing";
+        }
+        return `<tr>
+          <td class="col-rank">#${p.ranking ?? "\u2014"}</td>
+          <td class="col-name">${p.name || "Unknown"}</td>
+          <td class="col-region">${p.region || "\u2014"}</td>
+          <td class="col-tier">${p.tier || "\u2014"}</td>
+          <td class="col-winrate">${p.winRate != null ? `${p.winRate}%` : "\u2014"}</td>
+          <td class="col-played">${p.played != null ? `${p.played}g` : "\u2014"}</td>
+          <td class="col-action">
+            <button type="button" class="${btnClass}" data-team-reveal-player-build="${p.name}" data-team-reveal-player-region="${p.region || "kr"}" ${isLoading ? "disabled" : ""}>${btnText}</button>
+          </td>
+        </tr>`;
+      }
+    ).join("");
+    return `<table class="team-reveal-top-players-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Player</th>
+        <th>Region</th>
+        <th>Tier</th>
+        <th>Win Rate</th>
+        <th>Played</th>
+        <th>Build</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+  }
+  function isStatShard(id) {
+    const n = Number(id);
+    return n >= 5e3 && n < 6e3;
+  }
+  function renderRunesCard(opgg, runeApplyStatus, selectedRuneSlot = 0) {
+    const runePages = Array.isArray(opgg?.runePages) && opgg.runePages.length > 0 ? opgg.runePages : opgg?.runes ? [opgg.runes] : [];
+    if (!runePages.length) {
+      return `<section class="team-reveal-runes-card">
+      <div class="team-reveal-matchup-card-title">Recommended Runes (OP.GG)</div>
+      <div class="team-reveal-empty-card">No rune recommendation available</div>
+    </section>`;
+    }
+    const activeRunePage = runePages[selectedRuneSlot] || runePages[0];
+    const primaryStyleId = activeRunePage.primaryStyleId;
+    const subStyleId = activeRunePage.subStyleId;
+    const allPerks = Array.isArray(activeRunePage.selectedPerkIds) ? activeRunePage.selectedPerkIds : [];
+    const shards = allPerks.filter(isStatShard);
+    const regularPerks = allPerks.filter((id) => !isStatShard(id));
+    const keystoneId = regularPerks[0];
+    const primaryMinors = regularPerks.slice(1, 4);
+    const secondaryMinors = regularPerks.slice(4, 6);
+    let slotTabsHtml = "";
+    if (runePages.length > 1) {
+      slotTabsHtml = `<div class="team-reveal-rune-slots">
+      ${runePages.slice(0, 2).map((page, idx) => {
+        const isSelected = selectedRuneSlot === idx;
+        const wrLabel = page.winRate != null ? `${page.winRate}% WR` : `Slot ${idx + 1}`;
+        const kId = page.selectedPerkIds?.find((id) => !isStatShard(id));
+        const kName = kId ? perkName(kId) : `Page ${idx + 1}`;
+        return `<button type="button" class="team-reveal-rune-slot-btn ${isSelected ? "is-selected" : ""}" data-team-reveal-rune-slot="${idx}">
+            <span class="team-reveal-rune-slot-num">${idx + 1}</span>
+            <span class="team-reveal-rune-slot-label">${kName} \xB7 ${wrLabel}</span>
+          </button>`;
+      }).join("")}
     </div>`;
+    }
+    let applyText = "\u26A1 Apply Runes";
+    let applyClass = "team-reveal-apply-runes-btn hextech-btn";
+    if (runeApplyStatus === "applying") {
+      applyText = "Applying\u2026";
+    } else if (runeApplyStatus === "applied") {
+      applyText = "\u2713 Applied";
+      applyClass += " is-applied";
+    } else if (runeApplyStatus === "failed") {
+      applyText = "Failed (Retry)";
+    }
+    const primaryStyleHtml = primaryStyleId ? `<div class="team-reveal-rune-tree-head">
+        <img class="team-reveal-rune-style-icon" src="${perkStyleIconUrl(
+      primaryStyleId
+    )}" alt="${perkStyleName(primaryStyleId)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-style-path') || '');}" data-style-path="${STYLE_ICONS[primaryStyleId]?.replace("/lol-game-data/assets/v1/", "") || ""}">
+        <span class="team-reveal-rune-style-name">${perkStyleName(primaryStyleId)}</span>
+      </div>` : "";
+    const secondaryStyleHtml = subStyleId ? `<div class="team-reveal-rune-tree-head">
+        <img class="team-reveal-rune-style-icon" src="${perkStyleIconUrl(
+      subStyleId
+    )}" alt="${perkStyleName(subStyleId)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-style-path') || '');}" data-style-path="${STYLE_ICONS[subStyleId]?.replace("/lol-game-data/assets/v1/", "") || ""}">
+        <span class="team-reveal-rune-style-name">${perkStyleName(subStyleId)}</span>
+      </div>` : "";
+    const keystoneHtml = keystoneId ? `<div class="team-reveal-keystone-slot" title="${perkName(keystoneId)}">
+        <img class="team-reveal-keystone-icon" src="${perkIconUrl(
+      keystoneId
+    )}" alt="${perkName(keystoneId)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(keystoneId)}">
+        <span class="team-reveal-keystone-name">${perkName(keystoneId)}</span>
+      </div>` : "";
+    const primaryMinorsHtml = primaryMinors.map(
+      (id) => `<div class="team-reveal-perk-slot" title="${perkName(id)}">
+          <img class="team-reveal-perk-icon" src="${perkIconUrl(id)}" alt="${perkName(id)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(id)}">
+        </div>`
+    ).join("");
+    const secondaryMinorsHtml = secondaryMinors.map(
+      (id) => `<div class="team-reveal-perk-slot" title="${perkName(id)}">
+          <img class="team-reveal-perk-icon" src="${perkIconUrl(id)}" alt="${perkName(id)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(id)}">
+        </div>`
+    ).join("");
+    const shardsHtml = shards.map(
+      (id) => `<div class="team-reveal-shard-slot" title="${perkName(id)}">
+          <img class="team-reveal-shard-icon" src="${perkIconUrl(id)}" alt="${perkName(id)}" onerror="if(!this.dataset.cdn){this.dataset.cdn='1';this.src='https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/' + (this.getAttribute('data-perk-path') || '');}" data-perk-path="${perkRelativePath(id)}">
+        </div>`
+    ).join("");
+    const cardWr = activeRunePage.winRate != null ? `<span class="team-reveal-rune-card-wr">${activeRunePage.winRate}% WR</span>` : "";
+    return `<section class="team-reveal-runes-card">
+    <div class="team-reveal-matchup-card-title">
+      <span>Runes</span>
+      ${cardWr}
+    </div>
+    ${slotTabsHtml}
+    <div class="team-reveal-runes-display">
+      <div class="team-reveal-rune-tree primary">
+        ${primaryStyleHtml}
+        <div class="team-reveal-rune-tree-items">
+          ${keystoneHtml}
+          <div class="team-reveal-primary-minors">${primaryMinorsHtml}</div>
+        </div>
+      </div>
+      <div class="team-reveal-rune-tree secondary">
+        ${secondaryStyleHtml}
+        <div class="team-reveal-secondary-minors">${secondaryMinorsHtml}</div>
+      </div>
+      <div class="team-reveal-rune-tree shards">
+        <div class="team-reveal-rune-tree-head">
+          <span class="team-reveal-rune-style-name shards-title">Shards</span>
+        </div>
+        <div class="team-reveal-shards-row">${shardsHtml}</div>
+      </div>
+    </div>
+    <button class="${applyClass}" type="button" data-team-reveal-apply-runes="1" ${runeApplyStatus === "applying" ? "disabled" : ""}>${applyText}</button>
+  </section>`;
+  }
+  function getLocalPlayerInfo(snapshot, session) {
+    const localCellId = Number(session?.localPlayerCellId ?? -1);
+    const localRow = snapshot.find((r) => r.isLocalPlayer) || snapshot.find((r) => Number(r.cellId) === localCellId);
+    const localSessionPlayer = Array.isArray(session?.myTeam) ? session.myTeam.find((p) => Number(p?.cellId) === localCellId) : null;
+    const pickedChampionId = Number(localRow?.pickedChampionId) || Number(localSessionPlayer?.championId) || 0;
+    const assignedPosition = localRow?.assignedPosition || readAssignedPosition(localSessionPlayer) || "";
+    return {
+      cellId: localCellId,
+      riotId: localRow?.riotId || "",
+      pickedChampionId,
+      assignedPosition
     };
+  }
+  function getEnemyPlayerInfo(session, localLane) {
+    if (!session || !Array.isArray(session.theirTeam) || !session.theirTeam.length) {
+      return null;
+    }
+    const normLocalLane = normalizeOpggLane(localLane);
+    if (normLocalLane) {
+      const sameLane = session.theirTeam.find((p) => {
+        const pLane = normalizeOpggLane(readAssignedPosition(p));
+        return pLane && pLane === normLocalLane && Number(p?.championId) > 0;
+      });
+      if (sameLane) {
+        return {
+          championId: Number(sameLane.championId),
+          assignedPosition: readAssignedPosition(sameLane)
+        };
+      }
+    }
+    const enemiesWithChamp = session.theirTeam.filter((p) => Number(p?.championId) > 0);
+    if (enemiesWithChamp.length === 1) {
+      return {
+        championId: Number(enemiesWithChamp[0].championId),
+        assignedPosition: readAssignedPosition(enemiesWithChamp[0])
+      };
+    }
+    return null;
+  }
+  function getEnemyTeamChampions(session, getChampName) {
+    if (!session || !Array.isArray(session.theirTeam)) return [];
+    const list = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const p of session.theirTeam) {
+      const id = Number(p?.championId) || 0;
+      if (id > 0 && !seen.has(id)) {
+        seen.add(id);
+        const name = typeof getChampName === "function" && getChampName(id) || `Champion ${id}`;
+        const pos = readAssignedPosition(p);
+        list.push({ id, name, pos });
+      }
+    }
+    return list;
+  }
+  function renderMatchupContent({
+    localChampId,
+    localLane,
+    enemyChampId,
+    autoEnemyChampId = 0,
+    manualEnemyChampId = 0,
+    enemyTeamChampions = [],
+    enemyLane,
+    getChampName,
+    matchupState,
+    runeApplyStatus,
+    selectedRuneSlot = 0,
+    sideBadge = "",
+    loadingBuildPlayer = "",
+    currentViewedPlayer = ""
+  }) {
+    if (!localChampId) {
+      return `<div class="team-reveal-matchup-empty">Pick a champion to view matchup &amp; builds</div>`;
+    }
+    if (matchupState.loading) {
+      return `<div class="team-reveal-matchup-loading">${SPINNER_SVG} <span>Loading matchup and build data\u2026</span></div>`;
+    }
+    const localName = getChampName(localChampId) || "Your Champion";
+    const localRoleIcon = renderRoleIcon(localLane);
+    const localRoleText = roleLabel(localLane) || localLane;
+    const enemyName = enemyChampId ? getChampName(enemyChampId) || "Enemy" : "Unknown Opponent";
+    const enemyRoleIcon = renderRoleIcon(enemyLane || localLane);
+    const enemyRoleText = roleLabel(enemyLane || localLane) || enemyLane || localLane;
+    const enemyChampIcon = enemyChampId ? `<img class="team-reveal-matchup-champ-icon" src="${iconUrl(enemyChampId)}" alt="${enemyName}">` : `<div class="team-reveal-matchup-champ-placeholder">?</div>`;
+    const opgg = matchupState.data?.opgg;
+    const log = matchupState.data?.log;
+    const wrVsSuffix = opgg?.isCounterMatchup && enemyChampId ? ` vs ${enemyName}` : "";
+    const wrText = opgg?.winRate != null ? `<span class="team-reveal-matchup-wr">${opgg.winRate}% WR${wrVsSuffix}${opgg.totalMatches ? ` \xB7 ${opgg.totalMatches.toLocaleString()} games` : ""}</span>` : `<span class="team-reveal-matchup-wr">No matchup stats</span>`;
+    const advantageBadge = renderAdvantageBadge(opgg?.winRate);
+    const skills = (opgg?.skills && opgg.skills.length ? opgg.skills : log?.proBuild?.skills) || [];
+    const items = (opgg?.coreItems && opgg.coreItems.length ? opgg.coreItems : log?.proBuild?.items) || [];
+    const topPlayers = log?.topPlayers || [];
+    const autoEnemyName = autoEnemyChampId ? getChampName(autoEnemyChampId) || "Detected" : "None";
+    let enemyPickerHtml = "";
+    if (enemyTeamChampions.length > 0) {
+      const autoSelected = !manualEnemyChampId ? "is-selected" : "";
+      const autoBtn = `<button type="button" class="team-reveal-enemy-chip ${autoSelected}" data-team-reveal-enemy-select="0" title="Auto detect opponent">
+      <span class="team-reveal-enemy-chip-auto-icon">\u{1F3AF}</span>
+      <span class="team-reveal-enemy-chip-name">Auto (${autoEnemyName})</span>
+    </button>`;
+      const champBtns = enemyTeamChampions.map((c) => {
+        const isSelected = Number(manualEnemyChampId) === Number(c.id);
+        const roleIcon = renderRoleIcon(c.pos);
+        return `<button type="button" class="team-reveal-enemy-chip ${isSelected ? "is-selected" : ""}" data-team-reveal-enemy-select="${c.id}" title="${c.name}">
+          <img class="team-reveal-enemy-chip-icon" src="${iconUrl(c.id)}" alt="${c.name}">
+          ${roleIcon}
+          <span class="team-reveal-enemy-chip-name">${c.name}</span>
+        </button>`;
+      }).join("");
+      enemyPickerHtml = `<div class="team-reveal-enemy-picker-bar">
+      <span class="team-reveal-enemy-picker-label">Opponent:</span>
+      <div class="team-reveal-enemy-picker-list">
+        ${autoBtn}
+        ${champBtns}
+      </div>
+    </div>`;
+    } else {
+      enemyPickerHtml = `<div class="team-reveal-enemy-picker-bar">
+      <span class="team-reveal-enemy-picker-label">Opponent:</span>
+      <span class="team-reveal-enemy-picker-empty">Waiting for enemy picks in champion select\u2026</span>
+    </div>`;
+    }
+    return `<div class="team-reveal-matchup-head">
+    <div class="team-reveal-matchup-champs">
+      <div class="team-reveal-matchup-side">
+        <img class="team-reveal-matchup-champ-icon" src="${iconUrl(localChampId)}" alt="${localName}">
+        <div class="team-reveal-matchup-side-meta">
+          <div class="team-reveal-matchup-side-name">${localName}</div>
+          <div class="team-reveal-matchup-side-role">${localRoleIcon} ${localRoleText}</div>
+        </div>
+      </div>
+      <div class="team-reveal-matchup-vs">VS</div>
+      <div class="team-reveal-matchup-side">
+        ${enemyChampIcon}
+        <div class="team-reveal-matchup-side-meta">
+          <div class="team-reveal-matchup-side-name">${enemyName}</div>
+          <div class="team-reveal-matchup-side-role">${enemyRoleIcon} ${enemyRoleText}</div>
+        </div>
+      </div>
+    </div>
+    <div class="team-reveal-matchup-meta">
+      ${sideBadge}
+      ${wrText}
+      ${advantageBadge}
+    </div>
+  </div>
+  ${enemyPickerHtml}
+  <div class="team-reveal-matchup-grid">
+    ${renderRunesCard(opgg, runeApplyStatus, selectedRuneSlot)}
+    <section class="team-reveal-items-card">
+      <div class="team-reveal-matchup-card-title">Skill Order &amp; Core Items</div>
+      <div class="team-reveal-card-row">
+        <span class="team-reveal-card-label">Skill Order</span>
+        <div class="team-reveal-card-value">${renderSkillsRow(skills)}</div>
+      </div>
+      <div class="team-reveal-card-row">
+        <span class="team-reveal-card-label">Core Items</span>
+        <div class="team-reveal-card-value">${renderItemsRow(items)}</div>
+      </div>
+    </section>
+    <section class="team-reveal-top-players-card">
+      <div class="team-reveal-matchup-card-title">Top Players (League of Graphs)</div>
+      ${renderTopPlayersTable(topPlayers, loadingBuildPlayer, currentViewedPlayer)}
+    </section>
+  </div>`;
+  }
+  function renderOverlayShell({
+    activeTab,
+    snapshot,
+    currentSession,
+    getChampName,
+    getChampions,
+    manualEnemyChampId = 0,
+    matchupState,
+    runeApplyStatus,
+    selectedRuneSlot = 0,
+    muteStatus = "idle",
+    showMapSide = true,
+    loadingBuildPlayer = "",
+    currentViewedPlayer = ""
+  }) {
+    const sideInfo = showMapSide ? readMapSide(currentSession) : null;
+    const sideBadge = sideInfo?.label ? formatMapSideBadge(sideInfo) : "";
+    let muteText = "Mute All";
+    let muteClass = "team-reveal-mute-btn";
+    if (muteStatus === "muting") {
+      muteText = "Muting\u2026";
+    } else if (muteStatus === "muted") {
+      muteText = "\u2713 Muted";
+      muteClass += " is-muted";
+    } else if (muteStatus === "failed") {
+      muteText = "Mute Failed";
+    }
+    const cards = snapshot.map((row) => {
+      const riotId = row.riotId || "Unknown";
+      const youTag = row.isLocalPlayer ? ' <span class="team-reveal-you">(You)</span>' : "";
+      const recentWl = formatWlHtml(row.wins, row.losses, row.winRate);
+      const kda = row.kda ?? "\u2014";
+      const last12h = formatWlPair(row.last12hWins, row.last12hLosses);
+      const recentNote = row.matchesUsed ? ` \xB7 last ${row.matchesUsed} games` : "";
+      const cardClass = row.isLocalPlayer ? "team-reveal-card is-you" : "team-reveal-card";
+      const roleIcon = renderRoleIcon(row.assignedPosition);
+      return `<section class="${cardClass}">
+        <div class="team-reveal-card-head">
+          <div class="team-reveal-card-title-row">
+            ${roleIcon}
+            <div class="team-reveal-card-title">${riotId}${youTag}</div>
+          </div>
+        </div>
+        <div class="team-reveal-ranks">
+          ${renderRankBlock("Solo/Duo", row.soloRank)}
+          ${renderRankBlock("Flex", row.flexRank)}
+        </div>
+        <div class="team-reveal-card-section">
+          ${formatCardRow(`Recent W/L${recentNote}`, recentWl)}
+          ${formatCardRow("Recent KDA", kda)}
+          ${formatCardRow("Last 12h", last12h)}
+          ${renderPickedChampion(row, getChampName)}
+          ${formatCardRow("Season Main", renderSeasonMain(row, getChampName))}
+          ${formatCardRow("Last 5", renderRecentGames(row, getChampName))}
+        </div>
+      </section>`;
+    }).join("");
+    const localInfo = getLocalPlayerInfo(snapshot, currentSession);
+    const autoEnemyInfo = getEnemyPlayerInfo(currentSession, localInfo.assignedPosition);
+    const enemyTeamChampions = getEnemyTeamChampions(currentSession, getChampName);
+    const effectiveEnemyChampId = manualEnemyChampId > 0 ? manualEnemyChampId : autoEnemyInfo?.championId || 0;
+    const matchupContent = activeTab === "matchup" ? `<div class="team-reveal-matchup-view">${renderMatchupContent({
+      localChampId: localInfo.pickedChampionId,
+      localLane: localInfo.assignedPosition,
+      enemyChampId: effectiveEnemyChampId,
+      autoEnemyChampId: autoEnemyInfo?.championId || 0,
+      manualEnemyChampId,
+      enemyTeamChampions,
+      enemyLane: autoEnemyInfo?.assignedPosition || "",
+      getChampName,
+      matchupState,
+      runeApplyStatus,
+      selectedRuneSlot,
+      sideBadge,
+      loadingBuildPlayer,
+      currentViewedPlayer
+    })}</div>` : `<div class="team-reveal-panel">${cards}</div>`;
+    return `<div class="team-reveal-shell" data-team-reveal-panel="1">
+    <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === "muting" ? "disabled" : ""}>${muteText}</button>
+    <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">Close</button>
+    <div class="team-reveal-tabs">
+      <button class="team-reveal-tab ${activeTab === "scouting" ? "is-active" : ""}" type="button" data-team-reveal-tab="scouting" ${activeTab === "scouting" ? 'aria-selected="true"' : ""}>Team Scouting</button>
+      <button class="team-reveal-tab ${activeTab === "matchup" ? "is-active" : ""}" type="button" data-team-reveal-tab="matchup" ${activeTab === "matchup" ? 'aria-selected="true"' : ""}>Matchup &amp; Builds</button>
+      ${sideBadge}
+    </div>
+    ${matchupContent}
+  </div>`;
+  }
+  function overlayRenderSig({
+    activeTab,
+    snapshot,
+    currentSession,
+    matchupState,
+    runeApplyStatus,
+    selectedRuneSlot = 0,
+    muteStatus = "idle",
+    showMapSide = true,
+    manualEnemyChampId = 0,
+    loadingBuildPlayer = "",
+    currentViewedPlayer = ""
+  }) {
+    const localInfo = getLocalPlayerInfo(snapshot, currentSession);
+    const autoEnemyInfo = getEnemyPlayerInfo(currentSession, localInfo.assignedPosition);
+    const effectiveEnemyChampId = manualEnemyChampId > 0 ? manualEnemyChampId : autoEnemyInfo?.championId || 0;
+    const sideInfo = showMapSide ? readMapSide(currentSession) : null;
+    const enemyTeamChampions = getEnemyTeamChampions(currentSession);
+    const enemyPicksSig = enemyTeamChampions.map((c) => `${c.id}:${c.pos}`).join(",");
+    return JSON.stringify({
+      tab: activeTab,
+      cards: activeTab === "scouting" ? cardsContentSig(snapshot) : "",
+      localChampId: localInfo.pickedChampionId,
+      localLane: localInfo.assignedPosition,
+      enemyChampId: effectiveEnemyChampId,
+      manualEnemyChampId,
+      enemyPicksSig,
+      loading: matchupState.loading,
+      hasData: Boolean(matchupState.data),
+      opggWr: matchupState.data?.opgg?.winRate,
+      topPlayersCount: matchupState.data?.log?.topPlayers?.length || 0,
+      runeStatus: runeApplyStatus,
+      selectedRuneSlot,
+      muteStatus,
+      side: sideInfo?.side || "",
+      showMapSide: Boolean(showMapSide),
+      loadingBuildPlayer,
+      currentViewedPlayer
+    });
   }
   function readLabelNodes(doc) {
     const seen = /* @__PURE__ */ new Set();
@@ -5689,19 +8076,30 @@ button.bug-report-button[data-drake-toggle]:disabled {
     subscribe: subscribe2,
     loadSnapshot,
     overlayRoot,
+    lcu: lcu2,
+    muteTeammatesImpl = muteTeammates,
+    sendChampSelectMessageImpl = sendChampSelectMessage,
+    fetchOpggMatchupImpl = fetchOpggMatchup,
+    fetchLeagueOfGraphsImpl = fetchLeagueOfGraphsData,
+    applyRunePageImpl = applyRunePage,
+    fetchFn = globalThis.fetch,
     getChampName = () => "",
+    getChampions = () => [],
     getRecentPool = () => "ranked_both",
+    getShowMapSide = () => true,
+    getAutoMute = () => false,
+    getAutoMessage = () => "",
     setTimeoutImpl = setTimeout,
     clearTimeoutImpl = clearTimeout,
     statusReadyMs = STATUS_READY_MS,
     onRevealTiming,
     MutationObserverImpl
   }) {
-    const renderCards = makeRenderCards((id) => getChampName(Number(id)));
     const chat = makeTeamRevealChat({ doc, MutationObserverImpl });
     let enabled = false;
     let stopSession = null;
     let snapshot = [];
+    let currentSession = null;
     let overlay = null;
     let statusNode = null;
     let statusSpinner = null;
@@ -5721,6 +8119,22 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let loadGen = 0;
     let loadAbort = null;
     let stopPhase = null;
+    let activeTab = "scouting";
+    let manualEnemyChampId = 0;
+    let selectedRuneSlot = 0;
+    let matchupGen = 0;
+    let matchupState = {
+      loading: false,
+      error: null,
+      data: null,
+      key: ""
+    };
+    let runeApplyStatus = "idle";
+    let muteStatus = "idle";
+    let autoMutedLobbyKey = "";
+    let lastAutoMessageLobbyKey = "";
+    let loadingBuildPlayer = "";
+    let currentViewedPlayer = "";
     function stopRevealLoad() {
       loadGen += 1;
       if (loadAbort) {
@@ -5734,10 +8148,22 @@ button.bug-report-button[data-drake-toggle]:disabled {
       chat.clear();
       pendingScrub = true;
       snapshot = [];
+      currentSession = null;
       lastSessionSig = "";
       lastLobbyKey = "";
       lastTeam = [];
       lastCardsRenderSig = "";
+      activeTab = "scouting";
+      manualEnemyChampId = 0;
+      selectedRuneSlot = 0;
+      matchupGen += 1;
+      matchupState = { loading: false, error: null, data: null, key: "" };
+      runeApplyStatus = "idle";
+      muteStatus = "idle";
+      autoMutedLobbyKey = "";
+      lastAutoMessageLobbyKey = "";
+      loadingBuildPlayer = "";
+      currentViewedPlayer = "";
       open = false;
       renderVisibility();
       setStatus("hidden");
@@ -5778,6 +8204,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (!changed) return false;
       snapshot = rows;
       lastCardsRenderSig = "";
+      if (open && activeTab === "matchup") ensureMatchupData();
       if (open) renderVisibility();
       return true;
     }
@@ -5881,14 +8308,302 @@ button.bug-report-button[data-drake-toggle]:disabled {
       wireOverlayEvents(overlay);
       return overlay;
     }
+    function ensureMatchupData() {
+      const localInfo = getLocalPlayerInfo(snapshot, currentSession);
+      const autoEnemyInfo = getEnemyPlayerInfo(currentSession, localInfo.assignedPosition);
+      const effectiveEnemyChampId = manualEnemyChampId > 0 ? manualEnemyChampId : autoEnemyInfo?.championId || 0;
+      if (!localInfo.pickedChampionId) {
+        matchupState = { loading: false, error: null, data: null, key: "" };
+        return;
+      }
+      const key = `${localInfo.pickedChampionId}_${localInfo.assignedPosition}_${effectiveEnemyChampId}`;
+      if (matchupState.key === key && (matchupState.loading || matchupState.data)) {
+        return;
+      }
+      matchupState.key = key;
+      matchupState.loading = true;
+      matchupState.error = null;
+      matchupState.data = null;
+      selectedRuneSlot = 0;
+      runeApplyStatus = "idle";
+      const gen = ++matchupGen;
+      const champName = getChampName(localInfo.pickedChampionId);
+      const mcpName = formatMcpChampionName(champName);
+      Promise.all([
+        fetchOpggMatchupImpl({
+          championId: localInfo.pickedChampionId,
+          championName: champName,
+          lane: localInfo.assignedPosition,
+          enemyChampionId: effectiveEnemyChampId,
+          fetchFn
+        }).catch(() => null),
+        fetchLeagueOfGraphsImpl({
+          championName: champName,
+          lane: localInfo.assignedPosition,
+          fetchFn
+        }).then(async (logRes) => {
+          if ((!logRes?.topPlayers || logRes.topPlayers.length === 0) && mcpName) {
+            try {
+              const mcpLeaderboardRes = await fetchFn("https://mcp-api.op.gg/mcp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  jsonrpc: "2.0",
+                  id: 3,
+                  method: "tools/call",
+                  params: {
+                    name: "lol_list_champion_leaderboard",
+                    arguments: {
+                      champion: mcpName,
+                      region: region ? String(region).toLowerCase() : "kr",
+                      lang: "en_US"
+                    }
+                  }
+                })
+              });
+              if (mcpLeaderboardRes && mcpLeaderboardRes.ok && typeof mcpLeaderboardRes.json === "function") {
+                const data = await mcpLeaderboardRes.json();
+                const text = data?.result?.content?.[0]?.text || "";
+                const topPlayers = parseMcpLeaderboard(text, region || "KR");
+                if (topPlayers.length > 0) {
+                  return {
+                    ...logRes || {},
+                    topPlayers,
+                    hasData: true
+                  };
+                }
+              }
+            } catch {
+            }
+          }
+          return logRes;
+        }).catch(() => null)
+      ]).then(([opgg, log]) => {
+        if (gen !== matchupGen) return;
+        matchupState.loading = false;
+        matchupState.data = {
+          opgg: opgg || null,
+          log: log || null
+        };
+        lastCardsRenderSig = "";
+        if (open) renderVisibility();
+      }).catch((err) => {
+        if (gen !== matchupGen) return;
+        matchupState.loading = false;
+        matchupState.error = err?.message || "Failed to load matchup";
+        lastCardsRenderSig = "";
+        if (open) renderVisibility();
+      });
+    }
+    async function handleFetchPlayerBuild(playerName, playerRegion = "kr") {
+      if (loadingBuildPlayer) return;
+      loadingBuildPlayer = playerName;
+      lastCardsRenderSig = "";
+      renderVisibility();
+      const localInfo = getLocalPlayerInfo(snapshot, currentSession);
+      const champId = localInfo.pickedChampionId;
+      const parts = String(playerName || "").split("#");
+      const gameName = parts[0] || "";
+      const tagLine = parts[1] || "";
+      try {
+        const res = await fetchFn("https://mcp-api.op.gg/mcp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 4,
+            method: "tools/call",
+            params: {
+              name: "lol_list_summoner_matches",
+              arguments: {
+                game_name: gameName,
+                tag_line: tagLine,
+                region: String(playerRegion || "kr").toLowerCase()
+              }
+            }
+          })
+        });
+        if (res && res.ok && typeof res.json === "function") {
+          const data = await res.json();
+          const text = data?.result?.content?.[0]?.text || "";
+          if (text) {
+            const participantRegex = /Participant\(Summoner\([^)]+\),(\d+),"([^"]*)","[^"]*","([^"]*)",\[([^\]]*)\],\[([^\]]*)\],Rune\((\d+),(\d+),(\d+)\),\[([^\]]*)\],Stats\([^)]*?"(WIN|LOSE)"/g;
+            let match;
+            const playerRunePages = [];
+            let playerItems = [];
+            while ((match = participantRegex.exec(text)) !== null) {
+              const pChampId = Number(match[1]);
+              const pItemsStr = match[4];
+              const pPrimaryStyle = Number(match[6]);
+              const pPrimaryRune = Number(match[7]);
+              const pSecondaryStyle = Number(match[8]);
+              if (champId && pChampId === champId) {
+                if (!playerItems.length && pItemsStr) {
+                  playerItems = pItemsStr.split(",").map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
+                }
+                if (pPrimaryStyle > 0 && pSecondaryStyle > 0 && pPrimaryRune > 0) {
+                  const already = playerRunePages.some(
+                    (p) => p.primaryStyleId === pPrimaryStyle && p.selectedPerkIds[0] === pPrimaryRune
+                  );
+                  if (!already) {
+                    playerRunePages.push({
+                      primaryStyleId: pPrimaryStyle,
+                      subStyleId: pSecondaryStyle,
+                      selectedPerkIds: [pPrimaryRune],
+                      winRate: null
+                    });
+                  }
+                }
+              }
+            }
+            if (playerRunePages.length > 0 || playerItems.length > 0) {
+              currentViewedPlayer = playerName;
+              if (matchupState.data?.opgg) {
+                if (playerRunePages.length > 0) {
+                  matchupState.data.opgg.runePages = playerRunePages;
+                  matchupState.data.opgg.runes = playerRunePages[0];
+                  selectedRuneSlot = 0;
+                }
+                if (playerItems.length > 0) {
+                  matchupState.data.opgg.coreItems = playerItems;
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[Drake]", "Failed to fetch player build:", err);
+      } finally {
+        loadingBuildPlayer = "";
+        lastCardsRenderSig = "";
+        if (open) renderVisibility();
+      }
+    }
+    async function handleApplyRunes() {
+      if (runeApplyStatus === "applying") return;
+      const runePages = matchupState.data?.opgg?.runePages;
+      const runes = Array.isArray(runePages) && runePages[selectedRuneSlot] || matchupState.data?.opgg?.runes;
+      if (!runes || !lcu2) {
+        runeApplyStatus = "failed";
+        lastCardsRenderSig = "";
+        renderVisibility();
+        return;
+      }
+      const localInfo = getLocalPlayerInfo(snapshot, currentSession);
+      const champName = getChampName(localInfo.pickedChampionId);
+      runeApplyStatus = "applying";
+      lastCardsRenderSig = "";
+      renderVisibility();
+      try {
+        const res = await applyRunePageImpl(lcu2, {
+          name: `${champName || "Drake"} Matchup`,
+          primaryStyleId: runes.primaryStyleId,
+          subStyleId: runes.subStyleId,
+          selectedPerkIds: runes.selectedPerkIds
+        });
+        runeApplyStatus = res?.success ? "applied" : "failed";
+      } catch {
+        runeApplyStatus = "failed";
+      }
+      lastCardsRenderSig = "";
+      if (open) renderVisibility();
+    }
+    async function handleMuteAll() {
+      if (muteStatus === "muting" || !currentSession || !lcu2) return;
+      muteStatus = "muting";
+      lastCardsRenderSig = "";
+      renderVisibility();
+      try {
+        const res = await muteTeammatesImpl(lcu2, currentSession);
+        muteStatus = res?.success ? "muted" : "failed";
+      } catch {
+        muteStatus = "failed";
+      }
+      lastCardsRenderSig = "";
+      if (open) renderVisibility();
+    }
     function wireOverlayEvents(node) {
       if (!node?.addEventListener || node.dataset?.drakeRevealWired === "1") return;
       if (node.dataset) node.dataset.drakeRevealWired = "1";
-      node.addEventListener("click", (event) => {
+      node.addEventListener("change", (event) => {
         const target = event.target;
-        if (target?.closest?.('[data-team-reveal-close="1"]')) {
+        const selectElem = target?.matches?.("[data-team-reveal-enemy-select]") ? target : target?.closest?.("[data-team-reveal-enemy-select]");
+        if (selectElem) {
+          const raw = target.value ?? selectElem.dataset?.teamRevealEnemySelect;
+          const val = Number(raw) || 0;
+          manualEnemyChampId = val > 0 ? val : 0;
+          matchupState = { loading: false, error: null, data: null, key: "" };
+          ensureMatchupData();
+          lastCardsRenderSig = "";
+          renderVisibility();
+        }
+      });
+      node.addEventListener("click", async (event) => {
+        const target = event.target;
+        if (target?.closest?.('[data-team-reveal-close="1"]') || target?.dataset?.teamRevealClose === "1") {
           event.stopPropagation?.();
           closeCards();
+          return;
+        }
+        const enemySelectBtn = target?.matches?.("[data-team-reveal-enemy-select]") ? target : target?.closest?.("[data-team-reveal-enemy-select]");
+        if (enemySelectBtn) {
+          event.stopPropagation?.();
+          const raw = enemySelectBtn.dataset?.teamRevealEnemySelect ?? enemySelectBtn.value;
+          const val = Number(raw) || 0;
+          manualEnemyChampId = val > 0 ? val : 0;
+          matchupState = { loading: false, error: null, data: null, key: "" };
+          ensureMatchupData();
+          lastCardsRenderSig = "";
+          renderVisibility();
+          return;
+        }
+        const tabBtn = target?.closest?.("[data-team-reveal-tab]") || (target?.dataset?.teamRevealTab ? target : null);
+        if (tabBtn) {
+          event.stopPropagation?.();
+          const tab = tabBtn.dataset?.teamRevealTab || tabBtn.getAttribute?.("data-team-reveal-tab");
+          if (tab && tab !== activeTab) {
+            activeTab = tab;
+            lastCardsRenderSig = "";
+            if (activeTab === "matchup") {
+              ensureMatchupData();
+            }
+            renderVisibility();
+          }
+          return;
+        }
+        const runeSlotBtn = target?.matches?.("[data-team-reveal-rune-slot]") ? target : target?.closest?.("[data-team-reveal-rune-slot]");
+        if (runeSlotBtn) {
+          event.stopPropagation?.();
+          const raw = runeSlotBtn.dataset?.teamRevealRuneSlot;
+          const idx = Number(raw) || 0;
+          if (selectedRuneSlot !== idx) {
+            selectedRuneSlot = idx;
+            runeApplyStatus = "idle";
+            lastCardsRenderSig = "";
+            renderVisibility();
+          }
+          return;
+        }
+        const playerBuildBtn = target?.matches?.("[data-team-reveal-player-build]") ? target : target?.closest?.("[data-team-reveal-player-build]");
+        if (playerBuildBtn) {
+          event.stopPropagation?.();
+          const playerName = playerBuildBtn.dataset?.teamRevealPlayerBuild;
+          const playerRegion = playerBuildBtn.dataset?.teamRevealPlayerRegion || "kr";
+          if (playerName && !loadingBuildPlayer) {
+            await handleFetchPlayerBuild(playerName, playerRegion);
+          }
+          return;
+        }
+        const applyRunesBtn = target?.closest?.('[data-team-reveal-apply-runes="1"]') || (target?.dataset?.teamRevealApplyRunes === "1" ? target : null);
+        if (applyRunesBtn) {
+          event.stopPropagation?.();
+          await handleApplyRunes();
+          return;
+        }
+        const muteBtn = target?.closest?.('[data-team-reveal-mute="1"]') || (target?.dataset?.teamRevealMute === "1" ? target : null);
+        if (muteBtn) {
+          event.stopPropagation?.();
+          await handleMuteAll();
           return;
         }
         if (target === node) {
@@ -6009,7 +8724,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (statusOpenBtn.style) statusOpenBtn.style.display = !loading && visible ? "inline-flex" : "none";
       }
       if (statusText) {
-        statusText.textContent = loading ? "Revealing lobby" : "Session revealed. Press Ctrl+Shift+D to view it.";
+        const sideInfo = getShowMapSide() ? readMapSide(currentSession) : null;
+        const readyMsg = sideInfo?.label ? `Session revealed \xB7 ${sideInfo.label} \xB7 Press Ctrl+Shift+D to view it.` : "Session revealed. Press Ctrl+Shift+D to view it.";
+        statusText.textContent = loading ? "Revealing lobby" : readyMsg;
       }
       if (visible && phase === "ready") startReadyDismiss();
       else stopReadyDismiss();
@@ -6017,9 +8734,36 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function renderVisibility() {
       if (!overlay) return;
       if (open && snapshot.length > 0) {
-        const sig = cardsContentSig(snapshot);
+        const showMapSide = getShowMapSide();
+        const sig = overlayRenderSig({
+          activeTab,
+          snapshot,
+          currentSession,
+          matchupState,
+          runeApplyStatus,
+          selectedRuneSlot,
+          muteStatus,
+          showMapSide,
+          manualEnemyChampId,
+          loadingBuildPlayer,
+          currentViewedPlayer
+        });
         if (sig !== lastCardsRenderSig) {
-          overlay.innerHTML = renderCards(snapshot);
+          overlay.innerHTML = renderOverlayShell({
+            activeTab,
+            snapshot,
+            currentSession,
+            getChampName: (id) => getChampName(Number(id)),
+            getChampions,
+            manualEnemyChampId,
+            matchupState,
+            runeApplyStatus,
+            selectedRuneSlot,
+            muteStatus,
+            showMapSide,
+            loadingBuildPlayer,
+            currentViewedPlayer
+          });
           lastCardsRenderSig = sig;
         }
         overlay.hidden = false;
@@ -6120,6 +8864,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (!enabled || !snapshot.length) return;
       ensureOverlay();
       open = true;
+      if (activeTab === "matchup") ensureMatchupData();
       if (needsReapply()) applyRows(snapshot);
       renderVisibility();
       setStatus("ready");
@@ -6131,16 +8876,37 @@ button.bug-report-button[data-drake-toggle]:disabled {
         return;
       }
       scrubStaleRows();
+      currentSession = session;
       const lobbyKey = readLobbyKey(session);
       const team = teamFingerprint(session);
       const newLobby = Boolean(lobbyKey && lastLobbyKey && lobbyKey !== lastLobbyKey);
       if (newLobby) {
         clearReveal();
         pendingScrub = false;
-      } else if (snapshot.length && lastTeam.length && sameTeamIdentity(lastTeam, team)) {
+      }
+      const currentLobbyId = lobbyKey || sessionSignature(session);
+      if (getAutoMute() && lcu2 && currentLobbyId && autoMutedLobbyKey !== currentLobbyId) {
+        autoMutedLobbyKey = currentLobbyId;
+        void muteTeammatesImpl(lcu2, session).then((res) => {
+          if (res?.success) {
+            muteStatus = "muted";
+            lastCardsRenderSig = "";
+            if (open) renderVisibility();
+          }
+        }).catch(() => {
+        });
+      }
+      const autoMessage = typeof getAutoMessage === "function" ? String(getAutoMessage() || "").trim() : "";
+      if (autoMessage && lcu2 && currentLobbyId && lastAutoMessageLobbyKey !== currentLobbyId) {
+        lastAutoMessageLobbyKey = currentLobbyId;
+        void sendChampSelectMessageImpl(lcu2, session, autoMessage).catch(() => {
+        });
+      }
+      if (snapshot.length && lastTeam.length && sameTeamIdentity(lastTeam, team)) {
         mergeRowsByCell(session);
         applyPickRefresh(session);
         if (needsReapply()) applyRows(snapshot);
+        if (open && activeTab === "matchup") ensureMatchupData();
         if (open) renderVisibility();
         if (lobbyKey) lastLobbyKey = lobbyKey;
         lastTeam = team;
@@ -6149,6 +8915,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       } else if (snapshot.length && applyRemappedSnapshot(session)) {
         applyPickRefresh(session);
         if (needsReapply()) applyRows(snapshot);
+        if (open && activeTab === "matchup") ensureMatchupData();
         if (open) renderVisibility();
         if (lobbyKey) lastLobbyKey = lobbyKey;
         lastTeam = team;
@@ -6161,6 +8928,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (sig && sig === lastSessionSig) {
         mergeRowsByCell(session);
         if (snapshot.length && needsReapply()) applyRows(snapshot);
+        if (open && activeTab === "matchup") ensureMatchupData();
         if (open) renderVisibility();
         return;
       }
@@ -6178,6 +8946,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
             snapshot = Array.isArray(rows) ? rows : [];
             mergeRowsByCell(session);
             applyRows(snapshot);
+            if (open && activeTab === "matchup") ensureMatchupData();
             if (open) renderVisibility();
           }
         });
@@ -6187,6 +8956,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         applyPickRefresh(session);
         setStatus(snapshot.length ? "ready" : "hidden");
         if (snapshot.length) applyRows(snapshot);
+        if (open && activeTab === "matchup") ensureMatchupData();
         if (open) renderVisibility();
         if (typeof onRevealTiming === "function" && snapshot.length) {
           onRevealTiming({
@@ -6251,8 +9021,74 @@ button.bug-report-button[data-drake-toggle]:disabled {
     };
   }
 
+  // src/features/proxyFetch.js
+  function makeProxyFetch({ port, token, fetchImpl = globalThis.fetch } = {}) {
+    return async function proxyFetch(url, options = {}) {
+      if (!port || !token || typeof fetchImpl !== "function") {
+        return typeof fetchImpl === "function" ? fetchImpl(url, options) : null;
+      }
+      try {
+        const method = (options?.method || "GET").toUpperCase();
+        let bodyJson = null;
+        if (options?.body) {
+          if (typeof options.body === "string") {
+            try {
+              bodyJson = JSON.parse(options.body);
+            } catch {
+              bodyJson = options.body;
+            }
+          } else {
+            bodyJson = options.body;
+          }
+        }
+        const headersObj = {};
+        if (options?.headers) {
+          if (typeof options.headers.forEach === "function") {
+            options.headers.forEach((v, k) => {
+              headersObj[k] = v;
+            });
+          } else if (typeof options.headers === "object") {
+            Object.assign(headersObj, options.headers);
+          }
+        }
+        const res = await fetchImpl(`http://127.0.0.1:${port}/proxy`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token,
+            url: String(url),
+            method,
+            body: bodyJson,
+            headers: headersObj
+          }),
+          signal: options?.signal
+        });
+        if (!res || !res.ok) {
+          return fetchImpl(url, options);
+        }
+        const data = await res.json();
+        const status = Number(data?.status) || 500;
+        const textVal = String(data?.text || "");
+        return {
+          ok: status >= 200 && status < 300,
+          status,
+          text: async () => textVal,
+          json: async () => {
+            try {
+              return JSON.parse(textVal);
+            } catch {
+              return {};
+            }
+          }
+        };
+      } catch {
+        return fetchImpl(url, options);
+      }
+    };
+  }
+
   // src/ui/index.js
-  var TAG = "[Drake]";
+  var TAG3 = "[Drake]";
   var MAX_DELAY_MS = 8e3;
   function startUI({ cfg, onSettingsChanged, lcu: lcu2 }) {
     let settings = { ...cfg.settings };
@@ -6292,8 +9128,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       skins: ""
     };
     const status = makeStatus({ lcu: lcu2 });
-    let dodgeStatus = (detail) => console.log(TAG, "dodge", detail);
-    let say = (text, good) => console.log(TAG, text, good ? "ok" : "err");
+    let dodgeStatus = (detail) => console.log(TAG3, "dodge", detail);
+    let say = (text, good) => console.log(TAG3, text, good ? "ok" : "err");
     const dodger = makeDodge({
       onStatus: (detail) => dodgeStatus(detail)
     });
@@ -6474,21 +9310,21 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     async function runDodge(btn) {
       if (!btn || dodgeBusy || btn.disabled) {
-        console.log(TAG, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
+        console.log(TAG3, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
         return;
       }
       dodgeBusy = true;
       btn.disabled = true;
       btn.textContent = "Dodging\u2026";
       say("Dodging\u2026", true);
-      console.log(TAG, "dodge click", btn.id);
+      console.log(TAG3, "dodge click", btn.id);
       if (stopDodgeReposition) {
         stopDodgeReposition();
         stopDodgeReposition = null;
       }
       try {
         const result = await dodger.dodge();
-        console.log(TAG, "dodge result", result);
+        console.log(TAG3, "dodge result", result);
         const msg = result.ok ? `Dodged champ select${result.detail ? ` (${result.detail})` : ""}` : result.reason;
         say(msg, result.ok);
         btn.textContent = result.ok ? "Dodged!" : "Failed";
@@ -6509,7 +9345,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       say = sayUi;
       dodgeStatus = (detail) => {
         sayUi(detail, true);
-        console.log(TAG, "dodge", detail);
+        console.log(TAG3, "dodge", detail);
       };
       shadow.getElementById("scrim").style.display = "none";
       startSocialWatch(api);
@@ -6517,12 +9353,23 @@ button.bug-report-button[data-drake-toggle]:disabled {
         appVersion,
         loaderVersion: typeof Pengu !== "undefined" && Pengu.version ? Pengu.version : ""
       });
+      const proxyFetch = makeProxyFetch({
+        port: cfg.port,
+        token: cfg.token,
+        fetchImpl: fetch
+      });
       teamRevealDom = makeTeamRevealDom({
         doc: document,
         subscribe,
         overlayRoot: shadow,
+        lcu: lcu2,
+        fetchFn: proxyFetch,
         getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || "",
+        getChampions: () => teamRevealChamps,
         getRecentPool: () => settings.queue_team_reveal_recent_pool || "ranked_both",
+        getShowMapSide: () => settings.queue_show_map_side !== false,
+        getAutoMute: () => !!settings.queue_mute_all_in_client,
+        getAutoMessage: () => settings.queue_auto_message || "",
         onRevealTiming: ({ durationMs }) => {
           teamRevealLastLoadMs = durationMs;
           teamRevealLastConcurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
@@ -6695,7 +9542,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         paint();
         statusEl.textContent = result.reason;
         statusEl.className = "status-bad";
-        console.log(TAG, "could not save -", result.reason);
+        console.log(TAG3, "could not save -", result.reason);
         return { ok: false, reason: result.reason };
       }
       async function goToScreen(next) {
@@ -6918,14 +9765,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (e.target.id === "reveal") {
           const btn2 = e.target;
           btn2.disabled = true;
-          let region = "";
+          let region2 = "";
           try {
-            region = (await lcu2.get("/riotclient/region-locale")).region || "";
+            region2 = (await lcu2.get("/riotclient/region-locale")).region || "";
           } catch {
           }
           const reveal = makeReveal({
             lcu: lcu2,
-            region,
+            region: region2,
             open: (url) => opener.open(url).then((r) => {
               if (!r.ok) say(r.reason, false);
             })
@@ -7096,7 +9943,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       });
       content.addEventListener("click", (e) => {
         const row = e.target.closest("[data-setting]");
-        if (!row || row.disabled) return;
+        if (!row || row.disabled || row.tagName === "INPUT" || row.tagName === "TEXTAREA") return;
         const key = row.dataset.setting;
         const previous = settings[key];
         settings = { ...settings, [key]: !previous };
@@ -7118,10 +9965,23 @@ button.bug-report-button[data-drake-toggle]:disabled {
         });
       });
       content.addEventListener("input", (e) => {
+        if (e.target.id === "queue_auto_message") {
+          settings = { ...settings, queue_auto_message: e.target.value };
+          return;
+        }
         if (e.target.id !== "delay") return;
         shadow.getElementById("delay-value").textContent = formatDelay(Number(e.target.value));
       });
       content.addEventListener("change", (e) => {
+        if (e.target.id === "queue_auto_message") {
+          const previous2 = settings.queue_auto_message || "";
+          const value2 = e.target.value;
+          settings = { ...settings, queue_auto_message: value2 };
+          commit({ queue_auto_message: value2 }, () => {
+            settings = { ...settings, queue_auto_message: previous2 };
+          });
+          return;
+        }
         if (e.target.id === "delay") {
           const previous2 = settings.auto_accept_delay_ms;
           settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };
@@ -7163,7 +10023,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         try {
           await cancelQueue(lcu2);
         } catch {
-          console.log(TAG, "could not cancel the queue");
+          console.log(TAG3, "could not cancel the queue");
         }
       });
       shadow.getElementById("dodge-champ-select").addEventListener("click", (e) => {
@@ -7548,7 +10408,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/index.js
-  var TAG2 = "[Drake]";
+  var TAG4 = "[Drake]";
   var lcu = makeLcu();
   var presence = makePresence({ lcu });
   var stopFeatures = () => {
@@ -7590,7 +10450,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         subscribe,
         getSession: () => lcu.get("/lol-champ-select/v1/session"),
         onResult: (d, r, was) => console.log(
-          TAG2,
+          TAG4,
           d.kind,
           d.championId,
           r.ok ? "ok" : "failed: " + r.reason,
@@ -7605,7 +10465,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     const stopUnlocks = startUnlocks({
       enabled: !!settings.unlock_status_message,
-      onFirstUnlock: (n) => console.log(TAG2, "unlocked the status message input", n > 1 ? n : "")
+      onFirstUnlock: (n) => console.log(TAG4, "unlocked the status message input", n > 1 ? n : "")
     });
     stopProfileRank = startProfileRankRefresh({
       subscribe,
@@ -7629,7 +10489,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   async function start() {
     const cfg = await loadConfig();
     if (!cfg) {
-      console.log(TAG2, "no config.json found; the tray app may not be running");
+      console.log(TAG4, "no config.json found; the tray app may not be running");
       ui = startUI({ cfg: { port: 0, token: "", settings: {} }, lcu });
       return;
     }
@@ -7642,20 +10502,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
     });
     const host = typeof Pengu !== "undefined" && Pengu.version ? `pengu ${Pengu.version}` : "unknown";
     const ok = await startHeartbeat({ checkIn: transport.checkIn, host });
-    console.log(TAG2, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
-    console.log(TAG2, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
+    console.log(TAG4, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
+    console.log(TAG4, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
     ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
     wireFeatures(cfg.settings);
     startInGameIdle({
       subscribe,
       onChange(idle) {
         idleInGame = idle;
-        console.log(TAG2, idle ? "idle in game" : "active in client");
+        console.log(TAG4, idle ? "idle in game" : "active in client");
         if (idle) sleepPlugin();
         else wakePlugin();
       }
     });
-    console.log(TAG2, "UI ready \u2014 press Ctrl+D");
+    console.log(TAG4, "UI ready \u2014 press Ctrl+D");
   }
   if (document.readyState === "complete") start();
   else window.addEventListener("load", start);

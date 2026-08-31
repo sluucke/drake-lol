@@ -57,12 +57,73 @@ describe('renderQueue', () => {
   it('disables toggle row when tray is down', () => {
     const html = renderQueue({
       provider: 'porofessor',
-      settings: { queue_team_reveal_in_client: false, queue_dodge_in_client: true },
+      settings: {
+        queue_team_reveal_in_client: false,
+        queue_dodge_in_client: true,
+        queue_show_map_side: true,
+        queue_mute_all_in_client: false,
+        queue_auto_message: 'hello',
+      },
       disabled: true,
     });
 
     expect(html).toContain('data-setting="queue_team_reveal_in_client" disabled');
     expect(html).toContain('data-setting="queue_dodge_in_client" disabled');
-    expect(html).toContain('data-checked="false"');
+    expect(html).toContain('data-setting="queue_show_map_side" disabled');
+    expect(html).toContain('data-setting="queue_mute_all_in_client" disabled');
+    expect(html).toContain('id="queue_auto_message" data-setting="queue_auto_message"');
+    expect(html).toContain('disabled');
+  });
+
+  it('renders map side toggle checked by default', () => {
+    const html = renderQueue({
+      provider: 'porofessor',
+      settings: {},
+      disabled: false,
+    });
+
+    expect(html).toContain('data-setting="queue_show_map_side"');
+    expect(html).toContain('Show map side in champ select');
+    expect(html).toMatch(/data-setting="queue_show_map_side"[^>]*>[\s\S]*data-checked="true"/);
+
+    const uncheckedHtml = renderQueue({
+      provider: 'porofessor',
+      settings: { queue_show_map_side: false },
+      disabled: false,
+    });
+    expect(uncheckedHtml).toMatch(/data-setting="queue_show_map_side"[^>]*>[\s\S]*data-checked="false"/);
+  });
+
+  it('renders mute all in client toggle unchecked by default', () => {
+    const html = renderQueue({
+      provider: 'porofessor',
+      settings: {},
+      disabled: false,
+    });
+
+    expect(html).toContain('data-setting="queue_mute_all_in_client"');
+    expect(html).toContain('Auto-mute teammates in champ select');
+    expect(html).toMatch(/data-setting="queue_mute_all_in_client"[^>]*>[\s\S]*data-checked="false"/);
+
+    const checkedHtml = renderQueue({
+      provider: 'porofessor',
+      settings: { queue_mute_all_in_client: true },
+      disabled: false,
+    });
+    expect(checkedHtml).toMatch(/data-setting="queue_mute_all_in_client"[^>]*>[\s\S]*data-checked="true"/);
+  });
+
+  it('renders auto message input with value and placeholder', () => {
+    const html = renderQueue({
+      provider: 'porofessor',
+      settings: { queue_auto_message: 'gl hf everyone' },
+      disabled: false,
+    });
+
+    expect(html).toContain('Auto-send message on chat connect');
+    expect(html).toContain('id="queue_auto_message"');
+    expect(html).toContain('data-setting="queue_auto_message"');
+    expect(html).toContain('value="gl hf everyone"');
+    expect(html).toContain('placeholder="Message to send when chat connects..."');
   });
 });

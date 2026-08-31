@@ -62,6 +62,12 @@ pub struct Settings {
     pub queue_team_reveal_in_client: bool,
     #[serde(default = "on")]
     pub queue_dodge_in_client: bool,
+    #[serde(default = "on")]
+    pub queue_show_map_side: bool,
+    #[serde(default = "off")]
+    pub queue_mute_all_in_client: bool,
+    #[serde(default = "empty_string")]
+    pub queue_auto_message: String,
     #[serde(default = "default_team_reveal_sample_size")]
     pub queue_team_reveal_sample_size: u32,
     #[serde(default = "default_team_reveal_recent_pool")]
@@ -216,6 +222,9 @@ impl Default for Settings {
             auto_update: on(),
             queue_team_reveal_in_client: off(),
             queue_dodge_in_client: on(),
+            queue_show_map_side: on(),
+            queue_mute_all_in_client: off(),
+            queue_auto_message: empty_string(),
             queue_team_reveal_sample_size: default_team_reveal_sample_size(),
             queue_team_reveal_recent_pool: default_team_reveal_recent_pool(),
             queue_team_reveal_last5_pool: default_team_reveal_last5_pool(),
@@ -327,6 +336,7 @@ pub struct ConfigdState {
     pub token: String,
     pub port: u16,
     pub settings: Mutex<Settings>,
+    pub http_client: reqwest::Client,
     last_checkin: Mutex<Option<(String, Instant, Option<String>)>>,
     persist: Mutex<Persist>,
     update_busy: Mutex<bool>,
@@ -353,10 +363,17 @@ impl ConfigdState {
     /// Seam for tests: builds state from a given `Settings` instead of reading
     /// `%PROGRAMDATA%\Drake\settings.json` from disk.
     pub fn new_with_settings(port: u16, settings: Settings) -> Self {
+        let http_client = reqwest::Client::builder()
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .unwrap_or_default();
+
         Self {
             token: generate_token(),
             port,
             settings: Mutex::new(settings),
+            http_client,
             last_checkin: Mutex::new(None),
             persist: Mutex::new(Box::new(save)),
             update_busy: Mutex::new(false),
@@ -457,6 +474,9 @@ pub struct SettingsPatch {
     pub auto_update: Option<bool>,
     pub queue_team_reveal_in_client: Option<bool>,
     pub queue_dodge_in_client: Option<bool>,
+    pub queue_show_map_side: Option<bool>,
+    pub queue_mute_all_in_client: Option<bool>,
+    pub queue_auto_message: Option<String>,
     pub queue_team_reveal_sample_size: Option<u32>,
     pub queue_team_reveal_recent_pool: Option<String>,
     pub queue_team_reveal_last5_pool: Option<String>,
@@ -507,6 +527,16 @@ impl SettingsPatch {
             queue_dodge_in_client: self
                 .queue_dodge_in_client
                 .unwrap_or(base.queue_dodge_in_client),
+            queue_show_map_side: self
+                .queue_show_map_side
+                .unwrap_or(base.queue_show_map_side),
+            queue_mute_all_in_client: self
+                .queue_mute_all_in_client
+                .unwrap_or(base.queue_mute_all_in_client),
+            queue_auto_message: self
+                .queue_auto_message
+                .clone()
+                .unwrap_or_else(|| base.queue_auto_message.clone()),
             queue_team_reveal_sample_size: normalize_team_reveal_sample_size(
                 self.queue_team_reveal_sample_size
                     .unwrap_or(base.queue_team_reveal_sample_size),
@@ -700,6 +730,101 @@ async fn apply_update(
     }
 }
 
+const PROXYABLE_HOSTS: [&str; 10] = [
+    "mcp-api.op.gg",
+    "op.gg",
+    "www.op.gg",
+    "lol-web-api.op.gg",
+    "leagueofgraphs.com",
+    "www.leagueofgraphs.com",
+    "lolalytics.com",
+    "www.lolalytics.com",
+    "raw.communitydragon.org",
+    "ddragon.leagueoflegends.com",
+];
+
+pub fn is_proxyable(raw: &str) -> bool {
+    let Some(rest) = raw.strip_prefix("https://") else {
+        return false;
+    };
+    let host = rest
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or("")
+        .split('@')
+        .next_back()
+        .unwrap_or("")
+        .split(':')
+        .next()
+        .unwrap_or("");
+    PROXYABLE_HOSTS.contains(&host)
+}
+
+#[derive(Deserialize)]
+pub struct ProxyBody {
+    pub token: String,
+    pub url: String,
+    #[serde(default)]
+    pub method: Option<String>,
+    #[serde(default)]
+    pub body: Option<serde_json::Value>,
+    #[serde(default)]
+    pub headers: Option<std::collections::HashMap<String, String>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ProxyResponse {
+    pub status: u16,
+    pub text: String,
+}
+
+async fn proxy_request(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<ProxyBody>,
+) -> Result<Json<ProxyResponse>, StatusCode> {
+    if body.token != state.token {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    if !is_proxyable(&body.url) {
+        eprintln!("[Drake] refused to proxy {}", body.url);
+        return Err(StatusCode::FORBIDDEN);
+    }
+    let method = body.method.unwrap_or_else(|| "GET".to_string()).to_uppercase();
+    let mut req = match method.as_str() {
+        "POST" => state.http_client.post(&body.url),
+        "PUT" => state.http_client.put(&body.url),
+        "DELETE" => state.http_client.delete(&body.url),
+        _ => state.http_client.get(&body.url),
+    };
+
+    if let Some(headers) = body.headers {
+        for (k, v) in headers {
+            if let (Ok(name), Ok(val)) = (
+                reqwest::header::HeaderName::from_bytes(k.as_bytes()),
+                reqwest::header::HeaderValue::from_str(&v),
+            ) {
+                req = req.header(name, val);
+            }
+        }
+    }
+
+    if let Some(json_body) = body.body {
+        req = req.json(&json_body);
+    }
+
+    match req.send().await {
+        Ok(res) => {
+            let status = res.status().as_u16();
+            let text = res.text().await.unwrap_or_default();
+            Ok(Json(ProxyResponse { status, text }))
+        }
+        Err(e) => {
+            eprintln!("[Drake] proxy fetch error for {}: {e}", body.url);
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
 fn router(state: Arc<ConfigdState>) -> Router {
     // The client page that calls /checkin is served from a different origin
     // (https://plugins/... via the loader's own scheme), so the browser
@@ -717,6 +842,7 @@ fn router(state: Arc<ConfigdState>) -> Router {
         .route("/checkin", post(checkin))
         .route("/settings", post(put_settings))
         .route("/open-url", post(open_url))
+        .route("/proxy", post(proxy_request))
         .route("/update/check", post(check_update))
         .route("/update/apply", post(apply_update))
         .layer(cors)
@@ -757,6 +883,9 @@ mod tests {
         assert_eq!(Settings::default().auto_accept, false);
         assert_eq!(Settings::default().queue_team_reveal_in_client, false);
         assert_eq!(Settings::default().queue_dodge_in_client, true);
+        assert_eq!(Settings::default().queue_show_map_side, true);
+        assert_eq!(Settings::default().queue_mute_all_in_client, false);
+        assert_eq!(Settings::default().queue_auto_message, "");
     }
 
     #[test]
@@ -855,6 +984,9 @@ mod tests {
         assert_eq!(s.auto_pick_by_role.is_empty(), true);
         assert_eq!(s.auto_update, true);
         assert_eq!(s.queue_team_reveal_in_client, false);
+        assert_eq!(s.queue_show_map_side, true);
+        assert_eq!(s.queue_mute_all_in_client, false);
+        assert_eq!(s.queue_auto_message, "");
         assert_eq!(s.onboarding_done, false);
         assert_eq!(s.whats_new_seen_version, "");
     }
@@ -1105,6 +1237,30 @@ mod tests {
         assert_eq!(s.auto_accept, true);
         assert_eq!(s.run_at_startup, false, "an unmentioned field must not be reset");
         assert_eq!(s.queue_team_reveal_in_client, false, "an unmentioned field must not be reset");
+        assert_eq!(s.queue_show_map_side, true, "an unmentioned field must not be reset");
+        assert_eq!(s.queue_mute_all_in_client, false, "an unmentioned field must not be reset");
+        assert_eq!(s.queue_auto_message, "", "an unmentioned field must not be reset");
+    }
+
+    #[tokio::test]
+    async fn posting_queue_settings_persists_them() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+
+        let res = router(state.clone())
+            .oneshot(settings_request(
+                &token,
+                r#"{"queue_show_map_side":false,"queue_mute_all_in_client":true,"queue_auto_message":"gl hf"}"#,
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        let s = state.settings.lock().unwrap();
+        assert_eq!(s.queue_show_map_side, false);
+        assert_eq!(s.queue_mute_all_in_client, true);
+        assert_eq!(s.queue_auto_message, "gl hf");
     }
 
     #[tokio::test]
@@ -1272,5 +1428,49 @@ mod tests {
         );
 
         drop(blocker);
+    }
+
+    #[test]
+    fn proxyable_allows_opgg_and_leagueofgraphs_domains() {
+        assert!(is_proxyable("https://mcp-api.op.gg/mcp"));
+        assert!(is_proxyable("https://op.gg/champions"));
+        assert!(is_proxyable("https://www.leagueofgraphs.com/champions/builds/ahri/middle"));
+        assert!(is_proxyable("https://lolalytics.com/lol/ahri/build/"));
+        assert!(!is_proxyable("http://mcp-api.op.gg/mcp"));
+        assert!(!is_proxyable("https://evil.com/"));
+        assert!(!is_proxyable("https://mcp-api.op.gg.evil.com/"));
+    }
+
+    #[tokio::test]
+    async fn proxy_request_checks_token_and_rejects_unauthorized() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let app = router(state);
+
+        let body = r#"{"token":"wrong-token","url":"https://mcp-api.op.gg/mcp"}"#;
+        let req = Request::builder()
+            .method("POST")
+            .uri("/proxy")
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn proxy_request_rejects_forbidden_host() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let token = state.token.clone();
+        let app = router(state);
+
+        let body = format!(r#"{{"token":"{token}","url":"https://evil.com/steal"}}"#);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/proxy")
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
     }
 }
