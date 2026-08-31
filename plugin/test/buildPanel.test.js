@@ -151,6 +151,49 @@ describe('makeBuildPanel', () => {
     expect(deps.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ build_tier: 'challenger' }));
   });
 
+  it('re-reads settings on open so a save made after construction reaches the panel', async () => {
+    let current = { build_tier: 'emerald_plus', build_region: 'global' };
+    const deps = makeDeps({ getSettings: () => current });
+    const panel = makeBuildPanel(deps);
+    panel.setSession(SESSION);
+
+    // Settings changed after the panel was constructed (e.g. reloaded
+    // elsewhere) but before the panel is ever opened.
+    current = { build_tier: 'diamond_plus', build_region: 'na' };
+
+    panel.open();
+    await flush();
+
+    expect(deps.fetchChampionBuildImpl).toHaveBeenCalledWith(
+      expect.objectContaining({ tier: 'diamond_plus', region: 'na' }),
+      expect.anything()
+    );
+  });
+
+  it('does not let a stale settings re-read clobber a live mid-session tier change', async () => {
+    let current = { build_tier: 'emerald_plus', build_region: 'global' };
+    const deps = makeDeps({ getSettings: () => current });
+    const panel = makeBuildPanel(deps);
+    panel.setSession(SESSION);
+    panel.open();
+    await flush();
+
+    const overlay = deps.overlayRoot.children[0];
+    overlay.emit('change', { target: { dataset: { buildTier: '' }, value: 'challenger', matches: () => true, closest: () => null } });
+    await flush();
+
+    // getSettings() still reflects the pre-change value (save is async /
+    // has not round-tripped yet) at the moment the panel is reopened.
+    panel.close();
+    panel.open();
+    await flush();
+
+    expect(deps.fetchChampionBuildImpl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tier: 'challenger' }),
+      expect.anything()
+    );
+  });
+
   it('surfaces an error state when the fetch returns nothing', async () => {
     const deps = makeDeps({ fetchChampionBuildImpl: vi.fn().mockResolvedValue(null) });
     const panel = makeBuildPanel(deps);

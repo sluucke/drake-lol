@@ -34,6 +34,7 @@ export function makeBuildPanel({
   let enabled = true;
   let overlay = null;
   let generation = 0;
+  let hasOpenedOnce = false;
 
   const cache = new Map();
 
@@ -361,6 +362,17 @@ export function makeBuildPanel({
 
   function openPanel() {
     if (!enabled || open) return;
+    // Re-read settings on every open so a save made elsewhere (e.g. a
+    // settings reload after construction) reaches the panel. Only seed
+    // state.tier/state.region from it the first time this panel instance
+    // opens -- after that, a mid-session dropdown change is a live user
+    // choice and must not be clobbered by a stale settings read.
+    if (!hasOpenedOnce) {
+      hasOpenedOnce = true;
+      const fresh = getSettings() || {};
+      state.tier = fresh.build_tier || state.tier;
+      state.region = fresh.build_region || state.region;
+    }
     open = true;
     paint();
     void loadBuild();

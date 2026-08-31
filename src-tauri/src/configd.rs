@@ -88,6 +88,10 @@ pub struct Settings {
     pub onboarding_done: bool,
     #[serde(default = "empty_string")]
     pub whats_new_seen_version: String,
+    #[serde(default = "default_build_tier")]
+    pub build_tier: String,
+    #[serde(default = "default_build_region")]
+    pub build_region: String,
 }
 
 fn no_champion() -> u32 {
@@ -177,6 +181,14 @@ fn default_team_reveal_fetch_concurrency() -> u32 {
     1
 }
 
+fn default_build_tier() -> String {
+    "emerald_plus".into()
+}
+
+fn default_build_region() -> String {
+    "global".into()
+}
+
 fn normalize_team_reveal_sample_size(value: u32) -> u32 {
     match value {
         20 | 50 | 100 => value,
@@ -235,6 +247,8 @@ impl Default for Settings {
             profile_rank_crystal: default_rank_crystal(),
             onboarding_done: off(),
             whats_new_seen_version: empty_string(),
+            build_tier: default_build_tier(),
+            build_region: default_build_region(),
         }
     }
 }
@@ -487,6 +501,8 @@ pub struct SettingsPatch {
     pub profile_rank_crystal: Option<String>,
     pub onboarding_done: Option<bool>,
     pub whats_new_seen_version: Option<String>,
+    pub build_tier: Option<String>,
+    pub build_region: Option<String>,
 }
 
 impl SettingsPatch {
@@ -578,6 +594,11 @@ impl SettingsPatch {
                 .whats_new_seen_version
                 .clone()
                 .unwrap_or_else(|| base.whats_new_seen_version.clone()),
+            build_tier: self.build_tier.clone().unwrap_or_else(|| base.build_tier.clone()),
+            build_region: self
+                .build_region
+                .clone()
+                .unwrap_or_else(|| base.build_region.clone()),
         }
     }
 }
@@ -889,6 +910,12 @@ mod tests {
     }
 
     #[test]
+    fn build_panel_settings_default_to_emerald_plus_global() {
+        assert_eq!(Settings::default().build_tier, "emerald_plus");
+        assert_eq!(Settings::default().build_region, "global");
+    }
+
+    #[test]
     fn settings_include_onboarding_defaults() {
         let s = Settings::default();
         assert_eq!(s.onboarding_done, false);
@@ -989,6 +1016,8 @@ mod tests {
         assert_eq!(s.queue_auto_message, "");
         assert_eq!(s.onboarding_done, false);
         assert_eq!(s.whats_new_seen_version, "");
+        assert_eq!(s.build_tier, "emerald_plus");
+        assert_eq!(s.build_region, "global");
     }
 
     #[test]
@@ -1240,6 +1269,28 @@ mod tests {
         assert_eq!(s.queue_show_map_side, true, "an unmentioned field must not be reset");
         assert_eq!(s.queue_mute_all_in_client, false, "an unmentioned field must not be reset");
         assert_eq!(s.queue_auto_message, "", "an unmentioned field must not be reset");
+        assert_eq!(s.build_tier, "emerald_plus", "an unmentioned field must not be reset");
+        assert_eq!(s.build_region, "global", "an unmentioned field must not be reset");
+    }
+
+    #[tokio::test]
+    async fn posting_build_panel_settings_persists_them() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+
+        let res = router(state.clone())
+            .oneshot(settings_request(
+                &token,
+                r#"{"build_tier":"diamond_plus","build_region":"na"}"#,
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        let s = state.settings.lock().unwrap();
+        assert_eq!(s.build_tier, "diamond_plus");
+        assert_eq!(s.build_region, "na");
     }
 
     #[tokio::test]
