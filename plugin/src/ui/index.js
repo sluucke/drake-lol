@@ -202,6 +202,10 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       if (buildPanel) buildPanel.toggle();
     },
     onEscape: () => {
+      if (buildPanel && buildPanel.isOpen()) {
+        buildPanel.close();
+        return true;
+      }
       if (!shadowRoot) return false;
       const modal = shadowRoot.getElementById('credits-modal');
       if (!modal || modal.hidden) return false;

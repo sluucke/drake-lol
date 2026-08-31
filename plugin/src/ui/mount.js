@@ -125,10 +125,18 @@ function createUI({
       } else if (matchesBuildPanelToggle(event)) {
         event.preventDefault();
         if (onBuildPanelToggle) onBuildPanelToggle();
-      } else if (open && matchesClose(event)) {
-        event.preventDefault();
-        if (typeof onEscape === 'function' && onEscape()) return;
-        api.close();
+      } else if (matchesClose(event)) {
+        // onEscape covers things that can be open independently of the main
+        // panel (e.g. the build panel via Ctrl+B). It must get a chance to
+        // run even when the main panel itself is closed.
+        if (typeof onEscape === 'function' && onEscape()) {
+          event.preventDefault();
+          return;
+        }
+        if (open) {
+          event.preventDefault();
+          api.close();
+        }
       }
     },
     true,

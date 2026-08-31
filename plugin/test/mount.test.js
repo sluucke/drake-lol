@@ -158,6 +158,35 @@ describe('mountUI', () => {
     expect(ui.isOpen()).toBe(true);
   });
 
+  it('lets onEscape handle Escape even when the main panel is closed', () => {
+    const onEscape = vi.fn(() => true);
+    const onOpenChange = vi.fn();
+    const ui = mountUI({ doc, win, render: () => '<div></div>', onEscape, onOpenChange });
+
+    expect(ui.isOpen()).toBe(false);
+
+    const preventDefault = vi.fn();
+    win.dispatch('keydown', { key: 'Escape', preventDefault });
+
+    expect(onEscape).toHaveBeenCalledTimes(1);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    // The main panel was never open, so it must not report a close.
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(ui.isOpen()).toBe(false);
+  });
+
+  it('still closes the main panel on Escape when onEscape does not consume it', () => {
+    const onEscape = vi.fn(() => false);
+    const ui = mountUI({ doc, win, render: () => '<div></div>', onEscape });
+
+    win.dispatch('keydown', { ctrlKey: true, key: 'd', preventDefault() {} });
+    expect(ui.isOpen()).toBe(true);
+
+    win.dispatch('keydown', { key: 'Escape', preventDefault() {} });
+    expect(onEscape).toHaveBeenCalledTimes(1);
+    expect(ui.isOpen()).toBe(false);
+  });
+
   it('calls team reveal cards toggle on Ctrl+Shift+D only', () => {
     const onTeamRevealCardsToggle = vi.fn();
     const ui = mountUI({ doc, win, render: () => '<div></div>', onTeamRevealCardsToggle });
