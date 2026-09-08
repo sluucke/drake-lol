@@ -1,5 +1,25 @@
 export const WHATS_NEW = [
   {
+    version: '0.3.24',
+    items: [
+      {
+        title: 'Dropdowns actually work now',
+        body: 'Rank, Region, and every other dropdown in Drake (Queue settings, Profile) responded to clicks unreliably or not at all for some users — replaced with a dropdown Drake fully controls, so picking an option always sticks.',
+        screen: 'queue',
+      },
+      {
+        title: 'Fixed Recent W/L, KDA, and Last 12h showing 0',
+        body: 'A queue-detection bug could zero out a teammate’s recent stats in Team Reveal. Fixed at the source.',
+        screen: 'queue',
+      },
+      {
+        title: 'Build Panel, redesigned',
+        body: 'If you missed it: champ select builds from OP.GG — runes, items by phase, skill order, matchups, and top players — now laid out closer to what you’d see on Mobalytics, with one-click Apply actions and Create Item Set. Open it from Ctrl+Shift+D.',
+        screen: 'queue',
+      },
+    ],
+  },
+  {
     version: '0.3.23',
     items: [
       {

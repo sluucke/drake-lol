@@ -5,6 +5,7 @@ import { loadGameAssets } from '../features/gameAssets.js';
 import { applyRunePage, loadRuneAssets } from '../features/runes.js';
 import { buildItemSet, applyItemSet, applySummonerSpells } from '../features/itemSets.js';
 import { renderBuildPanel } from './buildPanelRender.js';
+import { wireDrakeSelects } from './drakeSelect.js';
 
 const TAG = '[Drake]';
 export const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -42,7 +43,9 @@ export function makeBuildPanel({
     for (const fn of listeners) {
       try {
         fn(state);
-      } catch {}
+      } catch (err) {
+        console.warn(TAG, 'onUpdate listener failed:', err?.stack || err?.message || err);
+      }
     }
   }
 
@@ -112,9 +115,39 @@ export function makeBuildPanel({
     if (node) {
       node.hidden = !open;
       if (node.style) node.style.display = open ? 'flex' : 'none';
-      if (open) node.innerHTML = renderBuildPanel(state);
+      if (open) {
+        node.innerHTML = renderBuildPanel(state);
+        wireDrakeSelects(node, ({ dropdown, value }) => {
+          applyDropdownSelect(dropdown, value);
+        });
+      }
     }
     notify();
+  }
+
+  function applyDropdownSelect(dropdown, value) {
+    if (!dropdown || !value) return false;
+    const isTier =
+      dropdown.matches?.('[data-build-tier]') || dropdown.dataset?.buildTier !== undefined;
+    const isRegion =
+      dropdown.matches?.('[data-build-region]') || dropdown.dataset?.buildRegion !== undefined;
+    if (isTier) {
+      if (value === state.tier) return true;
+      state.tier = value;
+      void saveSettings({ build_tier: state.tier });
+      void loadBuild();
+      notify();
+      return true;
+    }
+    if (isRegion) {
+      if (value === state.region) return true;
+      state.region = value;
+      void saveSettings({ build_region: state.region });
+      void loadBuild();
+      notify();
+      return true;
+    }
+    return false;
   }
 
   async function loadBuild({ force = false } = {}) {
@@ -261,19 +294,22 @@ export function makeBuildPanel({
 
   function handleChange(event) {
     const target = event?.target;
-    if (target?.matches?.('[data-build-tier]') || target?.dataset?.buildTier !== undefined) {
-      state.tier = readChangeValue(event, target);
-      void saveSettings({ build_tier: state.tier });
-      void loadBuild();
-      notify();
-      return true;
+    const path = typeof event?.composedPath === 'function' ? event.composedPath() : [];
+    const tierEl =
+      target?.closest?.('[data-build-tier]') ||
+      path.find?.((node) => node?.matches?.('[data-build-tier]') || node?.dataset?.buildTier !== undefined) ||
+      (target?.matches?.('[data-build-tier]') || target?.dataset?.buildTier !== undefined ? target : null);
+    if (tierEl) {
+      const next = readChangeValue(event, tierEl) || readChangeValue(event, target);
+      return applyDropdownSelect(tierEl, next);
     }
-    if (target?.matches?.('[data-build-region]') || target?.dataset?.buildRegion !== undefined) {
-      state.region = readChangeValue(event, target);
-      void saveSettings({ build_region: state.region });
-      void loadBuild();
-      notify();
-      return true;
+    const regionEl =
+      target?.closest?.('[data-build-region]') ||
+      path.find?.((node) => node?.matches?.('[data-build-region]') || node?.dataset?.buildRegion !== undefined) ||
+      (target?.matches?.('[data-build-region]') || target?.dataset?.buildRegion !== undefined ? target : null);
+    if (regionEl) {
+      const next = readChangeValue(event, regionEl) || readChangeValue(event, target);
+      return applyDropdownSelect(regionEl, next);
     }
     return false;
   }
@@ -447,6 +483,7 @@ export function makeBuildPanel({
     renderHtml,
     handleChange,
     handleClick,
+    applyDropdownSelect,
     onUpdate: (fn) => {
       listeners.add(fn);
       return () => listeners.delete(fn);

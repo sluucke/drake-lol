@@ -65,6 +65,7 @@ import { makeTeamRevealDom } from './teamRevealDom.js';
 import { makeBuildPanel } from './buildPanel.js';
 import { makeProxyFetch } from '../features/proxyFetch.js';
 import { makeSummonerIdLoader } from '../features/summonerId.js';
+import { wireDrakeSelects } from './drakeSelect.js';
 
 const TAG = '[Drake]';
 
@@ -611,7 +612,52 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       for (const item of shadow.querySelectorAll('[data-screen]')) {
         item.setAttribute('aria-selected', String(item.dataset.screen === screen));
       }
+      wireDrakeSelects(content, ({ dropdown, value }) => {
+        applyPanelDropdown(dropdown, value);
+      });
       paintOnboard();
+    }
+
+    function applyPanelDropdown(dropdown, value) {
+      const id = dropdown?.id;
+      if (!id || value === '' || value == null) return;
+
+      if (id in steps) {
+        steps[id] = value;
+        return;
+      }
+
+      if (id === 'presence-availability') {
+        const previous = settings.presence_availability || '';
+        settings = { ...settings, presence_availability: value };
+        paint();
+        commit({ presence_availability: value }, () => {
+          settings = { ...settings, presence_availability: previous };
+          paint();
+        });
+        return;
+      }
+
+      const revealSelect = {
+        'team-reveal-sample-size': 'queue_team_reveal_sample_size',
+        'team-reveal-recent-pool': 'queue_team_reveal_recent_pool',
+        'team-reveal-last5-pool': 'queue_team_reveal_last5_pool',
+        'team-reveal-fetch-concurrency': 'queue_team_reveal_fetch_concurrency',
+      }[id];
+      if (!revealSelect) return;
+
+      const previous = settings[revealSelect];
+      const next =
+        revealSelect === 'queue_team_reveal_sample_size' ||
+        revealSelect === 'queue_team_reveal_fetch_concurrency'
+          ? Number(value)
+          : value;
+      settings = { ...settings, [revealSelect]: next };
+      paint();
+      commit({ [revealSelect]: next }, () => {
+        settings = { ...settings, [revealSelect]: previous };
+        paint();
+      });
     }
 
     function applyUpdateStatus(body) {
@@ -1176,35 +1222,10 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         return;
       }
       if (e.target.id === 'presence-availability') {
-        const previous = settings.presence_availability || '';
-        const value = e.target.value;
-        settings = { ...settings, presence_availability: value };
-        paint();
-        commit({ presence_availability: value }, () => {
-          settings = { ...settings, presence_availability: previous };
-          paint();
-        });
+        applyPanelDropdown(e.target, e.target.value);
         return;
       }
-      const revealSelect = {
-        'team-reveal-sample-size': 'queue_team_reveal_sample_size',
-        'team-reveal-recent-pool': 'queue_team_reveal_recent_pool',
-        'team-reveal-last5-pool': 'queue_team_reveal_last5_pool',
-        'team-reveal-fetch-concurrency': 'queue_team_reveal_fetch_concurrency',
-      }[e.target.id];
-      if (!revealSelect) return;
-      const previous = settings[revealSelect];
-      const value =
-        revealSelect === 'queue_team_reveal_sample_size' ||
-        revealSelect === 'queue_team_reveal_fetch_concurrency'
-          ? Number(e.target.value)
-          : e.target.value;
-      settings = { ...settings, [revealSelect]: value };
-      paint();
-      commit({ [revealSelect]: value }, () => {
-        settings = { ...settings, [revealSelect]: previous };
-        paint();
-      });
+      applyPanelDropdown(e.target, e.target.value);
     });
 
     shadow.getElementById('cancel-queue').addEventListener('click', async () => {

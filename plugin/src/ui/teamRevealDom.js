@@ -15,6 +15,7 @@ import { collectRevealChatPairs, makeTeamRevealChat } from './teamRevealChat.js'
 import { readMapSide, formatMapSideBadge } from '../features/mapSide.js';
 import { muteTeammates } from '../features/muteAll.js';
 import { sendChampSelectMessage } from '../features/champSelectChat.js';
+import { wireDrakeSelects, isDrakeSelectTarget } from './drakeSelect.js';
 
 const ORIGINAL_NAME_KEY = 'drakeTeamRevealOriginal';
 const APPLIED_KEY = 'drakeTeamRevealApplied';
@@ -696,6 +697,8 @@ export function makeTeamRevealDom({
         if (handled) return;
       }
 
+      if (isDrakeSelectTarget(target)) return;
+
       if (target === node) {
         closeCards();
         return;
@@ -859,6 +862,9 @@ export function makeTeamRevealDom({
           buildHtml,
         });
         lastCardsRenderSig = sig;
+        wireDrakeSelects(overlay, ({ dropdown, value }) => {
+          buildPanel?.applyDropdownSelect?.(dropdown, value);
+        });
       }
       overlay.hidden = false;
       if (overlay.style) overlay.style.display = 'flex';

@@ -51,12 +51,12 @@ const baseState = {
 };
 
 describe('renderPanelHeader', () => {
-  it('renders every tier as a hextech dropdown option and marks the selected one', () => {
+  it('renders every tier as a drake-select option and marks the selected one', () => {
     const html = renderPanelHeader(baseState);
-    expect(html).toContain('lol-uikit-framed-dropdown');
+    expect(html).toContain('drake-select');
     expect(html).toContain('data-build-tier');
-    expect(html).toMatch(/<lol-uikit-dropdown-option[^>]*value="emerald_plus"[^>]* selected>/);
-    expect(html).toContain('value="challenger"');
+    expect(html).toMatch(/<div class="drake-select-option is-selected" data-value="emerald_plus"/);
+    expect(html).toContain('data-value="challenger"');
     expect(html).toContain('Emerald+');
   });
 
@@ -72,10 +72,16 @@ describe('renderPanelHeader', () => {
     expect(renderPanelHeader({ ...baseState, mode: 'aram' })).toContain('ARAM');
   });
 
-  it('keeps images out of the tier dropdown options, since the closed dropdown header cannot size an <img> inside its shadow DOM', () => {
+  it('keeps images out of the tier dropdown options — icons live outside the select, not inside an option', () => {
     const html = renderPanelHeader(baseState);
-    const optionsBlock = html.slice(html.indexOf('data-build-tier'), html.indexOf('</lol-uikit-framed-dropdown>'));
+    const optionsBlock = html.slice(html.indexOf('data-build-tier'), html.indexOf('drake-select-list'));
     expect(optionsBlock).not.toContain('<img');
+  });
+
+  it('stamps the current value on the rank and region select hosts', () => {
+    const html = renderPanelHeader(baseState);
+    expect(html).toContain(`data-value="${baseState.tier}"`);
+    expect(html).toContain(`data-value="${baseState.region}"`);
   });
 
   it('shows the current rank icon outside the dropdown instead', () => {

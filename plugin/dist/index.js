@@ -774,10 +774,10 @@
 .build-role-icon { width: 15px; height: 15px; object-fit: contain; }
 .build-mode-tag, .build-patch { border: 1px solid #463714; padding: 1px 6px; border-radius: 2px; }
 
-.build-filters { display: flex; gap: 10px; margin-left: auto; }
-.build-filter { display: flex; flex-direction: column; gap: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #a09b8c; }
-.build-hextech-dropdown { width: 150px; max-height: 32px; overflow: hidden; }
-.build-select-wrap { display: flex; align-items: center; gap: 6px; }
+.build-filters { display: flex; gap: 10px; margin-left: auto; position: relative; z-index: 5; overflow: visible; }
+.build-filter { display: flex; flex-direction: column; gap: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #a09b8c; overflow: visible; }
+.build-filter .drake-select { width: 150px; }
+.build-select-wrap { display: flex; align-items: center; gap: 6px; overflow: visible; }
 .build-filter-rank-icon { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
 
 .build-stats { display: flex; gap: 14px; width: 100%; font-size: 12px; color: #a09b8c; }
@@ -1004,6 +1004,8 @@
   padding: 0 0 14px;
   border-bottom: 1px solid #1e2328;
   margin-bottom: 14px;
+  overflow: visible;
+  z-index: 6;
 }
 .team-reveal-shell .build-body {
   padding: 0;
@@ -1846,10 +1848,68 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   flex: 1;
   display: block;
 }
-.select-field .framed-dropdown-type {
-  text-transform: none;
+
+.drake-select {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  background: linear-gradient(to bottom, rgba(7, 16, 25, 0.9), rgba(0, 0, 0, 0.8));
+  border: thin solid #785a28;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4) inset;
 }
-.select-field[disabled] {
+.drake-select:hover,
+.drake-select.is-open {
+  border-color: #c8aa6e;
+}
+.drake-select-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  color: #f0e6d2;
+  font-size: 12px;
+}
+.drake-select-current::after {
+  content: '\u25BE';
+  color: #c8aa6e;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.drake-select.is-open .drake-select-current::after {
+  content: '\u25B4';
+}
+.drake-select-list {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #0a1428;
+  border: thin solid #785a28;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+.drake-select.is-open .drake-select-list {
+  display: flex;
+}
+.drake-select-option {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #a09b8c;
+  white-space: nowrap;
+}
+.drake-select-option:hover {
+  background: rgba(200, 170, 110, 0.15);
+  color: #f0e6d2;
+}
+.drake-select-option.is-selected {
+  color: #c8aa6e;
+}
+.drake-select[aria-disabled='true'] {
   pointer-events: none;
   opacity: 0.6;
 }
@@ -2032,7 +2092,9 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   box-sizing: border-box;
   width: min(1180px, 94vw);
   max-height: 88vh;
-  overflow-y: auto;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
   padding: 16px 18px 20px;
   background: linear-gradient(180deg, #0a1428 0%, #06101f 100%);
   border: 1px solid #785a28;
@@ -2040,6 +2102,11 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   color: #f0e6d2;
   box-shadow: 0 0 32px rgba(0, 0, 0, 0.8);
   font-family: ${BODY};
+}
+.team-reveal-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .team-reveal-header {
   display: flex;
@@ -2697,15 +2764,16 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   height: 12px;
 }
 .team-reveal-skel-game {
-  width: 36px;
-  height: 48px;
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 100%;
   flex-shrink: 0;
 }
 .team-reveal-recent-games.is-loading {
   display: flex;
   gap: 6px;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: flex-end;
 }
 @keyframes team-reveal-skel-shine {
   0% { background-position: 100% 0; }
@@ -3397,6 +3465,87 @@ ${BUILD_PANEL_CSS}
     return key.charAt(0) + key.slice(1).toLowerCase();
   }
 
+  // src/ui/drakeSelect.js
+  var TAG = "[Drake]";
+  function renderDrakeSelectHtml(id, options, selectedValue, { disabled = false, extraAttrs = {} } = {}) {
+    const selected = options.find((o) => String(o.value) === String(selectedValue)) || options[0] || { value: "", label: "" };
+    const attrs = Object.entries(extraAttrs).map(([key, val]) => val === true ? ` ${key}` : val == null || val === false ? "" : ` ${key}="${escapeHtml(String(val))}"`).join("");
+    const optionsHtml = options.map(
+      (o) => `<div class="drake-select-option${String(o.value) === String(selected.value) ? " is-selected" : ""}" data-value="${escapeHtml(o.value)}" role="option">${escapeHtml(o.label)}</div>`
+    ).join("");
+    return `<div class="drake-select select-field" id="${escapeHtml(id)}" data-value="${escapeHtml(selected.value)}" tabindex="0" role="listbox"${disabled ? ' aria-disabled="true"' : ""}${attrs}>
+    <div class="drake-select-current">${escapeHtml(selected.label)}</div>
+    <div class="drake-select-list">${optionsHtml}</div>
+  </div>`;
+  }
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function closeAllDrakeSelects(root, exceptEl = null) {
+    if (!root?.querySelectorAll) return;
+    for (const select of root.querySelectorAll(".drake-select.is-open")) {
+      if (select !== exceptEl) select.classList.remove("is-open");
+    }
+  }
+  function isDrakeSelectTarget(target) {
+    return Boolean(target?.closest?.(".drake-select"));
+  }
+  function wireOneSelect(select, onSelect, root, cleanups) {
+    if (select.dataset?.drakeSelectWired === "1") return;
+    if (select.dataset) select.dataset.drakeSelectWired = "1";
+    if (select.getAttribute?.("aria-disabled") === "true") return;
+    const current = select.querySelector(".drake-select-current");
+    const onToggle = (event) => {
+      event?.stopPropagation?.();
+      const isOpen = select.classList.contains("is-open");
+      closeAllDrakeSelects(root, select);
+      select.classList.toggle("is-open", !isOpen);
+    };
+    current?.addEventListener("click", onToggle);
+    cleanups.push(() => current?.removeEventListener("click", onToggle));
+    for (const option of select.querySelectorAll(".drake-select-option")) {
+      const onPick = (event) => {
+        event?.stopPropagation?.();
+        try {
+          const value = option.dataset?.value ?? option.getAttribute?.("value") ?? "";
+          const label = String(option.textContent || "").trim();
+          if (value === "") return;
+          select.value = value;
+          select.setAttribute("data-value", value);
+          if (current) current.textContent = label;
+          for (const opt of select.querySelectorAll(".drake-select-option")) {
+            opt.classList.toggle("is-selected", opt === option);
+          }
+          select.classList.remove("is-open");
+          onSelect?.({ dropdown: select, value, label, event });
+        } catch (err) {
+          console.warn(TAG, "drake-select option pick handler threw:", err?.stack || err?.message || err);
+        }
+      };
+      option.addEventListener("click", onPick);
+      cleanups.push(() => option.removeEventListener("click", onPick));
+    }
+  }
+  function wireDrakeSelects(root, onSelect) {
+    if (!root?.querySelectorAll) return () => {
+    };
+    const cleanups = [];
+    const found = root.querySelectorAll(".drake-select");
+    let wired = 0;
+    for (const select of found) {
+      try {
+        wireOneSelect(select, onSelect, root, cleanups);
+        wired += 1;
+      } catch (err) {
+        console.warn(TAG, "failed to wire a drake-select, skipping it:", err?.stack || err?.message || err);
+      }
+    }
+    console.log(TAG, `wireDrakeSelects: found ${found.length}, wired ${wired}`);
+    return () => {
+      for (const dispose of cleanups) dispose();
+    };
+  }
+
   // src/ui/panel.js
   var SCREENS = [
     { id: "auto-accept", label: "Auto Accept" },
@@ -3421,10 +3570,10 @@ ${BUILD_PANEL_CSS}
   };
   function creditLink(entry, { large = false } = {}) {
     const cls = large ? "credit-link credit-link-large" : "credit-link";
-    return `<button type="button" class="${cls}" data-credit-href="${escapeHtml(entry.href)}">${escapeHtml(entry.label)}</button>`;
+    return `<button type="button" class="${cls}" data-credit-href="${escapeHtml2(entry.href)}">${escapeHtml2(entry.label)}</button>`;
   }
   function creditBlock(title, bodyHtml) {
-    return `<div class="credit-block"><span class="credit-label">${escapeHtml(title)}</span>${bodyHtml}</div>`;
+    return `<div class="credit-block"><span class="credit-label">${escapeHtml2(title)}</span>${bodyHtml}</div>`;
   }
   function renderCreditsModal() {
     const inspired = CREDITS.inspiredBy.map((entry) => creditLink(entry)).join("");
@@ -3504,7 +3653,7 @@ ${BUILD_PANEL_CSS}
     </div>`;
   }
   function renderWhatsNew(entry, { version } = {}) {
-    const ver = escapeHtml(version || entry?.version || "");
+    const ver = escapeHtml2(version || entry?.version || "");
     const items2 = Array.isArray(entry?.items) ? entry.items : [];
     const list = items2.length ? `<ul class="whats-new-list">${items2.map(renderWhatsNewItem).join("")}</ul>` : `<p class="whats-new-empty">No notes for this version.</p>`;
     return `
@@ -3519,15 +3668,15 @@ ${BUILD_PANEL_CSS}
     </div>`;
   }
   function renderWhatsNewItem(item) {
-    const title = escapeHtml(item.title);
-    const body = escapeHtml(item.body);
-    const screen = item.screen ? escapeHtml(item.screen) : "";
+    const title = escapeHtml2(item.title);
+    const body = escapeHtml2(item.body);
+    const screen = item.screen ? escapeHtml2(item.screen) : "";
     const heading = screen ? `<button type="button" class="whats-new-link" data-whats-new-screen="${screen}">${title}</button>` : `<span class="whats-new-title">${title}</span>`;
     return `<li class="whats-new-item">${heading}<p class="whats-new-body">${body}</p></li>`;
   }
   function renderTourCard(step, { index, total } = {}) {
-    const title = escapeHtml(step?.title);
-    const body = escapeHtml(step?.body);
+    const title = escapeHtml2(step?.title);
+    const body = escapeHtml2(step?.body);
     const current = Number(index) || 0;
     const count = Number(total) || 0;
     const nextLabel = current === count && count > 0 ? "Done" : "Next";
@@ -3718,7 +3867,7 @@ ${BUILD_PANEL_CSS}
       <label class="field-label" for="queue_auto_message">Auto-send message on chat connect</label>
     </div>
     <input class="hextech-input" type="text" id="queue_auto_message" data-setting="queue_auto_message"
-           value="${escapeHtml(settings.queue_auto_message || "")}"
+           value="${escapeHtml2(settings.queue_auto_message || "")}"
            placeholder="Message to send when chat connects..."
            ${disabled ? "disabled" : ""}>`;
   }
@@ -3912,12 +4061,8 @@ ${BUILD_PANEL_CSS}
     { id: "riot-id", label: "Riot ID" }
   ];
   function renderSelect(id, list, selected, disabled = false) {
-    const opts = list.map((o) => {
-      const value = o.id ?? o;
-      const label = o.label ?? o;
-      return `<lol-uikit-dropdown-option slot="lol-uikit-dropdown-option" value="${value}" class="framed-dropdown-type"${String(value) === String(selected) ? " selected" : ""}>${label}</lol-uikit-dropdown-option>`;
-    }).join("");
-    return `<lol-uikit-framed-dropdown class="select-field" id="${id}" tabindex="0"${disabled ? " disabled" : ""}>${opts}</lol-uikit-framed-dropdown>`;
+    const options = list.map((o) => ({ value: o.id ?? o, label: o.label ?? o }));
+    return renderDrakeSelectHtml(id, options, selected, { disabled });
   }
   function renderRankTab(lol) {
     const tier = lol.rankedLeagueTier || "";
@@ -3970,9 +4115,9 @@ ${BUILD_PANEL_CSS}
   function renderSkinCells(skins, selectedId, win) {
     return skins.slice(win.start, win.end).map(
       (s) => `
-      <button class="skin ${s.id === selectedId ? "skin-on" : ""}" data-skin="${s.id}" title="${escapeHtml(s.name)}">
+      <button class="skin ${s.id === selectedId ? "skin-on" : ""}" data-skin="${s.id}" title="${escapeHtml2(s.name)}">
         <img src="${s.tile}" alt="" loading="lazy">
-        <span>${escapeHtml(s.name)}</span>
+        <span>${escapeHtml2(s.name)}</span>
       </button>`
     ).join("");
   }
@@ -4036,8 +4181,8 @@ ${BUILD_PANEL_CSS}
       (f) => `
       <div class="friend">
         <span class="dot ${f.online ? "dot-on" : ""}"></span>
-        <span class="friend-name">${escapeHtml(f.riotId)}</span>
-        <span class="friend-note">${escapeHtml(f.note || f.statusMessage || "")}</span>
+        <span class="friend-name">${escapeHtml2(f.riotId)}</span>
+        <span class="friend-note">${escapeHtml2(f.note || f.statusMessage || "")}</span>
       </div>`
     ).join("");
     const online = list.filter((f) => f.online).length;
@@ -4052,7 +4197,7 @@ ${BUILD_PANEL_CSS}
       <button class="hextech-btn hextech-btn-danger" id="friends-remove-all">Remove all</button>
     </div>`;
   }
-  function escapeHtml(s) {
+  function escapeHtml2(s) {
     return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
   function renderSettings(settings, { disabled, version, update }) {
@@ -4064,14 +4209,14 @@ ${BUILD_PANEL_CSS}
       updateNote = '<p class="check-help">Drake is up to date.</p>';
     } else if (u.phase === "available") {
       updateNote = `
-      <p class="check-help">${escapeHtml(u.version)} is available.</p>
+      <p class="check-help">${escapeHtml2(u.version)} is available.</p>
       <div class="status-actions">
         <button class="hextech-btn" id="install-update" ${disabled || checking ? "disabled" : ""}>Install now</button>
       </div>`;
     } else if (u.phase === "no_installer") {
-      updateNote = `<p class="check-help">${escapeHtml(u.version)} is on GitHub but has no Windows installer yet.</p>`;
+      updateNote = `<p class="check-help">${escapeHtml2(u.version)} is on GitHub but has no Windows installer yet.</p>`;
     } else if (u.phase === "error") {
-      updateNote = `<p class="check-help">${escapeHtml(u.message || "Could not check for updates.")}</p>`;
+      updateNote = `<p class="check-help">${escapeHtml2(u.message || "Could not check for updates.")}</p>`;
     }
     return `
     <h2 class="screen-title">Settings</h2>
@@ -4108,7 +4253,7 @@ ${BUILD_PANEL_CSS}
 
     <div class="field-head">
       <span class="field-label">Updates</span>
-      <span class="field-value">v${escapeHtml(version || "?")}</span>
+      <span class="field-value">v${escapeHtml2(version || "?")}</span>
     </div>
     <div class="status-actions">
       <button class="hextech-btn" id="check-updates" ${disabled || checking ? "disabled" : ""}>${checkLabel}</button>
@@ -4219,6 +4364,26 @@ ${BUILD_PANEL_CSS}
 
   // src/ui/whatsNew.js
   var WHATS_NEW = [
+    {
+      version: "0.3.24",
+      items: [
+        {
+          title: "Dropdowns actually work now",
+          body: "Rank, Region, and every other dropdown in Drake (Queue settings, Profile) responded to clicks unreliably or not at all for some users \u2014 replaced with a dropdown Drake fully controls, so picking an option always sticks.",
+          screen: "queue"
+        },
+        {
+          title: "Fixed Recent W/L, KDA, and Last 12h showing 0",
+          body: "A queue-detection bug could zero out a teammate\u2019s recent stats in Team Reveal. Fixed at the source.",
+          screen: "queue"
+        },
+        {
+          title: "Build Panel, redesigned",
+          body: "If you missed it: champ select builds from OP.GG \u2014 runes, items by phase, skill order, matchups, and top players \u2014 now laid out closer to what you\u2019d see on Mobalytics, with one-click Apply actions and Create Item Set. Open it from Ctrl+Shift+D.",
+          screen: "queue"
+        }
+      ]
+    },
     {
       version: "0.3.23",
       items: [
@@ -5475,7 +5640,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
   function readQueueId(session) {
     const fromQueue = session?.gameData?.queue;
-    return Number(fromQueue?.id ?? fromQueue?.queueId ?? session?.gameData?.queueId ?? 0) || 0;
+    const raw = fromQueue?.id ?? fromQueue?.queueId ?? session?.gameData?.queueId ?? session?.queueId ?? 0;
+    return Number(raw) || 0;
   }
   function readGames(payload, puuid = "") {
     return normalizeMatchGames(payload, puuid);
@@ -7117,6 +7283,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           const handled = buildPanel.handleClick(event);
           if (handled) return;
         }
+        if (isDrakeSelectTarget(target)) return;
         if (target === node) {
           closeCards();
           return;
@@ -7267,6 +7434,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
             buildHtml
           });
           lastCardsRenderSig = sig;
+          wireDrakeSelects(overlay, ({ dropdown, value }) => {
+            buildPanel?.applyDropdownSelect?.(dropdown, value);
+          });
         }
         overlay.hidden = false;
         if (overlay.style) overlay.style.display = "flex";
@@ -7537,7 +7707,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/features/opggApi.js
-  var TAG = "[Drake]";
+  var TAG2 = "[Drake]";
   var OPGG_BASE = "https://lol-api-champion.op.gg";
   var DEFAULT_TIER = "emerald_plus";
   var DEFAULT_REGION = "global";
@@ -7620,12 +7790,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
         signal: controller?.signal
       });
       if (!res || !res.ok) {
-        console.warn(TAG, `OP.GG API returned ${res?.status} for ${url}`);
+        console.warn(TAG2, `OP.GG API returned ${res?.status} for ${url}`);
         return null;
       }
       return await res.json();
     } catch (err) {
-      console.warn(TAG, "OP.GG API error:", err?.message || err);
+      console.warn(TAG2, "OP.GG API error:", err?.message || err);
       return null;
     } finally {
       if (timer) clearTimeout(timer);
@@ -7775,7 +7945,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/features/topPlayers.js
-  var TAG2 = "[Drake]";
+  var TAG3 = "[Drake]";
   var MCP_CHAMPION_NAME_MAP = {
     "Cho'Gath": "CHOGATH",
     "Kai'Sa": "KAISA",
@@ -7913,7 +8083,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         return succeed(players);
       }
     } catch (err) {
-      console.warn(TAG2, "MCP leaderboard fetch failed:", err?.message || err);
+      console.warn(TAG3, "MCP leaderboard fetch failed:", err?.message || err);
     }
     return fail("No ranking data available", []);
   }
@@ -7936,13 +8106,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
       return succeed(build);
     } catch (err) {
-      console.warn(TAG2, "player build fetch failed:", err?.message || err);
+      console.warn(TAG3, "player build fetch failed:", err?.message || err);
       return fail("Match history unavailable", empty);
     }
   }
 
   // src/features/gameAssets.js
-  var TAG3 = "[Drake]";
+  var TAG4 = "[Drake]";
   var ITEMS_ROUTE = "/lol-game-data/assets/v1/items.json";
   var SUMMONER_SPELLS_ROUTE = "/lol-game-data/assets/v1/summoner-spells.json";
   var items = /* @__PURE__ */ new Map();
@@ -7981,10 +8151,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
         const itemCount = ingest(items, itemList);
         ingest(spells, spellList);
         loaded = itemCount > 0;
-        if (!loaded) console.warn(TAG3, "game assets loaded but contained no items");
+        if (!loaded) console.warn(TAG4, "game assets loaded but contained no items");
         return loaded;
       } catch (err) {
-        console.warn(TAG3, "failed to load game assets:", err?.message || err);
+        console.warn(TAG4, "failed to load game assets:", err?.message || err);
         resetGameAssets();
         return false;
       } finally {
@@ -8019,7 +8189,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/features/runes.js
-  var TAG4 = "[Drake]";
+  var TAG5 = "[Drake]";
   var RUNES_PAGES_ROUTE = "/lol-perks/v1/pages";
   var PERKS_ROUTE = "/lol-game-data/assets/v1/perks.json";
   var PERK_STYLES_ROUTE = "/lol-game-data/assets/v1/perkstyles.json";
@@ -8251,10 +8421,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
         const perkCount = ingestPerks(perkList);
         ingestPerkStyles(styleList);
         runeAssetsLoaded = perkCount > 0;
-        if (!runeAssetsLoaded) console.warn(TAG4, "rune assets loaded but contained no perks");
+        if (!runeAssetsLoaded) console.warn(TAG5, "rune assets loaded but contained no perks");
         return runeAssetsLoaded;
       } catch (err) {
-        console.warn(TAG4, "failed to load rune assets:", err?.message || err);
+        console.warn(TAG5, "failed to load rune assets:", err?.message || err);
         resetRuneAssets();
         return false;
       } finally {
@@ -8367,7 +8537,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/features/itemSets.js
-  var TAG5 = "[Drake]";
+  var TAG6 = "[Drake]";
   var ITEM_SETS_ROUTE = (summonerId) => `/lol-item-sets/v1/item-sets/${summonerId}/sets`;
   var MY_SELECTION_ROUTE = "/lol-champ-select/v1/session/my-selection";
   var DRAKE_SET_MARKER = "Drake \xB7";
@@ -8451,7 +8621,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const res = await lcu2.get(ITEM_SETS_ROUTE(id));
       existing = res && typeof res === "object" ? res : { itemSets: [] };
     } catch (err) {
-      console.warn(TAG5, "item set read failed:", err?.message || err);
+      console.warn(TAG6, "item set read failed:", err?.message || err);
       return { success: false, error: "Could not read existing item sets" };
     }
     try {
@@ -8470,7 +8640,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
       return { success: true };
     } catch (err) {
-      console.warn(TAG5, "item set apply failed:", err?.message || err);
+      console.warn(TAG6, "item set apply failed:", err?.message || err);
       return { success: false, error: err?.message || "Failed to apply item set" };
     }
   }
@@ -8489,7 +8659,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
       return { success: true };
     } catch (err) {
-      console.warn(TAG5, "summoner spell apply failed:", err?.message || err);
+      console.warn(TAG6, "summoner spell apply failed:", err?.message || err);
       return { success: false, error: err?.message || "Failed to apply summoner spells" };
     }
   }
@@ -8539,17 +8709,22 @@ button.bug-report-button[data-drake-toggle]:disabled {
   function itemIcon(id, isHextech = false) {
     return `<span class="build-item ${isHextech ? "hextech-item" : ""}" title="${esc(itemName(id))}"><img class="build-item-icon ${isHextech ? "hextech-icon" : ""}" src="${esc(itemIconUrl(id))}" alt="${esc(itemName(id))}"></span>`;
   }
-  function dropdownOptionHtml(value, label, selected) {
-    return `<lol-uikit-dropdown-option slot="lol-uikit-dropdown-option" value="${esc(value)}" class="framed-dropdown-type"${selected ? " selected" : ""}>${esc(label)}</lol-uikit-dropdown-option>`;
-  }
   function renderPanelHeader(state) {
-    const tierOptions = OPGG_TIERS.map(
-      (tier) => dropdownOptionHtml(tier.value, tier.label, tier.value === state.tier)
-    ).join("");
-    const regionOptions = OPGG_REGIONS.map(
-      (region) => dropdownOptionHtml(region.value, region.label, region.value === state.region)
-    ).join("");
-    const selectedTierIcon = RANK_ICONS[tierToRankIconKey(state.tier)] || RANK_ICONS.UNRANKED;
+    const selectedTier = OPGG_TIERS.find((tier) => tier.value === state.tier) || OPGG_TIERS[0];
+    const selectedRegion = OPGG_REGIONS.find((region) => region.value === state.region) || OPGG_REGIONS[0];
+    const tierSelectHtml = renderDrakeSelectHtml(
+      "build-tier",
+      OPGG_TIERS,
+      selectedTier.value,
+      { extraAttrs: { "data-build-tier": true } }
+    );
+    const regionSelectHtml = renderDrakeSelectHtml(
+      "build-region",
+      OPGG_REGIONS,
+      selectedRegion.value,
+      { extraAttrs: { "data-build-region": true } }
+    );
+    const selectedTierIcon = RANK_ICONS[tierToRankIconKey(selectedTier.value)] || RANK_ICONS.UNRANKED;
     const stats = state.build?.stats;
     const statsHtml = stats ? `<div class="build-stats">
         <span class="build-stat"><b class="${wrClass(stats.winRate)}">${pct(stats.winRate)}</b> Win</span>
@@ -8568,15 +8743,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
       </div>
     </div>
     <div class="build-filters">
-      <label class="build-filter"><span>Rank</span>
+      <div class="build-filter"><span>Rank</span>
         <div class="build-select-wrap">
           <img class="build-filter-rank-icon" src="${selectedTierIcon}" alt="">
-          <lol-uikit-framed-dropdown class="build-hextech-dropdown" data-build-tier tabindex="0">${tierOptions}</lol-uikit-framed-dropdown>
+          ${tierSelectHtml}
         </div>
-      </label>
-      <label class="build-filter"><span>Region</span>
-        <lol-uikit-framed-dropdown class="build-hextech-dropdown" data-build-region tabindex="0">${regionOptions}</lol-uikit-framed-dropdown>
-      </label>
+      </div>
+      <div class="build-filter"><span>Region</span>
+        ${regionSelectHtml}
+      </div>
     </div>
     ${statsHtml}
     <button class="build-close" type="button" data-build-close aria-label="Close">\xD7</button>
@@ -8881,7 +9056,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/ui/buildPanel.js
-  var TAG6 = "[Drake]";
+  var TAG7 = "[Drake]";
   var CACHE_TTL_MS = 10 * 60 * 1e3;
   function makeBuildPanel({
     doc,
@@ -8914,7 +9089,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       for (const fn of listeners) {
         try {
           fn(state);
-        } catch {
+        } catch (err) {
+          console.warn(TAG7, "onUpdate listener failed:", err?.stack || err?.message || err);
         }
       }
     }
@@ -8975,9 +9151,36 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (node) {
         node.hidden = !open;
         if (node.style) node.style.display = open ? "flex" : "none";
-        if (open) node.innerHTML = renderBuildPanel(state);
+        if (open) {
+          node.innerHTML = renderBuildPanel(state);
+          wireDrakeSelects(node, ({ dropdown, value }) => {
+            applyDropdownSelect(dropdown, value);
+          });
+        }
       }
       notify();
+    }
+    function applyDropdownSelect(dropdown, value) {
+      if (!dropdown || !value) return false;
+      const isTier = dropdown.matches?.("[data-build-tier]") || dropdown.dataset?.buildTier !== void 0;
+      const isRegion = dropdown.matches?.("[data-build-region]") || dropdown.dataset?.buildRegion !== void 0;
+      if (isTier) {
+        if (value === state.tier) return true;
+        state.tier = value;
+        void saveSettings({ build_tier: state.tier });
+        void loadBuild();
+        notify();
+        return true;
+      }
+      if (isRegion) {
+        if (value === state.region) return true;
+        state.region = value;
+        void saveSettings({ build_region: state.region });
+        void loadBuild();
+        notify();
+        return true;
+      }
+      return false;
     }
     async function loadBuild({ force = false } = {}) {
       ensureSettingsRead();
@@ -9013,7 +9216,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       try {
         await Promise.all([loadGameAssetsImpl(lcu2), loadRuneAssetsImpl(lcu2)]);
       } catch (err) {
-        console.warn(TAG6, "asset load failed:", err?.message || err);
+        console.warn(TAG7, "asset load failed:", err?.message || err);
       }
       let json = null;
       try {
@@ -9028,7 +9231,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           { fetchFn }
         );
       } catch (err) {
-        console.warn(TAG6, "build fetch failed:", err?.message || err);
+        console.warn(TAG7, "build fetch failed:", err?.message || err);
       }
       if (gen !== generation) return;
       if (!json) {
@@ -9089,7 +9292,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         const res = await fn();
         state[statusKey] = res?.success ? "applied" : "failed";
       } catch (err) {
-        console.warn(TAG6, "action failed:", err?.message || err);
+        console.warn(TAG7, "action failed:", err?.message || err);
         state[statusKey] = "failed";
       }
       paint();
@@ -9099,19 +9302,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     function handleChange(event) {
       const target = event?.target;
-      if (target?.matches?.("[data-build-tier]") || target?.dataset?.buildTier !== void 0) {
-        state.tier = readChangeValue(event, target);
-        void saveSettings({ build_tier: state.tier });
-        void loadBuild();
-        notify();
-        return true;
+      const path = typeof event?.composedPath === "function" ? event.composedPath() : [];
+      const tierEl = target?.closest?.("[data-build-tier]") || path.find?.((node) => node?.matches?.("[data-build-tier]") || node?.dataset?.buildTier !== void 0) || (target?.matches?.("[data-build-tier]") || target?.dataset?.buildTier !== void 0 ? target : null);
+      if (tierEl) {
+        const next = readChangeValue(event, tierEl) || readChangeValue(event, target);
+        return applyDropdownSelect(tierEl, next);
       }
-      if (target?.matches?.("[data-build-region]") || target?.dataset?.buildRegion !== void 0) {
-        state.region = readChangeValue(event, target);
-        void saveSettings({ build_region: state.region });
-        void loadBuild();
-        notify();
-        return true;
+      const regionEl = target?.closest?.("[data-build-region]") || path.find?.((node) => node?.matches?.("[data-build-region]") || node?.dataset?.buildRegion !== void 0) || (target?.matches?.("[data-build-region]") || target?.dataset?.buildRegion !== void 0 ? target : null);
+      if (regionEl) {
+        const next = readChangeValue(event, regionEl) || readChangeValue(event, target);
+        return applyDropdownSelect(regionEl, next);
       }
       return false;
     }
@@ -9267,6 +9467,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       renderHtml,
       handleChange,
       handleClick,
+      applyDropdownSelect,
       onUpdate: (fn) => {
         listeners.add(fn);
         return () => listeners.delete(fn);
@@ -9366,7 +9567,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/ui/index.js
-  var TAG7 = "[Drake]";
+  var TAG8 = "[Drake]";
   function readLocalCell(session) {
     const cellId = Number(session?.localPlayerCellId ?? -1);
     const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
@@ -9423,8 +9624,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       skins: ""
     };
     const status = makeStatus({ lcu: lcu2 });
-    let dodgeStatus = (detail) => console.log(TAG7, "dodge", detail);
-    let say = (text, good) => console.log(TAG7, text, good ? "ok" : "err");
+    let dodgeStatus = (detail) => console.log(TAG8, "dodge", detail);
+    let say = (text, good) => console.log(TAG8, text, good ? "ok" : "err");
     const dodger = makeDodge({
       onStatus: (detail) => dodgeStatus(detail)
     });
@@ -9604,7 +9805,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           teamRevealChampsLoading = null;
           return teamRevealChamps;
         }).catch((err) => {
-          console.log(TAG7, "could not load champion names -", err?.message || err);
+          console.log(TAG8, "could not load champion names -", err?.message || err);
           teamRevealChampsLoading = null;
           return [];
         });
@@ -9655,21 +9856,21 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     async function runDodge(btn) {
       if (!btn || dodgeBusy || btn.disabled) {
-        console.log(TAG7, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
+        console.log(TAG8, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
         return;
       }
       dodgeBusy = true;
       btn.disabled = true;
       btn.textContent = "Dodging\u2026";
       say("Dodging\u2026", true);
-      console.log(TAG7, "dodge click", btn.id);
+      console.log(TAG8, "dodge click", btn.id);
       if (stopDodgeReposition) {
         stopDodgeReposition();
         stopDodgeReposition = null;
       }
       try {
         const result = await dodger.dodge();
-        console.log(TAG7, "dodge result", result);
+        console.log(TAG8, "dodge result", result);
         const msg = result.ok ? `Dodged champ select${result.detail ? ` (${result.detail})` : ""}` : result.reason;
         say(msg, result.ok);
         btn.textContent = result.ok ? "Dodged!" : "Failed";
@@ -9690,7 +9891,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       say = sayUi;
       dodgeStatus = (detail) => {
         sayUi(detail, true);
-        console.log(TAG7, "dodge", detail);
+        console.log(TAG8, "dodge", detail);
       };
       shadow.getElementById("scrim").style.display = "none";
       startSocialWatch(api);
@@ -9853,7 +10054,43 @@ button.bug-report-button[data-drake-toggle]:disabled {
         for (const item of shadow.querySelectorAll("[data-screen]")) {
           item.setAttribute("aria-selected", String(item.dataset.screen === screen));
         }
+        wireDrakeSelects(content, ({ dropdown, value }) => {
+          applyPanelDropdown(dropdown, value);
+        });
         paintOnboard();
+      }
+      function applyPanelDropdown(dropdown, value) {
+        const id = dropdown?.id;
+        if (!id || value === "" || value == null) return;
+        if (id in steps) {
+          steps[id] = value;
+          return;
+        }
+        if (id === "presence-availability") {
+          const previous2 = settings.presence_availability || "";
+          settings = { ...settings, presence_availability: value };
+          paint();
+          commit({ presence_availability: value }, () => {
+            settings = { ...settings, presence_availability: previous2 };
+            paint();
+          });
+          return;
+        }
+        const revealSelect = {
+          "team-reveal-sample-size": "queue_team_reveal_sample_size",
+          "team-reveal-recent-pool": "queue_team_reveal_recent_pool",
+          "team-reveal-last5-pool": "queue_team_reveal_last5_pool",
+          "team-reveal-fetch-concurrency": "queue_team_reveal_fetch_concurrency"
+        }[id];
+        if (!revealSelect) return;
+        const previous = settings[revealSelect];
+        const next = revealSelect === "queue_team_reveal_sample_size" || revealSelect === "queue_team_reveal_fetch_concurrency" ? Number(value) : value;
+        settings = { ...settings, [revealSelect]: next };
+        paint();
+        commit({ [revealSelect]: next }, () => {
+          settings = { ...settings, [revealSelect]: previous };
+          paint();
+        });
       }
       function applyUpdateStatus(body) {
         if (body.status === "current") updateUi = { phase: "current" };
@@ -9890,7 +10127,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         paint();
         statusEl.textContent = result.reason;
         statusEl.className = "status-bad";
-        console.log(TAG7, "could not save -", result.reason);
+        console.log(TAG8, "could not save -", result.reason);
         return { ok: false, reason: result.reason };
       }
       async function goToScreen(next) {
@@ -10322,48 +10559,27 @@ button.bug-report-button[data-drake-toggle]:disabled {
       });
       content.addEventListener("change", (e) => {
         if (e.target.id === "queue_auto_message") {
-          const previous2 = settings.queue_auto_message || "";
-          const value2 = e.target.value;
-          settings = { ...settings, queue_auto_message: value2 };
-          commit({ queue_auto_message: value2 }, () => {
-            settings = { ...settings, queue_auto_message: previous2 };
+          const previous = settings.queue_auto_message || "";
+          const value = e.target.value;
+          settings = { ...settings, queue_auto_message: value };
+          commit({ queue_auto_message: value }, () => {
+            settings = { ...settings, queue_auto_message: previous };
           });
           return;
         }
         if (e.target.id === "delay") {
-          const previous2 = settings.auto_accept_delay_ms;
+          const previous = settings.auto_accept_delay_ms;
           settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };
           commit({ auto_accept_delay_ms: settings.auto_accept_delay_ms }, () => {
-            settings = { ...settings, auto_accept_delay_ms: previous2 };
+            settings = { ...settings, auto_accept_delay_ms: previous };
           });
           return;
         }
         if (e.target.id === "presence-availability") {
-          const previous2 = settings.presence_availability || "";
-          const value2 = e.target.value;
-          settings = { ...settings, presence_availability: value2 };
-          paint();
-          commit({ presence_availability: value2 }, () => {
-            settings = { ...settings, presence_availability: previous2 };
-            paint();
-          });
+          applyPanelDropdown(e.target, e.target.value);
           return;
         }
-        const revealSelect = {
-          "team-reveal-sample-size": "queue_team_reveal_sample_size",
-          "team-reveal-recent-pool": "queue_team_reveal_recent_pool",
-          "team-reveal-last5-pool": "queue_team_reveal_last5_pool",
-          "team-reveal-fetch-concurrency": "queue_team_reveal_fetch_concurrency"
-        }[e.target.id];
-        if (!revealSelect) return;
-        const previous = settings[revealSelect];
-        const value = revealSelect === "queue_team_reveal_sample_size" || revealSelect === "queue_team_reveal_fetch_concurrency" ? Number(e.target.value) : e.target.value;
-        settings = { ...settings, [revealSelect]: value };
-        paint();
-        commit({ [revealSelect]: value }, () => {
-          settings = { ...settings, [revealSelect]: previous };
-          paint();
-        });
+        applyPanelDropdown(e.target, e.target.value);
       });
       shadow.getElementById("cancel-queue").addEventListener("click", async () => {
         const dock = shadow.getElementById("cancel-dock");
@@ -10371,7 +10587,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         try {
           await cancelQueue(lcu2);
         } catch {
-          console.log(TAG7, "could not cancel the queue");
+          console.log(TAG8, "could not cancel the queue");
         }
       });
       shadow.getElementById("dodge-champ-select").addEventListener("click", (e) => {
@@ -10756,7 +10972,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/index.js
-  var TAG8 = "[Drake]";
+  var TAG9 = "[Drake]";
   var lcu = makeLcu();
   var presence = makePresence({ lcu });
   var stopFeatures = () => {
@@ -10798,7 +11014,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         subscribe,
         getSession: () => lcu.get("/lol-champ-select/v1/session"),
         onResult: (d, r, was) => console.log(
-          TAG8,
+          TAG9,
           d.kind,
           d.championId,
           r.ok ? "ok" : "failed: " + r.reason,
@@ -10813,7 +11029,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     const stopUnlocks = startUnlocks({
       enabled: !!settings.unlock_status_message,
-      onFirstUnlock: (n) => console.log(TAG8, "unlocked the status message input", n > 1 ? n : "")
+      onFirstUnlock: (n) => console.log(TAG9, "unlocked the status message input", n > 1 ? n : "")
     });
     stopProfileRank = startProfileRankRefresh({
       subscribe,
@@ -10837,7 +11053,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   async function start() {
     const cfg = await loadConfig();
     if (!cfg) {
-      console.log(TAG8, "no config.json found; the tray app may not be running");
+      console.log(TAG9, "no config.json found; the tray app may not be running");
       ui = startUI({ cfg: { port: 0, token: "", settings: {} }, lcu });
       return;
     }
@@ -10850,20 +11066,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
     });
     const host = typeof Pengu !== "undefined" && Pengu.version ? `pengu ${Pengu.version}` : "unknown";
     const ok = await startHeartbeat({ checkIn: transport.checkIn, host });
-    console.log(TAG8, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
-    console.log(TAG8, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
+    console.log(TAG9, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
+    console.log(TAG9, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
     ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
     wireFeatures(cfg.settings);
     startInGameIdle({
       subscribe,
       onChange(idle) {
         idleInGame = idle;
-        console.log(TAG8, idle ? "idle in game" : "active in client");
+        console.log(TAG9, idle ? "idle in game" : "active in client");
         if (idle) sleepPlugin();
         else wakePlugin();
       }
     });
-    console.log(TAG8, "UI ready \u2014 press Ctrl+D");
+    console.log(TAG9, "UI ready \u2014 press Ctrl+D");
   }
   if (document.readyState === "complete") start();
   else window.addEventListener("load", start);

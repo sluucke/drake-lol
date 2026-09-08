@@ -50,6 +50,11 @@ export function filterMatchEntriesByPool(entries, queueId, pool) {
   if (mode === MATCH_POOL_RANKED_BOTH) {
     return list.filter((entry) => Boolean(RANKED_QUEUE_BY_ID[Number(entry?.queueId) || 0]));
   }
+  // Note: "Recent W/L" / "Recent KDA" / "Last 12h" use MATCH_POOL_RANKED_BOTH
+  // by default (see buildPlayerStats' recentPool default below), which never
+  // reaches this branch and never depends on qid — so a wrong/unresolved qid
+  // here cannot zero those out. Only "current_queue" mode (opt-in via
+  // settings, and the default for last5Pool/"Last 5") is scoped by it.
   return list.filter((entry) => (Number(entry?.queueId) || 0) === qid);
 }
 
@@ -211,7 +216,12 @@ export function readRankedQueueType(queueId) {
 
 function readQueueId(session) {
   const fromQueue = session?.gameData?.queue;
-  return Number(fromQueue?.id ?? fromQueue?.queueId ?? session?.gameData?.queueId ?? 0) || 0;
+  // Nullish-coalesce to pick the first field that's actually present, then
+  // convert once at the end. A `Number(x) || Number(y) || ...` chain would
+  // treat a genuinely-0 queueId (custom games/practice tool) as "missing"
+  // and keep falling through to the wrong fallback field.
+  const raw = fromQueue?.id ?? fromQueue?.queueId ?? session?.gameData?.queueId ?? session?.queueId ?? 0;
+  return Number(raw) || 0;
 }
 
 function readGames(payload, puuid = '') {

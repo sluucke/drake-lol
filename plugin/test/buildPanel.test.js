@@ -153,6 +153,36 @@ describe('makeBuildPanel', () => {
     expect(deps.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ build_tier: 'challenger' }));
   });
 
+  it('resolves tier changes when the event target is a nested dropdown option', async () => {
+    const deps = makeDeps();
+    const panel = makeBuildPanel(deps);
+    panel.setSession(SESSION);
+    panel.open();
+    await flush();
+
+    const dropdown = {
+      dataset: { buildTier: '' },
+      value: 'diamond_plus',
+      matches: (sel) => sel === '[data-build-tier]',
+      closest: (sel) => (sel === '[data-build-tier]' ? dropdown : null),
+    };
+    const option = {
+      value: '',
+      matches: () => false,
+      closest: (sel) => (sel === '[data-build-tier]' ? dropdown : null),
+      dataset: {},
+    };
+    const overlay = deps.overlayRoot.children[0];
+    overlay.emit('change', { target: option, composedPath: () => [option, dropdown] });
+    await flush();
+
+    expect(deps.fetchChampionBuildImpl).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tier: 'diamond_plus' }),
+      expect.anything()
+    );
+    expect(panel.getState().tier).toBe('diamond_plus');
+  });
+
   it('re-reads settings on open so a save made after construction reaches the panel', async () => {
     let current = { build_tier: 'emerald_plus', build_region: 'global' };
     const deps = makeDeps({ getSettings: () => current });

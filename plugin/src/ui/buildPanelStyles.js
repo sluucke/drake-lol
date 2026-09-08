@@ -12,10 +12,10 @@ export const BUILD_PANEL_CSS = `
 .build-role-icon { width: 15px; height: 15px; object-fit: contain; }
 .build-mode-tag, .build-patch { border: 1px solid #463714; padding: 1px 6px; border-radius: 2px; }
 
-.build-filters { display: flex; gap: 10px; margin-left: auto; }
-.build-filter { display: flex; flex-direction: column; gap: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #a09b8c; }
-.build-hextech-dropdown { width: 150px; max-height: 32px; overflow: hidden; }
-.build-select-wrap { display: flex; align-items: center; gap: 6px; }
+.build-filters { display: flex; gap: 10px; margin-left: auto; position: relative; z-index: 5; overflow: visible; }
+.build-filter { display: flex; flex-direction: column; gap: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #a09b8c; overflow: visible; }
+.build-filter .drake-select { width: 150px; }
+.build-select-wrap { display: flex; align-items: center; gap: 6px; overflow: visible; }
 .build-filter-rank-icon { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
 
 .build-stats { display: flex; gap: 14px; width: 100%; font-size: 12px; color: #a09b8c; }
@@ -242,6 +242,8 @@ export const BUILD_PANEL_CSS = `
   padding: 0 0 14px;
   border-bottom: 1px solid #1e2328;
   margin-bottom: 14px;
+  overflow: visible;
+  z-index: 6;
 }
 .team-reveal-shell .build-body {
   padding: 0;

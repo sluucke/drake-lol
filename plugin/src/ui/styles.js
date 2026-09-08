@@ -845,10 +845,68 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   flex: 1;
   display: block;
 }
-.select-field .framed-dropdown-type {
-  text-transform: none;
+
+.drake-select {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  background: linear-gradient(to bottom, rgba(7, 16, 25, 0.9), rgba(0, 0, 0, 0.8));
+  border: thin solid #785a28;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4) inset;
 }
-.select-field[disabled] {
+.drake-select:hover,
+.drake-select.is-open {
+  border-color: #c8aa6e;
+}
+.drake-select-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  color: #f0e6d2;
+  font-size: 12px;
+}
+.drake-select-current::after {
+  content: '▾';
+  color: #c8aa6e;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.drake-select.is-open .drake-select-current::after {
+  content: '▴';
+}
+.drake-select-list {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #0a1428;
+  border: thin solid #785a28;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+.drake-select.is-open .drake-select-list {
+  display: flex;
+}
+.drake-select-option {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #a09b8c;
+  white-space: nowrap;
+}
+.drake-select-option:hover {
+  background: rgba(200, 170, 110, 0.15);
+  color: #f0e6d2;
+}
+.drake-select-option.is-selected {
+  color: #c8aa6e;
+}
+.drake-select[aria-disabled='true'] {
   pointer-events: none;
   opacity: 0.6;
 }
@@ -1031,7 +1089,9 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   box-sizing: border-box;
   width: min(1180px, 94vw);
   max-height: 88vh;
-  overflow-y: auto;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
   padding: 16px 18px 20px;
   background: linear-gradient(180deg, #0a1428 0%, #06101f 100%);
   border: 1px solid #785a28;
@@ -1039,6 +1099,11 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   color: #f0e6d2;
   box-shadow: 0 0 32px rgba(0, 0, 0, 0.8);
   font-family: ${BODY};
+}
+.team-reveal-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .team-reveal-header {
   display: flex;
@@ -1696,15 +1761,16 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   height: 12px;
 }
 .team-reveal-skel-game {
-  width: 36px;
-  height: 48px;
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 100%;
   flex-shrink: 0;
 }
 .team-reveal-recent-games.is-loading {
   display: flex;
   gap: 6px;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: flex-end;
 }
 @keyframes team-reveal-skel-shine {
   0% { background-position: 100% 0; }

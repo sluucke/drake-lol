@@ -12,6 +12,7 @@ import {
   toggleAutoPickChampion,
 } from '../features/autoPickRoles.js';
 import { roleIconUrl } from './roleIcons.js';
+import { renderDrakeSelectHtml } from './drakeSelect.js';
 
 export {
   AUTO_PICK_ROLES,
@@ -603,15 +604,8 @@ export const PROFILE_TABS = [
 
 
 function renderSelect(id, list, selected, disabled = false) {
-  const opts = list
-    .map((o) => {
-      const value = o.id ?? o;
-      const label = o.label ?? o;
-      return `<lol-uikit-dropdown-option slot="lol-uikit-dropdown-option" value="${value}" class="framed-dropdown-type"${String(value) === String(selected) ? ' selected' : ''}>${label}</lol-uikit-dropdown-option>`;
-    })
-    .join('');
-
-  return `<lol-uikit-framed-dropdown class="select-field" id="${id}" tabindex="0"${disabled ? ' disabled' : ''}>${opts}</lol-uikit-framed-dropdown>`;
+  const options = list.map((o) => ({ value: o.id ?? o, label: o.label ?? o }));
+  return renderDrakeSelectHtml(id, options, selected, { disabled });
 }
 
 function renderRankTab(lol) {

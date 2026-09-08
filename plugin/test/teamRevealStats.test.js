@@ -102,6 +102,14 @@ describe('match pool helpers', () => {
     ]);
   });
 
+  it('never scopes ranked-both by the session queueId, so Recent W/L, Recent KDA and Last 12h (which default to this pool) cannot be zeroed by an unresolved session queue', () => {
+    const entries = [{ queueId: 420 }, { queueId: 440 }, { queueId: 2000 }];
+    // qid=0 mimics a session whose own queueId failed to resolve.
+    expect(filterMatchEntriesByPool(entries, 0, MATCH_POOL_RANKED_BOTH).map((e) => e.queueId)).toEqual([
+      420, 440,
+    ]);
+  });
+
   it('builds picked champion games and wr from the recent pool', () => {
     const games = [
       game({ puuid: PUUID_A, championId: 12, win: true, hoursAgo: 1 }),
@@ -502,6 +510,33 @@ describe('buildTeamRevealSnapshot', () => {
     });
     expect(mixed[0].wins).toBe(1);
     expect(mixed[0].losses).toBe(1);
+  });
+
+  it('does not leak ranked games into a custom-lobby "current queue" pool, and keeps Recent W/L (ranked-both) intact regardless', async () => {
+    const history = [
+      game({ puuid: PUUID_A, queueId: 420, win: true, kills: 8, deaths: 2, assists: 4 }),
+      game({ puuid: PUUID_A, queueId: 0, win: false, kills: 0, deaths: 1, assists: 0 }),
+    ];
+    const lcu = { get: vi.fn(async () => ({ games: { games: history } })) };
+    const session = {
+      gameData: { queue: { id: 0 } }, // a genuine custom lobby / practice tool
+      myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
+    };
+
+    const out = await buildTeamRevealSnapshot({
+      session,
+      lcu,
+      now: NOW,
+      recentPool: MATCH_POOL_RANKED_BOTH,
+      last5Pool: MATCH_POOL_CURRENT_QUEUE,
+    });
+
+    // Last 5 (current-queue) only sees the other custom game, not the ranked one.
+    expect(out[0].recentGames.length).toBe(1);
+    expect(out[0].recentGames[0].win).toBe(false);
+    // Recent W/L (ranked-both, unaffected by the session being a custom lobby).
+    expect(out[0].wins).toBe(1);
+    expect(out[0].losses).toBe(0);
   });
 
   it('reads other-player ranked W/L from queues when queueMap omits losses', () => {

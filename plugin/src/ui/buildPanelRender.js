@@ -4,6 +4,7 @@ import { perkIconUrl, perkName, perkStyleIconUrl, perkStyleName } from '../featu
 import { iconUrl } from '../features/champions.js';
 import { roleIconUrl, roleLabel } from './roleIcons.js';
 import { RANK_ICONS } from './assets.js';
+import { renderDrakeSelectHtml } from './drakeSelect.js';
 
 const SPINNER = `<svg class="build-spinner" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="26" stroke-dashoffset="8"/></svg>`;
 
@@ -62,24 +63,24 @@ function itemIcon(id, isHextech = false) {
   return `<span class="build-item ${isHextech ? 'hextech-item' : ''}" title="${esc(itemName(id))}"><img class="build-item-icon ${isHextech ? 'hextech-icon' : ''}" src="${esc(itemIconUrl(id))}" alt="${esc(itemName(id))}"></span>`;
 }
 
-function dropdownOptionHtml(value, label, selected) {
-  return `<lol-uikit-dropdown-option slot="lol-uikit-dropdown-option" value="${esc(value)}" class="framed-dropdown-type"${selected ? ' selected' : ''}>${esc(label)}</lol-uikit-dropdown-option>`;
-}
-
 export function renderPanelHeader(state) {
-  // The dropdown's collapsed header is rendered by the client's own shadow DOM;
-  // putting an <img> inside the option breaks its height there (only the
-  // text-only Region dropdown renders correctly), so the rank icon is shown as
-  // a plain sibling element instead of inside the option.
-  const tierOptions = OPGG_TIERS.map((tier) =>
-    dropdownOptionHtml(tier.value, tier.label, tier.value === state.tier)
-  ).join('');
+  const selectedTier = OPGG_TIERS.find((tier) => tier.value === state.tier) || OPGG_TIERS[0];
+  const selectedRegion = OPGG_REGIONS.find((region) => region.value === state.region) || OPGG_REGIONS[0];
 
-  const regionOptions = OPGG_REGIONS.map((region) =>
-    dropdownOptionHtml(region.value, region.label, region.value === state.region)
-  ).join('');
+  const tierSelectHtml = renderDrakeSelectHtml(
+    'build-tier',
+    OPGG_TIERS,
+    selectedTier.value,
+    { extraAttrs: { 'data-build-tier': true } }
+  );
+  const regionSelectHtml = renderDrakeSelectHtml(
+    'build-region',
+    OPGG_REGIONS,
+    selectedRegion.value,
+    { extraAttrs: { 'data-build-region': true } }
+  );
 
-  const selectedTierIcon = RANK_ICONS[tierToRankIconKey(state.tier)] || RANK_ICONS.UNRANKED;
+  const selectedTierIcon = RANK_ICONS[tierToRankIconKey(selectedTier.value)] || RANK_ICONS.UNRANKED;
 
   const stats = state.build?.stats;
   const statsHtml = stats
@@ -103,15 +104,15 @@ export function renderPanelHeader(state) {
       </div>
     </div>
     <div class="build-filters">
-      <label class="build-filter"><span>Rank</span>
+      <div class="build-filter"><span>Rank</span>
         <div class="build-select-wrap">
           <img class="build-filter-rank-icon" src="${selectedTierIcon}" alt="">
-          <lol-uikit-framed-dropdown class="build-hextech-dropdown" data-build-tier tabindex="0">${tierOptions}</lol-uikit-framed-dropdown>
+          ${tierSelectHtml}
         </div>
-      </label>
-      <label class="build-filter"><span>Region</span>
-        <lol-uikit-framed-dropdown class="build-hextech-dropdown" data-build-region tabindex="0">${regionOptions}</lol-uikit-framed-dropdown>
-      </label>
+      </div>
+      <div class="build-filter"><span>Region</span>
+        ${regionSelectHtml}
+      </div>
     </div>
     ${statsHtml}
     <button class="build-close" type="button" data-build-close aria-label="Close">×</button>
