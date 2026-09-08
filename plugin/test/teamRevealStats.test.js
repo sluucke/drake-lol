@@ -704,6 +704,47 @@ describe('buildTeamRevealSnapshot', () => {
 
     expect(fetchImpl).toHaveBeenCalled();
     expect(progress[0][0].seasonMostPlayedCount || 0).toBe(0);
+    expect(progress[0][0].matchesPending).toBe(true);
+  });
+
+  it('clears matchesPending once match history finishes', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ games: [] }),
+    }));
+    const lcu = {
+      get: vi.fn(async (route) => {
+        if (route === '/entitlements/v1/token') return { accessToken: 'tok' };
+        if (route === '/lol-chat/v1/me') return { platformId: 'BR1' };
+        if (route === rankedStatsRoute(PUUID_A)) {
+          return {
+            queueMap: {
+              RANKED_SOLO_5x5: {
+                tier: 'DIAMOND',
+                division: 'IV',
+                leaguePoints: 12,
+                wins: 107,
+                losses: 73,
+              },
+            },
+          };
+        }
+        return {};
+      }),
+    };
+    const session = {
+      gameData: { queue: { id: 420 } },
+      myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
+    };
+
+    const out = await buildTeamRevealSnapshot({
+      session,
+      lcu,
+      fetchImpl,
+      now: NOW,
+    });
+
+    expect(out[0].matchesPending).toBe(false);
   });
 
   it('caps native match-history fallback at 100 games', async () => {

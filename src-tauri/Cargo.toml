@@ -1,6 +1,6 @@
 [package]
 name = "drake"
-version = "0.3.22"
+version = "0.3.23"
 description = "Keeps the Drake plugin injected into the League of Legends client."
 authors = ["David William"]
 license = "MIT"

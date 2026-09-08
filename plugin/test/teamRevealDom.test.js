@@ -750,6 +750,64 @@ describe('teamRevealDom', () => {
     expect(rows[0]._label.textContent).toBe('RealOne#TAG (1W/0L · 100%)');
   });
 
+  it('shows match skeletons on open cards while match history is still loading', async () => {
+    const rows = [makeRow(0, 'MaskedOne')];
+    const doc = { querySelectorAll: () => rows };
+    let finish;
+    const loadSnapshot = vi.fn((_session, hooks) => {
+      hooks?.onProgress?.([
+        {
+          cellId: 0,
+          riotId: 'RealOne#TAG',
+          matchesPending: true,
+          soloRank: { tier: 'GOLD', division: 'II', lp: 40, hasRank: true },
+          flexRank: { hasRank: false },
+        },
+      ]);
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    });
+    const overlayRoot = makeOverlayRoot();
+    const ctl = makeTeamRevealDom({
+      doc,
+      subscribe: () => () => {},
+      loadSnapshot,
+      overlayRoot,
+    });
+
+    ctl.setEnabled(true);
+    const pending = ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+    ctl.toggleCards();
+
+    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+    expect(overlay.innerHTML).toContain('team-reveal-skel');
+    expect(overlay.innerHTML).toContain('RealOne#TAG');
+    expect(overlay.innerHTML).not.toContain('wl-win');
+    expect(overlay.innerHTML).not.toContain('team-reveal-recent-empty');
+
+    finish([
+      {
+        cellId: 0,
+        riotId: 'RealOne#TAG',
+        matchesPending: false,
+        wins: 8,
+        losses: 2,
+        winRate: 80,
+        matchesUsed: 10,
+        kda: 3.1,
+        recentGames: [{ championId: 1, win: true, kills: 5, deaths: 1, assists: 3 }],
+        soloRank: { tier: 'GOLD', division: 'II', lp: 40, hasRank: true },
+        flexRank: { hasRank: false },
+      },
+    ]);
+    await pending;
+
+    expect(overlay.innerHTML).not.toContain('team-reveal-skel');
+    expect(overlay.innerHTML).toContain('8W');
+    expect(overlay.innerHTML).toContain('2L');
+  });
+
   it('adds wl below name after load when label uses innerHTML', async () => {
     const label = { textContent: 'MaskedOne', innerHTML: 'MaskedOne', dataset: {}, style: {} };
     const rows = [{ dataset: { cellId: '0' }, querySelector: () => label, _label: label }];

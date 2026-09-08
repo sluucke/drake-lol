@@ -401,6 +401,7 @@ function makeRevealRow({
   stats = emptyPlayerStats(),
   seasonMain = emptySeasonMain(),
   season,
+  matchesPending = false,
 }) {
   return {
     cellId,
@@ -411,6 +412,7 @@ function makeRevealRow({
     assignedPosition,
     soloRank: ranks.solo,
     flexRank: ranks.flex,
+    matchesPending: Boolean(matchesPending),
     ...stats,
     ...seasonMain,
     ...season,
@@ -792,6 +794,7 @@ export async function buildTeamRevealSnapshot({
       assignedPosition: readAssignedPosition(player),
       ranks,
       season: readSeasonStats(ranks, rankedQueueType),
+      matchesPending: true,
       stats: {
         ...emptyPlayerStats(),
         ...buildPickedChampionStats([], puuid, readPickedChampionId(player), queueId, recentMode),
@@ -875,6 +878,7 @@ export async function buildTeamRevealSnapshot({
         stats,
         seasonMain,
         season: readSeasonStats(ranks, rankedQueueType),
+        matchesPending: false,
       }),
       historyGames: games,
     };

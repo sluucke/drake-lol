@@ -82,6 +82,17 @@ function formatWlHtml(wins, losses, winRate) {
   return `<span class="wl-win">${w}W</span>/<span class="wl-loss">${l}L</span> · ${rate}%`;
 }
 
+function renderSkel(kind = 'text') {
+  return `<span class="team-reveal-skel team-reveal-skel-${kind}" aria-hidden="true"></span>`;
+}
+
+function renderRecentGamesSkeleton() {
+  return `<div class="team-reveal-recent-games is-loading" aria-busy="true">${Array.from(
+    { length: 5 },
+    () => renderSkel('game'),
+  ).join('')}</div>`;
+}
+
 function formatRowName(_maskedName, snapshot) {
   if (!hasMatchWl(snapshot)) return snapshot.riotId || '';
   const wl = readRowWl(snapshot);
@@ -127,6 +138,7 @@ function renderPickedChampion(row, getChampName) {
 }
 
 function renderSeasonMain(row, getChampName) {
+  if (row?.matchesPending) return renderSkel('text');
   const id = Number(row?.seasonMostPlayedChampionId) || 0;
   if (!id) return '—';
   const name = getChampName(id) || 'Unknown';
@@ -159,11 +171,13 @@ function cardsContentSig(snapshot) {
       pickedGames: row.pickedGames,
       pickedWinRate: row.pickedWinRate,
       recentGames: row.recentGames,
+      matchesPending: Boolean(row.matchesPending),
     })),
   );
 }
 
 function renderRecentGames(row, getChampName) {
+  if (row?.matchesPending) return renderRecentGamesSkeleton();
   const games = Array.isArray(row?.recentGames) ? row.recentGames : [];
   if (!games.length) return '<span class="team-reveal-recent-empty">—</span>';
   return `<div class="team-reveal-recent-games">${games
@@ -205,13 +219,16 @@ function renderOverlayShell({
     .map((row) => {
       const riotId = row.riotId || 'Unknown';
       const youTag = row.isLocalPlayer ? ' <span class="team-reveal-you">(You)</span>' : '';
-      const recentWl = formatWlHtml(row.wins, row.losses, row.winRate);
-      const kda = row.kda ?? '—';
-      const last12h = formatWlPair(row.last12hWins, row.last12hLosses);
-      const recentNote = row.matchesUsed ? ` · last ${row.matchesUsed} games` : '';
+      const pending = Boolean(row.matchesPending);
+      const recentWl = pending ? renderSkel('text') : formatWlHtml(row.wins, row.losses, row.winRate);
+      const kda = pending ? renderSkel('text') : (row.kda ?? '—');
+      const last12h = pending
+        ? renderSkel('text')
+        : formatWlPair(row.last12hWins, row.last12hLosses);
+      const recentNote = !pending && row.matchesUsed ? ` · last ${row.matchesUsed} games` : '';
       const cardClass = row.isLocalPlayer ? 'team-reveal-card is-you' : 'team-reveal-card';
       const roleIcon = renderRoleIcon(row.assignedPosition);
-      return `<section class="${cardClass}">
+      return `<section class="${cardClass}${pending ? ' is-loading-matches' : ''}">
         <div class="team-reveal-card-head">
           <div class="team-reveal-card-title-row">
             ${roleIcon}
@@ -943,21 +960,6 @@ export function makeTeamRevealDom({
     chat.setEntries(collectRevealChatPairs(boundLabels, snapshot, ORIGINAL_NAME_KEY));
   }
 
-  function closeCards() {
-    open = false;
-    renderVisibility();
-    setStatus(statusPhase === 'loading' ? 'loading' : snapshot.length ? 'ready' : 'hidden');
-  }
-
-  function openCards() {
-    if (!enabled || !snapshot.length) return;
-    ensureOverlay();
-    open = true;
-    if (needsReapply()) applyRows(snapshot);
-    renderVisibility();
-    setStatus('ready');
-  }
-
   async function handleSession(session) {
     if (!enabled) return;
     if (!isLiveRevealSession(session)) {
@@ -1102,12 +1104,15 @@ export function makeTeamRevealDom({
     if (activeTab === 'build' && buildPanel?.loadBuild) {
       void buildPanel.loadBuild();
     }
+    if (snapshot.length && needsReapply()) applyRows(snapshot);
     renderVisibility();
+    if (statusPhase !== 'loading' && snapshot.length) setStatus('ready');
   }
 
   function closeCards() {
     open = false;
     renderVisibility();
+    setStatus(statusPhase === 'loading' ? 'loading' : snapshot.length ? 'ready' : 'hidden');
   }
 
   function toggleCards(tab) {

@@ -491,6 +491,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         return buildTeamRevealSnapshot({
           session,
           lcu,
+          fetchImpl: proxyFetch,
           onProgress: hooks?.onProgress,
           signal: hooks?.signal,
           sampleSize: settings.queue_team_reveal_sample_size,

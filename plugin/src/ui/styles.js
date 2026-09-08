@@ -1683,6 +1683,33 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   border-color: #785a28;
   box-shadow: inset 0 0 0 1px rgba(200, 170, 110, 0.18);
 }
+.team-reveal-skel {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(60, 60, 65, 0.55) 0%, rgba(90, 90, 98, 0.75) 50%, rgba(60, 60, 65, 0.55) 100%);
+  background-size: 200% 100%;
+  animation: team-reveal-skel-shine 1.2s ease-in-out infinite;
+}
+.team-reveal-skel-text {
+  width: 88px;
+  height: 12px;
+}
+.team-reveal-skel-game {
+  width: 36px;
+  height: 48px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.team-reveal-recent-games.is-loading {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+@keyframes team-reveal-skel-shine {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
 .team-reveal-card-head {
   padding-bottom: 8px;
   border-bottom: 1px solid #1e2328;

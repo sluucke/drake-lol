@@ -778,7 +778,14 @@ pub fn is_proxyable(raw: &str) -> bool {
         .split(':')
         .next()
         .unwrap_or("");
-    PROXYABLE_HOSTS.contains(&host)
+    if PROXYABLE_HOSTS.contains(&host) {
+        return true;
+    }
+    let host_lc = host.to_ascii_lowercase();
+    if host_lc.ends_with(".sgp.pvp.net") {
+        return true;
+    }
+    host_lc.ends_with(".lol.qq.com") && host_lc.contains("sgp")
 }
 
 #[derive(Deserialize)]
@@ -1490,6 +1497,26 @@ mod tests {
         assert!(!is_proxyable("http://mcp-api.op.gg/mcp"));
         assert!(!is_proxyable("https://evil.com/"));
         assert!(!is_proxyable("https://mcp-api.op.gg.evil.com/"));
+    }
+
+    #[test]
+    fn proxyable_allows_sgp_match_history_hosts() {
+        assert!(is_proxyable(
+            "https://usw2-red.pp.sgp.pvp.net/match-history-query/v1/products/lol/player/x/SUMMARY"
+        ));
+        assert!(is_proxyable(
+            "https://euc1-red.pp.sgp.pvp.net/match-history-query/v1/products/lol/player/x/SUMMARY"
+        ));
+        assert!(is_proxyable(
+            "https://apse1-red.pp.sgp.pvp.net/match-history-query/v1/products/lol/player/x/SUMMARY"
+        ));
+        assert!(is_proxyable(
+            "https://hn1-k8s-sgp.lol.qq.com:21019/match-history-query/v1/products/lol/player/x/SUMMARY"
+        ));
+        assert!(is_proxyable("https://tj100-sgp.lol.qq.com:21019/match-history-query/v1/x"));
+        assert!(!is_proxyable("https://not-sgp.pvp.net/steal"));
+        assert!(!is_proxyable("https://sgp.pvp.net.evil.com/steal"));
+        assert!(!is_proxyable("https://www.lol.qq.com/steal"));
     }
 
     #[tokio::test]

@@ -2684,6 +2684,33 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   border-color: #785a28;
   box-shadow: inset 0 0 0 1px rgba(200, 170, 110, 0.18);
 }
+.team-reveal-skel {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(60, 60, 65, 0.55) 0%, rgba(90, 90, 98, 0.75) 50%, rgba(60, 60, 65, 0.55) 100%);
+  background-size: 200% 100%;
+  animation: team-reveal-skel-shine 1.2s ease-in-out infinite;
+}
+.team-reveal-skel-text {
+  width: 88px;
+  height: 12px;
+}
+.team-reveal-skel-game {
+  width: 36px;
+  height: 48px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.team-reveal-recent-games.is-loading {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+@keyframes team-reveal-skel-shine {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
 .team-reveal-card-head {
   padding-bottom: 8px;
   border-bottom: 1px solid #1e2328;
@@ -4193,6 +4220,21 @@ ${BUILD_PANEL_CSS}
   // src/ui/whatsNew.js
   var WHATS_NEW = [
     {
+      version: "0.3.23",
+      items: [
+        {
+          title: "Team reveal match history via tray proxy",
+          body: "Champ select scouting fetches recent games through the Drake tray proxy so W/L and Last 5 load reliably alongside names and ranks.",
+          screen: "queue"
+        },
+        {
+          title: "Match loading skeletons",
+          body: "Opening Team Scouting while matches are still loading shows skeletons instead of empty 0W/0L placeholders.",
+          screen: "queue"
+        }
+      ]
+    },
+    {
       version: "0.3.22",
       items: [
         {
@@ -5586,7 +5628,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
     assignedPosition = "",
     stats = emptyPlayerStats(),
     seasonMain = emptySeasonMain(),
-    season
+    season,
+    matchesPending = false
   }) {
     return {
       cellId,
@@ -5597,6 +5640,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       assignedPosition,
       soloRank: ranks.solo,
       flexRank: ranks.flex,
+      matchesPending: Boolean(matchesPending),
       ...stats,
       ...seasonMain,
       ...season
@@ -5924,6 +5968,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         assignedPosition: readAssignedPosition(player),
         ranks,
         season: readSeasonStats(ranks, rankedQueueType),
+        matchesPending: true,
         stats: {
           ...emptyPlayerStats(),
           ...buildPickedChampionStats([], puuid, readPickedChampionId(player), queueId, recentMode)
@@ -5999,7 +6044,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
           ranks,
           stats,
           seasonMain,
-          season: readSeasonStats(ranks, rankedQueueType)
+          season: readSeasonStats(ranks, rankedQueueType),
+          matchesPending: false
         }),
         historyGames: games
       };
@@ -6529,6 +6575,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const rate = winRate ?? (total ? Math.round(w / total * 100) : 0);
     return `<span class="wl-win">${w}W</span>/<span class="wl-loss">${l}L</span> \xB7 ${rate}%`;
   }
+  function renderSkel(kind = "text") {
+    return `<span class="team-reveal-skel team-reveal-skel-${kind}" aria-hidden="true"></span>`;
+  }
+  function renderRecentGamesSkeleton() {
+    return `<div class="team-reveal-recent-games is-loading" aria-busy="true">${Array.from(
+      { length: 5 },
+      () => renderSkel("game")
+    ).join("")}</div>`;
+  }
   function formatRowName(_maskedName, snapshot) {
     if (!hasMatchWl(snapshot)) return snapshot.riotId || "";
     const wl = readRowWl(snapshot);
@@ -6569,6 +6624,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     );
   }
   function renderSeasonMain(row, getChampName) {
+    if (row?.matchesPending) return renderSkel("text");
     const id = Number(row?.seasonMostPlayedChampionId) || 0;
     if (!id) return "\u2014";
     const name = getChampName(id) || "Unknown";
@@ -6597,11 +6653,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
         pickedChampionId: row.pickedChampionId,
         pickedGames: row.pickedGames,
         pickedWinRate: row.pickedWinRate,
-        recentGames: row.recentGames
+        recentGames: row.recentGames,
+        matchesPending: Boolean(row.matchesPending)
       }))
     );
   }
   function renderRecentGames(row, getChampName) {
+    if (row?.matchesPending) return renderRecentGamesSkeleton();
     const games = Array.isArray(row?.recentGames) ? row.recentGames : [];
     if (!games.length) return '<span class="team-reveal-recent-empty">\u2014</span>';
     return `<div class="team-reveal-recent-games">${games.map((game) => {
@@ -6639,13 +6697,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const cards = snapshot.map((row) => {
       const riotId = row.riotId || "Unknown";
       const youTag = row.isLocalPlayer ? ' <span class="team-reveal-you">(You)</span>' : "";
-      const recentWl = formatWlHtml(row.wins, row.losses, row.winRate);
-      const kda = row.kda ?? "\u2014";
-      const last12h = formatWlPair(row.last12hWins, row.last12hLosses);
-      const recentNote = row.matchesUsed ? ` \xB7 last ${row.matchesUsed} games` : "";
+      const pending = Boolean(row.matchesPending);
+      const recentWl = pending ? renderSkel("text") : formatWlHtml(row.wins, row.losses, row.winRate);
+      const kda = pending ? renderSkel("text") : row.kda ?? "\u2014";
+      const last12h = pending ? renderSkel("text") : formatWlPair(row.last12hWins, row.last12hLosses);
+      const recentNote = !pending && row.matchesUsed ? ` \xB7 last ${row.matchesUsed} games` : "";
       const cardClass = row.isLocalPlayer ? "team-reveal-card is-you" : "team-reveal-card";
       const roleIcon = renderRoleIcon(row.assignedPosition);
-      return `<section class="${cardClass}">
+      return `<section class="${cardClass}${pending ? " is-loading-matches" : ""}">
         <div class="team-reveal-card-head">
           <div class="team-reveal-card-title-row">
             ${roleIcon}
@@ -7298,19 +7357,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function syncChat() {
       chat.setEntries(collectRevealChatPairs(boundLabels, snapshot, ORIGINAL_NAME_KEY));
     }
-    function closeCards() {
-      open = false;
-      renderVisibility();
-      setStatus(statusPhase === "loading" ? "loading" : snapshot.length ? "ready" : "hidden");
-    }
-    function openCards() {
-      if (!enabled || !snapshot.length) return;
-      ensureOverlay();
-      open = true;
-      if (needsReapply()) applyRows(snapshot);
-      renderVisibility();
-      setStatus("ready");
-    }
     async function handleSession(session) {
       if (!enabled) return;
       if (!isLiveRevealSession(session)) {
@@ -7444,11 +7490,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (activeTab === "build" && buildPanel?.loadBuild) {
         void buildPanel.loadBuild();
       }
+      if (snapshot.length && needsReapply()) applyRows(snapshot);
       renderVisibility();
+      if (statusPhase !== "loading" && snapshot.length) setStatus("ready");
     }
     function closeCards() {
       open = false;
       renderVisibility();
+      setStatus(statusPhase === "loading" ? "loading" : snapshot.length ? "ready" : "hidden");
     }
     function toggleCards(tab) {
       if (!enabled) return;
@@ -9686,6 +9735,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           return buildTeamRevealSnapshot({
             session,
             lcu: lcu2,
+            fetchImpl: proxyFetch,
             onProgress: hooks?.onProgress,
             signal: hooks?.signal,
             sampleSize: settings.queue_team_reveal_sample_size,

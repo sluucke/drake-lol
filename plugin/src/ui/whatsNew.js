@@ -1,5 +1,20 @@
 export const WHATS_NEW = [
   {
+    version: '0.3.23',
+    items: [
+      {
+        title: 'Team reveal match history via tray proxy',
+        body: 'Champ select scouting fetches recent games through the Drake tray proxy so W/L and Last 5 load reliably alongside names and ranks.',
+        screen: 'queue',
+      },
+      {
+        title: 'Match loading skeletons',
+        body: 'Opening Team Scouting while matches are still loading shows skeletons instead of empty 0W/0L placeholders.',
+        screen: 'queue',
+      },
+    ],
+  },
+  {
     version: '0.3.22',
     items: [
       {
