@@ -64,7 +64,7 @@ describe('parsePlayerBuild', () => {
 });
 
 describe('fetchChampionLeaderboard', () => {
-  it('returns ok with players on success', async () => {
+  it('returns top players from the OP.GG MCP leaderboard', async () => {
     const fetchFn = vi.fn().mockResolvedValue(jsonRpc(LEADERBOARD_TEXT));
     const res = await fetchChampionLeaderboard({ championName: 'Yasuo', region: 'kr' }, { fetchFn });
     expect(res.ok).toBe(true);

@@ -388,7 +388,7 @@ export const CSS = `
 }
 
 
-.hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-wrap, .role-tab {
+.hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-field, .role-tab {
   transition: filter 90ms ease, color 90ms ease, border-color 90ms ease,
     box-shadow 90ms ease, background 90ms ease, transform 60ms ease;
 }
@@ -762,7 +762,13 @@ select.hextech-input {
 }
 select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
-.friend-list { display: flex; flex-direction: column; }
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
 
 .friend {
   display: flex;
@@ -835,66 +841,17 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
 
 
-.select-wrap {
-  position: relative;
-  display: flex;
-  flex: 1;
-  height: 32px;
-  background: linear-gradient(to bottom, rgba(7, 16, 25, 0.9), rgba(0, 0, 0, 0.8));
-  border: thin solid #785a28;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4) inset;
-}
-.select-wrap:focus-within {
-  border-image: linear-gradient(to bottom, #785a28, #c8aa6e) 1 stretch;
-}
-
 .select-field {
   flex: 1;
-
-
-  -webkit-appearance: none;
-  appearance: none;
-  padding: 0 26px 0 8px;
-  color: #f0e6d2;
-  font-size: 12px;
-  background: transparent;
-  border: none;
-  outline: none;
-  cursor: pointer;
+  display: block;
 }
-.select-field {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.select-field option {
-  background: #010a13;
-  color: #f0e6d2;
+.select-field .framed-dropdown-type {
   text-transform: none;
-  letter-spacing: 0;
 }
-
-.select-arrows {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  width: 22px;
-  border-left: thin solid #785a28;
-  background: linear-gradient(to bottom, #1e2328, #010a13);
-  color: #c8aa6e;
-  font-size: 6px;
-  line-height: 1.3;
-  
+.select-field[disabled] {
   pointer-events: none;
+  opacity: 0.6;
 }
-.select-wrap:hover .select-arrows { color: #f0e6d2; }
-.select-wrap:hover { border-color: #c8aa6e; }
-
-.select-field:focus + .select-arrows { color: #f0e6d2; }
 
 
 
@@ -1072,40 +1029,50 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 .team-reveal-shell {
   position: relative;
   box-sizing: border-box;
-  width: min(980px, 94vw);
-  max-height: 86vh;
-  padding: 36px 16px 16px;
-  background:
-    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(8, 30, 60, 0.55) 0%, transparent 58%),
-    #010a13;
-  border: 2px solid transparent;
-  border-image: linear-gradient(to bottom, #c8aa6d, #7a5c29);
-  border-image-slice: 1;
+  width: min(1180px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 16px 18px 20px;
+  background: linear-gradient(180deg, #0a1428 0%, #06101f 100%);
+  border: 1px solid #785a28;
+  border-radius: 4px;
+  color: #f0e6d2;
   box-shadow: 0 0 32px rgba(0, 0, 0, 0.8);
+  font-family: ${BODY};
+}
+.team-reveal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #1e2328;
+  padding-bottom: 10px;
+  position: relative;
+}
+.team-reveal-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 .team-reveal-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
   appearance: none;
   border: 1px solid rgba(200, 170, 109, 0.4);
   background: rgba(1, 10, 19, 0.65);
   color: #c8aa6d;
   font-family: ${DISPLAY};
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 10px;
   cursor: pointer;
-  z-index: 2;
+  border-radius: 2px;
 }
 .team-reveal-close:hover {
   background: rgba(200, 170, 109, 0.16);
+  color: #f0e6d2;
 }
 .team-reveal-mute-btn {
-  position: absolute;
-  top: 8px;
-  right: 68px;
   appearance: none;
   border: 1px solid rgba(200, 170, 109, 0.4);
   background: rgba(1, 10, 19, 0.65);
@@ -1116,7 +1083,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   text-transform: uppercase;
   padding: 4px 8px;
   cursor: pointer;
-  z-index: 2;
 }
 .team-reveal-mute-btn:hover {
   background: rgba(200, 170, 109, 0.16);
@@ -1134,9 +1100,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #1e2328;
-  padding-bottom: 8px;
 }
 .drake-map-side {
   display: inline-flex;

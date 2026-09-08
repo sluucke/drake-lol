@@ -50,8 +50,7 @@ export function filterMatchEntriesByPool(entries, queueId, pool) {
   if (mode === MATCH_POOL_RANKED_BOTH) {
     return list.filter((entry) => Boolean(RANKED_QUEUE_BY_ID[Number(entry?.queueId) || 0]));
   }
-  if (!qid) return list;
-  return list.filter((entry) => Number(entry?.queueId) === qid);
+  return list.filter((entry) => (Number(entry?.queueId) || 0) === qid);
 }
 
 export function recommendFetchConcurrency({ lastMs, lastConcurrency } = {}) {

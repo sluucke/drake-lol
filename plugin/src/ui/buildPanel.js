@@ -2,7 +2,7 @@ import { fetchChampionBuild, DEFAULT_TIER, DEFAULT_REGION } from '../features/op
 import { normalizeChampionBuild } from '../features/buildData.js';
 import { fetchChampionLeaderboard, fetchPlayerBuild } from '../features/topPlayers.js';
 import { loadGameAssets } from '../features/gameAssets.js';
-import { applyRunePage } from '../features/runes.js';
+import { applyRunePage, loadRuneAssets } from '../features/runes.js';
 import { buildItemSet, applyItemSet, applySummonerSpells } from '../features/itemSets.js';
 import { renderBuildPanel } from './buildPanelRender.js';
 
@@ -26,6 +26,7 @@ export function makeBuildPanel({
   applyItemSetImpl = applyItemSet,
   applySummonerSpellsImpl = applySummonerSpells,
   loadGameAssetsImpl = loadGameAssets,
+  loadRuneAssetsImpl = loadRuneAssets,
   nowFn = () => Date.now(),
 } = {}) {
   const settings = getSettings() || {};
@@ -35,6 +36,24 @@ export function makeBuildPanel({
   let overlay = null;
   let generation = 0;
   let hasOpenedOnce = false;
+  const listeners = new Set();
+
+  function notify() {
+    for (const fn of listeners) {
+      try {
+        fn(state);
+      } catch {}
+    }
+  }
+
+  function ensureSettingsRead() {
+    if (!hasOpenedOnce) {
+      hasOpenedOnce = true;
+      const fresh = getSettings() || {};
+      state.tier = fresh.build_tier || state.tier;
+      state.region = fresh.build_region || state.region;
+    }
+  }
 
   const cache = new Map();
 
@@ -88,15 +107,18 @@ export function makeBuildPanel({
   }
 
   function paint() {
-    const node = ensureOverlay();
-    if (!node) return;
     refreshChampionName();
-    node.hidden = !open;
-    if (node.style) node.style.display = open ? 'flex' : 'none';
-    if (open) node.innerHTML = renderBuildPanel(state);
+    const node = ensureOverlay();
+    if (node) {
+      node.hidden = !open;
+      if (node.style) node.style.display = open ? 'flex' : 'none';
+      if (open) node.innerHTML = renderBuildPanel(state);
+    }
+    notify();
   }
 
   async function loadBuild({ force = false } = {}) {
+    ensureSettingsRead();
     if (!state.championId) {
       state.build = null;
       paint();
@@ -132,7 +154,7 @@ export function makeBuildPanel({
     paint();
 
     try {
-      await loadGameAssetsImpl(lcu);
+      await Promise.all([loadGameAssetsImpl(lcu), loadRuneAssetsImpl(lcu)]);
     } catch (err) {
       console.warn(TAG, 'asset load failed:', err?.message || err);
     }
@@ -233,102 +255,122 @@ export function makeBuildPanel({
     paint();
   }
 
+  function readChangeValue(event, target) {
+    return target?.value ?? event?.detail?.value ?? '';
+  }
+
+  function handleChange(event) {
+    const target = event?.target;
+    if (target?.matches?.('[data-build-tier]') || target?.dataset?.buildTier !== undefined) {
+      state.tier = readChangeValue(event, target);
+      void saveSettings({ build_tier: state.tier });
+      void loadBuild();
+      notify();
+      return true;
+    }
+    if (target?.matches?.('[data-build-region]') || target?.dataset?.buildRegion !== undefined) {
+      state.region = readChangeValue(event, target);
+      void saveSettings({ build_region: state.region });
+      void loadBuild();
+      notify();
+      return true;
+    }
+    return false;
+  }
+
+  function handleClick(event) {
+    const target = event?.target;
+    const hit = (attr) => target?.closest?.(`[${attr}]`);
+
+    if (hit('data-build-close')) {
+      event?.stopPropagation?.();
+      close();
+      return true;
+    }
+    if (hit('data-build-retry')) {
+      event?.stopPropagation?.();
+      void loadBuild({ force: true });
+      return true;
+    }
+    if (hit('data-build-tier-all')) {
+      event?.stopPropagation?.();
+      state.tier = 'all';
+      void saveSettings({ build_tier: 'all' });
+      void loadBuild();
+      notify();
+      return true;
+    }
+    if (hit('data-build-clear-player')) {
+      event?.stopPropagation?.();
+      generation += 1;
+      state.viewingPlayer = '';
+      state.build = state.averageBuild;
+      paint();
+      return true;
+    }
+
+    const playerBtn = hit('data-build-player');
+    if (playerBtn) {
+      event?.stopPropagation?.();
+      void handlePlayerBuild(
+        playerBtn.dataset.buildPlayer,
+        playerBtn.dataset.buildPlayerRegion || 'kr'
+      );
+      return true;
+    }
+
+    const runeBtn = hit('data-build-apply-runes');
+    if (runeBtn) {
+      event?.stopPropagation?.();
+      const page = state.build?.runePages?.[Number(runeBtn.dataset.buildApplyRunes) || 0];
+      if (!page) return true;
+      void runAction('runeStatus', () =>
+        applyRunePageImpl(lcu, {
+          name: `${state.championName || 'Drake'} Build`,
+          primaryStyleId: page.primaryStyleId,
+          subStyleId: page.subStyleId,
+          selectedPerkIds: page.selectedPerkIds,
+        })
+      );
+      return true;
+    }
+
+    const spellBtn = hit('data-build-apply-spells');
+    if (spellBtn) {
+      event?.stopPropagation?.();
+      const entry = state.build?.spells?.[Number(spellBtn.dataset.buildApplySpells) || 0];
+      if (!entry?.ids?.length) return true;
+      void runAction('spellStatus', () =>
+        applySummonerSpellsImpl(lcu, { spell1Id: entry.ids[0], spell2Id: entry.ids[1] })
+      );
+      return true;
+    }
+
+    if (hit('data-build-apply-items')) {
+      event?.stopPropagation?.();
+      const itemSet = buildItemSet({
+        championId: state.championId,
+        championName: state.championName,
+        build: state.build,
+      });
+      if (!itemSet) return true;
+      void runAction('itemSetStatus', () => applyItemSetImpl(lcu, getSummonerId(), itemSet));
+      return true;
+    }
+
+    return false;
+  }
+
   function wireEvents(node) {
     if (!node?.addEventListener || node.dataset?.drakeBuildWired === '1') return;
     if (node.dataset) node.dataset.drakeBuildWired = '1';
 
     node.addEventListener('change', (event) => {
-      const target = event.target;
-      if (target?.matches?.('[data-build-tier]') || target?.dataset?.buildTier !== undefined) {
-        state.tier = target.value;
-        void saveSettings({ build_tier: state.tier });
-        void loadBuild();
-        return;
-      }
-      if (target?.matches?.('[data-build-region]') || target?.dataset?.buildRegion !== undefined) {
-        state.region = target.value;
-        void saveSettings({ build_region: state.region });
-        void loadBuild();
-      }
+      handleChange(event);
     });
 
     node.addEventListener('click', (event) => {
-      const target = event.target;
-      const hit = (attr) => target?.closest?.(`[${attr}]`);
-
-      if (hit('data-build-close')) {
-        event.stopPropagation?.();
-        close();
-        return;
-      }
-      if (hit('data-build-retry')) {
-        event.stopPropagation?.();
-        void loadBuild({ force: true });
-        return;
-      }
-      if (hit('data-build-tier-all')) {
-        event.stopPropagation?.();
-        state.tier = 'all';
-        void saveSettings({ build_tier: 'all' });
-        void loadBuild();
-        return;
-      }
-      if (hit('data-build-clear-player')) {
-        event.stopPropagation?.();
-        generation += 1;
-        state.viewingPlayer = '';
-        state.build = state.averageBuild;
-        paint();
-        return;
-      }
-
-      const playerBtn = hit('data-build-player');
-      if (playerBtn) {
-        event.stopPropagation?.();
-        void handlePlayerBuild(
-          playerBtn.dataset.buildPlayer,
-          playerBtn.dataset.buildPlayerRegion || 'kr'
-        );
-        return;
-      }
-
-      const runeBtn = hit('data-build-apply-runes');
-      if (runeBtn) {
-        event.stopPropagation?.();
-        const page = state.build?.runePages?.[Number(runeBtn.dataset.buildApplyRunes) || 0];
-        if (!page) return;
-        void runAction('runeStatus', () =>
-          applyRunePageImpl(lcu, {
-            name: `${state.championName || 'Drake'} Build`,
-            primaryStyleId: page.primaryStyleId,
-            subStyleId: page.subStyleId,
-            selectedPerkIds: page.selectedPerkIds,
-          })
-        );
-        return;
-      }
-
-      const spellBtn = hit('data-build-apply-spells');
-      if (spellBtn) {
-        event.stopPropagation?.();
-        const entry = state.build?.spells?.[Number(spellBtn.dataset.buildApplySpells) || 0];
-        if (!entry?.ids?.length) return;
-        void runAction('spellStatus', () =>
-          applySummonerSpellsImpl(lcu, { spell1Id: entry.ids[0], spell2Id: entry.ids[1] })
-        );
-        return;
-      }
-
-      if (hit('data-build-apply-items')) {
-        event.stopPropagation?.();
-        const itemSet = buildItemSet({
-          championId: state.championId,
-          championName: state.championName,
-          build: state.build,
-        });
-        if (!itemSet) return;
-        void runAction('itemSetStatus', () => applyItemSetImpl(lcu, getSummonerId(), itemSet));
-      }
+      handleClick(event);
     });
   }
 
@@ -338,7 +380,6 @@ export function makeBuildPanel({
     const mode = session?.mode === 'aram' ? 'aram' : 'ranked';
 
     if (championId === state.championId && position === state.position && mode === state.mode) {
-      // Same session, but the champion list may have loaded in the meantime.
       if (refreshChampionName() && open) {
         paint();
         if (!state.topPlayers.ok && !state.topPlayers.loading) {
@@ -362,17 +403,7 @@ export function makeBuildPanel({
 
   function openPanel() {
     if (!enabled || open) return;
-    // Re-read settings on every open so a save made elsewhere (e.g. a
-    // settings reload after construction) reaches the panel. Only seed
-    // state.tier/state.region from it the first time this panel instance
-    // opens -- after that, a mid-session dropdown change is a live user
-    // choice and must not be clobbered by a stale settings read.
-    if (!hasOpenedOnce) {
-      hasOpenedOnce = true;
-      const fresh = getSettings() || {};
-      state.tier = fresh.build_tier || state.tier;
-      state.region = fresh.build_region || state.region;
-    }
+    ensureSettingsRead();
     open = true;
     paint();
     void loadBuild();
@@ -388,6 +419,16 @@ export function makeBuildPanel({
     close();
     cache.clear();
     generation += 1;
+    listeners.clear();
+  }
+
+  function getStateSig() {
+    return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}|${state.loading}|${state.error}|${state.patch}|${Boolean(state.build)}|${state.runeStatus}|${state.itemSetStatus}|${state.spellStatus}|${state.viewingPlayer}|${state.topPlayers.loading}|${state.topPlayers.players.length}`;
+  }
+
+  function renderHtml() {
+    refreshChampionName();
+    return renderBuildPanel(state);
   }
 
   return {
@@ -400,6 +441,17 @@ export function makeBuildPanel({
       enabled = !!value;
       if (!enabled) close();
     },
+    loadBuild,
+    getState: () => state,
+    getStateSig,
+    renderHtml,
+    handleChange,
+    handleClick,
+    onUpdate: (fn) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
     destroy,
+    teardown: destroy,
   };
 }

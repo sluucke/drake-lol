@@ -1,5 +1,9 @@
+const TAG = '[Drake]';
+
 export const RUNES_PAGES_ROUTE = '/lol-perks/v1/pages';
 export const RUNES_CURRENT_PAGE_ROUTE = '/lol-perks/v1/currentpage';
+export const PERKS_ROUTE = '/lol-game-data/assets/v1/perks.json';
+export const PERK_STYLES_ROUTE = '/lol-game-data/assets/v1/perkstyles.json';
 
 export const STYLE_NAMES = {
   8000: 'Precision',
@@ -188,13 +192,89 @@ export const PERK_NAMES = {
   5013: 'Tenacity',
 };
 
+const perks = new Map();
+const perkStyles = new Map();
+let runeAssetsLoaded = false;
+let runeAssetsLoading = null;
+
+function ingestPerks(list) {
+  if (!Array.isArray(list)) return 0;
+  let count = 0;
+  for (const entry of list) {
+    const id = Number(entry?.id);
+    if (!Number.isInteger(id) || id <= 0) continue;
+    perks.set(id, {
+      name: String(entry?.name || ''),
+      iconPath: String(entry?.iconPath || '').toLowerCase(),
+    });
+    count += 1;
+  }
+  return count;
+}
+
+function ingestPerkStyles(payload) {
+  const list = Array.isArray(payload?.styles) ? payload.styles : [];
+  let count = 0;
+  for (const entry of list) {
+    const id = Number(entry?.id);
+    if (!Number.isInteger(id) || id <= 0) continue;
+    perkStyles.set(id, {
+      name: String(entry?.name || ''),
+      iconPath: String(entry?.iconPath || '').toLowerCase(),
+    });
+    count += 1;
+  }
+  return count;
+}
+
+export function resetRuneAssets() {
+  perks.clear();
+  perkStyles.clear();
+  runeAssetsLoaded = false;
+  runeAssetsLoading = null;
+}
+
+// Perk icon/name paths drift across patches (Riot renames files), so the
+// PERK_PATHS/STYLE_ICONS maps below are only a fallback for before this load
+// resolves (or for a perk it doesn't yet know about). The LCU's own game-data
+// manifest is authoritative and always matches the running patch.
+export async function loadRuneAssets(lcu) {
+  if (runeAssetsLoaded) return true;
+  if (runeAssetsLoading) return runeAssetsLoading;
+
+  runeAssetsLoading = (async () => {
+    try {
+      const [perkList, styleList] = await Promise.all([
+        lcu.get(PERKS_ROUTE),
+        lcu.get(PERK_STYLES_ROUTE),
+      ]);
+      const perkCount = ingestPerks(perkList);
+      ingestPerkStyles(styleList);
+      runeAssetsLoaded = perkCount > 0;
+      if (!runeAssetsLoaded) console.warn(TAG, 'rune assets loaded but contained no perks');
+      return runeAssetsLoaded;
+    } catch (err) {
+      console.warn(TAG, 'failed to load rune assets:', err?.message || err);
+      resetRuneAssets();
+      return false;
+    } finally {
+      runeAssetsLoading = null;
+    }
+  })();
+
+  return runeAssetsLoading;
+}
+
 export function perkStyleName(styleId) {
-  return STYLE_NAMES[Number(styleId)] || `Tree ${styleId}`;
+  const id = Number(styleId);
+  const dynamic = perkStyles.get(id)?.name;
+  return dynamic || STYLE_NAMES[id] || `Tree ${styleId}`;
 }
 
 export function perkStyleIconUrl(styleId) {
   const sid = Number(styleId);
-  return STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`;
+  const dynamic = perkStyles.get(sid)?.iconPath;
+  return dynamic || STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`;
 }
 
 export function perkRelativePath(perkId) {
@@ -209,6 +289,8 @@ export function perkCdnUrl(perkId) {
 
 export function perkIconUrl(perkId) {
   const id = Number(perkId);
+  const dynamic = perks.get(id)?.iconPath;
+  if (dynamic) return dynamic;
   const path = PERK_PATHS[id];
   if (path) {
     return `/lol-game-data/assets/v1/${path}`;
@@ -218,7 +300,8 @@ export function perkIconUrl(perkId) {
 
 export function perkName(perkId) {
   const id = Number(perkId);
-  return PERK_NAMES[id] || `Rune ${id}`;
+  const dynamic = perks.get(id)?.name;
+  return dynamic || PERK_NAMES[id] || `Rune ${id}`;
 }
 
 export function formatRunePagePayload(name, primaryStyleId, subStyleId, selectedPerkIds) {

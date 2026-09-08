@@ -1,12 +1,16 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   formatRunePagePayload,
   applyRunePage,
   RUNES_PAGES_ROUTE,
+  PERKS_ROUTE,
+  PERK_STYLES_ROUTE,
   perkIconUrl,
   perkName,
   perkStyleIconUrl,
   perkStyleName,
+  loadRuneAssets,
+  resetRuneAssets,
 } from '../src/features/runes.js';
 
 describe('perk and style metadata', () => {
@@ -34,6 +38,61 @@ describe('perk and style metadata', () => {
     expect(perkIconUrl(8140)).toContain('GrislyMementos.png');
     expect(perkIconUrl(5008)).toContain('StatModsAdaptiveForceIcon.png');
     expect(perkIconUrl(99999)).toContain('99999.png');
+  });
+});
+
+describe('loadRuneAssets', () => {
+  const PERKS = [
+    { id: 8299, name: 'Last Stand', iconPath: '/lol-game-data/assets/v1/perk-images/Styles/Precision/LastStand/LastStand.png' },
+    { id: 5011, name: 'Health', iconPath: '/lol-game-data/assets/v1/perk-images/StatMods/StatModsHealthScalingIcon.png' },
+  ];
+  const STYLES = {
+    schemaVersion: 2,
+    styles: [
+      { id: 8400, name: 'Resolve', iconPath: '/lol-game-data/assets/v1/perk-images/Styles/7204_Resolve.png' },
+    ],
+  };
+
+  function makeLcu({ perks = PERKS, styles = STYLES } = {}) {
+    return {
+      get: vi.fn(async (route) => {
+        if (route === PERKS_ROUTE) return perks;
+        if (route === PERK_STYLES_ROUTE) return styles;
+        throw new Error(`unexpected route ${route}`);
+      }),
+    };
+  }
+
+  beforeEach(() => {
+    resetRuneAssets();
+  });
+
+  it('prefers the live iconPath/name from the LCU manifest over the hardcoded fallback map', async () => {
+    const lcu = makeLcu();
+    await expect(loadRuneAssets(lcu)).resolves.toBe(true);
+
+    expect(perkIconUrl(8299)).toBe(PERKS[0].iconPath.toLowerCase());
+    expect(perkName(5011)).toBe('Health');
+    expect(perkStyleIconUrl(8400)).toBe(STYLES.styles[0].iconPath.toLowerCase());
+    expect(perkStyleName(8400)).toBe('Resolve');
+  });
+
+  it('falls back to the static map for a perk missing from the manifest', async () => {
+    await loadRuneAssets(makeLcu({ perks: [] }));
+    expect(perkIconUrl(8010)).toContain('Conqueror.png');
+  });
+
+  it('survives an LCU failure and keeps the static fallback working', async () => {
+    const lcu = { get: vi.fn().mockRejectedValue(new Error('client down')) };
+    await expect(loadRuneAssets(lcu)).resolves.toBe(false);
+    expect(perkIconUrl(8010)).toContain('Conqueror.png');
+  });
+
+  it('only hits the LCU once across repeated calls', async () => {
+    const lcu = makeLcu();
+    await loadRuneAssets(lcu);
+    await loadRuneAssets(lcu);
+    expect(lcu.get).toHaveBeenCalledTimes(2); // perks + styles, once each
   });
 });
 

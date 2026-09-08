@@ -111,7 +111,7 @@ function normalizeRunePages(runePages) {
 
 function normalizeSkills(skillMasteries) {
   const first = Array.isArray(skillMasteries) ? skillMasteries[0] : null;
-  if (!first) return { masteries: [], order: [] };
+  if (!first) return { masteries: [], order: [], winRate: null, play: 0 };
 
   const masteries = Array.isArray(first.ids) ? first.ids.map((s) => String(s).toUpperCase()) : [];
   const builds = Array.isArray(first.builds) ? first.builds : [];
@@ -119,8 +119,10 @@ function normalizeSkills(skillMasteries) {
     .slice()
     .sort((a, b) => (Number(b?.pick_rate) || 0) - (Number(a?.pick_rate) || 0))[0];
   const order = Array.isArray(best?.order) ? best.order.map((s) => String(s).toUpperCase()) : [];
+  const winRate = best ? ratio(best.win, best.play) : ratio(first.win, first.play);
+  const play = Number(best?.play || first.play || 0);
 
-  return { masteries, order };
+  return { masteries, order, winRate, play };
 }
 
 function normalizeCounters(counters, totalPlay) {

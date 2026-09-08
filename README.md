@@ -21,6 +21,7 @@ Open the overlay with **Ctrl + D**, or click the duck button in the **bottom-rig
 | ⚡ | Auto Accept | Ready-check accept with optional delay |
 | 🗡️ | Auto Pick | First + backup champ per role, with Insta Lock |
 | 🚫 | Auto Ban | Ban a chosen champion automatically |
+| 🧰 | Build Panel | OP.GG runes, items, skill order, spells, matchups, and top players in champ select |
 | 🔍 | Lobby Reveal | Open team scouting on Porofessor / op.gg / etc. |
 | 👁️ | In-client Team Reveal | Ally rows + stats cards in champ select |
 | 🚪 | Dodge | Champ-select dodge button (with usual penalty) |
@@ -55,6 +56,14 @@ The tray is the source of truth for settings. The overlay reads and writes them 
 </p>
 <p align="center">
   <img src="docs/assets/ctrl+shift+d-lobby-reveal.png" alt="Team stats cards overlay with Ctrl+Shift+D" width="720">
+</p>
+
+<p align="center">
+  <strong>Build panel</strong><br>
+  In the same Ctrl + Shift + D modal, open Build for OP.GG runes, items, skill order, and summoner spells. Spells sit under skill order so the layout stays compact.
+</p>
+<p align="center">
+  <img src="docs/assets/build-panel.png" alt="Build panel with runes, items, skill order, and summoner spells" width="720">
 </p>
 
 <p align="center">

@@ -135,6 +135,6 @@ describe('normalizeChampionBuild', () => {
     expect(build.items.core[0].winRate).toBe(55);
     expect(build.items.starter).toEqual([]);
     expect(build.runePages).toEqual([]);
-    expect(build.skills).toEqual({ masteries: [], order: [] });
+    expect(build.skills).toEqual({ masteries: [], order: [], winRate: null, play: 0 });
   });
 });

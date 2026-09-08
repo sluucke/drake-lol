@@ -723,10 +723,15 @@
         } else if (matchesBuildPanelToggle(event)) {
           event.preventDefault();
           if (onBuildPanelToggle) onBuildPanelToggle();
-        } else if (open && matchesClose(event)) {
-          event.preventDefault();
-          if (typeof onEscape === "function" && onEscape()) return;
-          api.close();
+        } else if (matchesClose(event)) {
+          if (typeof onEscape === "function" && onEscape()) {
+            event.preventDefault();
+            return;
+          }
+          if (open) {
+            event.preventDefault();
+            api.close();
+          }
         }
       },
       true
@@ -757,38 +762,143 @@
   // src/ui/buildPanelStyles.js
   var BUILD_PANEL_CSS = `
 .build-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); pointer-events: auto; z-index: 20; }
-.build-panel { width: min(1180px, 94vw); max-height: 88vh; overflow-y: auto; background: linear-gradient(180deg, #0a1428 0%, #06101f 100%); border: 1px solid #785a28; border-radius: 4px; color: #f0e6d2; font-family: var(--font-body, 'Spiegel'), 'Segoe UI', system-ui, sans-serif; }
+.build-panel { width: min(1180px, 94vw); max-height: 88vh; overflow-y: auto; background: linear-gradient(180deg, #0a1428 0%, #06101f 100%); border: 1px solid #785a28; border-radius: 4px; color: #f0e6d2; font-family: var(--font-body, 'Spiegel'), 'Segoe UI', system-ui, sans-serif; position: relative; }
 
 .build-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 18px; border-bottom: 1px solid #1e2328; position: relative; }
-.build-identity { display: flex; align-items: center; gap: 10px; }
-.build-champ-icon { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #c8aa6e; }
-.build-champ-name { font-family: var(--font-display, 'Beaufort for LOL'), serif; font-size: 18px; color: #f0e6d2; }
+.build-identity { display: flex; align-items: center; gap: 12px; }
+.build-champ-icon { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #c8aa6e; flex-shrink: 0; }
+.build-identity-meta { display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.build-champ-name { font-family: var(--font-display, 'Beaufort for LOL'), serif; font-size: 18px; color: #f0e6d2; line-height: 1.2; }
 .build-identity-sub { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #a09b8c; }
+.build-role { display: inline-flex; align-items: center; gap: 4px; color: #c8aa6e; }
+.build-role-icon { width: 15px; height: 15px; object-fit: contain; }
 .build-mode-tag, .build-patch { border: 1px solid #463714; padding: 1px 6px; border-radius: 2px; }
 
 .build-filters { display: flex; gap: 10px; margin-left: auto; }
 .build-filter { display: flex; flex-direction: column; gap: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #a09b8c; }
-.build-filter select { background: #1e2328; color: #f0e6d2; border: 1px solid #785a28; padding: 4px 8px; font-size: 12px; }
+.build-hextech-dropdown { width: 150px; max-height: 32px; overflow: hidden; }
+.build-select-wrap { display: flex; align-items: center; gap: 6px; }
+.build-filter-rank-icon { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
 
 .build-stats { display: flex; gap: 14px; width: 100%; font-size: 12px; color: #a09b8c; }
 .build-stat b { color: #f0e6d2; margin-right: 4px; }
 .build-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: #a09b8c; font-size: 20px; cursor: pointer; }
 .build-close:hover { color: #f0e6d2; }
 
-.build-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; padding: 14px 18px; }
+.build-viewing-toast {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, rgba(200, 170, 110, 0.25) 0%, rgba(1, 10, 19, 0.95) 100%);
+  border-bottom: 1px solid #c8aa6e;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  color: #f0e6d2;
+  margin-bottom: 12px;
+}
+.build-viewing-toast-icon { font-size: 14px; }
+.build-viewing-toast-text b { color: #c8aa6e; }
+.build-viewing-toast-close {
+  background: rgba(30, 35, 40, 0.8);
+  border: 1px solid #785a28;
+  color: #f0e6d2;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.build-viewing-toast-close:hover {
+  border-color: #c8aa6e;
+  background: #1e2328;
+}
+
+.build-body { display: flex; align-items: flex-start; gap: 16px; padding: 14px 18px 20px; }
+.build-sidebar { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
+.build-main { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-content: start; }
+.build-main-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .build-card { background: rgba(30,35,40,0.5); border: 1px solid #1e2328; border-radius: 3px; padding: 10px 12px; }
+@media (max-width: 860px) {
+  .build-body { flex-direction: column; }
+  .build-sidebar { width: 100%; }
+}
 .build-card-title { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-display, 'Beaufort for LOL'), serif; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #c8aa6e; margin-bottom: 8px; }
 
 .build-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(30,35,40,0.8); }
 .build-row:last-child { border-bottom: none; }
+.build-row-lead { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.build-row-num { font-size: 12px; font-weight: bold; color: #a09b8c; min-width: 14px; }
+.build-row-num.hextech-badge { color: #0acbe6; text-shadow: 0 0 6px rgba(10, 203, 230, 0.6); }
 .build-icons { display: flex; align-items: center; gap: 4px; }
-.build-item-icon, .build-spell-icon, .build-keystone-icon { width: 30px; height: 30px; border-radius: 2px; border: 1px solid #463714; }
-.build-perk-icon, .build-shard-icon { width: 20px; height: 20px; }
-.build-style-icon { width: 22px; height: 22px; }
+.build-item { display: inline-flex; position: relative; }
+.build-item.hextech-item {
+  position: relative;
+  border-radius: 3px;
+  box-shadow: 0 0 10px rgba(10, 203, 230, 0.45), inset 0 0 4px rgba(10, 203, 230, 0.4);
+}
+.build-item.hextech-item::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 4px;
+  border: 1px solid #0acbe6;
+  pointer-events: none;
+  animation: hextech-pulse 2.2s ease-in-out infinite alternate;
+}
+.build-item-icon.hextech-icon {
+  border-color: #0acbe6;
+  box-shadow: 0 0 8px rgba(10, 203, 230, 0.5);
+}
+@keyframes hextech-pulse {
+  0% { opacity: 0.6; box-shadow: 0 0 4px rgba(10, 203, 230, 0.3); }
+  100% { opacity: 1; box-shadow: 0 0 12px rgba(10, 203, 230, 0.8), 0 0 4px #c8aa6e; }
+}
+.build-item-icon, .build-spell-icon { width: 30px; height: 30px; border-radius: 2px; border: 1px solid #463714; }
+.build-keystone-icon { width: 28px; height: 28px; border-radius: 3px; border: 1px solid #785a28; box-sizing: border-box; }
+.build-perk-icon { width: 22px; height: 22px; border-radius: 50%; }
+.build-shard-icon { width: 18px; height: 18px; border-radius: 50%; }
+.build-style-icon { width: 24px; height: 24px; }
 .build-arrow { color: #785a28; font-size: 13px; }
+
+.build-item-phase { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(30,35,40,0.8); }
+.build-item-phase-label { flex-shrink: 0; width: 56px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #a09b8c; }
+.build-item-phase-label-core { border-bottom: none; padding-top: 4px; font-size: 12px; font-weight: bold; color: #a09b8c; text-transform: uppercase; letter-spacing: .06em; }
+.build-item-phase-situational { align-items: flex-start; border-bottom: none; }
+.build-item-phase-situational .build-item-phase-label { padding-top: 2px; }
+
+.build-rune-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 0;
+}
+.build-rune-top-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.build-rune-bottom-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-left: 22px;
+}
+.build-rune-strip { display: flex; align-items: center; gap: 8px; }
+.build-rune-tree-group { display: flex; align-items: center; gap: 5px; }
+.build-rune-divider { display: inline-block; width: 1px; height: 22px; background: #3c3c41; margin: 0 4px; }
+.build-rune-shards-group { display: flex; align-items: center; gap: 5px; min-height: 20px; }
 
 .build-row-stats { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #a09b8c; white-space: nowrap; }
 .build-wr { color: #0acbe6; }
+.build-wr.is-positive { color: #2de071; }
+.build-wr.is-negative { color: #e84057; }
 .build-bar { display: inline-block; width: 54px; height: 4px; background: #1e2328; }
 .build-bar i { display: block; height: 100%; background: #c8aa6e; }
 
@@ -796,28 +906,81 @@
 .build-action:hover:not([disabled]) { border-color: #c8aa6e; }
 .build-action[disabled] { opacity: .5; cursor: default; }
 
-.build-trend { display: flex; gap: 8px; overflow-x: auto; }
+.build-trend { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; }
 .build-trend-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: #0acbe6; }
-.build-skill-priority { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
-.build-skill { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1px solid #785a28; color: #f0e6d2; font-size: 11px; }
-.build-skill-order { display: flex; gap: 2px; flex-wrap: wrap; }
-.build-skill-step { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #1e2328; font-size: 10px; color: #a09b8c; }
+
+.build-skill-table-wrap { overflow-x: auto; margin-top: 4px; }
+.build-skill-table { border-collapse: separate; border-spacing: 3px; }
+.build-skill-key-th { padding: 0 6px 0 0; text-align: center; width: 28px; }
+.build-skill-key-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #1e2328;
+  border: 1px solid #785a28;
+  color: #f0e6d2;
+  font-family: var(--font-display, 'Beaufort for LOL'), serif;
+  font-size: 12px;
+  font-weight: bold;
+}
+.build-skill-grid-cell {
+  width: 24px;
+  height: 24px;
+  text-align: center;
+  vertical-align: middle;
+  background: rgba(1, 10, 19, 0.7);
+  border: 1px solid rgba(60, 60, 65, 0.6);
+  color: transparent;
+  font-size: 11px;
+  font-weight: 600;
+}
+.build-skill-grid-cell.is-active {
+  background: rgba(10, 203, 230, 0.28);
+  border-color: #0acbe6;
+  color: #f0e6d2;
+}
+.build-skill-stats-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: #a09b8c;
+  margin-top: 8px;
+}
+.build-skill-games b { color: #f0e6d2; }
 
 .build-counters { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.build-sidebar .build-counters { grid-template-columns: 1fr; gap: 10px; }
 .build-counter-head { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
-.build-counter-head.is-strong { color: #0acbe6; }
+.build-counter-head.is-strong { color: #2de071; }
 .build-counter-head.is-weak { color: #e84057; }
 .build-counter { display: flex; align-items: center; gap: 7px; padding: 3px 0; font-size: 11px; }
 .build-counter-icon { width: 24px; height: 24px; border-radius: 50%; }
 .build-counter-name { flex: 1; color: #f0e6d2; }
-.build-counter.is-strong .build-counter-wr { color: #0acbe6; }
-.build-counter.is-weak .build-counter-wr { color: #e84057; }
 .build-counter-play { color: #5b5a56; }
 
-.build-players { width: 100%; border-collapse: collapse; font-size: 11px; }
-.build-players th { text-align: left; color: #a09b8c; font-weight: normal; text-transform: uppercase; letter-spacing: .05em; padding: 4px 6px; border-bottom: 1px solid #1e2328; }
-.build-players td { padding: 4px 6px; border-bottom: 1px solid rgba(30,35,40,0.6); }
-.build-viewing-chip { display: flex; align-items: center; gap: 10px; font-size: 11px; color: #c8aa6e; padding: 5px 0; }
+.build-toplist { display: flex; flex-direction: column; }
+.build-toplist-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 2px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(30,35,40,0.6);
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+.build-toplist-row:last-child { border-bottom: none; }
+.build-toplist-row:hover { background: rgba(200, 170, 110, 0.08); }
+.build-toplist-rank { flex-shrink: 0; width: 18px; color: #a09b8c; }
+.build-toplist-tier-icon { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
+.build-toplist-name { flex: 1; min-width: 0; color: #f0e6d2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .build-placeholder { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 48px 18px; color: #a09b8c; font-size: 13px; }
 .build-placeholder.is-error { color: #e84057; }
@@ -826,9 +989,28 @@
 .build-spinner { animation: build-spin 1s linear infinite; }
 @keyframes build-spin { to { transform: rotate(360deg); } }
 
-.build-entry-btn { position: fixed; right: 18px; bottom: 92px; pointer-events: auto; z-index: 19; background: linear-gradient(180deg, #1e2328, #0a1428); border: 1px solid #785a28; color: #f0e6d2; font-family: var(--font-display, 'Beaufort for LOL'), serif; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; padding: 7px 16px; cursor: pointer; }
-.build-entry-btn:hover { border-color: #c8aa6e; color: #fff; }
-.build-entry-btn[hidden] { display: none; }
+.team-reveal-shell .build-panel {
+  width: 100%;
+  max-height: none;
+  overflow-y: visible;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: inherit;
+  font-family: inherit;
+}
+.team-reveal-shell .build-header {
+  padding: 0 0 14px;
+  border-bottom: 1px solid #1e2328;
+  margin-bottom: 14px;
+}
+.team-reveal-shell .build-body {
+  padding: 0;
+}
+.team-reveal-shell .build-close {
+  display: none;
+}
 `;
 
   // src/ui/styles.js
@@ -1207,7 +1389,7 @@
 }
 
 
-.hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-wrap, .role-tab {
+.hextech-btn, .pill, .navitem, .champ, .skin, .rank, .check-row, .select-field, .role-tab {
   transition: filter 90ms ease, color 90ms ease, border-color 90ms ease,
     box-shadow 90ms ease, background 90ms ease, transform 60ms ease;
 }
@@ -1581,7 +1763,13 @@ select.hextech-input {
 }
 select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
-.friend-list { display: flex; flex-direction: column; }
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
 
 .friend {
   display: flex;
@@ -1654,66 +1842,17 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 
 
 
-.select-wrap {
-  position: relative;
-  display: flex;
-  flex: 1;
-  height: 32px;
-  background: linear-gradient(to bottom, rgba(7, 16, 25, 0.9), rgba(0, 0, 0, 0.8));
-  border: thin solid #785a28;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4) inset;
-}
-.select-wrap:focus-within {
-  border-image: linear-gradient(to bottom, #785a28, #c8aa6e) 1 stretch;
-}
-
 .select-field {
   flex: 1;
-
-
-  -webkit-appearance: none;
-  appearance: none;
-  padding: 0 26px 0 8px;
-  color: #f0e6d2;
-  font-size: 12px;
-  background: transparent;
-  border: none;
-  outline: none;
-  cursor: pointer;
+  display: block;
 }
-.select-field {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.select-field option {
-  background: #010a13;
-  color: #f0e6d2;
+.select-field .framed-dropdown-type {
   text-transform: none;
-  letter-spacing: 0;
 }
-
-.select-arrows {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  width: 22px;
-  border-left: thin solid #785a28;
-  background: linear-gradient(to bottom, #1e2328, #010a13);
-  color: #c8aa6e;
-  font-size: 6px;
-  line-height: 1.3;
-  
+.select-field[disabled] {
   pointer-events: none;
+  opacity: 0.6;
 }
-.select-wrap:hover .select-arrows { color: #f0e6d2; }
-.select-wrap:hover { border-color: #c8aa6e; }
-
-.select-field:focus + .select-arrows { color: #f0e6d2; }
 
 
 
@@ -1891,40 +2030,50 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
 .team-reveal-shell {
   position: relative;
   box-sizing: border-box;
-  width: min(980px, 94vw);
-  max-height: 86vh;
-  padding: 36px 16px 16px;
-  background:
-    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(8, 30, 60, 0.55) 0%, transparent 58%),
-    #010a13;
-  border: 2px solid transparent;
-  border-image: linear-gradient(to bottom, #c8aa6d, #7a5c29);
-  border-image-slice: 1;
+  width: min(1180px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 16px 18px 20px;
+  background: linear-gradient(180deg, #0a1428 0%, #06101f 100%);
+  border: 1px solid #785a28;
+  border-radius: 4px;
+  color: #f0e6d2;
   box-shadow: 0 0 32px rgba(0, 0, 0, 0.8);
+  font-family: ${BODY};
+}
+.team-reveal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #1e2328;
+  padding-bottom: 10px;
+  position: relative;
+}
+.team-reveal-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 .team-reveal-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
   appearance: none;
   border: 1px solid rgba(200, 170, 109, 0.4);
   background: rgba(1, 10, 19, 0.65);
   color: #c8aa6d;
   font-family: ${DISPLAY};
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 10px;
   cursor: pointer;
-  z-index: 2;
+  border-radius: 2px;
 }
 .team-reveal-close:hover {
   background: rgba(200, 170, 109, 0.16);
+  color: #f0e6d2;
 }
 .team-reveal-mute-btn {
-  position: absolute;
-  top: 8px;
-  right: 68px;
   appearance: none;
   border: 1px solid rgba(200, 170, 109, 0.4);
   background: rgba(1, 10, 19, 0.65);
@@ -1935,7 +2084,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   text-transform: uppercase;
   padding: 4px 8px;
   cursor: pointer;
-  z-index: 2;
 }
 .team-reveal-mute-btn:hover {
   background: rgba(200, 170, 109, 0.16);
@@ -1953,9 +2101,6 @@ select.hextech-input option { background: #010a13; color: #f0e6d2; }
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #1e2328;
-  padding-bottom: 8px;
 }
 .drake-map-side {
   display: inline-flex;
@@ -3743,15 +3888,9 @@ ${BUILD_PANEL_CSS}
     const opts = list.map((o) => {
       const value = o.id ?? o;
       const label = o.label ?? o;
-      return `<option value="${value}" ${String(value) === String(selected) ? "selected" : ""}>${label}</option>`;
+      return `<lol-uikit-dropdown-option slot="lol-uikit-dropdown-option" value="${value}" class="framed-dropdown-type"${String(value) === String(selected) ? " selected" : ""}>${label}</lol-uikit-dropdown-option>`;
     }).join("");
-    return `
-    <span class="select-wrap">
-      <select class="select-field" id="${id}" ${disabled ? "disabled" : ""}>${opts}</select>
-      <span class="select-arrows" aria-hidden="true">
-        <span>\u25B2</span><span>\u25BC</span>
-      </span>
-    </span>`;
+    return `<lol-uikit-framed-dropdown class="select-field" id="${id}" tabindex="0"${disabled ? " disabled" : ""}>${opts}</lol-uikit-framed-dropdown>`;
   }
   function renderRankTab(lol) {
     const tier = lol.rankedLeagueTier || "";
@@ -4053,6 +4192,21 @@ ${BUILD_PANEL_CSS}
 
   // src/ui/whatsNew.js
   var WHATS_NEW = [
+    {
+      version: "0.3.22",
+      items: [
+        {
+          title: "Build panel",
+          body: "Champ select builds from OP.GG: runes, items, skill order, summoner spells, matchups, and top players \u2014 with Apply actions and Create Item Set.",
+          screen: "queue"
+        },
+        {
+          title: "Tighter build layout",
+          body: "Summoner Spells sit under Skill Order so the right column fills and you scroll less to see the full loadout.",
+          screen: "queue"
+        }
+      ]
+    },
     {
       version: "0.3.21",
       items: [
@@ -5150,8 +5304,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     if (mode === MATCH_POOL_RANKED_BOTH) {
       return list.filter((entry) => Boolean(RANKED_QUEUE_BY_ID[Number(entry?.queueId) || 0]));
     }
-    if (!qid) return list;
-    return list.filter((entry) => Number(entry?.queueId) === qid);
+    return list.filter((entry) => (Number(entry?.queueId) || 0) === qid);
   }
   function recommendFetchConcurrency({ lastMs, lastConcurrency } = {}) {
     const prev = normalizeFetchConcurrency(lastConcurrency);
@@ -6467,7 +6620,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     currentSession,
     getChampName,
     muteStatus = "idle",
-    showMapSide = true
+    showMapSide = true,
+    activeTab = "scouting",
+    buildHtml = ""
   }) {
     const sideInfo = showMapSide ? readMapSide(currentSession) : null;
     const sideBadge = sideInfo?.label ? formatMapSideBadge(sideInfo) : "";
@@ -6511,28 +6666,42 @@ button.bug-report-button[data-drake-toggle]:disabled {
         </div>
       </section>`;
     }).join("");
+    const scoutingContent = snapshot.length ? `<div class="team-reveal-panel">${cards}</div>` : `<div class="team-reveal-empty-card">No team scouting data available</div>`;
     return `<div class="team-reveal-shell" data-team-reveal-panel="1">
-    <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === "muting" ? "disabled" : ""}>${muteText}</button>
-    <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">Close</button>
-    <div class="team-reveal-tabs">
-      <div class="team-reveal-tab is-active">Team Scouting</div>
-      ${sideBadge}
+    <div class="team-reveal-header">
+      <div class="team-reveal-tabs">
+        <button class="team-reveal-tab ${activeTab === "scouting" ? "is-active" : ""}" type="button" data-team-reveal-tab="scouting" role="tab" aria-selected="${activeTab === "scouting"}">Team Scouting</button>
+        <button class="team-reveal-tab ${activeTab === "build" ? "is-active" : ""}" type="button" data-team-reveal-tab="build" role="tab" aria-selected="${activeTab === "build"}">Build</button>
+      </div>
+      ${activeTab === "scouting" ? `
+        <div class="team-reveal-head-meta">
+          ${sideBadge}
+          <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === "muting" ? "disabled" : ""}>${muteText}</button>
+        </div>
+      ` : ""}
+      <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">\xD7</button>
     </div>
-    <div class="team-reveal-panel">${cards}</div>
+    <div class="team-reveal-content">
+      ${activeTab === "scouting" ? scoutingContent : buildHtml}
+    </div>
   </div>`;
   }
   function overlayRenderSig({
     snapshot,
     currentSession,
     muteStatus = "idle",
-    showMapSide = true
+    showMapSide = true,
+    activeTab = "scouting",
+    buildSig = ""
   }) {
     const sideInfo = showMapSide ? readMapSide(currentSession) : null;
     return JSON.stringify({
+      activeTab,
       cards: cardsContentSig(snapshot),
       muteStatus,
       side: sideInfo?.side || "",
-      showMapSide: Boolean(showMapSide)
+      showMapSide: Boolean(showMapSide),
+      buildSig
     });
   }
   function readLabelNodes(doc) {
@@ -6628,6 +6797,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     loadSnapshot,
     overlayRoot,
     lcu: lcu2,
+    buildPanel,
     muteTeammatesImpl = muteTeammates,
     sendChampSelectMessageImpl = sendChampSelectMessage,
     getChampName = () => "",
@@ -6654,6 +6824,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let statusBar = null;
     let readyDismissTimer = null;
     let open = false;
+    let activeTab = "scouting";
     let boundLabels = /* @__PURE__ */ new Map();
     let lastSessionSig = "";
     let lastLobbyKey = "";
@@ -6846,12 +7017,33 @@ button.bug-report-button[data-drake-toggle]:disabled {
       lastCardsRenderSig = "";
       if (open) renderVisibility();
     }
+    if (buildPanel?.onUpdate) {
+      buildPanel.onUpdate(() => {
+        if (open && activeTab === "build") {
+          renderVisibility();
+        }
+      });
+    }
     function wireOverlayEvents(node) {
       if (!node?.addEventListener || node.dataset?.drakeRevealWired === "1") return;
       if (node.dataset) node.dataset.drakeRevealWired = "1";
+      node.addEventListener("change", (event) => {
+        if (buildPanel && typeof buildPanel.handleChange === "function") {
+          buildPanel.handleChange(event);
+        }
+      });
       node.addEventListener("click", async (event) => {
         const target = event.target;
-        if (target?.closest?.('[data-team-reveal-close="1"]') || target?.dataset?.teamRevealClose === "1") {
+        const tabBtn = target?.closest?.("[data-team-reveal-tab]");
+        if (tabBtn) {
+          event.stopPropagation?.();
+          const tab = tabBtn.dataset.teamRevealTab;
+          if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+          }
+          return;
+        }
+        if (target?.closest?.('[data-team-reveal-close="1"]') || target?.dataset?.teamRevealClose === "1" || target?.closest?.("[data-build-close]")) {
           event.stopPropagation?.();
           closeCards();
           return;
@@ -6861,6 +7053,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
           event.stopPropagation?.();
           await handleMuteAll();
           return;
+        }
+        if (buildPanel && typeof buildPanel.handleClick === "function") {
+          const handled = buildPanel.handleClick(event);
+          if (handled) return;
         }
         if (target === node) {
           closeCards();
@@ -6989,21 +7185,27 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     function renderVisibility() {
       if (!overlay) return;
-      if (open && snapshot.length > 0) {
+      if (open) {
         const showMapSide = getShowMapSide();
+        const buildSig = buildPanel?.getStateSig ? buildPanel.getStateSig() : "";
         const sig = overlayRenderSig({
           snapshot,
           currentSession,
           muteStatus,
-          showMapSide
+          showMapSide,
+          activeTab,
+          buildSig
         });
         if (sig !== lastCardsRenderSig) {
+          const buildHtml = buildPanel?.renderHtml ? buildPanel.renderHtml() : "";
           overlay.innerHTML = renderOverlayShell({
             snapshot,
             currentSession,
             getChampName: (id) => getChampName(Number(id)),
             muteStatus,
-            showMapSide
+            showMapSide,
+            activeTab,
+            buildHtml
           });
           lastCardsRenderSig = sig;
         }
@@ -7226,13 +7428,39 @@ button.bug-report-button[data-drake-toggle]:disabled {
       lastPhase = "";
       clearReveal();
     }
-    function toggleCards() {
+    function setActiveTab(tab) {
+      activeTab = tab || "scouting";
+      if (activeTab === "build" && buildPanel?.loadBuild) {
+        void buildPanel.loadBuild();
+      }
+      lastCardsRenderSig = "";
+      renderVisibility();
+    }
+    function openCards(tab) {
+      if (!enabled) return;
+      ensureOverlay();
+      if (tab) activeTab = tab;
+      open = true;
+      if (activeTab === "build" && buildPanel?.loadBuild) {
+        void buildPanel.loadBuild();
+      }
+      renderVisibility();
+    }
+    function closeCards() {
+      open = false;
+      renderVisibility();
+    }
+    function toggleCards(tab) {
       if (!enabled) return;
       if (open) {
+        if (tab && tab !== activeTab) {
+          setActiveTab(tab);
+          return;
+        }
         closeCards();
         return;
       }
-      openCards();
+      openCards(tab || activeTab || "scouting");
     }
     function teardown() {
       setEnabled(false);
@@ -7252,6 +7480,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
       toggleCards,
       closeCards,
       openCards,
+      isOpen: () => open,
+      getActiveTab: () => activeTab,
+      setActiveTab,
       teardown
     };
   }
@@ -7440,12 +7671,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
   function normalizeSkills(skillMasteries) {
     const first = Array.isArray(skillMasteries) ? skillMasteries[0] : null;
-    if (!first) return { masteries: [], order: [] };
+    if (!first) return { masteries: [], order: [], winRate: null, play: 0 };
     const masteries = Array.isArray(first.ids) ? first.ids.map((s) => String(s).toUpperCase()) : [];
     const builds = Array.isArray(first.builds) ? first.builds : [];
     const best = builds.slice().sort((a, b) => (Number(b?.pick_rate) || 0) - (Number(a?.pick_rate) || 0))[0];
     const order = Array.isArray(best?.order) ? best.order.map((s) => String(s).toUpperCase()) : [];
-    return { masteries, order };
+    const winRate = best ? ratio(best.win, best.play) : ratio(first.win, first.play);
+    const play = Number(best?.play || first.play || 0);
+    return { masteries, order, winRate, play };
   }
   function normalizeCounters(counters, totalPlay) {
     if (!Array.isArray(counters) || counters.length === 0) {
@@ -7614,23 +7847,26 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const data = await res.json();
     return data?.result?.content?.[0]?.text || "";
   }
-  async function fetchChampionLeaderboard({ championName: championName2, region = "kr" } = {}, { fetchFn = globalThis.fetch } = {}) {
-    const mcpName = formatMcpChampionName(championName2);
-    if (!mcpName) return fail("No champion selected", []);
+  async function fetchChampionLeaderboard({ championName: championName2, region = "br" } = {}, { fetchFn = globalThis.fetch } = {}) {
+    if (!championName2) return fail("No champion selected", []);
     if (typeof fetchFn !== "function") return fail("No network client available", []);
+    const reg = String(region || "br").toLowerCase();
+    const mcpName = formatMcpChampionName(championName2);
+    if (!mcpName) return fail("No ranking data available", []);
     try {
       const text = await callMcp(
         "lol_list_champion_leaderboard",
-        { champion: mcpName, region: String(region || "kr").toLowerCase(), lang: "en_US" },
+        { champion: mcpName, region: reg === "global" ? "kr" : reg, lang: "en_US" },
         { fetchFn, id: 3 }
       );
-      const players = parseMcpLeaderboard(text, region);
-      if (!players.length) return fail("No ranking data available", []);
-      return succeed(players);
+      const players = parseMcpLeaderboard(text, reg);
+      if (players.length > 0) {
+        return succeed(players);
+      }
     } catch (err) {
-      console.warn(TAG2, "leaderboard fetch failed:", err?.message || err);
-      return fail("Ranking service unavailable", []);
+      console.warn(TAG2, "MCP leaderboard fetch failed:", err?.message || err);
     }
+    return fail("No ranking data available", []);
   }
   async function fetchPlayerBuild({ riotId, region = "kr", championId } = {}, { fetchFn = globalThis.fetch } = {}) {
     const empty = { runePages: [], items: [] };
@@ -7734,7 +7970,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/features/runes.js
+  var TAG4 = "[Drake]";
   var RUNES_PAGES_ROUTE = "/lol-perks/v1/pages";
+  var PERKS_ROUTE = "/lol-game-data/assets/v1/perks.json";
+  var PERK_STYLES_ROUTE = "/lol-game-data/assets/v1/perkstyles.json";
   var STYLE_NAMES = {
     8e3: "Precision",
     8100: "Domination",
@@ -7913,15 +8152,82 @@ button.bug-report-button[data-drake-toggle]:disabled {
     5012: "Tenacity",
     5013: "Tenacity"
   };
+  var perks = /* @__PURE__ */ new Map();
+  var perkStyles = /* @__PURE__ */ new Map();
+  var runeAssetsLoaded = false;
+  var runeAssetsLoading = null;
+  function ingestPerks(list) {
+    if (!Array.isArray(list)) return 0;
+    let count = 0;
+    for (const entry of list) {
+      const id = Number(entry?.id);
+      if (!Number.isInteger(id) || id <= 0) continue;
+      perks.set(id, {
+        name: String(entry?.name || ""),
+        iconPath: String(entry?.iconPath || "").toLowerCase()
+      });
+      count += 1;
+    }
+    return count;
+  }
+  function ingestPerkStyles(payload) {
+    const list = Array.isArray(payload?.styles) ? payload.styles : [];
+    let count = 0;
+    for (const entry of list) {
+      const id = Number(entry?.id);
+      if (!Number.isInteger(id) || id <= 0) continue;
+      perkStyles.set(id, {
+        name: String(entry?.name || ""),
+        iconPath: String(entry?.iconPath || "").toLowerCase()
+      });
+      count += 1;
+    }
+    return count;
+  }
+  function resetRuneAssets() {
+    perks.clear();
+    perkStyles.clear();
+    runeAssetsLoaded = false;
+    runeAssetsLoading = null;
+  }
+  async function loadRuneAssets(lcu2) {
+    if (runeAssetsLoaded) return true;
+    if (runeAssetsLoading) return runeAssetsLoading;
+    runeAssetsLoading = (async () => {
+      try {
+        const [perkList, styleList] = await Promise.all([
+          lcu2.get(PERKS_ROUTE),
+          lcu2.get(PERK_STYLES_ROUTE)
+        ]);
+        const perkCount = ingestPerks(perkList);
+        ingestPerkStyles(styleList);
+        runeAssetsLoaded = perkCount > 0;
+        if (!runeAssetsLoaded) console.warn(TAG4, "rune assets loaded but contained no perks");
+        return runeAssetsLoaded;
+      } catch (err) {
+        console.warn(TAG4, "failed to load rune assets:", err?.message || err);
+        resetRuneAssets();
+        return false;
+      } finally {
+        runeAssetsLoading = null;
+      }
+    })();
+    return runeAssetsLoading;
+  }
   function perkStyleName(styleId) {
-    return STYLE_NAMES[Number(styleId)] || `Tree ${styleId}`;
+    const id = Number(styleId);
+    const dynamic = perkStyles.get(id)?.name;
+    return dynamic || STYLE_NAMES[id] || `Tree ${styleId}`;
   }
   function perkStyleIconUrl(styleId) {
     const sid = Number(styleId);
-    return STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`;
+    const dynamic = perkStyles.get(sid)?.iconPath;
+    return dynamic || STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`;
   }
   function perkIconUrl(perkId) {
     const id = Number(perkId);
+    const dynamic = perks.get(id)?.iconPath;
+    if (dynamic) return dynamic;
     const path = PERK_PATHS[id];
     if (path) {
       return `/lol-game-data/assets/v1/${path}`;
@@ -7930,7 +8236,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
   function perkName(perkId) {
     const id = Number(perkId);
-    return PERK_NAMES[id] || `Rune ${id}`;
+    const dynamic = perks.get(id)?.name;
+    return dynamic || PERK_NAMES[id] || `Rune ${id}`;
   }
   function formatRunePagePayload(name, primaryStyleId, subStyleId, selectedPerkIds) {
     return {
@@ -8011,7 +8318,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/features/itemSets.js
-  var TAG4 = "[Drake]";
+  var TAG5 = "[Drake]";
   var ITEM_SETS_ROUTE = (summonerId) => `/lol-item-sets/v1/item-sets/${summonerId}/sets`;
   var MY_SELECTION_ROUTE = "/lol-champ-select/v1/session/my-selection";
   var DRAKE_SET_MARKER = "Drake \xB7";
@@ -8021,21 +8328,45 @@ button.bug-report-button[data-drake-toggle]:disabled {
     { bucket: "boots", type: "Boots" },
     { bucket: "last", type: "Final Items" }
   ];
-  function toBlock(entries, type) {
-    const first = Array.isArray(entries) ? entries[0] : null;
-    const ids = Array.isArray(first?.ids) ? first.ids : [];
-    if (!ids.length) return null;
+  function countIds(ids) {
     const counts = /* @__PURE__ */ new Map();
     for (const raw of ids) {
       const id = Number(raw);
       if (!Number.isInteger(id) || id <= 0) continue;
       counts.set(id, (counts.get(id) || 0) + 1);
     }
+    return counts;
+  }
+  function blockFromCounts(counts, type, limit) {
     if (!counts.size) return null;
+    const entries = [...counts.entries()];
+    const capped = typeof limit === "number" ? entries.slice(0, limit) : entries;
     return {
       type,
-      items: [...counts.entries()].map(([id, count]) => ({ id: String(id), count }))
+      items: capped.map(([id, count]) => ({ id: String(id), count }))
     };
+  }
+  function toBlock(entries, type) {
+    const first = Array.isArray(entries) ? entries[0] : null;
+    const ids = Array.isArray(first?.ids) ? first.ids : [];
+    if (!ids.length) return null;
+    return blockFromCounts(countIds(ids), type);
+  }
+  var LAST_ITEMS_LIMIT = 6;
+  function toLastItemsBlock(entries, type) {
+    if (!Array.isArray(entries) || !entries.length) return null;
+    const flatIds = entries.flatMap((entry) => Array.isArray(entry?.ids) ? entry.ids : []);
+    if (!flatIds.length) return null;
+    const uniqueIds = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const raw of flatIds) {
+      const id = Number(raw);
+      if (!Number.isInteger(id) || id <= 0 || seen.has(id)) continue;
+      seen.add(id);
+      uniqueIds.push(id);
+    }
+    const counts = new Map(uniqueIds.map((id) => [id, 1]));
+    return blockFromCounts(counts, type, LAST_ITEMS_LIMIT);
   }
   function buildItemSet({ championId, championName: championName2, build } = {}) {
     const id = Number(championId) || 0;
@@ -8043,7 +8374,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     if (!items2 || typeof items2 !== "object") return null;
     const blocks = [];
     for (const { bucket, type } of BLOCK_ORDER) {
-      const block = toBlock(items2[bucket], type);
+      const block = bucket === "last" ? toLastItemsBlock(items2[bucket], type) : toBlock(items2[bucket], type);
       if (block) blocks.push(block);
     }
     if (!blocks.length) return null;
@@ -8071,7 +8402,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const res = await lcu2.get(ITEM_SETS_ROUTE(id));
       existing = res && typeof res === "object" ? res : { itemSets: [] };
     } catch (err) {
-      console.warn(TAG4, "item set read failed:", err?.message || err);
+      console.warn(TAG5, "item set read failed:", err?.message || err);
       return { success: false, error: "Could not read existing item sets" };
     }
     try {
@@ -8090,7 +8421,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
       return { success: true };
     } catch (err) {
-      console.warn(TAG4, "item set apply failed:", err?.message || err);
+      console.warn(TAG5, "item set apply failed:", err?.message || err);
       return { success: false, error: err?.message || "Failed to apply item set" };
     }
   }
@@ -8109,7 +8440,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
       return { success: true };
     } catch (err) {
-      console.warn(TAG4, "summoner spell apply failed:", err?.message || err);
+      console.warn(TAG5, "summoner spell apply failed:", err?.message || err);
       return { success: false, error: err?.message || "Failed to apply summoner spells" };
     }
   }
@@ -8124,31 +8455,61 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const num = Number(value);
     return `${Number.isInteger(num) ? num : Math.round(num * 10) / 10}%`;
   }
+  function wrClass(winRate) {
+    if (winRate === null || winRate === void 0 || Number.isNaN(Number(winRate))) return "build-wr";
+    const num = Number(winRate);
+    if (num >= 50) return "build-wr is-positive";
+    return "build-wr is-negative";
+  }
+  function formatGames(count) {
+    if (!count && count !== 0) return "";
+    const num = Number(count);
+    if (!Number.isFinite(num) || num <= 0) return "";
+    return ` (${num.toLocaleString()})`;
+  }
+  function tierToRankIconKey(tierKey) {
+    const raw = String(tierKey || "").trim().toLowerCase();
+    if (raw.includes("challenger")) return "CHALLENGER";
+    if (raw.includes("grandmaster")) return "GRANDMASTER";
+    if (raw.includes("master")) return "MASTER";
+    if (raw.includes("diamond")) return "DIAMOND";
+    if (raw.includes("emerald")) return "EMERALD";
+    if (raw.includes("platinum")) return "PLATINUM";
+    if (raw.includes("gold")) return "GOLD";
+    if (raw.includes("silver")) return "SILVER";
+    if (raw.includes("bronze")) return "BRONZE";
+    if (raw.includes("iron")) return "IRON";
+    return "UNRANKED";
+  }
   function statusLabel(status, idle, done) {
     if (status === "applying") return "Applying\u2026";
     if (status === "applied") return done;
     if (status === "failed") return "Failed \u2014 retry";
     return idle;
   }
-  function itemIcon(id) {
-    return `<span class="build-item" title="${esc(itemName(id))}"><img class="build-item-icon" src="${esc(itemIconUrl(id))}" alt="${esc(itemName(id))}"></span>`;
+  function itemIcon(id, isHextech = false) {
+    return `<span class="build-item ${isHextech ? "hextech-item" : ""}" title="${esc(itemName(id))}"><img class="build-item-icon ${isHextech ? "hextech-icon" : ""}" src="${esc(itemIconUrl(id))}" alt="${esc(itemName(id))}"></span>`;
+  }
+  function dropdownOptionHtml(value, label, selected) {
+    return `<lol-uikit-dropdown-option slot="lol-uikit-dropdown-option" value="${esc(value)}" class="framed-dropdown-type"${selected ? " selected" : ""}>${esc(label)}</lol-uikit-dropdown-option>`;
   }
   function renderPanelHeader(state) {
     const tierOptions = OPGG_TIERS.map(
-      (tier) => `<option value="${tier.value}"${tier.value === state.tier ? " selected" : ""}>${esc(tier.label)}</option>`
+      (tier) => dropdownOptionHtml(tier.value, tier.label, tier.value === state.tier)
     ).join("");
     const regionOptions = OPGG_REGIONS.map(
-      (region) => `<option value="${region.value}"${region.value === state.region ? " selected" : ""}>${esc(region.label)}</option>`
+      (region) => dropdownOptionHtml(region.value, region.label, region.value === state.region)
     ).join("");
+    const selectedTierIcon = RANK_ICONS[tierToRankIconKey(state.tier)] || RANK_ICONS.UNRANKED;
     const stats = state.build?.stats;
     const statsHtml = stats ? `<div class="build-stats">
-        <span class="build-stat"><b>${pct(stats.winRate)}</b> Win</span>
+        <span class="build-stat"><b class="${wrClass(stats.winRate)}">${pct(stats.winRate)}</b> Win</span>
         <span class="build-stat"><b>${pct(stats.pickRate)}</b> Pick</span>
         <span class="build-stat"><b>${pct(stats.banRate)}</b> Ban</span>
         <span class="build-stat"><b>${esc(stats.kda ?? "\u2014")}</b> KDA</span>
         <span class="build-stat"><b>${esc(stats.play?.toLocaleString?.() || stats.play || 0)}</b> Games</span>
       </div>` : "";
-    const role = state.position ? `<span class="build-role">${roleIconUrl(state.position) ? `<img src="${esc(roleIconUrl(state.position))}" alt="">` : ""}${esc(roleLabel(state.position) || state.position)}</span>` : "";
+    const role = state.position ? `<span class="build-role">${roleIconUrl(state.position) ? `<img class="build-role-icon" src="${esc(roleIconUrl(state.position))}" alt="">` : ""}<span>${esc(roleLabel(state.position) || state.position)}</span></span>` : "";
     return `<header class="build-header">
     <div class="build-identity">
       ${state.championId ? `<img class="build-champ-icon" src="${esc(iconUrl(state.championId))}" alt="${esc(state.championName)}">` : ""}
@@ -8159,37 +8520,76 @@ button.bug-report-button[data-drake-toggle]:disabled {
     </div>
     <div class="build-filters">
       <label class="build-filter"><span>Rank</span>
-        <select data-build-tier>${tierOptions}</select>
+        <div class="build-select-wrap">
+          <img class="build-filter-rank-icon" src="${selectedTierIcon}" alt="">
+          <lol-uikit-framed-dropdown class="build-hextech-dropdown" data-build-tier tabindex="0">${tierOptions}</lol-uikit-framed-dropdown>
+        </div>
       </label>
       <label class="build-filter"><span>Region</span>
-        <select data-build-region>${regionOptions}</select>
+        <lol-uikit-framed-dropdown class="build-hextech-dropdown" data-build-region tabindex="0">${regionOptions}</lol-uikit-framed-dropdown>
       </label>
     </div>
     ${statsHtml}
     <button class="build-close" type="button" data-build-close aria-label="Close">\xD7</button>
   </header>`;
   }
-  function renderItemsCard(state) {
-    const core = state.build?.items?.core || [];
-    const rows = core.map(
-      (entry) => `<div class="build-row">
-        <div class="build-icons">${entry.ids.map(itemIcon).join('<span class="build-arrow">\u203A</span>')}</div>
+  function itemPhaseRow(label, entry) {
+    if (!entry) return "";
+    return `<div class="build-item-phase">
+    <span class="build-item-phase-label">${esc(label)}</span>
+    <div class="build-icons">${entry.ids.map((id) => itemIcon(id)).join('<span class="build-arrow">\u203A</span>')}</div>
+    <span class="build-row-stats">
+      <span class="${wrClass(entry.winRate)}">${pct(entry.winRate)} WR</span>
+      <span class="build-pr">${pct(entry.pickRate)}${formatGames(entry.play)}</span>
+    </span>
+  </div>`;
+  }
+  function coreItemRows(core) {
+    return core.map(
+      (entry, index) => `<div class="build-row ${index === 0 ? "hextech-highlight" : ""}">
+        <div class="build-row-lead">
+          <span class="build-row-num ${index === 0 ? "hextech-badge" : ""}">${index + 1}.</span>
+          <div class="build-icons">${entry.ids.map((id, itemIdx) => itemIcon(id, index === 0 && itemIdx === 0)).join('<span class="build-arrow">\u203A</span>')}</div>
+        </div>
         <div class="build-row-stats">
-          <span class="build-wr">${pct(entry.winRate)} WR</span>
-          <span class="build-pr">${pct(entry.pickRate)}</span>
+          <span class="${wrClass(entry.winRate)}">${pct(entry.winRate)} WR</span>
+          <span class="build-pr">${pct(entry.pickRate)}${formatGames(entry.play)}</span>
           <span class="build-bar"><i style="width:${Math.min(100, Number(entry.pickRate) || 0)}%"></i></span>
         </div>
       </div>`
     ).join("");
+  }
+  function situationalItemsRow(last) {
+    if (!last.length) return "";
+    const cells = last.map(
+      (entry) => `<div class="build-trend-cell">
+        <span class="build-trend-rate">${pct(entry.pickRate)}</span>
+        ${entry.ids.slice(0, 1).map((id) => itemIcon(id)).join("")}
+      </div>`
+    ).join("");
+    return `<div class="build-item-phase build-item-phase-situational">
+    <span class="build-item-phase-label">Situational</span>
+    <div class="build-trend">${cells}</div>
+  </div>`;
+  }
+  function renderItemsCard(state) {
+    const items2 = state.build?.items || {};
+    const core = items2.core || [];
     const applying = state.itemSetStatus === "applying";
+    const body = [
+      itemPhaseRow("Starter", items2.starter?.[0]),
+      itemPhaseRow("Boots", items2.boots?.[0]),
+      core.length ? `<div class="build-item-phase-label build-item-phase-label-core">Core</div>${coreItemRows(core)}` : "",
+      situationalItemsRow(items2.last || [])
+    ].filter(Boolean).join("");
     return `<section class="build-card build-items-card">
     <div class="build-card-title">
-      <span>Core Items</span>
+      <span>Items</span>
       <button class="build-action" type="button" data-build-apply-items${applying ? " disabled" : ""}>${esc(
       statusLabel(state.itemSetStatus, "Create Item Set", "Applied")
     )}</button>
     </div>
-    ${rows || '<div class="build-empty">No item data</div>'}
+    ${body || '<div class="build-empty">No item data</div>'}
   </section>`;
   }
   function renderRunesCard(state) {
@@ -8203,28 +8603,48 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const applying = state.runeStatus === "applying";
     const rows = pages.map((page, index) => {
       const shards = page.selectedPerkIds.filter((id) => id >= 5e3 && id < 6e3);
-      const perks = page.selectedPerkIds.filter((id) => id < 5e3 || id >= 6e3);
-      const keystone = perks[0];
-      const perkIcons = perks.slice(1).map(
+      const perks2 = page.selectedPerkIds.filter((id) => id < 5e3 || id >= 6e3);
+      const keystone = perks2[0];
+      const primaryMinors = perks2.slice(1, 4);
+      const secondaryMinors = perks2.slice(4);
+      const primaryMinorIcons = primaryMinors.map(
+        (id) => `<img class="build-perk-icon" src="${esc(perkIconUrl(id))}" alt="${esc(perkName(id))}" title="${esc(perkName(id))}">`
+      ).join("");
+      const secondaryMinorIcons = secondaryMinors.map(
         (id) => `<img class="build-perk-icon" src="${esc(perkIconUrl(id))}" alt="${esc(perkName(id))}" title="${esc(perkName(id))}">`
       ).join("");
       const shardIcons = shards.map(
         (id) => `<img class="build-shard-icon" src="${esc(perkIconUrl(id))}" alt="${esc(perkName(id))}" title="${esc(perkName(id))}">`
       ).join("");
       return `<div class="build-row build-rune-row">
-        <div class="build-rune-styles">
-          <img class="build-style-icon" src="${esc(perkStyleIconUrl(page.primaryStyleId))}" alt="${esc(perkStyleName(page.primaryStyleId))}" title="${esc(perkStyleName(page.primaryStyleId))}">
-          <img class="build-keystone-icon" src="${esc(perkIconUrl(keystone))}" alt="${esc(perkName(keystone))}" title="${esc(perkName(keystone))}">
-          <span class="build-perks">${perkIcons}</span>
-          <img class="build-style-icon secondary" src="${esc(perkStyleIconUrl(page.subStyleId))}" alt="${esc(perkStyleName(page.subStyleId))}" title="${esc(perkStyleName(page.subStyleId))}">
-          <span class="build-shards">${shardIcons}</span>
+        <div class="build-rune-top-line">
+          <div class="build-row-lead">
+            <span class="build-row-num">${index + 1}.</span>
+            <div class="build-rune-strip">
+              <div class="build-rune-tree-group">
+                <img class="build-style-icon" src="${esc(perkStyleIconUrl(page.primaryStyleId))}" alt="${esc(perkStyleName(page.primaryStyleId))}" title="${esc(perkStyleName(page.primaryStyleId))}">
+                <img class="build-keystone-icon" src="${esc(perkIconUrl(keystone))}" alt="${esc(perkName(keystone))}" title="${esc(perkName(keystone))}">
+                ${primaryMinorIcons}
+              </div>
+              <span class="build-rune-divider"></span>
+              <div class="build-rune-tree-group">
+                <img class="build-style-icon secondary" src="${esc(perkStyleIconUrl(page.subStyleId))}" alt="${esc(perkStyleName(page.subStyleId))}" title="${esc(perkStyleName(page.subStyleId))}">
+                ${secondaryMinorIcons}
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="build-row-stats">
-          <span class="build-wr">${pct(page.winRate)} WR</span>
-          <span class="build-pr">${pct(page.pickRate)}</span>
-          <button class="build-action" type="button" data-build-apply-runes="${index}"${applying ? " disabled" : ""}>${esc(
+        <div class="build-rune-bottom-line">
+          <div class="build-rune-shards-group">
+            ${shardIcons}
+          </div>
+          <div class="build-row-stats">
+            <span class="${wrClass(page.winRate)}">${pct(page.winRate)} WR</span>
+            <span class="build-pr">${pct(page.pickRate)}${formatGames(page.play)}</span>
+            <button class="build-action" type="button" data-build-apply-runes="${index}"${applying ? " disabled" : ""}>${esc(
         statusLabel(state.runeStatus, "Apply", "Applied")
       )}</button>
+          </div>
         </div>
       </div>`;
     }).join("");
@@ -8238,12 +8658,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const applying = state.spellStatus === "applying";
     const rows = spells2.map(
       (entry, index) => `<div class="build-row">
-        <div class="build-icons">${entry.ids.map(
+        <div class="build-row-lead">
+          <span class="build-row-num">${index + 1}.</span>
+          <div class="build-icons">${entry.ids.map(
         (id) => `<img class="build-spell-icon" src="${esc(spellIconUrl(id))}" alt="${esc(spellName(id))}" title="${esc(spellName(id))}">`
       ).join("")}</div>
+        </div>
         <div class="build-row-stats">
-          <span class="build-wr">${pct(entry.winRate)} WR</span>
-          <span class="build-pr">${pct(entry.pickRate)}</span>
+          <span class="${wrClass(entry.winRate)}">${pct(entry.winRate)} WR</span>
+          <span class="build-pr">${pct(entry.pickRate)}${formatGames(entry.play)}</span>
           <button class="build-action" type="button" data-build-apply-spells="${index}"${applying ? " disabled" : ""}>${esc(
         statusLabel(state.spellStatus, "Apply", "Applied")
       )}</button>
@@ -8255,29 +8678,38 @@ button.bug-report-button[data-drake-toggle]:disabled {
     ${rows || '<div class="build-empty">No spell data</div>'}
   </section>`;
   }
-  function renderItemTrend(state) {
-    const last = state.build?.items?.last || [];
-    if (!last.length) return "";
-    const cells = last.map(
-      (entry) => `<div class="build-trend-cell">
-        <span class="build-trend-rate">${pct(entry.pickRate)}</span>
-        ${entry.ids.slice(0, 1).map(itemIcon).join("")}
-      </div>`
-    ).join("");
-    return `<section class="build-card build-trend-card">
-    <div class="build-card-title"><span>Item Trend</span></div>
-    <div class="build-trend">${cells}</div>
-  </section>`;
-  }
   function renderSkillOrder(state) {
     const skills = state.build?.skills;
-    if (!skills?.masteries?.length) return "";
-    const priority = skills.masteries.map((s) => `<span class="build-skill">${esc(s)}</span>`).join('<span class="build-arrow">\u203A</span>');
-    const order = skills.order.map((s, i) => `<span class="build-skill-step" title="Level ${i + 1}">${esc(s)}</span>`).join("");
+    if (!skills?.order?.length && !skills?.masteries?.length) return "";
+    const order = skills.order || [];
+    const keys = ["Q", "W", "E", "R"];
+    const totalSteps = 15;
+    const rows = keys.map((key) => {
+      const cells = [];
+      for (let level = 1; level <= totalSteps; level++) {
+        const stepSkill = order[level - 1];
+        const isActive = stepSkill === key;
+        cells.push(
+          `<td class="build-skill-grid-cell ${isActive ? "is-active" : ""}">${isActive ? level : ""}</td>`
+        );
+      }
+      return `<tr>
+        <th class="build-skill-key-th"><span class="build-skill-key-badge">${key}</span></th>
+        ${cells.join("")}
+      </tr>`;
+    }).join("");
+    const statsNote = skills.winRate != null || skills.play ? `<div class="build-skill-stats-note">
+        ${skills.winRate != null ? `<span class="${wrClass(skills.winRate)}"><b>${pct(skills.winRate)}</b> Win Rate</span>` : ""}
+        ${skills.play ? `<span class="build-skill-games"><b>${skills.play.toLocaleString()}</b> Games</span>` : ""}
+      </div>` : "";
     return `<section class="build-card build-skills-card">
     <div class="build-card-title"><span>Skill Order</span></div>
-    <div class="build-skill-priority">${priority}</div>
-    <div class="build-skill-order">${order}</div>
+    <div class="build-skill-table-wrap">
+      <table class="build-skill-table">
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    ${statsNote}
   </section>`;
   }
   function counterList(entries, getChampName, className) {
@@ -8286,8 +8718,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       (entry) => `<div class="build-counter ${className}">
         <img class="build-counter-icon" src="${esc(iconUrl(entry.championId))}" alt="">
         <span class="build-counter-name">${esc(getChampName(entry.championId))}</span>
-        <span class="build-counter-wr">${pct(entry.winRate)}</span>
-        <span class="build-counter-play">${esc(entry.play)}</span>
+        <span class="${wrClass(entry.winRate)}">${pct(entry.winRate)}</span>
+        <span class="build-counter-play">${esc(entry.play?.toLocaleString?.() || entry.play)}</span>
       </div>`
     ).join("");
   }
@@ -8312,52 +8744,54 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
   function renderTopPlayers(state) {
     const top = state.topPlayers || { loading: false, ok: false, players: [], reason: "" };
-    const viewingChip = state.viewingPlayer ? `<div class="build-viewing-chip">Viewing ${esc(state.viewingPlayer)}'s build
-        <button class="build-action" type="button" data-build-clear-player>Back to average</button>
-      </div>` : "";
     let body;
     if (top.loading) {
       body = `<div class="build-loading">${SPINNER} <span>Loading players\u2026</span></div>`;
     } else if (!top.ok || !top.players?.length) {
       body = `<div class="build-empty">${esc(top.reason || "Unavailable")}</div>`;
     } else {
-      const rows = top.players.map(
-        (player) => `<tr>
-          <td>#${esc(player.ranking ?? "\u2014")}</td>
-          <td>${esc(player.name || "Unknown")}</td>
-          <td>${esc(player.tier || "\u2014")}</td>
-          <td>${player.winRate != null ? pct(player.winRate) : "\u2014"}</td>
-          <td>${esc(player.played ?? "\u2014")}</td>
-          <td><button class="build-action" type="button" data-build-player="${esc(player.name)}" data-build-player-region="${esc(player.region || "kr")}">View Build</button></td>
-        </tr>`
-      ).join("");
-      body = `<table class="build-players">
-      <thead><tr><th>#</th><th>Player</th><th>Rank</th><th>Win Rate</th><th>Games</th><th>Build</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+      const rows = top.players.map((player) => {
+        const rankKey = tierToRankIconKey(player.tier);
+        const iconSrc = RANK_ICONS[rankKey] || RANK_ICONS.UNRANKED;
+        const games = player.played?.toLocaleString?.() || player.played || "\u2014";
+        return `<button class="build-toplist-row" type="button" data-build-player="${esc(player.name)}" data-build-player-region="${esc(player.region || "kr")}" title="${esc(player.tier || "")} \xB7 ${esc(games)} games">
+          <span class="build-toplist-rank">#${esc(player.ranking ?? "\u2014")}</span>
+          <img class="build-toplist-tier-icon" src="${iconSrc}" alt="">
+          <span class="build-toplist-name">${esc(player.name || "Unknown")}</span>
+          <span class="${wrClass(player.winRate)}">${player.winRate != null ? pct(player.winRate) : "\u2014"}</span>
+        </button>`;
+      }).join("");
+      body = `<div class="build-toplist">${rows}</div>`;
     }
     return `<section class="build-card build-players-card">
-    <div class="build-card-title"><span>Top Players</span></div>
-    ${viewingChip}
+    <div class="build-card-title"><span>Top Players (OP.GG)</span></div>
     ${body}
   </section>`;
   }
   function renderBuildPanel(state) {
+    const viewingToast = state.viewingPlayer ? `<div class="build-viewing-toast" data-build-viewing-toast>
+        <span class="build-viewing-toast-icon">\u{1F441}</span>
+        <span class="build-viewing-toast-text">Viewing player build: <b>${esc(state.viewingPlayer)}</b></span>
+        <button class="build-viewing-toast-close" type="button" data-build-clear-player title="Restore default build">\u2715 Restore core build</button>
+      </div>` : "";
     if (!state.championId) {
       return `<div class="build-panel">
       ${renderPanelHeader(state)}
+      ${viewingToast}
       <div class="build-placeholder">Pick a champion to see build recommendations</div>
     </div>`;
     }
     if (state.loading) {
       return `<div class="build-panel">
       ${renderPanelHeader(state)}
+      ${viewingToast}
       <div class="build-placeholder">${SPINNER} <span>Loading build data\u2026</span></div>
     </div>`;
     }
     if (state.error) {
       return `<div class="build-panel">
       ${renderPanelHeader(state)}
+      ${viewingToast}
       <div class="build-placeholder is-error">
         <span>${esc(state.error)}</span>
         <button class="build-action" type="button" data-build-retry>Retry</button>
@@ -8368,6 +8802,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const tierLabel = OPGG_TIERS.find((t) => t.value === state.tier)?.label || state.tier;
       return `<div class="build-panel">
       ${renderPanelHeader(state)}
+      ${viewingToast}
       <div class="build-placeholder">
         <span>No data for ${esc(tierLabel)}</span>
         <button class="build-action" type="button" data-build-tier-all>See All Ranks</button>
@@ -8376,20 +8811,28 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     return `<div class="build-panel">
     ${renderPanelHeader(state)}
-    <div class="build-grid">
-      ${renderItemsCard(state)}
-      ${renderRunesCard(state)}
-      ${renderSpellsCard(state)}
+    ${viewingToast}
+    <div class="build-body">
+      <aside class="build-sidebar">
+        ${renderTopPlayers(state)}
+        ${renderCounters(state)}
+      </aside>
+      <div class="build-main">
+        <div class="build-main-col">
+          ${renderRunesCard(state)}
+          ${renderItemsCard(state)}
+        </div>
+        <div class="build-main-col">
+          ${renderSkillOrder(state)}
+          ${renderSpellsCard(state)}
+        </div>
+      </div>
     </div>
-    ${renderItemTrend(state)}
-    ${renderSkillOrder(state)}
-    ${renderCounters(state)}
-    ${renderTopPlayers(state)}
   </div>`;
   }
 
   // src/ui/buildPanel.js
-  var TAG5 = "[Drake]";
+  var TAG6 = "[Drake]";
   var CACHE_TTL_MS = 10 * 60 * 1e3;
   function makeBuildPanel({
     doc,
@@ -8408,6 +8851,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     applyItemSetImpl = applyItemSet,
     applySummonerSpellsImpl = applySummonerSpells,
     loadGameAssetsImpl = loadGameAssets,
+    loadRuneAssetsImpl = loadRuneAssets,
     nowFn = () => Date.now()
   } = {}) {
     const settings = getSettings() || {};
@@ -8415,6 +8859,24 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let enabled = true;
     let overlay = null;
     let generation = 0;
+    let hasOpenedOnce = false;
+    const listeners = /* @__PURE__ */ new Set();
+    function notify() {
+      for (const fn of listeners) {
+        try {
+          fn(state);
+        } catch {
+        }
+      }
+    }
+    function ensureSettingsRead() {
+      if (!hasOpenedOnce) {
+        hasOpenedOnce = true;
+        const fresh = getSettings() || {};
+        state.tier = fresh.build_tier || state.tier;
+        state.region = fresh.build_region || state.region;
+      }
+    }
     const cache = /* @__PURE__ */ new Map();
     let state = {
       championId: 0,
@@ -8459,14 +8921,17 @@ button.bug-report-button[data-drake-toggle]:disabled {
       return true;
     }
     function paint() {
-      const node = ensureOverlay();
-      if (!node) return;
       refreshChampionName();
-      node.hidden = !open;
-      if (node.style) node.style.display = open ? "flex" : "none";
-      if (open) node.innerHTML = renderBuildPanel(state);
+      const node = ensureOverlay();
+      if (node) {
+        node.hidden = !open;
+        if (node.style) node.style.display = open ? "flex" : "none";
+        if (open) node.innerHTML = renderBuildPanel(state);
+      }
+      notify();
     }
     async function loadBuild({ force = false } = {}) {
+      ensureSettingsRead();
       if (!state.championId) {
         state.build = null;
         paint();
@@ -8497,9 +8962,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
       state.viewingPlayer = "";
       paint();
       try {
-        await loadGameAssetsImpl(lcu2);
+        await Promise.all([loadGameAssetsImpl(lcu2), loadRuneAssetsImpl(lcu2)]);
       } catch (err) {
-        console.warn(TAG5, "asset load failed:", err?.message || err);
+        console.warn(TAG6, "asset load failed:", err?.message || err);
       }
       let json = null;
       try {
@@ -8514,7 +8979,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           { fetchFn }
         );
       } catch (err) {
-        console.warn(TAG5, "build fetch failed:", err?.message || err);
+        console.warn(TAG6, "build fetch failed:", err?.message || err);
       }
       if (gen !== generation) return;
       if (!json) {
@@ -8575,102 +9040,118 @@ button.bug-report-button[data-drake-toggle]:disabled {
         const res = await fn();
         state[statusKey] = res?.success ? "applied" : "failed";
       } catch (err) {
-        console.warn(TAG5, "action failed:", err?.message || err);
+        console.warn(TAG6, "action failed:", err?.message || err);
         state[statusKey] = "failed";
       }
       paint();
+    }
+    function readChangeValue(event, target) {
+      return target?.value ?? event?.detail?.value ?? "";
+    }
+    function handleChange(event) {
+      const target = event?.target;
+      if (target?.matches?.("[data-build-tier]") || target?.dataset?.buildTier !== void 0) {
+        state.tier = readChangeValue(event, target);
+        void saveSettings({ build_tier: state.tier });
+        void loadBuild();
+        notify();
+        return true;
+      }
+      if (target?.matches?.("[data-build-region]") || target?.dataset?.buildRegion !== void 0) {
+        state.region = readChangeValue(event, target);
+        void saveSettings({ build_region: state.region });
+        void loadBuild();
+        notify();
+        return true;
+      }
+      return false;
+    }
+    function handleClick(event) {
+      const target = event?.target;
+      const hit = (attr) => target?.closest?.(`[${attr}]`);
+      if (hit("data-build-close")) {
+        event?.stopPropagation?.();
+        close();
+        return true;
+      }
+      if (hit("data-build-retry")) {
+        event?.stopPropagation?.();
+        void loadBuild({ force: true });
+        return true;
+      }
+      if (hit("data-build-tier-all")) {
+        event?.stopPropagation?.();
+        state.tier = "all";
+        void saveSettings({ build_tier: "all" });
+        void loadBuild();
+        notify();
+        return true;
+      }
+      if (hit("data-build-clear-player")) {
+        event?.stopPropagation?.();
+        generation += 1;
+        state.viewingPlayer = "";
+        state.build = state.averageBuild;
+        paint();
+        return true;
+      }
+      const playerBtn = hit("data-build-player");
+      if (playerBtn) {
+        event?.stopPropagation?.();
+        void handlePlayerBuild(
+          playerBtn.dataset.buildPlayer,
+          playerBtn.dataset.buildPlayerRegion || "kr"
+        );
+        return true;
+      }
+      const runeBtn = hit("data-build-apply-runes");
+      if (runeBtn) {
+        event?.stopPropagation?.();
+        const page = state.build?.runePages?.[Number(runeBtn.dataset.buildApplyRunes) || 0];
+        if (!page) return true;
+        void runAction(
+          "runeStatus",
+          () => applyRunePageImpl(lcu2, {
+            name: `${state.championName || "Drake"} Build`,
+            primaryStyleId: page.primaryStyleId,
+            subStyleId: page.subStyleId,
+            selectedPerkIds: page.selectedPerkIds
+          })
+        );
+        return true;
+      }
+      const spellBtn = hit("data-build-apply-spells");
+      if (spellBtn) {
+        event?.stopPropagation?.();
+        const entry = state.build?.spells?.[Number(spellBtn.dataset.buildApplySpells) || 0];
+        if (!entry?.ids?.length) return true;
+        void runAction(
+          "spellStatus",
+          () => applySummonerSpellsImpl(lcu2, { spell1Id: entry.ids[0], spell2Id: entry.ids[1] })
+        );
+        return true;
+      }
+      if (hit("data-build-apply-items")) {
+        event?.stopPropagation?.();
+        const itemSet = buildItemSet({
+          championId: state.championId,
+          championName: state.championName,
+          build: state.build
+        });
+        if (!itemSet) return true;
+        void runAction("itemSetStatus", () => applyItemSetImpl(lcu2, getSummonerId(), itemSet));
+        return true;
+      }
+      return false;
     }
     function wireEvents(node) {
       if (!node?.addEventListener || node.dataset?.drakeBuildWired === "1") return;
       if (node.dataset) node.dataset.drakeBuildWired = "1";
       node.addEventListener("change", (event) => {
-        const target = event.target;
-        if (target?.matches?.("[data-build-tier]") || target?.dataset?.buildTier !== void 0) {
-          state.tier = target.value;
-          void saveSettings({ build_tier: state.tier });
-          void loadBuild();
-          return;
-        }
-        if (target?.matches?.("[data-build-region]") || target?.dataset?.buildRegion !== void 0) {
-          state.region = target.value;
-          void saveSettings({ build_region: state.region });
-          void loadBuild();
-        }
+        handleChange(event);
       });
       node.addEventListener("click", (event) => {
-        const target = event.target;
-        const hit = (attr) => target?.closest?.(`[${attr}]`);
-        if (hit("data-build-close")) {
-          event.stopPropagation?.();
-          close();
-          return;
-        }
-        if (hit("data-build-retry")) {
-          event.stopPropagation?.();
-          void loadBuild({ force: true });
-          return;
-        }
-        if (hit("data-build-tier-all")) {
-          event.stopPropagation?.();
-          state.tier = "all";
-          void saveSettings({ build_tier: "all" });
-          void loadBuild();
-          return;
-        }
-        if (hit("data-build-clear-player")) {
-          event.stopPropagation?.();
-          generation += 1;
-          state.viewingPlayer = "";
-          state.build = state.averageBuild;
-          paint();
-          return;
-        }
-        const playerBtn = hit("data-build-player");
-        if (playerBtn) {
-          event.stopPropagation?.();
-          void handlePlayerBuild(
-            playerBtn.dataset.buildPlayer,
-            playerBtn.dataset.buildPlayerRegion || "kr"
-          );
-          return;
-        }
-        const runeBtn = hit("data-build-apply-runes");
-        if (runeBtn) {
-          event.stopPropagation?.();
-          const page = state.build?.runePages?.[Number(runeBtn.dataset.buildApplyRunes) || 0];
-          if (!page) return;
-          void runAction(
-            "runeStatus",
-            () => applyRunePageImpl(lcu2, {
-              name: `${state.championName || "Drake"} Build`,
-              primaryStyleId: page.primaryStyleId,
-              subStyleId: page.subStyleId,
-              selectedPerkIds: page.selectedPerkIds
-            })
-          );
-          return;
-        }
-        const spellBtn = hit("data-build-apply-spells");
-        if (spellBtn) {
-          event.stopPropagation?.();
-          const entry = state.build?.spells?.[Number(spellBtn.dataset.buildApplySpells) || 0];
-          if (!entry?.ids?.length) return;
-          void runAction(
-            "spellStatus",
-            () => applySummonerSpellsImpl(lcu2, { spell1Id: entry.ids[0], spell2Id: entry.ids[1] })
-          );
-          return;
-        }
-        if (hit("data-build-apply-items")) {
-          event.stopPropagation?.();
-          const itemSet = buildItemSet({
-            championId: state.championId,
-            championName: state.championName,
-            build: state.build
-          });
-          if (!itemSet) return;
-          void runAction("itemSetStatus", () => applyItemSetImpl(lcu2, getSummonerId(), itemSet));
-        }
+        handleClick(event);
       });
     }
     function setSession(session) {
@@ -8698,6 +9179,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     function openPanel() {
       if (!enabled || open) return;
+      ensureSettingsRead();
       open = true;
       paint();
       void loadBuild();
@@ -8711,6 +9193,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
       close();
       cache.clear();
       generation += 1;
+      listeners.clear();
+    }
+    function getStateSig() {
+      return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}|${state.loading}|${state.error}|${state.patch}|${Boolean(state.build)}|${state.runeStatus}|${state.itemSetStatus}|${state.spellStatus}|${state.viewingPlayer}|${state.topPlayers.loading}|${state.topPlayers.players.length}`;
+    }
+    function renderHtml() {
+      refreshChampionName();
+      return renderBuildPanel(state);
     }
     return {
       open: openPanel,
@@ -8722,7 +9212,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
         enabled = !!value;
         if (!enabled) close();
       },
-      destroy
+      loadBuild,
+      getState: () => state,
+      getStateSig,
+      renderHtml,
+      handleChange,
+      handleClick,
+      onUpdate: (fn) => {
+        listeners.add(fn);
+        return () => listeners.delete(fn);
+      },
+      destroy,
+      teardown: destroy
     };
   }
 
@@ -8816,7 +9317,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/ui/index.js
-  var TAG6 = "[Drake]";
+  var TAG7 = "[Drake]";
   function readLocalCell(session) {
     const cellId = Number(session?.localPlayerCellId ?? -1);
     const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
@@ -8873,8 +9374,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       skins: ""
     };
     const status = makeStatus({ lcu: lcu2 });
-    let dodgeStatus = (detail) => console.log(TAG6, "dodge", detail);
-    let say = (text, good) => console.log(TAG6, text, good ? "ok" : "err");
+    let dodgeStatus = (detail) => console.log(TAG7, "dodge", detail);
+    let say = (text, good) => console.log(TAG7, text, good ? "ok" : "err");
     const dodger = makeDodge({
       onStatus: (detail) => dodgeStatus(detail)
     });
@@ -8924,12 +9425,21 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (!open) closeCredits();
       },
       onTeamRevealCardsToggle: () => {
-        if (teamRevealDom) teamRevealDom.toggleCards();
+        if (teamRevealDom) teamRevealDom.toggleCards("scouting");
       },
       onBuildPanelToggle: () => {
-        if (buildPanel) buildPanel.toggle();
+        if (teamRevealDom) teamRevealDom.toggleCards("build");
+        else if (buildPanel) buildPanel.toggle();
       },
       onEscape: () => {
+        if (teamRevealDom && teamRevealDom.isOpen()) {
+          teamRevealDom.closeCards();
+          return true;
+        }
+        if (buildPanel && buildPanel.isOpen()) {
+          buildPanel.close();
+          return true;
+        }
         if (!shadowRoot) return false;
         const modal = shadowRoot.getElementById("credits-modal");
         if (!modal || modal.hidden) return false;
@@ -9045,34 +9555,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
           teamRevealChampsLoading = null;
           return teamRevealChamps;
         }).catch((err) => {
-          console.log(TAG6, "could not load champion names -", err?.message || err);
+          console.log(TAG7, "could not load champion names -", err?.message || err);
           teamRevealChampsLoading = null;
           return [];
         });
       }
       return teamRevealChampsLoading;
     }
-    function ensureBuildButton() {
-      if (!shadowRoot) return null;
-      const existing = shadowRoot.getElementById("drake-build-entry");
-      if (existing) return existing;
-      const node = document.createElement("button");
-      node.id = "drake-build-entry";
-      node.type = "button";
-      node.className = "build-entry-btn";
-      node.textContent = "Build";
-      node.hidden = true;
-      node.addEventListener("click", () => {
-        if (buildPanel) buildPanel.open();
-      });
-      shadowRoot.appendChild(node);
-      return node;
-    }
     function feedBuildPanel(session) {
       if (!buildPanel) return;
       const active = inChampSelect(session);
-      const btn = ensureBuildButton();
-      if (btn) btn.hidden = !active;
       if (!active) {
         buildPanel.setSession({ championId: 0, position: "", mode: "ranked" });
         buildPanel.close();
@@ -9114,21 +9606,21 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     async function runDodge(btn) {
       if (!btn || dodgeBusy || btn.disabled) {
-        console.log(TAG6, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
+        console.log(TAG7, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
         return;
       }
       dodgeBusy = true;
       btn.disabled = true;
       btn.textContent = "Dodging\u2026";
       say("Dodging\u2026", true);
-      console.log(TAG6, "dodge click", btn.id);
+      console.log(TAG7, "dodge click", btn.id);
       if (stopDodgeReposition) {
         stopDodgeReposition();
         stopDodgeReposition = null;
       }
       try {
         const result = await dodger.dodge();
-        console.log(TAG6, "dodge result", result);
+        console.log(TAG7, "dodge result", result);
         const msg = result.ok ? `Dodged champ select${result.detail ? ` (${result.detail})` : ""}` : result.reason;
         say(msg, result.ok);
         btn.textContent = result.ok ? "Dodged!" : "Failed";
@@ -9149,7 +9641,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       say = sayUi;
       dodgeStatus = (detail) => {
         sayUi(detail, true);
-        console.log(TAG6, "dodge", detail);
+        console.log(TAG7, "dodge", detail);
       };
       shadow.getElementById("scrim").style.display = "none";
       startSocialWatch(api);
@@ -9162,11 +9654,23 @@ button.bug-report-button[data-drake-toggle]:disabled {
         token: cfg.token,
         fetchImpl: fetch
       });
+      buildPanel = makeBuildPanel({
+        doc: document,
+        overlayRoot: shadow,
+        lcu: lcu2,
+        fetchFn: proxyFetch,
+        getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || "",
+        getSettings: () => settings,
+        saveSettings: (patch) => client.save(patch),
+        getSummonerId: () => summonerIdLoader.get()
+      });
+      void summonerIdLoader.load();
       teamRevealDom = makeTeamRevealDom({
         doc: document,
         subscribe,
         overlayRoot: shadow,
         lcu: lcu2,
+        buildPanel,
         getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || "",
         getRecentPool: () => settings.queue_team_reveal_recent_pool || "ranked_both",
         getShowMapSide: () => settings.queue_show_map_side !== false,
@@ -9192,17 +9696,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
         }
       });
       teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
-      buildPanel = makeBuildPanel({
-        doc: document,
-        overlayRoot: shadow,
-        lcu: lcu2,
-        fetchFn: proxyFetch,
-        getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || "",
-        getSettings: () => settings,
-        saveSettings: (patch) => client.save(patch),
-        getSummonerId: () => summonerIdLoader.get()
-      });
-      void summonerIdLoader.load();
       if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
       feedBuildPanel(champSelectSession);
       function paintOnboard() {
@@ -9347,7 +9840,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         paint();
         statusEl.textContent = result.reason;
         statusEl.className = "status-bad";
-        console.log(TAG6, "could not save -", result.reason);
+        console.log(TAG7, "could not save -", result.reason);
         return { ok: false, reason: result.reason };
       }
       async function goToScreen(next) {
@@ -9828,7 +10321,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         try {
           await cancelQueue(lcu2);
         } catch {
-          console.log(TAG6, "could not cancel the queue");
+          console.log(TAG7, "could not cancel the queue");
         }
       });
       shadow.getElementById("dodge-champ-select").addEventListener("click", (e) => {
@@ -10213,7 +10706,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/index.js
-  var TAG7 = "[Drake]";
+  var TAG8 = "[Drake]";
   var lcu = makeLcu();
   var presence = makePresence({ lcu });
   var stopFeatures = () => {
@@ -10255,7 +10748,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         subscribe,
         getSession: () => lcu.get("/lol-champ-select/v1/session"),
         onResult: (d, r, was) => console.log(
-          TAG7,
+          TAG8,
           d.kind,
           d.championId,
           r.ok ? "ok" : "failed: " + r.reason,
@@ -10270,7 +10763,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     const stopUnlocks = startUnlocks({
       enabled: !!settings.unlock_status_message,
-      onFirstUnlock: (n) => console.log(TAG7, "unlocked the status message input", n > 1 ? n : "")
+      onFirstUnlock: (n) => console.log(TAG8, "unlocked the status message input", n > 1 ? n : "")
     });
     stopProfileRank = startProfileRankRefresh({
       subscribe,
@@ -10294,7 +10787,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   async function start() {
     const cfg = await loadConfig();
     if (!cfg) {
-      console.log(TAG7, "no config.json found; the tray app may not be running");
+      console.log(TAG8, "no config.json found; the tray app may not be running");
       ui = startUI({ cfg: { port: 0, token: "", settings: {} }, lcu });
       return;
     }
@@ -10307,20 +10800,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
     });
     const host = typeof Pengu !== "undefined" && Pengu.version ? `pengu ${Pengu.version}` : "unknown";
     const ok = await startHeartbeat({ checkIn: transport.checkIn, host });
-    console.log(TAG7, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
-    console.log(TAG7, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
+    console.log(TAG8, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
+    console.log(TAG8, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
     ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
     wireFeatures(cfg.settings);
     startInGameIdle({
       subscribe,
       onChange(idle) {
         idleInGame = idle;
-        console.log(TAG7, idle ? "idle in game" : "active in client");
+        console.log(TAG8, idle ? "idle in game" : "active in client");
         if (idle) sleepPlugin();
         else wakePlugin();
       }
     });
-    console.log(TAG7, "UI ready \u2014 press Ctrl+D");
+    console.log(TAG8, "UI ready \u2014 press Ctrl+D");
   }
   if (document.readyState === "complete") start();
   else window.addEventListener("load", start);

@@ -90,6 +90,18 @@ describe('match pool helpers', () => {
     ]);
   });
 
+  it('scopes current-queue strictly to queue 0 instead of falling back to everything when the session queue is unresolved (custom lobby / practice tool)', () => {
+    const entries = [
+      { queueId: 420 },
+      { queueId: 2000 },
+      { queueId: 0 },
+      { queueId: 0 },
+    ];
+    expect(filterMatchEntriesByPool(entries, 0, MATCH_POOL_CURRENT_QUEUE).map((e) => e.queueId)).toEqual([
+      0, 0,
+    ]);
+  });
+
   it('builds picked champion games and wr from the recent pool', () => {
     const games = [
       game({ puuid: PUUID_A, championId: 12, win: true, hoursAgo: 1 }),

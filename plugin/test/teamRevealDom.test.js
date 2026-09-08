@@ -1752,4 +1752,190 @@ describe('teamRevealDom auto message', () => {
     await ctl.handleSession(session2);
     expect(sendChampSelectMessageImpl).toHaveBeenCalledTimes(2);
   });
+
+  describe('unified tabbed modal and build panel integration', () => {
+    it('renders tabs for Team Scouting and Build', async () => {
+      const rows = [makeRow(0, 'MaskedOne')];
+      const doc = { querySelectorAll: () => rows };
+      const overlayRoot = makeOverlayRoot();
+      const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
+
+      const mockBuildPanel = {
+        loadBuild: vi.fn(),
+        getStateSig: () => 'sig1',
+        renderHtml: () => '<div class="mock-build-content">Build Content</div>',
+        handleChange: vi.fn(),
+        handleClick: vi.fn(),
+        onUpdate: vi.fn(),
+      };
+
+      const ctl = makeTeamRevealDom({
+        doc,
+        subscribe: () => () => {},
+        loadSnapshot,
+        overlayRoot,
+        buildPanel: mockBuildPanel,
+      });
+
+      ctl.setEnabled(true);
+      await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+      ctl.toggleCards();
+
+      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+      expect(overlay.hidden).toBe(false);
+      expect(overlay.innerHTML).toContain('data-team-reveal-tab="scouting"');
+      expect(overlay.innerHTML).toContain('data-team-reveal-tab="build"');
+      expect(overlay.innerHTML).toContain('RealOne#TAG');
+    });
+
+    it('switches to build tab on click and calls loadBuild', async () => {
+      const rows = [makeRow(0, 'MaskedOne')];
+      const doc = { querySelectorAll: () => rows };
+      const overlayRoot = makeOverlayRoot();
+      const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
+
+      const mockBuildPanel = {
+        loadBuild: vi.fn(),
+        getStateSig: () => 'sig1',
+        renderHtml: () => '<div class="mock-build-content">Build Content</div>',
+        handleChange: vi.fn(),
+        handleClick: vi.fn(),
+        onUpdate: vi.fn(),
+      };
+
+      const ctl = makeTeamRevealDom({
+        doc,
+        subscribe: () => () => {},
+        loadSnapshot,
+        overlayRoot,
+        buildPanel: mockBuildPanel,
+      });
+
+      ctl.setEnabled(true);
+      await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+      ctl.toggleCards();
+
+      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+      const buildTabBtn = {
+        dataset: { teamRevealTab: 'build' },
+        closest: (sel) => (sel.includes('team-reveal-tab') ? buildTabBtn : null),
+      };
+
+      overlay.dispatch('click', { target: buildTabBtn, stopPropagation: vi.fn() });
+
+      expect(ctl.getActiveTab()).toBe('build');
+      expect(mockBuildPanel.loadBuild).toHaveBeenCalled();
+      expect(overlay.innerHTML).toContain('mock-build-content');
+    });
+
+    it('opens directly to build tab with toggleCards("build")', async () => {
+      const rows = [makeRow(0, 'MaskedOne')];
+      const doc = { querySelectorAll: () => rows };
+      const overlayRoot = makeOverlayRoot();
+      const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
+
+      const mockBuildPanel = {
+        loadBuild: vi.fn(),
+        getStateSig: () => 'sig1',
+        renderHtml: () => '<div class="mock-build-content">Build Tab Opened</div>',
+        handleChange: vi.fn(),
+        handleClick: vi.fn(),
+        onUpdate: vi.fn(),
+      };
+
+      const ctl = makeTeamRevealDom({
+        doc,
+        subscribe: () => () => {},
+        loadSnapshot,
+        overlayRoot,
+        buildPanel: mockBuildPanel,
+      });
+
+      ctl.setEnabled(true);
+      await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+      ctl.toggleCards('build');
+
+      expect(ctl.isOpen()).toBe(true);
+      expect(ctl.getActiveTab()).toBe('build');
+      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+      expect(overlay.innerHTML).toContain('Build Tab Opened');
+    });
+
+    it('forwards change and click events to buildPanel', async () => {
+      const rows = [makeRow(0, 'MaskedOne')];
+      const doc = { querySelectorAll: () => rows };
+      const overlayRoot = makeOverlayRoot();
+      const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
+
+      const mockBuildPanel = {
+        loadBuild: vi.fn(),
+        getStateSig: () => 'sig1',
+        renderHtml: () => '<div class="mock-build-content">Build Content</div>',
+        handleChange: vi.fn(),
+        handleClick: vi.fn().mockReturnValue(true),
+        onUpdate: vi.fn(),
+      };
+
+      const ctl = makeTeamRevealDom({
+        doc,
+        subscribe: () => () => {},
+        loadSnapshot,
+        overlayRoot,
+        buildPanel: mockBuildPanel,
+      });
+
+      ctl.setEnabled(true);
+      await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+      ctl.toggleCards('build');
+
+      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+      const mockEvent = {
+        target: {
+          dataset: { buildTier: 'challenger' },
+          closest: () => null,
+        },
+      };
+
+      overlay.dispatch('change', mockEvent);
+      expect(mockBuildPanel.handleChange).toHaveBeenCalledWith(mockEvent);
+
+      overlay.dispatch('click', mockEvent);
+      expect(mockBuildPanel.handleClick).toHaveBeenCalledWith(mockEvent);
+    });
+
+    it('closes modal when backdrop overlay is clicked in build tab', async () => {
+      const rows = [makeRow(0, 'MaskedOne')];
+      const doc = { querySelectorAll: () => rows };
+      const overlayRoot = makeOverlayRoot();
+      const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
+
+      const mockBuildPanel = {
+        loadBuild: vi.fn(),
+        getStateSig: () => 'sig1',
+        renderHtml: () => '<div class="mock-build-content">Build Content</div>',
+        handleChange: vi.fn(),
+        handleClick: vi.fn().mockReturnValue(false),
+        onUpdate: vi.fn(),
+      };
+
+      const ctl = makeTeamRevealDom({
+        doc,
+        subscribe: () => () => {},
+        loadSnapshot,
+        overlayRoot,
+        buildPanel: mockBuildPanel,
+      });
+
+      ctl.setEnabled(true);
+      await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
+      ctl.toggleCards('build');
+
+      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
+      expect(overlay.hidden).toBe(false);
+
+      overlay.dispatch('click', { target: overlay });
+      expect(overlay.hidden).toBe(true);
+      expect(ctl.isOpen()).toBe(false);
+    });
+  });
 });

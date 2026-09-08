@@ -590,15 +590,6 @@ export function describeStatus(text) {
   return `${t.length} chars · ${lines} line${lines === 1 ? '' : 's'}`;
 }
 
-function options(list, selected) {
-  return list
-    .map(
-      (o) =>
-        `<option value="${o.id ?? o}" ${(o.id ?? o) === selected ? 'selected' : ''}>${o.label ?? o}</option>`,
-    )
-    .join('');
-}
-
 export const PROFILE_TABS = [
   { id: 'rank', label: 'Rank' },
   { id: 'banner', label: 'Banner' },
@@ -616,17 +607,11 @@ function renderSelect(id, list, selected, disabled = false) {
     .map((o) => {
       const value = o.id ?? o;
       const label = o.label ?? o;
-      return `<option value="${value}" ${String(value) === String(selected) ? 'selected' : ''}>${label}</option>`;
+      return `<lol-uikit-dropdown-option slot="lol-uikit-dropdown-option" value="${value}" class="framed-dropdown-type"${String(value) === String(selected) ? ' selected' : ''}>${label}</lol-uikit-dropdown-option>`;
     })
     .join('');
 
-  return `
-    <span class="select-wrap">
-      <select class="select-field" id="${id}" ${disabled ? 'disabled' : ''}>${opts}</select>
-      <span class="select-arrows" aria-hidden="true">
-        <span>▲</span><span>▼</span>
-      </span>
-    </span>`;
+  return `<lol-uikit-framed-dropdown class="select-field" id="${id}" tabindex="0"${disabled ? ' disabled' : ''}>${opts}</lol-uikit-framed-dropdown>`;
 }
 
 function renderRankTab(lol) {

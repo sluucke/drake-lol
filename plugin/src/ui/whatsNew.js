@@ -1,5 +1,20 @@
 export const WHATS_NEW = [
   {
+    version: '0.3.22',
+    items: [
+      {
+        title: 'Build panel',
+        body: 'Champ select builds from OP.GG: runes, items, skill order, summoner spells, matchups, and top players — with Apply actions and Create Item Set.',
+        screen: 'queue',
+      },
+      {
+        title: 'Tighter build layout',
+        body: 'Summoner Spells sit under Skill Order so the right column fills and you scroll less to see the full loadout.',
+        screen: 'queue',
+      },
+    ],
+  },
+  {
     version: '0.3.21',
     items: [
       {

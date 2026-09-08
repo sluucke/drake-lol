@@ -51,10 +51,11 @@ const baseState = {
 };
 
 describe('renderPanelHeader', () => {
-  it('renders every tier as an option and marks the selected one', () => {
+  it('renders every tier as a hextech dropdown option and marks the selected one', () => {
     const html = renderPanelHeader(baseState);
+    expect(html).toContain('lol-uikit-framed-dropdown');
     expect(html).toContain('data-build-tier');
-    expect(html).toContain('value="emerald_plus" selected');
+    expect(html).toMatch(/<lol-uikit-dropdown-option[^>]*value="emerald_plus"[^>]* selected>/);
     expect(html).toContain('value="challenger"');
     expect(html).toContain('Emerald+');
   });
@@ -70,6 +71,17 @@ describe('renderPanelHeader', () => {
   it('tags the mode so aram is visible at a glance', () => {
     expect(renderPanelHeader({ ...baseState, mode: 'aram' })).toContain('ARAM');
   });
+
+  it('keeps images out of the tier dropdown options, since the closed dropdown header cannot size an <img> inside its shadow DOM', () => {
+    const html = renderPanelHeader(baseState);
+    const optionsBlock = html.slice(html.indexOf('data-build-tier'), html.indexOf('</lol-uikit-framed-dropdown>'));
+    expect(optionsBlock).not.toContain('<img');
+  });
+
+  it('shows the current rank icon outside the dropdown instead', () => {
+    const html = renderPanelHeader(baseState);
+    expect(html).toContain('build-filter-rank-icon');
+  });
 });
 
 describe('renderItemsCard', () => {
@@ -79,8 +91,11 @@ describe('renderItemsCard', () => {
     expect(html).not.toMatch(/ddragon|communitydragon/);
   });
 
-  it('shows the win rate and pick rate for each build', () => {
+  it('shows the rank index, win rate and pick rate for each build, with hextech highlight on the top item', () => {
     const html = renderItemsCard(baseState);
+    expect(html).toContain('build-row-num');
+    expect(html).toContain('1.');
+    expect(html).toContain('hextech-item');
     expect(html).toContain('55.2%');
     expect(html).toContain('21%');
   });
@@ -93,11 +108,34 @@ describe('renderItemsCard', () => {
     expect(renderItemsCard({ ...baseState, itemSetStatus: 'applied' })).toContain('Applied');
     expect(renderItemsCard({ ...baseState, itemSetStatus: 'applying' })).toContain('disabled');
   });
+
+  it('groups items by game phase: starter, boots, core and situational', () => {
+    const html = renderItemsCard(baseState);
+    expect(html).toContain('Starter');
+    expect(html).toContain('Boots');
+    expect(html).toContain('Core');
+    expect(html).toContain('Situational');
+    expect(html).toContain('build-item-phase');
+    expect(html).toContain('build-trend-cell');
+  });
+
+  it('skips a phase entirely when there is no data for it', () => {
+    const html = renderItemsCard({
+      ...baseState,
+      build: { ...build, items: { starter: [], boots: [], core: build.items.core, last: [] } },
+    });
+    expect(html).not.toContain('Starter');
+    expect(html).not.toContain('Boots');
+    expect(html).not.toContain('Situational');
+    expect(html).toContain('Core');
+  });
 });
 
 describe('renderRunesCard', () => {
-  it('renders keystone, minor perks and shards from the perk ids', () => {
+  it('renders keystone, minor perks and shards from the perk ids with rank index', () => {
     const html = renderRunesCard(baseState);
+    expect(html).toContain('build-row-num');
+    expect(html).toContain('1.');
     expect(html).toContain('data-build-apply-runes="0"');
     expect(html).toContain('perk');
   });
@@ -110,8 +148,10 @@ describe('renderRunesCard', () => {
 });
 
 describe('renderSpellsCard', () => {
-  it('renders each spell pair with an apply action', () => {
+  it('renders each spell pair with an apply action and rank index', () => {
     const html = renderSpellsCard(baseState);
+    expect(html).toContain('build-row-num');
+    expect(html).toContain('1.');
     expect(html).toContain('data-build-apply-spells="0"');
     expect(html).toContain('61.5%');
   });
@@ -147,6 +187,21 @@ describe('renderTopPlayers', () => {
     expect(html).toContain('data-build-player="Hide on bush#KR1"');
   });
 
+  it('renders a compact clickable list rather than a table, to fit the sidebar', () => {
+    const state = {
+      ...baseState,
+      topPlayers: {
+        loading: false,
+        ok: true,
+        reason: '',
+        players: [{ ranking: 1, name: 'Hide on bush#KR1', region: 'KR', tier: 'Challenger 1 (1543 LP)', winRate: 60.4, played: 530 }],
+      },
+    };
+    const html = renderTopPlayers(state);
+    expect(html).toContain('build-toplist');
+    expect(html).not.toContain('<table');
+  });
+
   it('shows the degradation reason instead of an empty table', () => {
     const html = renderTopPlayers({
       ...baseState,
@@ -156,8 +211,8 @@ describe('renderTopPlayers', () => {
     expect(html).not.toContain('data-build-player=');
   });
 
-  it('shows a back-to-average chip while viewing a player build', () => {
-    const html = renderTopPlayers({ ...baseState, viewingPlayer: 'Hide on bush#KR1' });
+  it('shows a floating banner with a restore button while viewing a player build', () => {
+    const html = renderBuildPanel({ ...baseState, viewingPlayer: 'Hide on bush#KR1' });
     expect(html).toContain('data-build-clear-player');
     expect(html).toContain('Hide on bush#KR1');
   });
@@ -198,5 +253,30 @@ describe('renderBuildPanel', () => {
     const html = renderBuildPanel({ ...baseState, championName: '<img src=x onerror=alert(1)>' });
     expect(html).not.toContain('<img src=x');
     expect(html).toContain('&lt;img');
+  });
+
+  it('puts Top Players and Matchups in a sidebar next to a two-column main area', () => {
+    const html = renderBuildPanel(baseState);
+    expect(html).toContain('build-sidebar');
+    expect(html).toContain('build-main');
+    const sidebarIndex = html.indexOf('build-sidebar');
+    const topPlayersIndex = html.indexOf('build-players-card');
+    const mainIndex = html.indexOf('build-main"');
+    const skillsIndex = html.indexOf('build-skills-card');
+    expect(topPlayersIndex).toBeGreaterThan(sidebarIndex);
+    expect(topPlayersIndex).toBeLessThan(mainIndex);
+    expect(skillsIndex).toBeGreaterThan(mainIndex);
+  });
+
+  it('places Summoner Spells under Skill Order in the right column', () => {
+    const html = renderBuildPanel(baseState);
+    const skillsIndex = html.indexOf('build-skills-card');
+    const spellsIndex = html.indexOf('build-spells-card');
+    const itemsIndex = html.indexOf('build-items-card');
+    const runesIndex = html.indexOf('build-runes-card');
+    expect(skillsIndex).toBeGreaterThan(-1);
+    expect(spellsIndex).toBeGreaterThan(skillsIndex);
+    expect(itemsIndex).toBeGreaterThan(runesIndex);
+    expect(spellsIndex).toBeGreaterThan(itemsIndex);
   });
 });

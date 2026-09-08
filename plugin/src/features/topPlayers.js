@@ -157,26 +157,31 @@ async function callMcp(name, args, { fetchFn, id }) {
 }
 
 export async function fetchChampionLeaderboard(
-  { championName, region = 'kr' } = {},
+  { championName, region = 'br' } = {},
   { fetchFn = globalThis.fetch } = {}
 ) {
-  const mcpName = formatMcpChampionName(championName);
-  if (!mcpName) return fail('No champion selected', []);
+  if (!championName) return fail('No champion selected', []);
   if (typeof fetchFn !== 'function') return fail('No network client available', []);
+
+  const reg = String(region || 'br').toLowerCase();
+  const mcpName = formatMcpChampionName(championName);
+  if (!mcpName) return fail('No ranking data available', []);
 
   try {
     const text = await callMcp(
       'lol_list_champion_leaderboard',
-      { champion: mcpName, region: String(region || 'kr').toLowerCase(), lang: 'en_US' },
+      { champion: mcpName, region: reg === 'global' ? 'kr' : reg, lang: 'en_US' },
       { fetchFn, id: 3 }
     );
-    const players = parseMcpLeaderboard(text, region);
-    if (!players.length) return fail('No ranking data available', []);
-    return succeed(players);
+    const players = parseMcpLeaderboard(text, reg);
+    if (players.length > 0) {
+      return succeed(players);
+    }
   } catch (err) {
-    console.warn(TAG, 'leaderboard fetch failed:', err?.message || err);
-    return fail('Ranking service unavailable', []);
+    console.warn(TAG, 'MCP leaderboard fetch failed:', err?.message || err);
   }
+
+  return fail('No ranking data available', []);
 }
 
 export async function fetchPlayerBuild(

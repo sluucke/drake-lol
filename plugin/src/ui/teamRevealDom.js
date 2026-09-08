@@ -186,6 +186,8 @@ function renderOverlayShell({
   getChampName,
   muteStatus = 'idle',
   showMapSide = true,
+  activeTab = 'scouting',
+  buildHtml = '',
 }) {
   const sideInfo = showMapSide ? readMapSide(currentSession) : null;
   const sideBadge = sideInfo?.label ? formatMapSideBadge(sideInfo) : '';
@@ -232,14 +234,27 @@ function renderOverlayShell({
     })
     .join('');
 
+  const scoutingContent = snapshot.length
+    ? `<div class="team-reveal-panel">${cards}</div>`
+    : `<div class="team-reveal-empty-card">No team scouting data available</div>`;
+
   return `<div class="team-reveal-shell" data-team-reveal-panel="1">
-    <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === 'muting' ? 'disabled' : ''}>${muteText}</button>
-    <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">Close</button>
-    <div class="team-reveal-tabs">
-      <div class="team-reveal-tab is-active">Team Scouting</div>
-      ${sideBadge}
+    <div class="team-reveal-header">
+      <div class="team-reveal-tabs">
+        <button class="team-reveal-tab ${activeTab === 'scouting' ? 'is-active' : ''}" type="button" data-team-reveal-tab="scouting" role="tab" aria-selected="${activeTab === 'scouting'}">Team Scouting</button>
+        <button class="team-reveal-tab ${activeTab === 'build' ? 'is-active' : ''}" type="button" data-team-reveal-tab="build" role="tab" aria-selected="${activeTab === 'build'}">Build</button>
+      </div>
+      ${activeTab === 'scouting' ? `
+        <div class="team-reveal-head-meta">
+          ${sideBadge}
+          <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === 'muting' ? 'disabled' : ''}>${muteText}</button>
+        </div>
+      ` : ''}
+      <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">×</button>
     </div>
-    <div class="team-reveal-panel">${cards}</div>
+    <div class="team-reveal-content">
+      ${activeTab === 'scouting' ? scoutingContent : buildHtml}
+    </div>
   </div>`;
 }
 
@@ -248,13 +263,17 @@ function overlayRenderSig({
   currentSession,
   muteStatus = 'idle',
   showMapSide = true,
+  activeTab = 'scouting',
+  buildSig = '',
 }) {
   const sideInfo = showMapSide ? readMapSide(currentSession) : null;
   return JSON.stringify({
+    activeTab,
     cards: cardsContentSig(snapshot),
     muteStatus,
     side: sideInfo?.side || '',
     showMapSide: Boolean(showMapSide),
+    buildSig,
   });
 }
 
@@ -358,6 +377,7 @@ export function makeTeamRevealDom({
   loadSnapshot,
   overlayRoot,
   lcu,
+  buildPanel,
   muteTeammatesImpl = muteTeammates,
   sendChampSelectMessageImpl = sendChampSelectMessage,
   getChampName = () => '',
@@ -384,6 +404,7 @@ export function makeTeamRevealDom({
   let statusBar = null;
   let readyDismissTimer = null;
   let open = false;
+  let activeTab = 'scouting';
   let boundLabels = new Map();
   let lastSessionSig = '';
   let lastLobbyKey = '';
@@ -603,16 +624,47 @@ export function makeTeamRevealDom({
     if (open) renderVisibility();
   }
 
+  if (buildPanel?.onUpdate) {
+    buildPanel.onUpdate(() => {
+      if (open && activeTab === 'build') {
+        renderVisibility();
+      }
+    });
+  }
+
   function wireOverlayEvents(node) {
     if (!node?.addEventListener || node.dataset?.drakeRevealWired === '1') return;
     if (node.dataset) node.dataset.drakeRevealWired = '1';
+
+    node.addEventListener('change', (event) => {
+      if (buildPanel && typeof buildPanel.handleChange === 'function') {
+        buildPanel.handleChange(event);
+      }
+    });
+
     node.addEventListener('click', async (event) => {
       const target = event.target;
-      if (target?.closest?.('[data-team-reveal-close="1"]') || target?.dataset?.teamRevealClose === '1') {
+
+      const tabBtn = target?.closest?.('[data-team-reveal-tab]');
+      if (tabBtn) {
+        event.stopPropagation?.();
+        const tab = tabBtn.dataset.teamRevealTab;
+        if (tab && tab !== activeTab) {
+          setActiveTab(tab);
+        }
+        return;
+      }
+
+      if (
+        target?.closest?.('[data-team-reveal-close="1"]') ||
+        target?.dataset?.teamRevealClose === '1' ||
+        target?.closest?.('[data-build-close]')
+      ) {
         event.stopPropagation?.();
         closeCards();
         return;
       }
+
       const muteBtn =
         target?.closest?.('[data-team-reveal-mute="1"]') ||
         (target?.dataset?.teamRevealMute === '1' ? target : null);
@@ -621,6 +673,12 @@ export function makeTeamRevealDom({
         await handleMuteAll();
         return;
       }
+
+      if (buildPanel && typeof buildPanel.handleClick === 'function') {
+        const handled = buildPanel.handleClick(event);
+        if (handled) return;
+      }
+
       if (target === node) {
         closeCards();
         return;
@@ -761,21 +819,27 @@ export function makeTeamRevealDom({
 
   function renderVisibility() {
     if (!overlay) return;
-    if (open && snapshot.length > 0) {
+    if (open) {
       const showMapSide = getShowMapSide();
+      const buildSig = buildPanel?.getStateSig ? buildPanel.getStateSig() : '';
       const sig = overlayRenderSig({
         snapshot,
         currentSession,
         muteStatus,
         showMapSide,
+        activeTab,
+        buildSig,
       });
       if (sig !== lastCardsRenderSig) {
+        const buildHtml = buildPanel?.renderHtml ? buildPanel.renderHtml() : '';
         overlay.innerHTML = renderOverlayShell({
           snapshot,
           currentSession,
           getChampName: (id) => getChampName(Number(id)),
           muteStatus,
           showMapSide,
+          activeTab,
+          buildHtml,
         });
         lastCardsRenderSig = sig;
       }
@@ -1021,13 +1085,42 @@ export function makeTeamRevealDom({
     clearReveal();
   }
 
-  function toggleCards() {
+  function setActiveTab(tab) {
+    activeTab = tab || 'scouting';
+    if (activeTab === 'build' && buildPanel?.loadBuild) {
+      void buildPanel.loadBuild();
+    }
+    lastCardsRenderSig = '';
+    renderVisibility();
+  }
+
+  function openCards(tab) {
+    if (!enabled) return;
+    ensureOverlay();
+    if (tab) activeTab = tab;
+    open = true;
+    if (activeTab === 'build' && buildPanel?.loadBuild) {
+      void buildPanel.loadBuild();
+    }
+    renderVisibility();
+  }
+
+  function closeCards() {
+    open = false;
+    renderVisibility();
+  }
+
+  function toggleCards(tab) {
     if (!enabled) return;
     if (open) {
+      if (tab && tab !== activeTab) {
+        setActiveTab(tab);
+        return;
+      }
       closeCards();
       return;
     }
-    openCards();
+    openCards(tab || activeTab || 'scouting');
   }
 
   function teardown() {
@@ -1049,6 +1142,9 @@ export function makeTeamRevealDom({
     toggleCards,
     closeCards,
     openCards,
+    isOpen: () => open,
+    getActiveTab: () => activeTab,
+    setActiveTab,
     teardown,
   };
 }

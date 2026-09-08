@@ -76,6 +76,7 @@ function makeDeps(overrides = {}) {
     applyItemSetImpl: vi.fn().mockResolvedValue({ success: true }),
     applySummonerSpellsImpl: vi.fn().mockResolvedValue({ success: true }),
     loadGameAssetsImpl: vi.fn().mockResolvedValue(true),
+    loadRuneAssetsImpl: vi.fn().mockResolvedValue(true),
     nowFn: () => 1000,
     ...overrides,
   };
@@ -100,6 +101,7 @@ describe('makeBuildPanel', () => {
     await flush();
 
     expect(deps.loadGameAssetsImpl).toHaveBeenCalledWith(deps.lcu);
+    expect(deps.loadRuneAssetsImpl).toHaveBeenCalledWith(deps.lcu);
     expect(deps.fetchChampionBuildImpl).toHaveBeenCalledWith(
       expect.objectContaining({ championId: 157, position: 'MIDDLE', mode: 'ranked', tier: 'emerald_plus', region: 'global' }),
       expect.anything()

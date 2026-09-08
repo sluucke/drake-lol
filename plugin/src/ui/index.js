@@ -196,12 +196,17 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       if (!open) closeCredits();
     },
     onTeamRevealCardsToggle: () => {
-      if (teamRevealDom) teamRevealDom.toggleCards();
+      if (teamRevealDom) teamRevealDom.toggleCards('scouting');
     },
     onBuildPanelToggle: () => {
-      if (buildPanel) buildPanel.toggle();
+      if (teamRevealDom) teamRevealDom.toggleCards('build');
+      else if (buildPanel) buildPanel.toggle();
     },
     onEscape: () => {
+      if (teamRevealDom && teamRevealDom.isOpen()) {
+        teamRevealDom.closeCards();
+        return true;
+      }
       if (buildPanel && buildPanel.isOpen()) {
         buildPanel.close();
         return true;
@@ -347,28 +352,9 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     return teamRevealChampsLoading;
   }
 
-  function ensureBuildButton() {
-    if (!shadowRoot) return null;
-    const existing = shadowRoot.getElementById('drake-build-entry');
-    if (existing) return existing;
-    const node = document.createElement('button');
-    node.id = 'drake-build-entry';
-    node.type = 'button';
-    node.className = 'build-entry-btn';
-    node.textContent = 'Build';
-    node.hidden = true;
-    node.addEventListener('click', () => {
-      if (buildPanel) buildPanel.open();
-    });
-    shadowRoot.appendChild(node);
-    return node;
-  }
-
   function feedBuildPanel(session) {
     if (!buildPanel) return;
     const active = inChampSelect(session);
-    const btn = ensureBuildButton();
-    if (btn) btn.hidden = !active;
     if (!active) {
       buildPanel.setSession({ championId: 0, position: '', mode: 'ranked' });
       buildPanel.close();
@@ -472,11 +458,24 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       fetchImpl: fetch,
     });
 
+    buildPanel = makeBuildPanel({
+      doc: document,
+      overlayRoot: shadow,
+      lcu,
+      fetchFn: proxyFetch,
+      getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
+      getSettings: () => settings,
+      saveSettings: (patch) => client.save(patch),
+      getSummonerId: () => summonerIdLoader.get(),
+    });
+    void summonerIdLoader.load();
+
     teamRevealDom = makeTeamRevealDom({
       doc: document,
       subscribe,
       overlayRoot: shadow,
       lcu,
+      buildPanel,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
       getRecentPool: () => settings.queue_team_reveal_recent_pool || 'ranked_both',
       getShowMapSide: () => settings.queue_show_map_side !== false,
@@ -502,18 +501,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       },
     });
     teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
-
-    buildPanel = makeBuildPanel({
-      doc: document,
-      overlayRoot: shadow,
-      lcu,
-      fetchFn: proxyFetch,
-      getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
-      getSettings: () => settings,
-      saveSettings: (patch) => client.save(patch),
-      getSummonerId: () => summonerIdLoader.get(),
-    });
-    void summonerIdLoader.load();
 
     if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
     feedBuildPanel(champSelectSession);
