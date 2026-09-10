@@ -77,11 +77,41 @@ export async function resolveLobbyNames(session, lcu) {
   return names;
 }
 
+const REVEAL_REGION_SLUGS = {
+  LA1: 'lan',
+  LA2: 'las',
+  LAN: 'lan',
+  LAS: 'las',
+  NA1: 'na',
+  BR1: 'br',
+  EUW1: 'euw',
+  EUN1: 'eune',
+  EUNE: 'eune',
+  OC1: 'oce',
+  OCE: 'oce',
+  JP1: 'jp',
+  TR1: 'tr',
+  RU1: 'ru',
+  PH2: 'sea',
+  SG2: 'sea',
+  TH2: 'sea',
+  SEA: 'sea',
+  TW2: 'tw',
+  VN2: 'vn',
+  ME1: 'me',
+};
+
+export function revealRegionSlug(region) {
+  const key = String(region || '').trim().toUpperCase();
+  if (!key) return '';
+  return REVEAL_REGION_SLUGS[key] || key.toLowerCase();
+}
+
 export function buildRevealUrl(provider, region, names) {
-  const r = String(region || '').toLowerCase();
+  const r = revealRegionSlug(region);
   const encoded = encodeURIComponent(names.join(','));
   if (provider === 'opgg') {
-    return `https://www.op.gg/multisearch/${r}?summoners=${encoded}`;
+    return `https://op.gg/lol/multisearch/${r}?summoners=${encoded}`;
   }
   return `https://porofessor.gg/pregame/${r}/${encoded}/soloqueue/season`;
 }

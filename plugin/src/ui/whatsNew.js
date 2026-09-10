@@ -1,5 +1,15 @@
 export const WHATS_NEW = [
   {
+    version: '0.3.25',
+    items: [
+      {
+        title: 'Lobby reveal regions fixed',
+        body: 'External lobby reveal (Porofessor / OP.GG) now maps Riot platform ids correctly — e.g. LA2 → las — and OP.GG uses the current /lol/multisearch URL. Reported by Julio Maggioni.',
+        screen: 'queue',
+      },
+    ],
+  },
+  {
     version: '0.3.24',
     items: [
       {

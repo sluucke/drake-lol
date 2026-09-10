@@ -1130,7 +1130,8 @@ mod tests {
         // page could call it, so it is an allow-list of two hosts rather than a
         // general "open whatever" service.
         assert!(is_openable("https://porofessor.gg/pregame/br/x/soloqueue/season"));
-        assert!(is_openable("https://www.op.gg/multisearch/br?summoners=x"));
+        assert!(is_openable("https://op.gg/lol/multisearch/br?summoners=x"));
+        assert!(is_openable("https://www.op.gg/lol/multisearch/las?summoners=x"));
     }
 
     #[test]

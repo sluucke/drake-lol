@@ -22,7 +22,7 @@ describe('buildRevealUrl', () => {
 
   it('builds an OP.GG multisearch url', () => {
     expect(buildRevealUrl('opgg', 'BR', names)).toBe(
-      'https://www.op.gg/multisearch/br?summoners=Faker%23KR1%2CDude%20Guy%23BR1',
+      'https://op.gg/lol/multisearch/br?summoners=Faker%23KR1%2CDude%20Guy%23BR1',
     );
   });
 
@@ -36,7 +36,26 @@ describe('buildRevealUrl', () => {
   });
 
   it('lowercases the region, which both sites require', () => {
-    expect(buildRevealUrl('opgg', 'EUW', names)).toContain('/multisearch/euw?');
+    expect(buildRevealUrl('opgg', 'EUW', names)).toContain('/lol/multisearch/euw?');
+  });
+
+  it('maps Riot LA2 platform id to Porofessor/OP.GG las', () => {
+    expect(buildRevealUrl('porofessor', 'LA2', names)).toContain('/pregame/las/');
+    expect(buildRevealUrl('opgg', 'LA2', names)).toContain('/lol/multisearch/las?');
+  });
+
+  it('maps Riot LA1 platform id to lan', () => {
+    expect(buildRevealUrl('porofessor', 'LA1', names)).toContain('/pregame/lan/');
+    expect(buildRevealUrl('opgg', 'LA1', names)).toContain('/lol/multisearch/lan?');
+  });
+
+  it('maps other Riot platform ids to site slugs', () => {
+    expect(buildRevealUrl('porofessor', 'NA1', names)).toContain('/pregame/na/');
+    expect(buildRevealUrl('porofessor', 'OC1', names)).toContain('/pregame/oce/');
+    expect(buildRevealUrl('porofessor', 'EUN1', names)).toContain('/pregame/eune/');
+    expect(buildRevealUrl('porofessor', 'BR1', names)).toContain('/pregame/br/');
+    expect(buildRevealUrl('opgg', 'SG2', names)).toContain('/lol/multisearch/sea?');
+    expect(buildRevealUrl('porofessor', 'PH2', names)).toContain('/pregame/sea/');
   });
 });
 
