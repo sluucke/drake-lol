@@ -3186,11 +3186,39 @@ ${BUILD_PANEL_CSS}
     }
     return names;
   }
+  var REVEAL_REGION_SLUGS = {
+    LA1: "lan",
+    LA2: "las",
+    LAN: "lan",
+    LAS: "las",
+    NA1: "na",
+    BR1: "br",
+    EUW1: "euw",
+    EUN1: "eune",
+    EUNE: "eune",
+    OC1: "oce",
+    OCE: "oce",
+    JP1: "jp",
+    TR1: "tr",
+    RU1: "ru",
+    PH2: "sea",
+    SG2: "sea",
+    TH2: "sea",
+    SEA: "sea",
+    TW2: "tw",
+    VN2: "vn",
+    ME1: "me"
+  };
+  function revealRegionSlug(region) {
+    const key = String(region || "").trim().toUpperCase();
+    if (!key) return "";
+    return REVEAL_REGION_SLUGS[key] || key.toLowerCase();
+  }
   function buildRevealUrl(provider, region, names) {
-    const r = String(region || "").toLowerCase();
+    const r = revealRegionSlug(region);
     const encoded = encodeURIComponent(names.join(","));
     if (provider === "opgg") {
-      return `https://www.op.gg/multisearch/${r}?summoners=${encoded}`;
+      return `https://op.gg/lol/multisearch/${r}?summoners=${encoded}`;
     }
     return `https://porofessor.gg/pregame/${r}/${encoded}/soloqueue/season`;
   }
@@ -4364,6 +4392,16 @@ ${BUILD_PANEL_CSS}
 
   // src/ui/whatsNew.js
   var WHATS_NEW = [
+    {
+      version: "0.3.25",
+      items: [
+        {
+          title: "Lobby reveal regions fixed",
+          body: "External lobby reveal (Porofessor / OP.GG) now maps Riot platform ids correctly \u2014 e.g. LA2 \u2192 las \u2014 and OP.GG uses the current /lol/multisearch URL. Reported by Julio Maggioni.",
+          screen: "queue"
+        }
+      ]
+    },
     {
       version: "0.3.24",
       items: [
