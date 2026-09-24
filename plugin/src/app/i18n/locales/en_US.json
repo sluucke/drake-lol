@@ -6,7 +6,8 @@
     "cancel": "Cancel",
     "retry": "Try again",
     "on": "On",
-    "off": "Off"
+    "off": "Off",
+    "remove": "Remove"
   },
   "time": {
     "seconds": {
@@ -146,6 +147,23 @@
       "clientHelp": "Reloads the League client UI. Use this when Drake injected while the client was already open, or after a change that only applies on a reload.",
       "restart": "Restart client",
       "restarting": "Restarting the client…"
+    }
+  },
+  "roles": {
+    "TOP": "Top",
+    "JUNGLE": "Jungle",
+    "MIDDLE": "Mid",
+    "BOTTOM": "ADC",
+    "UTILITY": "Support"
+  },
+  "champions": {
+    "search": "Search champions...",
+    "noMatch": "No champions match.",
+    "unavailable": "Champion list unavailable — reopen this screen to try again.",
+    "noneChosen": "none chosen",
+    "selected": {
+      "one": "{count} selected",
+      "other": "{count} selected"
     }
   }
 }

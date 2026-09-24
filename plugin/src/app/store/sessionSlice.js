@@ -11,6 +11,7 @@ export function createSessionSlice({ appVersion }) {
       hostLabel: '',
       statusLine: null,
       revealTiming: { lastMs: 0, lastConcurrency: 1 },
+      champions: [],
     },
 
     setLocale(locale) {

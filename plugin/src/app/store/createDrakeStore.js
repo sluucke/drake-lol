@@ -17,14 +17,14 @@ export function createDrakeStore({ settings = {}, appVersion = '0.0.0', settings
     ...sessionSlice(set, get),
     ...uiSlice(set, get),
 
-    syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, updateUi, statusText, appVersion: version, idle, revealTiming }) {
+    syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, updateUi, statusText, appVersion: version, idle, revealTiming, champions }) {
       set((state) => ({
         settings: {
           ...state.settings,
           ...(values ? { values: { ...values } } : {}),
           ...(trayDown === undefined ? {} : { trayDown: !!trayDown }),
         },
-        session: { ...state.session, ...defined({ updateUi, statusText, appVersion: version, idle, revealTiming }) },
+        session: { ...state.session, ...defined({ updateUi, statusText, appVersion: version, idle, revealTiming, champions }) },
         ui: { ...state.ui, ...defined({ screen, overlay, tourIndex }) },
       }));
     },

@@ -210,6 +210,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       appVersion,
       idle: inGameIdle,
       revealTiming: { lastMs: teamRevealLastLoadMs, lastConcurrency: teamRevealLastConcurrency },
+      champions,
     });
   }
 

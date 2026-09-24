@@ -33510,7 +33510,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       cancel: "Cancel",
       retry: "Try again",
       on: "On",
-      off: "Off"
+      off: "Off",
+      remove: "Remove"
     },
     time: {
       seconds: {
@@ -33651,6 +33652,23 @@ button.bug-report-button[data-drake-toggle]:disabled {
         restart: "Restart client",
         restarting: "Restarting the client\u2026"
       }
+    },
+    roles: {
+      TOP: "Top",
+      JUNGLE: "Jungle",
+      MIDDLE: "Mid",
+      BOTTOM: "ADC",
+      UTILITY: "Support"
+    },
+    champions: {
+      search: "Search champions...",
+      noMatch: "No champions match.",
+      unavailable: "Champion list unavailable \u2014 reopen this screen to try again.",
+      noneChosen: "none chosen",
+      selected: {
+        one: "{count} selected",
+        other: "{count} selected"
+      }
     }
   };
 
@@ -33663,7 +33681,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       cancel: "Cancelar",
       retry: "Tentar novamente",
       on: "Ligado",
-      off: "Desligado"
+      off: "Desligado",
+      remove: "Remover"
     },
     time: {
       seconds: {
@@ -33804,6 +33823,23 @@ button.bug-report-button[data-drake-toggle]:disabled {
         restart: "Reiniciar cliente",
         restarting: "Reiniciando o cliente\u2026"
       }
+    },
+    roles: {
+      TOP: "Topo",
+      JUNGLE: "Selva",
+      MIDDLE: "Meio",
+      BOTTOM: "Atirador",
+      UTILITY: "Suporte"
+    },
+    champions: {
+      search: "Buscar campe\xF5es...",
+      noMatch: "Nenhum campe\xE3o encontrado.",
+      unavailable: "Lista de campe\xF5es indispon\xEDvel \u2014 abra esta tela de novo para tentar outra vez.",
+      noneChosen: "nenhum escolhido",
+      selected: {
+        one: "{count} selecionado",
+        other: "{count} selecionados"
+      }
     }
   };
 
@@ -33924,7 +33960,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
         updateUi: { phase: "idle" },
         hostLabel: "",
         statusLine: null,
-        revealTiming: { lastMs: 0, lastConcurrency: 1 }
+        revealTiming: { lastMs: 0, lastConcurrency: 1 },
+        champions: []
       },
       setLocale(locale) {
         set((state) => ({ session: { ...state.session, locale } }));
@@ -33947,7 +33984,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
         overlay: "",
         tourIndex: -1,
         creditsOpen: false,
-        escapeLayers: 0
+        escapeLayers: 0,
+        autoPickRole: "TOP",
+        championQueries: { "auto-pick": "", "auto-ban": "" }
       },
       setPanelOpen(open) {
         set((state) => ({ ui: { ...state.ui, panelOpen: !!open } }));
@@ -33979,14 +34018,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
       ...settingsSlice(set, get),
       ...sessionSlice(set, get),
       ...uiSlice(set, get),
-      syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, updateUi, statusText, appVersion: version, idle, revealTiming }) {
+      syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, updateUi, statusText, appVersion: version, idle, revealTiming, champions }) {
         set((state) => ({
           settings: {
             ...state.settings,
             ...values ? { values: { ...values } } : {},
             ...trayDown === void 0 ? {} : { trayDown: !!trayDown }
           },
-          session: { ...state.session, ...defined({ updateUi, statusText, appVersion: version, idle, revealTiming }) },
+          session: { ...state.session, ...defined({ updateUi, statusText, appVersion: version, idle, revealTiming, champions }) },
           ui: { ...state.ui, ...defined({ screen, overlay, tourIndex }) }
         }));
       }
@@ -34647,12 +34686,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
 
   // src/app/ui/TextInput.jsx
   var import_jsx_runtime23 = __toESM(require_jsx_runtime(), 1);
-  function TextInput({ id: id3, value, onChange, onCommit, placeholder, disabled = false, ariaLabel }) {
+  function TextInput({ id: id3, type = "text", value, onChange, onCommit, placeholder, disabled = false, ariaLabel }) {
     return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
       "input",
       {
         id: id3,
-        type: "text",
+        type,
         className: "drk-input",
         value,
         placeholder,
@@ -35339,7 +35378,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
         statusText,
         appVersion,
         idle: inGameIdle,
-        revealTiming: { lastMs: teamRevealLastLoadMs, lastConcurrency: teamRevealLastConcurrency }
+        revealTiming: { lastMs: teamRevealLastLoadMs, lastConcurrency: teamRevealLastConcurrency },
+        champions
       });
     }
     const ui2 = mountUI({

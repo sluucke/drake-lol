@@ -6,7 +6,8 @@
     "cancel": "Cancelar",
     "retry": "Tentar novamente",
     "on": "Ligado",
-    "off": "Desligado"
+    "off": "Desligado",
+    "remove": "Remover"
   },
   "time": {
     "seconds": {
@@ -146,6 +147,23 @@
       "clientHelp": "Recarrega a interface do cliente do League. Use quando o Drake foi injetado com o cliente já aberto, ou após uma mudança que só vale depois de recarregar.",
       "restart": "Reiniciar cliente",
       "restarting": "Reiniciando o cliente…"
+    }
+  },
+  "roles": {
+    "TOP": "Topo",
+    "JUNGLE": "Selva",
+    "MIDDLE": "Meio",
+    "BOTTOM": "Atirador",
+    "UTILITY": "Suporte"
+  },
+  "champions": {
+    "search": "Buscar campeões...",
+    "noMatch": "Nenhum campeão encontrado.",
+    "unavailable": "Lista de campeões indisponível — abra esta tela de novo para tentar outra vez.",
+    "noneChosen": "nenhum escolhido",
+    "selected": {
+      "one": "{count} selecionado",
+      "other": "{count} selecionados"
     }
   }
 }

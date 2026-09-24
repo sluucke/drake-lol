@@ -7,6 +7,8 @@ export function createUiSlice() {
       tourIndex: -1,
       creditsOpen: false,
       escapeLayers: 0,
+      autoPickRole: 'TOP',
+      championQueries: { 'auto-pick': '', 'auto-ban': '' },
     },
 
     setPanelOpen(open) {

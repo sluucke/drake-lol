@@ -1,8 +1,8 @@
-export function TextInput({ id, value, onChange, onCommit, placeholder, disabled = false, ariaLabel }) {
+export function TextInput({ id, type = 'text', value, onChange, onCommit, placeholder, disabled = false, ariaLabel }) {
   return (
     <input
       id={id}
-      type="text"
+      type={type}
       className="drk-input"
       value={value}
       placeholder={placeholder}

@@ -20,4 +20,9 @@ describe('TextInput', () => {
     renderWithProviders(<TextInput value="" ariaLabel="Message" disabled />);
     expect(screen.getByRole('textbox', { name: 'Message' }).disabled).toBe(true);
   });
+
+  it('supports the search type', () => {
+    renderWithProviders(<TextInput type="search" value="" ariaLabel="Find" />);
+    expect(screen.getByRole('searchbox', { name: 'Find' })).toBeTruthy();
+  });
 });

@@ -17,7 +17,16 @@ describe('createDrakeStore', () => {
     expect(state.settings.trayDown).toBe(false);
     expect(state.session.appVersion).toBe('0.3.25');
     expect(state.session.locale).toBe('en_US');
-    expect(state.ui).toEqual({ panelOpen: false, screen: 'auto-accept', overlay: '', tourIndex: -1, creditsOpen: false, escapeLayers: 0 });
+    expect(state.ui).toEqual({
+      panelOpen: false,
+      screen: 'auto-accept',
+      overlay: '',
+      tourIndex: -1,
+      creditsOpen: false,
+      escapeLayers: 0,
+      autoPickRole: 'TOP',
+      championQueries: { 'auto-pick': '', 'auto-ban': '' },
+    });
   });
 
   it('updates session and ui', () => {
@@ -132,5 +141,22 @@ describe('reveal timing', () => {
     expect(store.getState().session.revealTiming).toEqual({ lastMs: 0, lastConcurrency: 1 });
     store.getState().syncLegacy({ revealTiming: { lastMs: 9000, lastConcurrency: 2 } });
     expect(store.getState().session.revealTiming).toEqual({ lastMs: 9000, lastConcurrency: 2 });
+  });
+});
+
+describe('champion state', () => {
+  it('syncs the champion list from the legacy module', () => {
+    const store = createDrakeStore();
+    expect(store.getState().session.champions).toEqual([]);
+    const list = [{ id: 103, name: 'Ahri', alias: 'Ahri' }];
+    store.getState().syncLegacy({ champions: list });
+    expect(store.getState().session.champions).toBe(list);
+  });
+
+  it('keeps the auto pick role and queries in ui', () => {
+    const store = createDrakeStore();
+    store.getState().setUi({ autoPickRole: 'MIDDLE', championQueries: { 'auto-pick': 'ah', 'auto-ban': '' } });
+    expect(store.getState().ui.autoPickRole).toBe('MIDDLE');
+    expect(store.getState().ui.championQueries['auto-pick']).toBe('ah');
   });
 });
