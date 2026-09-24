@@ -7,7 +7,16 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "esbuild": "^0.25.0",
+    "jsdom": "^26.1.0",
     "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "motion": "^12.43.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zustand": "^5.0.15"
   }
 }
