@@ -504,6 +504,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     void summonerIdLoader.load();
 
     teamRevealDom = makeTeamRevealDom({
+      publishView: (view) => store.getState().setTeamReveal(view),
       doc: document,
       subscribe,
       overlayRoot: shadow,
@@ -956,6 +957,20 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     Object.assign(legacyActions, {
       onboard: (action) => handleOnboard(action),
       dismissWhatsNew: (target) => withOnboardLock(onboardLock, () => dismissWhatsNew(target)),
+    });
+
+    Object.assign(legacyActions, {
+      openScouting: () => teamRevealDom?.openCards(),
+      closeScouting: () => teamRevealDom?.closeCards(),
+      setScoutingTab: (tab) => teamRevealDom?.setActiveTab(tab),
+      muteScouting: () => teamRevealDom?.muteAll(),
+      renderBuildHtml: () => (buildPanel?.renderHtml ? buildPanel.renderHtml() : ''),
+      wireBuildSelects: (root) =>
+        wireDrakeSelects(root, ({ dropdown, value }) => {
+          buildPanel?.applyDropdownSelect?.(dropdown, value);
+        }),
+      buildChange: (event) => buildPanel?.handleChange?.(event),
+      buildClick: (event) => buildPanel?.handleClick?.(event),
     });
 
     content.addEventListener('input', (e) => {
