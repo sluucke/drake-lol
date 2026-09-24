@@ -6,6 +6,7 @@ import { AutoPickScreen } from './AutoPick.jsx';
 import { AutoBanScreen } from './AutoBan.jsx';
 import { ProfileScreen } from './Profile.jsx';
 import { FriendsScreen } from './Friends.jsx';
+import { WhatsNewScreen } from './WhatsNew.jsx';
 
 export const REACT_SCREENS = {
   'auto-accept': AutoAcceptScreen,
@@ -16,6 +17,7 @@ export const REACT_SCREENS = {
   'auto-ban': AutoBanScreen,
   profile: ProfileScreen,
   friends: FriendsScreen,
+  'whats-new': WhatsNewScreen,
 };
 
 export function isReactScreen(id) {

@@ -21,7 +21,7 @@ describe('screen host', () => {
     expect(legacy.hidden).toBe(true);
     expect(screen.getByText('react queue')).toBeTruthy();
     expect(container.querySelector('#content')).toBe(legacy);
-    act(() => store.getState().syncLegacy({ screen: 'whats-new' }));
+    act(() => store.getState().syncLegacy({ screen: 'not-a-screen' }));
     expect(legacy.hidden).toBe(false);
     expect(screen.queryByText('react queue')).toBeNull();
   });
