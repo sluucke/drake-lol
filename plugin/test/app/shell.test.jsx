@@ -73,18 +73,15 @@ describe('Sidebar', () => {
 });
 
 describe('LegacyScreen', () => {
-  it('hosts the legacy containers and keeps their content across renders', () => {
+  it('hosts the legacy content container and keeps its content across renders', () => {
     const { store, container } = setup();
     const content = container.querySelector('#content');
-    const layer = container.querySelector('#onboard-layer');
     expect(content.className).toContain('content');
-    expect(layer.hidden).toBe(true);
+    expect(container.querySelector('#onboard-layer')).toBeNull();
     content.innerHTML = '<p id="legacy-probe">legacy</p>';
-    layer.hidden = false;
     act(() => store.getState().syncLegacy({ screen: 'status', statusText: 'x' }));
     expect(container.querySelector('#legacy-probe').textContent).toBe('legacy');
     expect(container.querySelector('#content')).toBe(content);
-    expect(layer.hidden).toBe(false);
   });
 });
 

@@ -21,6 +21,8 @@ export const NOOP_ACTIONS = {
   saveRiotId: resolved,
   setBackground: resolved,
   removeAllFriends: async () => ({ removed: 0, failed: 0 }),
+  onboard: async () => {},
+  dismissWhatsNew: async () => {},
 };
 
 export const LegacyActionsContext = createContext(NOOP_ACTIONS);

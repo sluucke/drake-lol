@@ -18186,18 +18186,6 @@ ${BUILD_PANEL_CSS}
       <button class="hextech-btn hextech-btn-danger" id="dodge-champ-select">Dodge</button>
     </div>`;
   }
-  function renderWelcome() {
-    return `
-    <div class="welcome">
-      <img class="welcome-mark" src="${DRAKE_ICON}" alt="" aria-hidden="true">
-      <div class="welcome-name">Drake</div>
-      <p class="welcome-copy">Tools that sit beside the client. A short tour covers the screens you will use most.</p>
-      <div class="welcome-actions">
-        <button type="button" class="hextech-btn" data-onboard="tour">Take the tour</button>
-        <button type="button" class="hextech-btn hextech-btn-muted" data-onboard="skip">Skip</button>
-      </div>
-    </div>`;
-  }
   function renderWhatsNew(entry, { version } = {}) {
     const ver = escapeHtml2(version || entry?.version || "");
     const items2 = Array.isArray(entry?.items) ? entry.items : [];
@@ -18219,23 +18207,6 @@ ${BUILD_PANEL_CSS}
     const screen = item.screen ? escapeHtml2(item.screen) : "";
     const heading = screen ? `<button type="button" class="whats-new-link" data-whats-new-screen="${screen}">${title}</button>` : `<span class="whats-new-title">${title}</span>`;
     return `<li class="whats-new-item">${heading}<p class="whats-new-body">${body}</p></li>`;
-  }
-  function renderTourCard(step, { index, total } = {}) {
-    const title = escapeHtml2(step?.title);
-    const body = escapeHtml2(step?.body);
-    const current = Number(index) || 0;
-    const count = Number(total) || 0;
-    const nextLabel = current === count && count > 0 ? "Done" : "Next";
-    return `
-    <div class="tour-card">
-      <div class="tour-meta">${current} / ${count}</div>
-      <h3 class="tour-title">${title}</h3>
-      <p class="tour-body">${body}</p>
-      <div class="tour-actions">
-        <button type="button" class="hextech-btn" data-onboard="tour-next">${nextLabel}</button>
-        <button type="button" class="hextech-btn hextech-btn-muted" data-onboard="skip">Skip</button>
-      </div>
-    </div>`;
   }
   function formatHostLabel({ appVersion, loaderVersion }) {
     const host = loaderVersion ? `loader ${loaderVersion}` : "in client";
@@ -20044,20 +20015,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
   };
   var RANKED_SOLO = "RANKED_SOLO_5x5";
   var RANKED_FLEX = "RANKED_FLEX_SR";
-  function normalizeMatchPool(value, fallback = MATCH_POOL_RANKED_BOTH) {
+  function normalizeMatchPool(value, fallback2 = MATCH_POOL_RANKED_BOTH) {
     const raw = String(value || "").trim().toLowerCase();
     if (raw === MATCH_POOL_RANKED_BOTH || raw === MATCH_POOL_CURRENT_QUEUE || raw === MATCH_POOL_ANY) {
       return raw;
     }
-    return fallback;
+    return fallback2;
   }
-  function normalizeSampleSize(value, fallback = TEAM_REVEAL_SAMPLE_SIZE) {
+  function normalizeSampleSize(value, fallback2 = TEAM_REVEAL_SAMPLE_SIZE) {
     const n = Number(value) || 0;
-    return TEAM_REVEAL_SAMPLE_SIZES.includes(n) ? n : fallback;
+    return TEAM_REVEAL_SAMPLE_SIZES.includes(n) ? n : fallback2;
   }
-  function normalizeFetchConcurrency(value, fallback = TEAM_REVEAL_FETCH_CONCURRENCY) {
+  function normalizeFetchConcurrency(value, fallback2 = TEAM_REVEAL_FETCH_CONCURRENCY) {
     const n = Number(value) || 0;
-    return TEAM_REVEAL_FETCH_CONCURRENCIES.includes(n) ? n : fallback;
+    return TEAM_REVEAL_FETCH_CONCURRENCIES.includes(n) ? n : fallback2;
   }
   function filterMatchEntriesByPool(entries, queueId, pool) {
     const list = Array.isArray(entries) ? entries : [];
@@ -20202,15 +20173,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
   function readGames(payload, puuid = "") {
     return normalizeMatchGames(payload, puuid);
   }
-  function seasonHistoryCount(rank, fallback = TEAM_REVEAL_SEASON_SAMPLE_SIZE) {
+  function seasonHistoryCount(rank, fallback2 = TEAM_REVEAL_SEASON_SAMPLE_SIZE) {
     const wins = rank?.wins || 0;
     const losses = rank?.losses || 0;
     const total = wins + losses;
     if (wins > 0 && losses === 0) {
-      return Math.min(Math.max(Math.ceil(wins / 0.55), fallback), TEAM_REVEAL_SEASON_MAX);
+      return Math.min(Math.max(Math.ceil(wins / 0.55), fallback2), TEAM_REVEAL_SEASON_MAX);
     }
-    if (total <= 0) return fallback;
-    return Math.min(Math.max(total, fallback), TEAM_REVEAL_SEASON_MAX);
+    if (total <= 0) return fallback2;
+    return Math.min(Math.max(total, fallback2), TEAM_REVEAL_SEASON_MAX);
   }
   function readGameQueueId(game) {
     return Number(game?.queueId ?? game?.gameQueueConfigId ?? game?.queue?.id ?? 0) || 0;
@@ -27104,13 +27075,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const match = splitCSSVariableRegex.exec(current);
     if (!match)
       return [,];
-    const [, token1, token2, fallback] = match;
-    return [`--${token1 ?? token2}`, fallback];
+    const [, token1, token2, fallback2] = match;
+    return [`--${token1 ?? token2}`, fallback2];
   }
   var maxDepth = 4;
   function getVariableValue(current, element, depth = 1) {
     invariant(depth <= maxDepth, `Max CSS variable fallback depth detected in property "${current}". This may indicate a circular fallback dependency.`, "max-css-var-depth");
-    const [token, fallback] = parseCSSVariable(current);
+    const [token, fallback2] = parseCSSVariable(current);
     if (!token)
       return;
     const resolved2 = window.getComputedStyle(element).getPropertyValue(token);
@@ -27118,7 +27089,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const trimmed = resolved2.trim();
       return isNumericalString(trimmed) ? parseFloat(trimmed) : trimmed;
     }
-    return isCSSVariableToken(fallback) ? getVariableValue(fallback, element, depth + 1) : fallback;
+    return isCSSVariableToken(fallback2) ? getVariableValue(fallback2, element, depth + 1) : fallback2;
   }
 
   // node_modules/motion-dom/dist/es/render/utils/resolve-variants.mjs
@@ -33467,7 +33438,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
   function createTranslator(locale, dicts, { warn = console.warn } = {}) {
     const primary = dicts[locale] || {};
-    const fallback = dicts[DEFAULT_LOCALE] || {};
+    const fallback2 = dicts[DEFAULT_LOCALE] || {};
     const rules = pluralRules(locale);
     const warned = /* @__PURE__ */ new Set();
     function report(key) {
@@ -33478,8 +33449,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function find(key) {
       const own = lookup(primary, key);
       if (own !== void 0) return own;
-      const base = lookup(fallback, key);
-      if (base !== void 0 && primary !== fallback) report(key);
+      const base = lookup(fallback2, key);
+      if (base !== void 0 && primary !== fallback2) report(key);
       return base;
     }
     function pick(key, vars) {
@@ -34560,7 +34531,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
     cloneBadge: resolved,
     saveRiotId: resolved,
     setBackground: resolved,
-    removeAllFriends: async () => ({ removed: 0, failed: 0 })
+    removeAllFriends: async () => ({ removed: 0, failed: 0 }),
+    onboard: async () => {
+    },
+    dismissWhatsNew: async () => {
+    }
   };
   var LegacyActionsContext = (0, import_react30.createContext)(NOOP_ACTIONS);
   function useLegacyActions() {
@@ -34996,7 +34971,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime18 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/shell/LegacyScreen.jsx
-  var import_react62 = __toESM(require_react(), 1);
+  var import_react64 = __toESM(require_react(), 1);
 
   // src/app/hooks/useReducedMotion.js
   var import_react44 = __toESM(require_react(), 1);
@@ -36074,15 +36049,101 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return Object.prototype.hasOwnProperty.call(REACT_SCREENS, id3);
   }
 
-  // src/app/shell/LegacyScreen.jsx
+  // src/app/shell/OnboardLayer.jsx
+  var import_react62 = __toESM(require_react(), 1);
+
+  // src/app/onboarding/content.js
+  function fallback(t, key, source) {
+    const value = t(key);
+    return value === key ? source : value;
+  }
+  function tourText(t, index, step, field) {
+    return fallback(t, `onboarding.tour.steps.${index}.${field}`, step?.[field] || "");
+  }
+
+  // src/app/shell/OnboardLayer.jsx
   var import_jsx_runtime38 = __toESM(require_jsx_runtime(), 1);
+  function OnboardLayer() {
+    const t = useT();
+    const actions = useLegacyActions();
+    const overlay = useDrake((state) => state.ui.overlay);
+    const tourIndex = useDrake((state) => state.ui.tourIndex);
+    const [busy, setBusy] = (0, import_react62.useState)(false);
+    const step = overlay === "tour" ? TOUR_STEPS[tourIndex] : null;
+    const mode = overlay === "welcome" ? "welcome" : step ? "tour" : null;
+    const last = tourIndex === TOUR_STEPS.length - 1;
+    async function run(action) {
+      if (busy) return;
+      setBusy(true);
+      try {
+        await actions.onboard(action);
+      } finally {
+        setBusy(false);
+      }
+    }
+    return /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(AnimatePresence, { children: mode && /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(
+      motion2.div,
+      {
+        className: `drk-onboard is-${mode}`,
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: DURATION.base },
+        children: mode === "welcome" ? /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)(
+          motion2.div,
+          {
+            className: "drk-welcome",
+            role: "dialog",
+            "aria-label": t("shell.title"),
+            initial: { opacity: 0, y: 12, scale: 0.97 },
+            animate: { opacity: 1, y: 0, scale: 1 },
+            transition: { duration: DURATION.slow, ease: EASE_OUT },
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("img", { className: "drk-welcome__mark", src: DRAKE_ICON, alt: "", "aria-hidden": "true" }),
+              /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { className: "drk-welcome__name", children: t("shell.title") }),
+              /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("p", { className: "drk-welcome__copy", children: t("onboarding.welcome.copy") }),
+              /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "drk-actions drk-welcome__actions", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(Button, { disabled: busy, onClick: () => run("tour"), children: t("onboarding.welcome.tour") }),
+                /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(Button, { variant: "secondary", disabled: busy, onClick: () => run("skip"), children: t("onboarding.welcome.skip") })
+              ] })
+            ]
+          }
+        ) : /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)(
+          motion2.div,
+          {
+            className: "drk-tour",
+            role: "dialog",
+            "aria-label": tourText(t, tourIndex, step, "title"),
+            initial: { opacity: 0, x: -12 },
+            animate: { opacity: 1, x: 0 },
+            transition: { duration: DURATION.base, ease: EASE_OUT },
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { className: "drk-tour__meta", children: t("onboarding.tour.progress", { current: tourIndex + 1, total: TOUR_STEPS.length }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("h3", { className: "drk-tour__title", children: tourText(t, tourIndex, step, "title") }),
+              /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("p", { className: "drk-tour__body", children: tourText(t, tourIndex, step, "body") }),
+              /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { className: "drk-tour__dots", "aria-hidden": "true", children: TOUR_STEPS.map((_, index) => /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("span", { className: index === tourIndex ? "is-on" : "" }, index)) }),
+              /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "drk-actions", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(Button, { disabled: busy, onClick: () => run("tour-next"), children: last ? t("onboarding.tour.done") : t("onboarding.tour.next") }),
+                /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(Button, { variant: "secondary", disabled: busy, onClick: () => run("skip"), children: t("onboarding.tour.skip") })
+              ] })
+            ]
+          },
+          tourIndex
+        )
+      },
+      mode
+    ) });
+  }
+
+  // src/app/shell/LegacyScreen.jsx
+  var import_jsx_runtime39 = __toESM(require_jsx_runtime(), 1);
   function LegacyScreen({ screens = REACT_SCREENS }) {
-    const contentRef = (0, import_react62.useRef)(null);
-    const firstRef = (0, import_react62.useRef)(true);
+    const contentRef = (0, import_react64.useRef)(null);
+    const firstRef = (0, import_react64.useRef)(true);
     const screenId = useDrake((state) => state.ui.screen);
     const reduced = useReducedMotion();
     const Screen = screens[screenId] || null;
-    (0, import_react62.useEffect)(() => {
+    (0, import_react64.useEffect)(() => {
       if (firstRef.current) {
         firstRef.current = false;
         return;
@@ -36090,25 +36151,25 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (Screen || reduced || !contentRef.current) return;
       animate(contentRef.current, { opacity: [0, 1], y: [8, 0] }, { duration: DURATION.base, ease: EASE_OUT });
     }, [screenId, reduced, Screen]);
-    return /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)(import_jsx_runtime38.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { ref: contentRef, id: "content", className: "content drk-legacy-screen", hidden: !!Screen }),
-      Screen && /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)(import_jsx_runtime39.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("div", { ref: contentRef, id: "content", className: "content drk-legacy-screen", hidden: !!Screen }),
+      Screen && /* @__PURE__ */ (0, import_jsx_runtime39.jsx)(
         motion2.div,
         {
           className: "content drk-screen",
           initial: reduced ? false : { opacity: 0, y: 8 },
           animate: { opacity: 1, y: 0 },
           transition: { duration: DURATION.base, ease: EASE_OUT },
-          children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(Screen, {})
+          children: /* @__PURE__ */ (0, import_jsx_runtime39.jsx)(Screen, {})
         },
         screenId
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { id: "onboard-layer", className: "onboard-layer", hidden: true })
+      /* @__PURE__ */ (0, import_jsx_runtime39.jsx)(OnboardLayer, {})
     ] });
   }
 
   // src/app/shell/ShellFooter.jsx
-  var import_jsx_runtime39 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime40 = __toESM(require_jsx_runtime(), 1);
   function ShellFooter() {
     const t = useT();
     const hostLabel = useDrake((state) => state.session.hostLabel);
@@ -36116,9 +36177,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const trayDown = useDrake((state) => state.settings.trayDown);
     const text = line ? line.text : t(trayDown ? "shell.footer.trayDown" : "shell.footer.trayUp");
     const tone = line ? line.tone : trayDown ? "bad" : "good";
-    return /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("footer", { className: "drk-footer", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { className: "drk-footer__host", children: hostLabel || "\u2014" }),
-      /* @__PURE__ */ (0, import_jsx_runtime39.jsx)(AnimatePresence, { mode: "wait", initial: false, children: /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)("footer", { className: "drk-footer", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("span", { className: "drk-footer__host", children: hostLabel || "\u2014" }),
+      /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(AnimatePresence, { mode: "wait", initial: false, children: /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)(
         motion2.span,
         {
           role: "status",
@@ -36128,7 +36189,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           exit: { opacity: 0, y: -4 },
           transition: { duration: DURATION.fast },
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { className: "drk-footer__dot", "aria-hidden": "true" }),
+            /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("span", { className: "drk-footer__dot", "aria-hidden": "true" }),
             text
           ]
         },
@@ -36138,11 +36199,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/shell/CreditsModal.jsx
-  var import_jsx_runtime40 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime41 = __toESM(require_jsx_runtime(), 1);
   function CreditLink({ entry, large = false }) {
     const sfx = useSfx();
     const actions = useLegacyActions();
-    return /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(
       "button",
       {
         type: "button",
@@ -36157,9 +36218,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     );
   }
   function CreditRow({ label, children }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)("div", { className: "drk-credits__row", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("dt", { className: "drk-credits__label", children: label }),
-      /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("dd", { className: "drk-credits__value", children })
+    return /* @__PURE__ */ (0, import_jsx_runtime41.jsxs)("div", { className: "drk-credits__row", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime41.jsx)("dt", { className: "drk-credits__label", children: label }),
+      /* @__PURE__ */ (0, import_jsx_runtime41.jsx)("dd", { className: "drk-credits__value", children })
     ] });
   }
   function CreditsModal() {
@@ -36167,20 +36228,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const store = useDrakeStore();
     const actions = useLegacyActions();
     const open = useDrake((state) => state.ui.creditsOpen);
-    return /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)(Modal, { open, onClose: () => store.getState().setCreditsOpen(false), title: t("shell.credits.title"), width: 440, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { className: "drk-credits__disclaimer", children: t("shell.credits.disclaimer") }),
-      /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)("dl", { className: "drk-credits__list", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(CreditRow, { label: t("shell.credits.createdBy"), children: /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(CreditLink, { entry: CREDITS.createdBy, large: true }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(CreditRow, { label: t("shell.credits.specialThanks"), children: /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(CreditLink, { entry: CREDITS.specialThanks, large: true }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(CreditRow, { label: t("shell.credits.inspiredBy"), children: CREDITS.inspiredBy.map((entry) => /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(CreditLink, { entry }, entry.href)) }),
-        /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(CreditRow, { label: t("shell.credits.assets"), children: /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(CreditLink, { entry: CREDITS.assets }) })
+    return /* @__PURE__ */ (0, import_jsx_runtime41.jsxs)(Modal, { open, onClose: () => store.getState().setCreditsOpen(false), title: t("shell.credits.title"), width: 440, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime41.jsx)("p", { className: "drk-credits__disclaimer", children: t("shell.credits.disclaimer") }),
+      /* @__PURE__ */ (0, import_jsx_runtime41.jsxs)("dl", { className: "drk-credits__list", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(CreditRow, { label: t("shell.credits.createdBy"), children: /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(CreditLink, { entry: CREDITS.createdBy, large: true }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(CreditRow, { label: t("shell.credits.specialThanks"), children: /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(CreditLink, { entry: CREDITS.specialThanks, large: true }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(CreditRow, { label: t("shell.credits.inspiredBy"), children: CREDITS.inspiredBy.map((entry) => /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(CreditLink, { entry }, entry.href)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(CreditRow, { label: t("shell.credits.assets"), children: /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(CreditLink, { entry: CREDITS.assets }) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("div", { className: "drk-credits__actions", children: /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { onClick: () => actions.openUrl(CREDITS.repoUrl), children: t("shell.credits.github") }) })
+      /* @__PURE__ */ (0, import_jsx_runtime41.jsx)("div", { className: "drk-credits__actions", children: /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(Button, { onClick: () => actions.openUrl(CREDITS.repoUrl), children: t("shell.credits.github") }) })
     ] });
   }
 
   // src/app/shell/Sidebar.jsx
-  var import_jsx_runtime41 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime42 = __toESM(require_jsx_runtime(), 1);
   function Sidebar() {
     const t = useT();
     const sfx = useSfx();
@@ -36189,9 +36250,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const overlay = useDrake((state) => state.ui.overlay);
     const tourIndex = useDrake((state) => state.ui.tourIndex);
     const tourScreen = overlay === "tour" ? TOUR_STEPS[tourIndex]?.screen : null;
-    return /* @__PURE__ */ (0, import_jsx_runtime41.jsx)("nav", { className: "drk-sidebar", role: "tablist", "aria-orientation": "vertical", children: SCREENS.map((item, index) => {
+    return /* @__PURE__ */ (0, import_jsx_runtime42.jsx)("nav", { className: "drk-sidebar", role: "tablist", "aria-orientation": "vertical", children: SCREENS.map((item, index) => {
       const active = item.id === screenId;
-      return /* @__PURE__ */ (0, import_jsx_runtime41.jsxs)(
+      return /* @__PURE__ */ (0, import_jsx_runtime42.jsxs)(
         motion2.button,
         {
           type: "button",
@@ -36209,8 +36270,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
             actions.navigate(item.id);
           },
           children: [
-            active && /* @__PURE__ */ (0, import_jsx_runtime41.jsx)(motion2.span, { className: "drk-sidebar__indicator", layoutId: "drk-sidebar-indicator", transition: SPRING }),
-            /* @__PURE__ */ (0, import_jsx_runtime41.jsx)("span", { className: "drk-sidebar__label", children: t(`shell.nav.${item.id}`) })
+            active && /* @__PURE__ */ (0, import_jsx_runtime42.jsx)(motion2.span, { className: "drk-sidebar__indicator", layoutId: "drk-sidebar-indicator", transition: SPRING }),
+            /* @__PURE__ */ (0, import_jsx_runtime42.jsx)("span", { className: "drk-sidebar__label", children: t(`shell.nav.${item.id}`) })
           ]
         },
         item.id
@@ -36219,7 +36280,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/shell/PanelFrame.jsx
-  var import_jsx_runtime42 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime43 = __toESM(require_jsx_runtime(), 1);
   var SCRIM = {
     open: { opacity: 1, visibility: "visible", transition: { duration: DURATION.base } },
     closed: { opacity: 0, transition: { duration: DURATION.fast }, transitionEnd: { visibility: "hidden" } }
@@ -36234,7 +36295,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const store = useDrakeStore();
     const actions = useLegacyActions();
     const open = useDrake((state) => state.ui.panelOpen);
-    return /* @__PURE__ */ (0, import_jsx_runtime42.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)(
       motion2.div,
       {
         className: "drk-panel",
@@ -36246,13 +36307,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
           if (event.target === event.currentTarget) actions.close();
         },
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime42.jsxs)(motion2.div, { className: "drk-panel__window", role: "dialog", "aria-label": t("shell.title"), variants: WINDOW, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime42.jsxs)("header", { className: "drk-panel__titlebar", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime42.jsx)("img", { className: "drk-panel__mark", src: DRAKE_ICON, alt: "", "aria-hidden": "true" }),
-              /* @__PURE__ */ (0, import_jsx_runtime42.jsx)("h1", { className: "drk-panel__title", children: t("shell.title") }),
-              /* @__PURE__ */ (0, import_jsx_runtime42.jsx)("kbd", { className: "drk-panel__hint", children: t("shell.hotkeyHint") }),
-              /* @__PURE__ */ (0, import_jsx_runtime42.jsxs)("div", { className: "drk-panel__actions", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime42.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)(motion2.div, { className: "drk-panel__window", role: "dialog", "aria-label": t("shell.title"), variants: WINDOW, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("header", { className: "drk-panel__titlebar", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("img", { className: "drk-panel__mark", src: DRAKE_ICON, alt: "", "aria-hidden": "true" }),
+              /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("h1", { className: "drk-panel__title", children: t("shell.title") }),
+              /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("kbd", { className: "drk-panel__hint", children: t("shell.hotkeyHint") }),
+              /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "drk-panel__actions", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(
                   "button",
                   {
                     type: "button",
@@ -36266,7 +36327,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
                     children: "?"
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime42.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(
                   "button",
                   {
                     type: "button",
@@ -36282,24 +36343,24 @@ button.bug-report-button[data-drake-toggle]:disabled {
                 )
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime42.jsxs)("div", { className: "drk-panel__body", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime42.jsx)(Sidebar, {}),
-              /* @__PURE__ */ (0, import_jsx_runtime42.jsx)(LegacyScreen, {})
+            /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "drk-panel__body", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(Sidebar, {}),
+              /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(LegacyScreen, {})
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime42.jsx)(ShellFooter, {})
+            /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(ShellFooter, {})
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime42.jsx)(CreditsModal, {})
+          /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CreditsModal, {})
         ]
       }
     );
   }
 
   // src/app/App.jsx
-  var import_jsx_runtime43 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime44 = __toESM(require_jsx_runtime(), 1);
   function App({ sfx, portalTarget, store, actions }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(AppProviders, { sfx, portalTarget, store, actions, children: /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "drake-app", "data-drake-app": "", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(PanelFrame, {}),
-      false ? /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(DevShowcase, {}) : null
+    return /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(AppProviders, { sfx, portalTarget, store, actions, children: /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("div", { className: "drake-app", "data-drake-app": "", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(PanelFrame, {}),
+      false ? /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(DevShowcase, {}) : null
     ] }) });
   }
 
@@ -36354,11 +36415,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
   // src/app/screens/profile/profile.css
   var profile_default = ".drk-rank-grid {\n  display: grid;\n  grid-template-columns: repeat(5, 1fr);\n  gap: var(--space-2);\n}\n\n.drk-rank {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: var(--space-1);\n  padding: var(--space-2) var(--space-1);\n  font-family: var(--font-heading);\n  font-size: var(--text-xs);\n  letter-spacing: 0.06em;\n  text-transform: uppercase;\n  color: var(--text);\n  background: var(--surface-0);\n  border: 1px solid var(--surface-3);\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  pointer-events: auto;\n  transition:\n    color var(--dur-fast) var(--ease-out),\n    border-color var(--dur-fast) var(--ease-out),\n    box-shadow var(--dur-fast) var(--ease-out),\n    transform var(--dur-fast) var(--ease-out);\n}\n\n.drk-rank img {\n  width: 40px;\n  height: 40px;\n  filter: grayscale(0.6);\n  transition: filter var(--dur-fast) var(--ease-out);\n}\n\n.drk-rank:hover {\n  color: var(--gold-1);\n  border-color: var(--gold-4);\n  transform: translateY(-1px);\n}\n\n.drk-rank:hover img,\n.drk-rank.is-on img {\n  filter: none;\n}\n\n.drk-rank.is-on {\n  color: var(--gold-1);\n  background: linear-gradient(180deg, rgba(200, 170, 110, 0.18), var(--surface-0));\n  border-color: var(--gold-2);\n  box-shadow: var(--glow-gold);\n}\n\n.drk-skin-viewport {\n  height: 300px;\n  overflow-y: auto;\n  pointer-events: auto;\n}\n\n.drk-skin-spacer {\n  position: relative;\n}\n\n.drk-skin-grid {\n  display: grid;\n  grid-template-columns: repeat(5, 1fr);\n  gap: 8px;\n}\n\n.drk-skin {\n  position: relative;\n  height: 84px;\n  padding: 0;\n  overflow: hidden;\n  background: var(--surface-0);\n  border: 1px solid var(--surface-3);\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);\n}\n\n.drk-skin img {\n  width: 100%;\n  height: 62px;\n  object-fit: cover;\n  display: block;\n  transition: transform var(--dur-base) var(--ease-out);\n}\n\n.drk-skin span {\n  display: block;\n  padding: 2px var(--space-1);\n  font-size: 10px;\n  color: var(--text);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n.drk-skin:hover {\n  border-color: var(--gold-4);\n}\n\n.drk-skin:hover img {\n  transform: scale(1.06);\n}\n\n.drk-skin.is-on {\n  border-color: var(--gold-2);\n  box-shadow: var(--glow-gold);\n}\n\n.drk-skin.is-on span {\n  color: var(--gold-1);\n}\n\n.drk-riot-id {\n  display: grid;\n  grid-template-columns: 1fr auto 96px;\n  align-items: center;\n  gap: var(--space-2);\n}\n\n.drk-riot-id__hash {\n  width: 16px;\n  height: 16px;\n  opacity: 0.7;\n}\n\n.drk-friend-list {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  margin: 0;\n  padding: 0;\n  list-style: none;\n}\n\n.drk-friend {\n  display: grid;\n  grid-template-columns: 10px minmax(120px, auto) 1fr;\n  align-items: center;\n  gap: var(--space-3);\n  padding: var(--space-2) var(--space-3);\n  background: linear-gradient(90deg, rgba(30, 35, 40, 0.5), transparent);\n  border-radius: var(--radius-sm);\n}\n\n.drk-friend__dot {\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background: var(--surface-3);\n}\n\n.drk-friend__dot.is-online {\n  background: var(--win);\n  box-shadow: 0 0 6px var(--win);\n}\n\n.drk-friend__name {\n  color: var(--text-strong);\n}\n\n.drk-friend__note {\n  font-size: var(--text-sm);\n  color: var(--text-muted);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n";
 
+  // src/app/shell/onboarding.css
+  var onboarding_default = ".drk-onboard {\n  position: absolute;\n  inset: 0;\n  z-index: 4;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: var(--space-6);\n  background: rgba(1, 10, 19, 0.8);\n  backdrop-filter: blur(2px);\n  pointer-events: auto;\n}\n\n.drk-onboard.is-tour {\n  left: 184px;\n  justify-content: flex-start;\n  background: linear-gradient(90deg, rgba(1, 10, 19, 0.55), rgba(1, 10, 19, 0.85));\n}\n\n.drk-welcome {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: var(--space-3);\n  max-width: 420px;\n  text-align: center;\n}\n\n.drk-welcome__mark {\n  width: 80px;\n  height: 80px;\n  filter: drop-shadow(0 0 18px rgba(200, 170, 110, 0.45));\n}\n\n.drk-welcome__name {\n  font-family: var(--font-heading);\n  font-size: var(--text-2xl);\n  font-weight: 700;\n  letter-spacing: 0.24em;\n  text-transform: uppercase;\n  color: var(--gold-1);\n}\n\n.drk-welcome__copy {\n  max-width: 36ch;\n  margin: 0;\n  font-size: var(--text-md);\n  line-height: 1.5;\n  color: var(--text);\n}\n\n.drk-welcome__actions {\n  justify-content: center;\n}\n\n.drk-tour {\n  position: relative;\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-2);\n  width: min(340px, 100%);\n  padding: var(--space-5);\n  background: linear-gradient(180deg, var(--surface-1), var(--surface-0));\n  border: 1px solid var(--gold-3);\n  box-shadow: var(--shadow-1), var(--glow-gold);\n}\n\n.drk-tour::before {\n  content: '';\n  position: absolute;\n  top: 24px;\n  left: -8px;\n  width: 14px;\n  height: 14px;\n  background: var(--surface-1);\n  border-left: 1px solid var(--gold-3);\n  border-bottom: 1px solid var(--gold-3);\n  transform: rotate(45deg);\n}\n\n.drk-tour__meta {\n  font-size: var(--text-xs);\n  letter-spacing: 0.12em;\n  text-transform: uppercase;\n  color: var(--text-muted);\n}\n\n.drk-tour__title {\n  margin: 0;\n  font-family: var(--font-heading);\n  font-size: var(--text-lg);\n  font-weight: 700;\n  letter-spacing: 0.08em;\n  text-transform: uppercase;\n  color: var(--gold-1);\n}\n\n.drk-tour__body {\n  margin: 0;\n  font-size: var(--text-sm);\n  line-height: 1.5;\n  color: var(--text);\n}\n\n.drk-tour__dots {\n  display: flex;\n  gap: var(--space-1);\n}\n\n.drk-tour__dots span {\n  width: 6px;\n  height: 6px;\n  border-radius: 50%;\n  background: var(--surface-3);\n  transition: background var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);\n}\n\n.drk-tour__dots span.is-on {\n  background: var(--hex-2);\n  transform: scale(1.3);\n  box-shadow: var(--glow-hex);\n}\n\n.drk-whats-new {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-4);\n  margin: 0;\n  padding: 0;\n  list-style: none;\n}\n\n.drk-whats-new__item {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-1);\n  padding-left: var(--space-3);\n  border-left: 2px solid var(--gold-4);\n}\n\n.drk-whats-new__link,\n.drk-whats-new__title {\n  display: inline-flex;\n  align-items: center;\n  gap: var(--space-2);\n  padding: 0;\n  font-family: var(--font-heading);\n  font-size: var(--text-md);\n  letter-spacing: 0.06em;\n  text-transform: uppercase;\n  text-align: left;\n  color: var(--text-strong);\n  background: none;\n  border: 0;\n}\n\n.drk-whats-new__link {\n  color: var(--gold-2);\n  cursor: pointer;\n  pointer-events: auto;\n  transition: color var(--dur-fast) var(--ease-out);\n}\n\n.drk-whats-new__link:hover {\n  color: var(--gold-1);\n}\n\n.drk-whats-new__arrow {\n  transition: transform var(--dur-fast) var(--ease-out);\n}\n\n.drk-whats-new__link:hover .drk-whats-new__arrow {\n  transform: translateX(3px);\n}\n\n.drk-whats-new__body {\n  margin: 0;\n  font-size: var(--text-sm);\n  line-height: 1.5;\n  color: var(--text);\n}\n";
+
   // src/app/styles/index.js
-  var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default, shell_default, Segmented_default, TextInput_default, screens_default, champions_default, profile_default];
+  var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default, shell_default, Segmented_default, TextInput_default, screens_default, champions_default, profile_default, onboarding_default];
 
   // src/app/main.jsx
-  var import_jsx_runtime44 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime45 = __toESM(require_jsx_runtime(), 1);
   var APP_LAYER_ID = "drake-app-layer";
   var mounted = /* @__PURE__ */ new WeakMap();
   function startApp(shadow, { sfx, store, actions } = {}) {
@@ -36367,7 +36431,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     layer.id = APP_LAYER_ID;
     const app = mountReactRoot(shadow, {
       styles: APP_STYLES,
-      element: /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(App, { sfx, portalTarget: layer, store, actions })
+      element: /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(App, { sfx, portalTarget: layer, store, actions })
     });
     shadow.appendChild(layer);
     const result = {
@@ -36803,32 +36867,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
       teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
       if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
       feedBuildPanel(champSelectSession);
-      function paintOnboard() {
-        const layer = shadow.getElementById("onboard-layer");
-        if (!layer) return;
-        if (overlay === "welcome") {
-          layer.innerHTML = renderWelcome();
-          layer.hidden = false;
-          return;
-        }
-        if (overlay === "tour") {
-          const step = TOUR_STEPS[tourIndex];
-          if (!step) {
-            overlay = "";
-            layer.innerHTML = "";
-            layer.hidden = true;
-            return;
-          }
-          layer.innerHTML = renderTourCard(step, {
-            index: tourIndex + 1,
-            total: TOUR_STEPS.length
-          });
-          layer.hidden = false;
-          return;
-        }
-        layer.innerHTML = "";
-        layer.hidden = true;
-      }
       function paint() {
         syncStore();
         if (isReactScreen(screen)) {
@@ -36905,7 +36943,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
         wireDrakeSelects(content, ({ dropdown, value }) => {
           applyPanelDropdown(dropdown, value);
         });
-        paintOnboard();
       }
       function applyPanelDropdown(dropdown, value) {
         const id3 = dropdown?.id;
@@ -37209,10 +37246,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
           return result;
         }
       });
-      shadow.getElementById("onboard-layer").addEventListener("click", (e) => {
-        const btn = e.target.closest("[data-onboard]");
-        if (!btn || onboardLock.busy) return;
-        void handleOnboard(btn.dataset.onboard);
+      Object.assign(legacyActions, {
+        onboard: (action) => handleOnboard(action),
+        dismissWhatsNew: (target) => withOnboardLock(onboardLock, () => dismissWhatsNew(target))
       });
       content.addEventListener("input", (e) => {
         if (e.target.id !== "status-text") return;

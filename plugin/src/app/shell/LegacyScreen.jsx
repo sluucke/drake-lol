@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { animate, motion } from 'motion/react';
 import { useReducedMotion } from '../hooks/useReducedMotion.js';
 import { REACT_SCREENS } from '../screens/registry.jsx';
+import { OnboardLayer } from './OnboardLayer.jsx';
 import { useDrake } from '../store/StoreContext.jsx';
 import { DURATION, EASE_OUT } from '../ui/motion.js';
 
@@ -35,7 +36,7 @@ export function LegacyScreen({ screens = REACT_SCREENS }) {
           <Screen />
         </motion.div>
       )}
-      <div id="onboard-layer" className="onboard-layer" hidden />
+      <OnboardLayer />
     </>
   );
 }

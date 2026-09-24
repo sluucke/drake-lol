@@ -539,33 +539,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
     feedBuildPanel(champSelectSession);
 
-    function paintOnboard() {
-      const layer = shadow.getElementById('onboard-layer');
-      if (!layer) return;
-      if (overlay === 'welcome') {
-        layer.innerHTML = renderWelcome();
-        layer.hidden = false;
-        return;
-      }
-      if (overlay === 'tour') {
-        const step = TOUR_STEPS[tourIndex];
-        if (!step) {
-          overlay = '';
-          layer.innerHTML = '';
-          layer.hidden = true;
-          return;
-        }
-        layer.innerHTML = renderTourCard(step, {
-          index: tourIndex + 1,
-          total: TOUR_STEPS.length,
-        });
-        layer.hidden = false;
-        return;
-      }
-      layer.innerHTML = '';
-      layer.hidden = true;
-    }
-
     function paint() {
       syncStore();
       if (isReactScreen(screen)) {
@@ -641,7 +614,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       wireDrakeSelects(content, ({ dropdown, value }) => {
         applyPanelDropdown(dropdown, value);
       });
-      paintOnboard();
     }
 
     function applyPanelDropdown(dropdown, value) {
@@ -981,10 +953,9 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       },
     });
 
-    shadow.getElementById('onboard-layer').addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-onboard]');
-      if (!btn || onboardLock.busy) return;
-      void handleOnboard(btn.dataset.onboard);
+    Object.assign(legacyActions, {
+      onboard: (action) => handleOnboard(action),
+      dismissWhatsNew: (target) => withOnboardLock(onboardLock, () => dismissWhatsNew(target)),
     });
 
     content.addEventListener('input', (e) => {

@@ -15,5 +15,6 @@ import textInput from '../ui/TextInput.css';
 import screens from '../screens/screens.css';
 import champions from '../screens/champions/champions.css';
 import profile from '../screens/profile/profile.css';
+import onboarding from '../shell/onboarding.css';
 
-export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs, modal, tooltip, skeleton, slider, shell, segmented, textInput, screens, champions, profile];
+export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs, modal, tooltip, skeleton, slider, shell, segmented, textInput, screens, champions, profile, onboarding];

@@ -15,7 +15,6 @@ describe('app shell mount', () => {
     const store = createDrakeStore();
     const app = startApp(shadow, { store, actions: { navigate: vi.fn(), close: vi.fn(), openUrl: vi.fn() } });
     expect(shadow.getElementById('content')).not.toBeNull();
-    expect(shadow.getElementById('onboard-layer')).not.toBeNull();
     expect(shadow.querySelector('.drk-panel')).not.toBeNull();
     act(() => app.unmount());
   });
