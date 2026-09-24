@@ -184,3 +184,24 @@ describe('profile state', () => {
     expect(state.session.screen).toBeUndefined();
   });
 });
+
+describe('team reveal slice', () => {
+  it('defaults and merges published views', () => {
+    const store = createDrakeStore();
+    expect(store.getState().teamReveal).toEqual({
+      enabled: false,
+      open: false,
+      activeTab: 'scouting',
+      statusPhase: 'hidden',
+      statusSeq: 0,
+      muteStatus: 'idle',
+      side: null,
+      rows: [],
+      buildSig: '',
+    });
+    store.getState().setTeamReveal({ open: true, rows: [{ cellId: 1 }] });
+    expect(store.getState().teamReveal.open).toBe(true);
+    expect(store.getState().teamReveal.rows).toEqual([{ cellId: 1 }]);
+    expect(store.getState().teamReveal.activeTab).toBe('scouting');
+  });
+});

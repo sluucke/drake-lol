@@ -33922,6 +33922,53 @@ button.bug-report-button[data-drake-toggle]:disabled {
           }
         ]
       }
+    },
+    overlays: {
+      scouting: {
+        title: "Team Scouting",
+        tabs: {
+          scouting: "Team Scouting",
+          build: "Build"
+        },
+        empty: "No team scouting data available",
+        mute: {
+          idle: "Mute All",
+          muting: "Muting\u2026",
+          muted: "\u2713 Muted",
+          failed: "Mute Failed"
+        },
+        side: {
+          BLUE: "Blue Side",
+          RED: "Red Side"
+        },
+        you: "(You)",
+        unknown: "Unknown",
+        unranked: "Unranked",
+        queues: {
+          solo: "Solo/Duo",
+          flex: "Flex"
+        },
+        lp: "{lp} LP",
+        rows: {
+          recentWl: "Recent W/L",
+          recentWlGames: "Recent W/L \xB7 last {count} games",
+          kda: "Recent KDA",
+          last12h: "Last 12h",
+          picked: "Picked",
+          seasonMain: "Season Main",
+          last5: "Last 5"
+        },
+        winsShort: "{count}W",
+        lossesShort: "{count}L",
+        games: "{count}g",
+        noGames: "no games",
+        toast: {
+          revealing: "Revealing lobby",
+          revealed: "Session revealed. Press Ctrl+Shift+D to view it.",
+          revealedSide: "Session revealed \xB7 {side} \xB7 Press Ctrl+Shift+D to view it.",
+          view: "View"
+        }
+      }
     }
   };
 
@@ -34336,6 +34383,53 @@ button.bug-report-button[data-drake-toggle]:disabled {
           }
         ]
       }
+    },
+    overlays: {
+      scouting: {
+        title: "Scouting do time",
+        tabs: {
+          scouting: "Scouting do time",
+          build: "Build"
+        },
+        empty: "Nenhum dado de scouting do time dispon\xEDvel",
+        mute: {
+          idle: "Silenciar todos",
+          muting: "Silenciando\u2026",
+          muted: "\u2713 Silenciados",
+          failed: "Falha ao silenciar"
+        },
+        side: {
+          BLUE: "Lado azul",
+          RED: "Lado vermelho"
+        },
+        you: "(Voc\xEA)",
+        unknown: "Desconhecido",
+        unranked: "Sem elo",
+        queues: {
+          solo: "Solo/Duo",
+          flex: "Flex\xEDvel"
+        },
+        lp: "{lp} PDL",
+        rows: {
+          recentWl: "V/D recente",
+          recentWlGames: "V/D recente \xB7 \xFAltimas {count} partidas",
+          kda: "KDA recente",
+          last12h: "\xDAltimas 12h",
+          picked: "Escolhido",
+          seasonMain: "Principal da temporada",
+          last5: "\xDAltimas 5"
+        },
+        winsShort: "{count}V",
+        lossesShort: "{count}D",
+        games: "{count}p",
+        noGames: "sem partidas",
+        toast: {
+          revealing: "Revelando lobby",
+          revealed: "Sess\xE3o revelada. Pressione Ctrl+Shift+D para ver.",
+          revealedSide: "Sess\xE3o revelada \xB7 {side} \xB7 Pressione Ctrl+Shift+D para ver.",
+          view: "Ver"
+        }
+      }
     }
   };
 
@@ -34508,6 +34602,27 @@ button.bug-report-button[data-drake-toggle]:disabled {
     });
   }
 
+  // src/app/store/teamRevealSlice.js
+  var TEAM_REVEAL_DEFAULTS = {
+    enabled: false,
+    open: false,
+    activeTab: "scouting",
+    statusPhase: "hidden",
+    statusSeq: 0,
+    muteStatus: "idle",
+    side: null,
+    rows: [],
+    buildSig: ""
+  };
+  function createTeamRevealSlice() {
+    return (set) => ({
+      teamReveal: { ...TEAM_REVEAL_DEFAULTS },
+      setTeamReveal(view) {
+        set((state) => ({ teamReveal: { ...state.teamReveal, ...view } }));
+      }
+    });
+  }
+
   // src/app/store/createDrakeStore.js
   function defined(fields) {
     return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== void 0));
@@ -34516,10 +34631,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const settingsSlice = createSettingsSlice({ settings, settingsClient });
     const sessionSlice = createSessionSlice({ appVersion });
     const uiSlice = createUiSlice();
+    const teamRevealSlice = createTeamRevealSlice();
     return createStore((set, get) => ({
       ...settingsSlice(set, get),
       ...sessionSlice(set, get),
       ...uiSlice(set, get),
+      ...teamRevealSlice(set, get),
       syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, ...session }) {
         set((state) => ({
           settings: {
@@ -34574,6 +34691,21 @@ button.bug-report-button[data-drake-toggle]:disabled {
     onboard: async () => {
     },
     dismissWhatsNew: async () => {
+    },
+    openScouting() {
+    },
+    closeScouting() {
+    },
+    setScoutingTab() {
+    },
+    muteScouting: async () => {
+    },
+    renderBuildHtml: () => "",
+    wireBuildSelects() {
+    },
+    buildChange() {
+    },
+    buildClick() {
     }
   };
   var LegacyActionsContext = (0, import_react30.createContext)(NOOP_ACTIONS);
@@ -34681,7 +34813,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   // src/app/ui/Modal.jsx
   var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
   var FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-  function Modal({ open, onClose, title, width = 560, closeLabel, className = "", children }) {
+  function Modal({ open, onClose, title, header, ariaLabel, width = 560, closeLabel, className = "", children }) {
     const sfx = useSfx();
     const t = useT();
     const dialogRef = (0, import_react34.useRef)(null);
@@ -34740,6 +34872,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
             role: "dialog",
             "aria-modal": "true",
             "aria-labelledby": title ? titleId : void 0,
+            "aria-label": title ? void 0 : ariaLabel,
             className: ["drk-modal", className].filter(Boolean).join(" "),
             style: { width },
             initial: { opacity: 0, scale: 0.96 },
@@ -34748,7 +34881,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
             transition: { duration: DURATION.base, ease: EASE_OUT },
             children: [
               /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("header", { className: "drk-modal__head", children: [
-                title && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("h2", { id: titleId, className: "drk-modal__title", children: title }),
+                header || title && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("h2", { id: titleId, className: "drk-modal__title", children: title }),
                 /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(
                   "button",
                   {

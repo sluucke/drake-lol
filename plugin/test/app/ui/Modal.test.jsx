@@ -59,4 +59,15 @@ describe('Modal', () => {
     fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
     expect(document.activeElement).toBe(last);
   });
+
+  it('renders a custom header with an accessible label', () => {
+    const { portalTarget } = renderWithProviders(
+      <Modal open header={<span>custom head</span>} ariaLabel="Scouting" onClose={() => {}}>
+        <p>body</p>
+      </Modal>,
+    );
+    const dialog = within(portalTarget).getByRole('dialog', { name: 'Scouting' });
+    expect(within(dialog).getByText('custom head')).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeTruthy();
+  });
 });

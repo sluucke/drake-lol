@@ -2,6 +2,7 @@ import { createStore } from 'zustand/vanilla';
 import { createSettingsSlice } from './settingsSlice.js';
 import { createSessionSlice } from './sessionSlice.js';
 import { createUiSlice } from './uiSlice.js';
+import { createTeamRevealSlice } from './teamRevealSlice.js';
 
 function defined(fields) {
   return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
@@ -11,11 +12,13 @@ export function createDrakeStore({ settings = {}, appVersion = '0.0.0', settings
   const settingsSlice = createSettingsSlice({ settings, settingsClient });
   const sessionSlice = createSessionSlice({ appVersion });
   const uiSlice = createUiSlice();
+  const teamRevealSlice = createTeamRevealSlice();
 
   return createStore((set, get) => ({
     ...settingsSlice(set, get),
     ...sessionSlice(set, get),
     ...uiSlice(set, get),
+    ...teamRevealSlice(set, get),
 
     syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, ...session }) {
       set((state) => ({

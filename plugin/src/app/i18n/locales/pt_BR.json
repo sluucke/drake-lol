@@ -408,5 +408,52 @@
         }
       ]
     }
+  },
+  "overlays": {
+    "scouting": {
+      "title": "Scouting do time",
+      "tabs": {
+        "scouting": "Scouting do time",
+        "build": "Build"
+      },
+      "empty": "Nenhum dado de scouting do time disponível",
+      "mute": {
+        "idle": "Silenciar todos",
+        "muting": "Silenciando…",
+        "muted": "✓ Silenciados",
+        "failed": "Falha ao silenciar"
+      },
+      "side": {
+        "BLUE": "Lado azul",
+        "RED": "Lado vermelho"
+      },
+      "you": "(Você)",
+      "unknown": "Desconhecido",
+      "unranked": "Sem elo",
+      "queues": {
+        "solo": "Solo/Duo",
+        "flex": "Flexível"
+      },
+      "lp": "{lp} PDL",
+      "rows": {
+        "recentWl": "V/D recente",
+        "recentWlGames": "V/D recente · últimas {count} partidas",
+        "kda": "KDA recente",
+        "last12h": "Últimas 12h",
+        "picked": "Escolhido",
+        "seasonMain": "Principal da temporada",
+        "last5": "Últimas 5"
+      },
+      "winsShort": "{count}V",
+      "lossesShort": "{count}D",
+      "games": "{count}p",
+      "noGames": "sem partidas",
+      "toast": {
+        "revealing": "Revelando lobby",
+        "revealed": "Sessão revelada. Pressione Ctrl+Shift+D para ver.",
+        "revealedSide": "Sessão revelada · {side} · Pressione Ctrl+Shift+D para ver.",
+        "view": "Ver"
+      }
+    }
   }
 }

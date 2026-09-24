@@ -10,7 +10,7 @@ import { DURATION, EASE_OUT } from './motion.js';
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, width = 560, closeLabel, className = '', children }) {
+export function Modal({ open, onClose, title, header, ariaLabel, width = 560, closeLabel, className = '', children }) {
   const sfx = useSfx();
   const t = useT();
   const dialogRef = useRef(null);
@@ -74,6 +74,7 @@ export function Modal({ open, onClose, title, width = 560, closeLabel, className
               role="dialog"
               aria-modal="true"
               aria-labelledby={title ? titleId : undefined}
+              aria-label={title ? undefined : ariaLabel}
               className={['drk-modal', className].filter(Boolean).join(' ')}
               style={{ width }}
               initial={{ opacity: 0, scale: 0.96 }}
@@ -82,11 +83,12 @@ export function Modal({ open, onClose, title, width = 560, closeLabel, className
               transition={{ duration: DURATION.base, ease: EASE_OUT }}
             >
               <header className="drk-modal__head">
-                {title && (
-                  <h2 id={titleId} className="drk-modal__title">
-                    {title}
-                  </h2>
-                )}
+                {header ||
+                  (title && (
+                    <h2 id={titleId} className="drk-modal__title">
+                      {title}
+                    </h2>
+                  ))}
                 <button
                   type="button"
                   className="drk-modal__close"

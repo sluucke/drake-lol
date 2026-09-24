@@ -408,5 +408,52 @@
         }
       ]
     }
+  },
+  "overlays": {
+    "scouting": {
+      "title": "Team Scouting",
+      "tabs": {
+        "scouting": "Team Scouting",
+        "build": "Build"
+      },
+      "empty": "No team scouting data available",
+      "mute": {
+        "idle": "Mute All",
+        "muting": "Muting…",
+        "muted": "✓ Muted",
+        "failed": "Mute Failed"
+      },
+      "side": {
+        "BLUE": "Blue Side",
+        "RED": "Red Side"
+      },
+      "you": "(You)",
+      "unknown": "Unknown",
+      "unranked": "Unranked",
+      "queues": {
+        "solo": "Solo/Duo",
+        "flex": "Flex"
+      },
+      "lp": "{lp} LP",
+      "rows": {
+        "recentWl": "Recent W/L",
+        "recentWlGames": "Recent W/L · last {count} games",
+        "kda": "Recent KDA",
+        "last12h": "Last 12h",
+        "picked": "Picked",
+        "seasonMain": "Season Main",
+        "last5": "Last 5"
+      },
+      "winsShort": "{count}W",
+      "lossesShort": "{count}L",
+      "games": "{count}g",
+      "noGames": "no games",
+      "toast": {
+        "revealing": "Revealing lobby",
+        "revealed": "Session revealed. Press Ctrl+Shift+D to view it.",
+        "revealedSide": "Session revealed · {side} · Press Ctrl+Shift+D to view it.",
+        "view": "View"
+      }
+    }
   }
 }

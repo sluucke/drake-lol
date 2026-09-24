@@ -23,6 +23,14 @@ export const NOOP_ACTIONS = {
   removeAllFriends: async () => ({ removed: 0, failed: 0 }),
   onboard: async () => {},
   dismissWhatsNew: async () => {},
+  openScouting() {},
+  closeScouting() {},
+  setScoutingTab() {},
+  muteScouting: async () => {},
+  renderBuildHtml: () => '',
+  wireBuildSelects() {},
+  buildChange() {},
+  buildClick() {},
 };
 
 export const LegacyActionsContext = createContext(NOOP_ACTIONS);
