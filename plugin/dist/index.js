@@ -24625,7 +24625,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/dev/Showcase.jsx
-  var import_react15 = __toESM(require_react(), 1);
+  var import_react16 = __toESM(require_react(), 1);
 
   // src/app/ui/Button.jsx
   var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
@@ -24636,6 +24636,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Modal.jsx
+  var import_react11 = __toESM(require_react(), 1);
+
+  // src/app/hooks/useEscapeLayer.js
   var import_react10 = __toESM(require_react(), 1);
 
   // src/app/ui/Layer.jsx
@@ -24645,7 +24648,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Select.jsx
-  var import_react11 = __toESM(require_react(), 1);
+  var import_react12 = __toESM(require_react(), 1);
   var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Skeleton.jsx
@@ -24655,15 +24658,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Tabs.jsx
-  var import_react12 = __toESM(require_react(), 1);
+  var import_react13 = __toESM(require_react(), 1);
   var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Toggle.jsx
-  var import_react13 = __toESM(require_react(), 1);
+  var import_react14 = __toESM(require_react(), 1);
   var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Tooltip.jsx
-  var import_react14 = __toESM(require_react(), 1);
+  var import_react15 = __toESM(require_react(), 1);
   var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/dev/Showcase.jsx

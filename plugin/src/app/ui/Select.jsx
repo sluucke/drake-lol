@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SFX } from '../../ui/sfx.js';
 import { useSfx } from '../hooks/useSfx.js';
+import { useEscapeLayer } from '../hooks/useEscapeLayer.js';
 import { Layer } from './Layer.jsx';
 import { DURATION, EASE_OUT } from './motion.js';
 
@@ -17,6 +18,7 @@ export function Select({ value, options, onChange, disabled = false, ariaLabel, 
   const listRef = useRef(null);
   const listId = useId();
   const selected = options.find((o) => same(o.value, value)) || options[0] || null;
+  useEscapeLayer(open);
 
   useLayoutEffect(() => {
     if (open && triggerRef.current) setRect(triggerRef.current.getBoundingClientRect());

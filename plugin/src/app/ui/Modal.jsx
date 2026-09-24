@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { SFX } from '../../ui/sfx.js';
 import { useSfx } from '../hooks/useSfx.js';
 import { useT } from '../i18n/I18nProvider.jsx';
+import { useEscapeLayer } from '../hooks/useEscapeLayer.js';
 import { Layer } from './Layer.jsx';
 import { DURATION, EASE_OUT } from './motion.js';
 
@@ -16,6 +17,7 @@ export function Modal({ open, onClose, title, width = 560, closeLabel, className
   const onCloseRef = useRef(onClose);
   const titleId = useId();
   onCloseRef.current = onClose;
+  useEscapeLayer(open);
 
   useEffect(() => {
     if (!open) return undefined;
