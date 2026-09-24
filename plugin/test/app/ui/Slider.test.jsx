@@ -23,4 +23,16 @@ describe('Slider', () => {
     fireEvent.pointerUp(input);
     expect(sfx.play).toHaveBeenCalledWith(SFX.check);
   });
+
+  it('commits the value on release and keyboard adjust', () => {
+    const onCommit = vi.fn();
+    renderWithProviders(<Slider value={2} max={10} ariaLabel="Delay" onChange={() => {}} onCommit={onCommit} />);
+    const input = screen.getByRole('slider', { name: 'Delay' });
+    fireEvent.pointerUp(input);
+    expect(onCommit).toHaveBeenLastCalledWith(2);
+    fireEvent.keyUp(input, { key: 'ArrowRight' });
+    expect(onCommit).toHaveBeenCalledTimes(2);
+    fireEvent.keyUp(input, { key: 'a' });
+    expect(onCommit).toHaveBeenCalledTimes(2);
+  });
 });

@@ -1,0 +1,18 @@
+export function TextInput({ id, value, onChange, onCommit, placeholder, disabled = false, ariaLabel }) {
+  return (
+    <input
+      id={id}
+      type="text"
+      className="drk-input"
+      value={value}
+      placeholder={placeholder}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      onChange={(event) => onChange?.(event.target.value)}
+      onBlur={(event) => onCommit?.(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+    />
+  );
+}
