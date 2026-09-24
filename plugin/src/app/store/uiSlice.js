@@ -9,6 +9,7 @@ export function createUiSlice() {
       escapeLayers: 0,
       autoPickRole: 'TOP',
       championQueries: { 'auto-pick': '', 'auto-ban': '' },
+      skinQuery: '',
     },
 
     setPanelOpen(open) {

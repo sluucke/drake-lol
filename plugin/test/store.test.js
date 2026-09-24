@@ -26,6 +26,7 @@ describe('createDrakeStore', () => {
       escapeLayers: 0,
       autoPickRole: 'TOP',
       championQueries: { 'auto-pick': '', 'auto-ban': '' },
+      skinQuery: '',
     });
   });
 
@@ -158,5 +159,28 @@ describe('champion state', () => {
     store.getState().setUi({ autoPickRole: 'MIDDLE', championQueries: { 'auto-pick': 'ah', 'auto-ban': '' } });
     expect(store.getState().ui.autoPickRole).toBe('MIDDLE');
     expect(store.getState().ui.championQueries['auto-pick']).toBe('ah');
+  });
+});
+
+describe('profile state', () => {
+  it('has profile and friends defaults', () => {
+    const { session } = createDrakeStore().getState();
+    expect(session.profileTab).toBe('rank');
+    expect(session.profileRank).toEqual({ tier: '', division: 'I', queue: 'RANKED_SOLO_5x5', crystal: 'IRON' });
+    expect(session.skins).toEqual([]);
+    expect(session.backgroundId).toBe(0);
+    expect(session.friends).toEqual([]);
+  });
+
+  it('syncs any other legacy field into the session', () => {
+    const store = createDrakeStore();
+    const friends = [{ id: 'a', riotId: 'A#1', online: true }];
+    store.getState().syncLegacy({ profileTab: 'banner', friends, backgroundId: 7, screen: 'profile' });
+    const state = store.getState();
+    expect(state.session.profileTab).toBe('banner');
+    expect(state.session.friends).toBe(friends);
+    expect(state.session.backgroundId).toBe(7);
+    expect(state.ui.screen).toBe('profile');
+    expect(state.session.screen).toBeUndefined();
   });
 });

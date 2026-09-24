@@ -33995,7 +33995,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
         hostLabel: "",
         statusLine: null,
         revealTiming: { lastMs: 0, lastConcurrency: 1 },
-        champions: []
+        champions: [],
+        profileTab: "rank",
+        profileRank: { tier: "", division: "I", queue: "RANKED_SOLO_5x5", crystal: "IRON" },
+        skins: [],
+        backgroundId: 0,
+        friends: []
       },
       setLocale(locale) {
         set((state) => ({ session: { ...state.session, locale } }));
@@ -34020,7 +34025,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
         creditsOpen: false,
         escapeLayers: 0,
         autoPickRole: "TOP",
-        championQueries: { "auto-pick": "", "auto-ban": "" }
+        championQueries: { "auto-pick": "", "auto-ban": "" },
+        skinQuery: ""
       },
       setPanelOpen(open) {
         set((state) => ({ ui: { ...state.ui, panelOpen: !!open } }));
@@ -34052,14 +34058,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
       ...settingsSlice(set, get),
       ...sessionSlice(set, get),
       ...uiSlice(set, get),
-      syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, updateUi, statusText, appVersion: version, idle, revealTiming, champions }) {
+      syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, ...session }) {
         set((state) => ({
           settings: {
             ...state.settings,
             ...values ? { values: { ...values } } : {},
             ...trayDown === void 0 ? {} : { trayDown: !!trayDown }
           },
-          session: { ...state.session, ...defined({ updateUi, statusText, appVersion: version, idle, revealTiming, champions }) },
+          session: { ...state.session, ...defined(session) },
           ui: { ...state.ui, ...defined({ screen, overlay, tourIndex }) }
         }));
       }
@@ -34093,7 +34099,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
     checkUpdates: async () => {
     },
     installUpdate: resolved,
-    restartClient: resolved
+    restartClient: resolved,
+    selectProfileTab: async () => {
+    },
+    applyProfileRank: resolved,
+    resetProfileRank: resolved,
+    removeBadges: resolved,
+    cloneBadge: resolved,
+    saveRiotId: resolved,
+    setBackground: resolved,
+    removeAllFriends: async () => ({ removed: 0, failed: 0 })
   };
   var LegacyActionsContext = (0, import_react30.createContext)(NOOP_ACTIONS);
   function useLegacyActions() {
@@ -34720,7 +34735,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
 
   // src/app/ui/TextInput.jsx
   var import_jsx_runtime23 = __toESM(require_jsx_runtime(), 1);
-  function TextInput({ id: id3, type = "text", value, onChange, onCommit, placeholder, disabled = false, ariaLabel }) {
+  function TextInput({ id: id3, type = "text", value, onChange, onCommit, placeholder, disabled = false, ariaLabel, maxLength }) {
     return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
       "input",
       {
@@ -34731,6 +34746,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         placeholder,
         disabled,
         "aria-label": ariaLabel,
+        maxLength,
         onChange: (event) => onChange?.(event.target.value),
         onBlur: (event) => onCommit?.(event.target.value),
         onKeyDown: (event) => {
@@ -35656,7 +35672,17 @@ button.bug-report-button[data-drake-toggle]:disabled {
         appVersion,
         idle: inGameIdle,
         revealTiming: { lastMs: teamRevealLastLoadMs, lastConcurrency: teamRevealLastConcurrency },
-        champions
+        champions,
+        profileTab,
+        profileRank: {
+          tier: pickedTier || lol.rankedLeagueTier || "",
+          division: steps["rank-div"],
+          queue: steps["rank-queue"],
+          crystal: steps.crystal
+        },
+        skins,
+        backgroundId,
+        friends
       });
     }
     const ui2 = mountUI({
@@ -36261,6 +36287,90 @@ button.bug-report-button[data-drake-toggle]:disabled {
         installUpdate,
         restartClient: () => restarter.restart()
       });
+      async function saveRankFromState() {
+        const tier = pickedTier || lol.rankedLeagueTier || "GOLD";
+        const patch = profileRankPatch({
+          tier,
+          division: steps["rank-div"],
+          queue: steps["rank-queue"],
+          crystal: steps.crystal
+        });
+        const previous = {
+          profile_rank_tier: settings.profile_rank_tier,
+          profile_rank_division: settings.profile_rank_division,
+          profile_rank_queue: settings.profile_rank_queue,
+          profile_rank_crystal: settings.profile_rank_crystal
+        };
+        settings = { ...settings, ...patch };
+        const saved = await commit(patch, () => {
+          settings = { ...settings, ...previous };
+        });
+        if (!saved.ok) return saved;
+        return applyProfileRank(presence2, readProfileRank(settings));
+      }
+      async function clearRankState() {
+        const patch = profileRankPatch({
+          tier: "",
+          division: "I",
+          queue: QUEUES[0].id,
+          crystal: "IRON"
+        });
+        const previous = {
+          profile_rank_tier: settings.profile_rank_tier,
+          profile_rank_division: settings.profile_rank_division,
+          profile_rank_queue: settings.profile_rank_queue,
+          profile_rank_crystal: settings.profile_rank_crystal
+        };
+        settings = { ...settings, ...patch };
+        pickedTier = "";
+        steps["rank-div"] = "I";
+        steps["rank-queue"] = QUEUES[0].id;
+        steps.crystal = "IRON";
+        const saved = await commit(patch, () => {
+          settings = { ...settings, ...previous };
+        });
+        if (!saved.ok) return saved;
+        return presence2.clearRank();
+      }
+      async function runProfileAction(action) {
+        const result = await action();
+        try {
+          lol = readLol(await lcu2.get(CHAT_ME));
+        } catch {
+        }
+        paint();
+        return result;
+      }
+      async function selectProfileTab(tab) {
+        profileTab = tab;
+        if (profileTab === "banner" && skins.length === 0) skins = await loadSkins(lcu2);
+        paint();
+      }
+      Object.assign(legacyActions, {
+        selectProfileTab,
+        applyProfileRank: (draft) => {
+          pickedTier = draft.tier;
+          steps["rank-div"] = draft.division;
+          steps["rank-queue"] = draft.queue;
+          steps.crystal = draft.crystal;
+          return runProfileAction(saveRankFromState);
+        },
+        resetProfileRank: () => runProfileAction(clearRankState),
+        removeBadges: () => runProfileAction(() => challenges.removeBadges()),
+        cloneBadge: () => runProfileAction(() => challenges.cloneFirstBadge()),
+        saveRiotId: (raw) => runProfileAction(() => riotId.save(raw)),
+        setBackground: (id3) => {
+          backgroundId = id3;
+          paint();
+          return background.set(id3);
+        },
+        removeAllFriends: async () => {
+          const result = await removeAllFriends({ lcu: lcu2, friends });
+          friends = await loadFriends(lcu2);
+          paint();
+          return result;
+        }
+      });
       shadow.getElementById("onboard-layer").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-onboard]");
         if (!btn || onboardLock.busy) return;
@@ -36476,51 +36586,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
           return;
         }
         const profileAction = {
-          "rank-save": async () => {
-            const tier = pickedTier || lol.rankedLeagueTier || "GOLD";
-            const patch = profileRankPatch({
-              tier,
-              division: steps["rank-div"],
-              queue: steps["rank-queue"],
-              crystal: steps.crystal
-            });
-            const previous = {
-              profile_rank_tier: settings.profile_rank_tier,
-              profile_rank_division: settings.profile_rank_division,
-              profile_rank_queue: settings.profile_rank_queue,
-              profile_rank_crystal: settings.profile_rank_crystal
-            };
-            settings = { ...settings, ...patch };
-            const saved = await commit(patch, () => {
-              settings = { ...settings, ...previous };
-            });
-            if (!saved.ok) return saved;
-            return applyProfileRank(presence2, readProfileRank(settings));
-          },
-          "rank-clear": async () => {
-            const patch = profileRankPatch({
-              tier: "",
-              division: "I",
-              queue: QUEUES[0].id,
-              crystal: "IRON"
-            });
-            const previous = {
-              profile_rank_tier: settings.profile_rank_tier,
-              profile_rank_division: settings.profile_rank_division,
-              profile_rank_queue: settings.profile_rank_queue,
-              profile_rank_crystal: settings.profile_rank_crystal
-            };
-            settings = { ...settings, ...patch };
-            pickedTier = "";
-            steps["rank-div"] = "I";
-            steps["rank-queue"] = QUEUES[0].id;
-            steps.crystal = "IRON";
-            const saved = await commit(patch, () => {
-              settings = { ...settings, ...previous };
-            });
-            if (!saved.ok) return saved;
-            return presence2.clearRank();
-          },
+          "rank-save": saveRankFromState,
+          "rank-clear": clearRankState,
           "badges-remove": () => challenges.removeBadges(),
           "badges-clone": () => challenges.cloneFirstBadge(),
           "riot-id-save": () => riotId.save(

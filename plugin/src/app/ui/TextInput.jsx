@@ -1,4 +1,4 @@
-export function TextInput({ id, type = 'text', value, onChange, onCommit, placeholder, disabled = false, ariaLabel }) {
+export function TextInput({ id, type = 'text', value, onChange, onCommit, placeholder, disabled = false, ariaLabel, maxLength }) {
   return (
     <input
       id={id}
@@ -8,6 +8,7 @@ export function TextInput({ id, type = 'text', value, onChange, onCommit, placeh
       placeholder={placeholder}
       disabled={disabled}
       aria-label={ariaLabel}
+      maxLength={maxLength}
       onChange={(event) => onChange?.(event.target.value)}
       onBlur={(event) => onCommit?.(event.target.value)}
       onKeyDown={(event) => {

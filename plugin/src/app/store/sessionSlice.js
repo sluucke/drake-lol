@@ -12,6 +12,11 @@ export function createSessionSlice({ appVersion }) {
       statusLine: null,
       revealTiming: { lastMs: 0, lastConcurrency: 1 },
       champions: [],
+      profileTab: 'rank',
+      profileRank: { tier: '', division: 'I', queue: 'RANKED_SOLO_5x5', crystal: 'IRON' },
+      skins: [],
+      backgroundId: 0,
+      friends: [],
     },
 
     setLocale(locale) {

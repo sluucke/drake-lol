@@ -25,4 +25,9 @@ describe('TextInput', () => {
     renderWithProviders(<TextInput type="search" value="" ariaLabel="Find" />);
     expect(screen.getByRole('searchbox', { name: 'Find' })).toBeTruthy();
   });
+
+  it('passes a max length', () => {
+    renderWithProviders(<TextInput value="" ariaLabel="Tag" maxLength={5} />);
+    expect(screen.getByRole('textbox', { name: 'Tag' }).getAttribute('maxlength')).toBe('5');
+  });
 });

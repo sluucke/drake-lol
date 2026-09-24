@@ -211,6 +211,16 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       idle: inGameIdle,
       revealTiming: { lastMs: teamRevealLastLoadMs, lastConcurrency: teamRevealLastConcurrency },
       champions,
+      profileTab,
+      profileRank: {
+        tier: pickedTier || lol.rankedLeagueTier || '',
+        division: steps['rank-div'],
+        queue: steps['rank-queue'],
+        crystal: steps.crystal,
+      },
+      skins,
+      backgroundId,
+      friends,
     });
   }
 
@@ -882,6 +892,95 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       restartClient: () => restarter.restart(),
     });
 
+    async function saveRankFromState() {
+      const tier = pickedTier || lol.rankedLeagueTier || 'GOLD';
+      const patch = profileRankPatch({
+        tier,
+        division: steps['rank-div'],
+        queue: steps['rank-queue'],
+        crystal: steps.crystal,
+      });
+      const previous = {
+        profile_rank_tier: settings.profile_rank_tier,
+        profile_rank_division: settings.profile_rank_division,
+        profile_rank_queue: settings.profile_rank_queue,
+        profile_rank_crystal: settings.profile_rank_crystal,
+      };
+      settings = { ...settings, ...patch };
+      const saved = await commit(patch, () => {
+        settings = { ...settings, ...previous };
+      });
+      if (!saved.ok) return saved;
+      return applyProfileRank(presence, readProfileRank(settings));
+    }
+
+    async function clearRankState() {
+      const patch = profileRankPatch({
+        tier: '',
+        division: 'I',
+        queue: QUEUES[0].id,
+        crystal: 'IRON',
+      });
+      const previous = {
+        profile_rank_tier: settings.profile_rank_tier,
+        profile_rank_division: settings.profile_rank_division,
+        profile_rank_queue: settings.profile_rank_queue,
+        profile_rank_crystal: settings.profile_rank_crystal,
+      };
+      settings = { ...settings, ...patch };
+      pickedTier = '';
+      steps['rank-div'] = 'I';
+      steps['rank-queue'] = QUEUES[0].id;
+      steps.crystal = 'IRON';
+      const saved = await commit(patch, () => {
+        settings = { ...settings, ...previous };
+      });
+      if (!saved.ok) return saved;
+      return presence.clearRank();
+    }
+
+    async function runProfileAction(action) {
+      const result = await action();
+      try {
+        lol = readLol(await lcu.get(CHAT_ME));
+      } catch {
+      }
+      paint();
+      return result;
+    }
+
+    async function selectProfileTab(tab) {
+      profileTab = tab;
+      if (profileTab === 'banner' && skins.length === 0) skins = await loadSkins(lcu);
+      paint();
+    }
+
+    Object.assign(legacyActions, {
+      selectProfileTab,
+      applyProfileRank: (draft) => {
+        pickedTier = draft.tier;
+        steps['rank-div'] = draft.division;
+        steps['rank-queue'] = draft.queue;
+        steps.crystal = draft.crystal;
+        return runProfileAction(saveRankFromState);
+      },
+      resetProfileRank: () => runProfileAction(clearRankState),
+      removeBadges: () => runProfileAction(() => challenges.removeBadges()),
+      cloneBadge: () => runProfileAction(() => challenges.cloneFirstBadge()),
+      saveRiotId: (raw) => runProfileAction(() => riotId.save(raw)),
+      setBackground: (id) => {
+        backgroundId = id;
+        paint();
+        return background.set(id);
+      },
+      removeAllFriends: async () => {
+        const result = await removeAllFriends({ lcu, friends });
+        friends = await loadFriends(lcu);
+        paint();
+        return result;
+      },
+    });
+
     shadow.getElementById('onboard-layer').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-onboard]');
       if (!btn || onboardLock.busy) return;
@@ -1151,51 +1250,8 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       }
 
       const profileAction = {
-        'rank-save': async () => {
-          const tier = pickedTier || lol.rankedLeagueTier || 'GOLD';
-          const patch = profileRankPatch({
-            tier,
-            division: steps['rank-div'],
-            queue: steps['rank-queue'],
-            crystal: steps.crystal,
-          });
-          const previous = {
-            profile_rank_tier: settings.profile_rank_tier,
-            profile_rank_division: settings.profile_rank_division,
-            profile_rank_queue: settings.profile_rank_queue,
-            profile_rank_crystal: settings.profile_rank_crystal,
-          };
-          settings = { ...settings, ...patch };
-          const saved = await commit(patch, () => {
-            settings = { ...settings, ...previous };
-          });
-          if (!saved.ok) return saved;
-          return applyProfileRank(presence, readProfileRank(settings));
-        },
-        'rank-clear': async () => {
-          const patch = profileRankPatch({
-            tier: '',
-            division: 'I',
-            queue: QUEUES[0].id,
-            crystal: 'IRON',
-          });
-          const previous = {
-            profile_rank_tier: settings.profile_rank_tier,
-            profile_rank_division: settings.profile_rank_division,
-            profile_rank_queue: settings.profile_rank_queue,
-            profile_rank_crystal: settings.profile_rank_crystal,
-          };
-          settings = { ...settings, ...patch };
-          pickedTier = '';
-          steps['rank-div'] = 'I';
-          steps['rank-queue'] = QUEUES[0].id;
-          steps.crystal = 'IRON';
-          const saved = await commit(patch, () => {
-            settings = { ...settings, ...previous };
-          });
-          if (!saved.ok) return saved;
-          return presence.clearRank();
-        },
+        'rank-save': saveRankFromState,
+        'rank-clear': clearRankState,
         'badges-remove': () => challenges.removeBadges(),
         'badges-clone': () => challenges.cloneFirstBadge(),
         'riot-id-save': () =>
