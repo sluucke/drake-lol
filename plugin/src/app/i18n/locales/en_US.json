@@ -53,6 +53,28 @@
       "instant": "Instant",
       "seconds": "{value}s",
       "delayHelp": "A short wait leaves you a window to decline by hand, and looks less mechanical than accepting the instant the prompt renders."
+    },
+    "status": {
+      "title": "Status Message",
+      "subtitle": "Your chat presence. Line breaks work here — the client's own field is a single-line input and cannot hold them.",
+      "presence": "Presence",
+      "clientDefault": "Client default",
+      "availability": {
+        "chat": "Online",
+        "offline": "Offline",
+        "mobile": "Mobile",
+        "dnd": "Busy"
+      },
+      "presenceHelp": "Drake keeps re-applying the chosen status whenever the client resets it.",
+      "placeholder": "Type or paste your status. ASCII art welcome.",
+      "count": {
+        "one": "{chars} chars · {count} line",
+        "other": "{chars} chars · {count} lines"
+      },
+      "clear": "Clear",
+      "save": "Save",
+      "saved": "Status saved · {summary}",
+      "saveFailed": "Could not save: {reason}"
     }
   }
 }

@@ -53,6 +53,28 @@
       "instant": "Na hora",
       "seconds": "{value}s",
       "delayHelp": "Uma pequena espera deixa uma janela para recusar manualmente e parece menos mecânica do que aceitar no instante em que o aviso aparece."
+    },
+    "status": {
+      "title": "Mensagem de status",
+      "subtitle": "Sua presença no chat. Quebras de linha funcionam aqui — o campo do próprio cliente é de uma linha só e não as aceita.",
+      "presence": "Presença",
+      "clientDefault": "Padrão do cliente",
+      "availability": {
+        "chat": "Online",
+        "offline": "Offline",
+        "mobile": "Celular",
+        "dnd": "Ocupado"
+      },
+      "presenceHelp": "O Drake reaplica o status escolhido sempre que o cliente o redefine.",
+      "placeholder": "Digite ou cole seu status. ASCII art é bem-vinda.",
+      "count": {
+        "one": "{chars} caracteres · {count} linha",
+        "other": "{chars} caracteres · {count} linhas"
+      },
+      "clear": "Limpar",
+      "save": "Salvar",
+      "saved": "Status salvo · {summary}",
+      "saveFailed": "Não foi possível salvar: {reason}"
     }
   }
 }

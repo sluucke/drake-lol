@@ -33557,6 +33557,28 @@ button.bug-report-button[data-drake-toggle]:disabled {
         instant: "Instant",
         seconds: "{value}s",
         delayHelp: "A short wait leaves you a window to decline by hand, and looks less mechanical than accepting the instant the prompt renders."
+      },
+      status: {
+        title: "Status Message",
+        subtitle: "Your chat presence. Line breaks work here \u2014 the client's own field is a single-line input and cannot hold them.",
+        presence: "Presence",
+        clientDefault: "Client default",
+        availability: {
+          chat: "Online",
+          offline: "Offline",
+          mobile: "Mobile",
+          dnd: "Busy"
+        },
+        presenceHelp: "Drake keeps re-applying the chosen status whenever the client resets it.",
+        placeholder: "Type or paste your status. ASCII art welcome.",
+        count: {
+          one: "{chars} chars \xB7 {count} line",
+          other: "{chars} chars \xB7 {count} lines"
+        },
+        clear: "Clear",
+        save: "Save",
+        saved: "Status saved \xB7 {summary}",
+        saveFailed: "Could not save: {reason}"
       }
     }
   };
@@ -33617,6 +33639,28 @@ button.bug-report-button[data-drake-toggle]:disabled {
         instant: "Na hora",
         seconds: "{value}s",
         delayHelp: "Uma pequena espera deixa uma janela para recusar manualmente e parece menos mec\xE2nica do que aceitar no instante em que o aviso aparece."
+      },
+      status: {
+        title: "Mensagem de status",
+        subtitle: "Sua presen\xE7a no chat. Quebras de linha funcionam aqui \u2014 o campo do pr\xF3prio cliente \xE9 de uma linha s\xF3 e n\xE3o as aceita.",
+        presence: "Presen\xE7a",
+        clientDefault: "Padr\xE3o do cliente",
+        availability: {
+          chat: "Online",
+          offline: "Offline",
+          mobile: "Celular",
+          dnd: "Ocupado"
+        },
+        presenceHelp: "O Drake reaplica o status escolhido sempre que o cliente o redefine.",
+        placeholder: "Digite ou cole seu status. ASCII art \xE9 bem-vinda.",
+        count: {
+          one: "{chars} caracteres \xB7 {count} linha",
+          other: "{chars} caracteres \xB7 {count} linhas"
+        },
+        clear: "Limpar",
+        save: "Salvar",
+        saved: "Status salvo \xB7 {summary}",
+        saveFailed: "N\xE3o foi poss\xEDvel salvar: {reason}"
       }
     }
   };
@@ -33853,7 +33897,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/dev/Showcase.jsx
-  var import_react41 = __toESM(require_react(), 1);
+  var import_react42 = __toESM(require_react(), 1);
 
   // src/app/ui/motion.js
   var DURATION = { fast: 0.12, base: 0.18, slow: 0.28 };
@@ -34032,6 +34076,110 @@ button.bug-report-button[data-drake-toggle]:disabled {
   // src/app/ui/Select.jsx
   var import_react36 = __toESM(require_react(), 1);
   var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
+  function same(a, b) {
+    return String(a) === String(b);
+  }
+  function Select({ value, options, onChange, disabled = false, ariaLabel, className = "" }) {
+    const sfx = useSfx();
+    const [open, setOpen] = (0, import_react36.useState)(false);
+    const [rect, setRect] = (0, import_react36.useState)(null);
+    const triggerRef = (0, import_react36.useRef)(null);
+    const listRef = (0, import_react36.useRef)(null);
+    const listId = (0, import_react36.useId)();
+    const selected = options.find((o) => same(o.value, value)) || options[0] || null;
+    useEscapeLayer(open);
+    (0, import_react36.useLayoutEffect)(() => {
+      if (open && triggerRef.current) setRect(triggerRef.current.getBoundingClientRect());
+    }, [open]);
+    (0, import_react36.useEffect)(() => {
+      if (!open) return void 0;
+      const doc = triggerRef.current?.ownerDocument;
+      const win = doc?.defaultView;
+      if (!doc || !win) return void 0;
+      const onPointerDown = (event) => {
+        const path = typeof event.composedPath === "function" ? event.composedPath() : [event.target];
+        if (path.includes(triggerRef.current) || path.includes(listRef.current)) return;
+        setOpen(false);
+      };
+      const onKeyDown = (event) => {
+        if (event.key !== "Escape") return;
+        event.stopPropagation();
+        setOpen(false);
+      };
+      doc.addEventListener("pointerdown", onPointerDown, true);
+      win.addEventListener("keydown", onKeyDown, true);
+      return () => {
+        doc.removeEventListener("pointerdown", onPointerDown, true);
+        win.removeEventListener("keydown", onKeyDown, true);
+      };
+    }, [open]);
+    const pick = (option) => {
+      sfx.play(SFX.check);
+      setOpen(false);
+      if (!same(option.value, selected?.value)) onChange?.(option.value);
+    };
+    const listStyle = rect ? { position: "fixed", top: rect.bottom + 4, left: rect.left, minWidth: rect.width } : void 0;
+    return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: ["drk-select", open && "is-open", disabled && "is-disabled", className].filter(Boolean).join(" "), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(
+        "button",
+        {
+          ref: triggerRef,
+          type: "button",
+          className: "drk-select__trigger",
+          "aria-haspopup": "listbox",
+          "aria-expanded": open,
+          "aria-controls": listId,
+          "aria-label": ariaLabel,
+          disabled,
+          onMouseEnter: () => {
+            if (!disabled) sfx.play(SFX.hover);
+          },
+          onClick: () => {
+            if (disabled) return;
+            if (!open) sfx.play(SFX.select);
+            setOpen(!open);
+          },
+          children: [
+            selected?.icon && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("img", { className: "drk-select__icon", src: selected.icon, alt: "" }),
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { className: "drk-select__value", children: selected?.label ?? "" }),
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { className: "drk-select__chevron", "aria-hidden": "true" })
+          ]
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(Layer, { children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(AnimatePresence, { children: open && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(
+        motion2.ul,
+        {
+          ref: listRef,
+          id: listId,
+          role: "listbox",
+          className: "drk-select__list",
+          style: listStyle,
+          initial: { opacity: 0, y: -4 },
+          animate: { opacity: 1, y: 0 },
+          exit: { opacity: 0, y: -4 },
+          transition: { duration: DURATION.fast, ease: EASE_OUT },
+          children: options.map((option) => {
+            const isSelected = same(option.value, selected?.value);
+            return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(
+              "li",
+              {
+                role: "option",
+                "aria-selected": isSelected,
+                className: ["drk-select__option", isSelected && "is-selected"].filter(Boolean).join(" "),
+                onClick: () => pick(option),
+                children: [
+                  option.icon && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("img", { className: "drk-select__icon", src: option.icon, alt: "" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { children: option.label })
+                ]
+              },
+              String(option.value)
+            );
+          })
+        },
+        "list"
+      ) }) })
+    ] });
+  }
 
   // src/app/ui/Skeleton.jsx
   var import_jsx_runtime13 = __toESM(require_jsx_runtime(), 1);
@@ -34084,15 +34232,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/ui/Tabs.jsx
-  var import_react37 = __toESM(require_react(), 1);
+  var import_react38 = __toESM(require_react(), 1);
   var import_jsx_runtime15 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Toggle.jsx
-  var import_react38 = __toESM(require_react(), 1);
+  var import_react39 = __toESM(require_react(), 1);
   var import_jsx_runtime16 = __toESM(require_jsx_runtime(), 1);
   function Toggle({ checked, onChange, label, help, disabled = false, id: id3 }) {
     const sfx = useSfx();
-    const autoId = (0, import_react38.useId)();
+    const autoId = (0, import_react39.useId)();
     const switchId = id3 || autoId;
     const helpId = help ? `${switchId}-help` : void 0;
     return /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: ["drk-toggle", disabled && "is-disabled"].filter(Boolean).join(" "), children: [
@@ -34123,25 +34271,25 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/ui/Tooltip.jsx
-  var import_react40 = __toESM(require_react(), 1);
+  var import_react41 = __toESM(require_react(), 1);
   var import_jsx_runtime17 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/dev/Showcase.jsx
   var import_jsx_runtime18 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/shell/LegacyScreen.jsx
-  var import_react44 = __toESM(require_react(), 1);
+  var import_react46 = __toESM(require_react(), 1);
 
   // src/app/hooks/useReducedMotion.js
-  var import_react42 = __toESM(require_react(), 1);
+  var import_react43 = __toESM(require_react(), 1);
   var QUERY = "(prefers-reduced-motion: reduce)";
   function query() {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null;
     return window.matchMedia(QUERY);
   }
   function useReducedMotion() {
-    const [reduced, setReduced] = (0, import_react42.useState)(() => !!query()?.matches);
-    (0, import_react42.useEffect)(() => {
+    const [reduced, setReduced] = (0, import_react43.useState)(() => !!query()?.matches);
+    (0, import_react43.useEffect)(() => {
       const mql = query();
       if (!mql) return void 0;
       const onChange = () => setReduced(!!mql.matches);
@@ -34152,7 +34300,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/screens/AutoAccept.jsx
-  var import_react43 = __toESM(require_react(), 1);
+  var import_react44 = __toESM(require_react(), 1);
 
   // src/app/screens/common.jsx
   var import_jsx_runtime19 = __toESM(require_jsx_runtime(), 1);
@@ -34209,8 +34357,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const { values, trayDown, save } = useSettings();
     const enabled = !!values.auto_accept;
     const saved = values.auto_accept_delay_ms || 0;
-    const [delay2, setDelay] = (0, import_react43.useState)(saved);
-    (0, import_react43.useEffect)(() => setDelay(saved), [saved]);
+    const [delay2, setDelay] = (0, import_react44.useState)(saved);
+    (0, import_react44.useEffect)(() => setDelay(saved), [saved]);
     return /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "drk-screen__stack", children: [
       /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(ScreenHeader, { title: t("screens.autoAccept.title"), subtitle: t("screens.autoAccept.subtitle") }),
       /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(Card, { children: [
@@ -34239,23 +34387,103 @@ button.bug-report-button[data-drake-toggle]:disabled {
     ] });
   }
 
+  // src/app/screens/Status.jsx
+  var import_react45 = __toESM(require_react(), 1);
+  var import_jsx_runtime21 = __toESM(require_jsx_runtime(), 1);
+  var GRIP = 16;
+  function describeStatusText(text, t) {
+    const lines = text === "" ? 0 : text.split("\n").length;
+    return t("screens.status.count", { chars: text.length, count: lines });
+  }
+  function StatusScreen() {
+    const t = useT();
+    const store = useDrakeStore();
+    const actions = useLegacyActions();
+    const { values, save } = useSettings();
+    const remote = useDrake((state) => state.session.statusText);
+    const [draft, setDraft] = (0, import_react45.useState)(remote);
+    const [saving, setSaving] = (0, import_react45.useState)(false);
+    const boxRef = (0, import_react45.useRef)(null);
+    (0, import_react45.useEffect)(() => setDraft(remote), [remote]);
+    (0, import_react45.useEffect)(() => {
+      autoSize(boxRef.current, { min: 120, max: Math.round(window.innerHeight * 0.46) });
+    }, [draft]);
+    const options = [
+      { value: "", label: t("screens.status.clientDefault") },
+      ...AVAILABILITIES.map((entry) => ({ value: entry.id, label: t(`screens.status.availability.${entry.id}`) }))
+    ];
+    const summary = describeStatusText(draft, t);
+    async function onSave() {
+      setSaving(true);
+      const result = await actions.saveStatus(draft);
+      setSaving(false);
+      store.getState().setStatusLine(
+        result.ok ? { text: t("screens.status.saved", { summary }), tone: "good" } : { text: t("screens.status.saveFailed", { reason: result.reason }), tone: "bad" }
+      );
+    }
+    return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "drk-screen__stack", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(ScreenHeader, { title: t("screens.status.title"), subtitle: t("screens.status.subtitle") }),
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Card, { children: /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Field, { label: t("screens.status.presence"), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+          Select,
+          {
+            value: values.presence_availability || "",
+            options,
+            ariaLabel: t("screens.status.presence"),
+            onChange: (next) => {
+              if (next === "") return;
+              save({ presence_availability: next });
+            }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Help, { children: t("screens.status.presenceHelp") })
+      ] }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(Card, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+          "textarea",
+          {
+            ref: boxRef,
+            className: "drk-status-box",
+            spellCheck: false,
+            "aria-label": t("screens.status.title"),
+            placeholder: t("screens.status.placeholder"),
+            value: draft,
+            onChange: (event) => setDraft(event.target.value),
+            onMouseDown: (event) => {
+              const box = event.currentTarget;
+              const { offsetX, offsetY } = event.nativeEvent;
+              if (offsetX > box.clientWidth - GRIP && offsetY > box.clientHeight - GRIP) markManual(box);
+            }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)("div", { className: "drk-actions", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "drk-status-count", "aria-live": "polite", children: summary }),
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "drk-actions__spacer" }),
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { variant: "secondary", onClick: () => setDraft(""), children: t("screens.status.clear") }),
+          /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Button, { disabled: saving, onClick: onSave, children: t("screens.status.save") })
+        ] })
+      ] })
+    ] });
+  }
+
   // src/app/screens/registry.jsx
   var REACT_SCREENS = {
-    "auto-accept": AutoAcceptScreen
+    "auto-accept": AutoAcceptScreen,
+    status: StatusScreen
   };
   function isReactScreen(id3) {
     return Object.prototype.hasOwnProperty.call(REACT_SCREENS, id3);
   }
 
   // src/app/shell/LegacyScreen.jsx
-  var import_jsx_runtime21 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime22 = __toESM(require_jsx_runtime(), 1);
   function LegacyScreen({ screens = REACT_SCREENS }) {
-    const contentRef = (0, import_react44.useRef)(null);
-    const firstRef = (0, import_react44.useRef)(true);
+    const contentRef = (0, import_react46.useRef)(null);
+    const firstRef = (0, import_react46.useRef)(true);
     const screenId = useDrake((state) => state.ui.screen);
     const reduced = useReducedMotion();
     const Screen = screens[screenId] || null;
-    (0, import_react44.useEffect)(() => {
+    (0, import_react46.useEffect)(() => {
       if (firstRef.current) {
         firstRef.current = false;
         return;
@@ -34263,25 +34491,25 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (Screen || reduced || !contentRef.current) return;
       animate(contentRef.current, { opacity: [0, 1], y: [8, 0] }, { duration: DURATION.base, ease: EASE_OUT });
     }, [screenId, reduced, Screen]);
-    return /* @__PURE__ */ (0, import_jsx_runtime21.jsxs)(import_jsx_runtime21.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { ref: contentRef, id: "content", className: "content drk-legacy-screen", hidden: !!Screen }),
-      Screen && /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(import_jsx_runtime22.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { ref: contentRef, id: "content", className: "content drk-legacy-screen", hidden: !!Screen }),
+      Screen && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
         motion2.div,
         {
           className: "content drk-screen",
           initial: reduced ? false : { opacity: 0, y: 8 },
           animate: { opacity: 1, y: 0 },
           transition: { duration: DURATION.base, ease: EASE_OUT },
-          children: /* @__PURE__ */ (0, import_jsx_runtime21.jsx)(Screen, {})
+          children: /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(Screen, {})
         },
         screenId
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("div", { id: "onboard-layer", className: "onboard-layer", hidden: true })
+      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { id: "onboard-layer", className: "onboard-layer", hidden: true })
     ] });
   }
 
   // src/app/shell/ShellFooter.jsx
-  var import_jsx_runtime22 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime23 = __toESM(require_jsx_runtime(), 1);
   function ShellFooter() {
     const t = useT();
     const hostLabel = useDrake((state) => state.session.hostLabel);
@@ -34289,9 +34517,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const trayDown = useDrake((state) => state.settings.trayDown);
     const text = line ? line.text : t(trayDown ? "shell.footer.trayDown" : "shell.footer.trayUp");
     const tone = line ? line.tone : trayDown ? "bad" : "good";
-    return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("footer", { className: "drk-footer", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "drk-footer__host", children: hostLabel || "\u2014" }),
-      /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(AnimatePresence, { mode: "wait", initial: false, children: /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("footer", { className: "drk-footer", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "drk-footer__host", children: hostLabel || "\u2014" }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(AnimatePresence, { mode: "wait", initial: false, children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
         motion2.span,
         {
           role: "status",
@@ -34301,7 +34529,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           exit: { opacity: 0, y: -4 },
           transition: { duration: DURATION.fast },
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("span", { className: "drk-footer__dot", "aria-hidden": "true" }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "drk-footer__dot", "aria-hidden": "true" }),
             text
           ]
         },
@@ -34311,11 +34539,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/shell/CreditsModal.jsx
-  var import_jsx_runtime23 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime24 = __toESM(require_jsx_runtime(), 1);
   function CreditLink({ entry, large = false }) {
     const sfx = useSfx();
     const actions = useLegacyActions();
-    return /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(
       "button",
       {
         type: "button",
@@ -34330,9 +34558,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     );
   }
   function CreditRow({ label, children }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "drk-credits__row", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("dt", { className: "drk-credits__label", children: label }),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("dd", { className: "drk-credits__value", children })
+    return /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { className: "drk-credits__row", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("dt", { className: "drk-credits__label", children: label }),
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("dd", { className: "drk-credits__value", children })
     ] });
   }
   function CreditsModal() {
@@ -34340,20 +34568,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const store = useDrakeStore();
     const actions = useLegacyActions();
     const open = useDrake((state) => state.ui.creditsOpen);
-    return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(Modal, { open, onClose: () => store.getState().setCreditsOpen(false), title: t("shell.credits.title"), width: 440, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { className: "drk-credits__disclaimer", children: t("shell.credits.disclaimer") }),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("dl", { className: "drk-credits__list", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CreditRow, { label: t("shell.credits.createdBy"), children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CreditLink, { entry: CREDITS.createdBy, large: true }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CreditRow, { label: t("shell.credits.specialThanks"), children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CreditLink, { entry: CREDITS.specialThanks, large: true }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CreditRow, { label: t("shell.credits.inspiredBy"), children: CREDITS.inspiredBy.map((entry) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CreditLink, { entry }, entry.href)) }),
-        /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CreditRow, { label: t("shell.credits.assets"), children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(CreditLink, { entry: CREDITS.assets }) })
+    return /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(Modal, { open, onClose: () => store.getState().setCreditsOpen(false), title: t("shell.credits.title"), width: 440, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("p", { className: "drk-credits__disclaimer", children: t("shell.credits.disclaimer") }),
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("dl", { className: "drk-credits__list", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(CreditRow, { label: t("shell.credits.createdBy"), children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(CreditLink, { entry: CREDITS.createdBy, large: true }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(CreditRow, { label: t("shell.credits.specialThanks"), children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(CreditLink, { entry: CREDITS.specialThanks, large: true }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(CreditRow, { label: t("shell.credits.inspiredBy"), children: CREDITS.inspiredBy.map((entry) => /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(CreditLink, { entry }, entry.href)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(CreditRow, { label: t("shell.credits.assets"), children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(CreditLink, { entry: CREDITS.assets }) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "drk-credits__actions", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Button, { onClick: () => actions.openUrl(CREDITS.repoUrl), children: t("shell.credits.github") }) })
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("div", { className: "drk-credits__actions", children: /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(Button, { onClick: () => actions.openUrl(CREDITS.repoUrl), children: t("shell.credits.github") }) })
     ] });
   }
 
   // src/app/shell/Sidebar.jsx
-  var import_jsx_runtime24 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime25 = __toESM(require_jsx_runtime(), 1);
   function Sidebar() {
     const t = useT();
     const sfx = useSfx();
@@ -34362,9 +34590,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const overlay = useDrake((state) => state.ui.overlay);
     const tourIndex = useDrake((state) => state.ui.tourIndex);
     const tourScreen = overlay === "tour" ? TOUR_STEPS[tourIndex]?.screen : null;
-    return /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("nav", { className: "drk-sidebar", role: "tablist", "aria-orientation": "vertical", children: SCREENS.map((item, index) => {
+    return /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("nav", { className: "drk-sidebar", role: "tablist", "aria-orientation": "vertical", children: SCREENS.map((item, index) => {
       const active = item.id === screenId;
-      return /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(
+      return /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(
         motion2.button,
         {
           type: "button",
@@ -34382,8 +34610,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
             actions.navigate(item.id);
           },
           children: [
-            active && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(motion2.span, { className: "drk-sidebar__indicator", layoutId: "drk-sidebar-indicator", transition: SPRING }),
-            /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("span", { className: "drk-sidebar__label", children: t(`shell.nav.${item.id}`) })
+            active && /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(motion2.span, { className: "drk-sidebar__indicator", layoutId: "drk-sidebar-indicator", transition: SPRING }),
+            /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("span", { className: "drk-sidebar__label", children: t(`shell.nav.${item.id}`) })
           ]
         },
         item.id
@@ -34392,7 +34620,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/shell/PanelFrame.jsx
-  var import_jsx_runtime25 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime26 = __toESM(require_jsx_runtime(), 1);
   var SCRIM = {
     open: { opacity: 1, visibility: "visible", transition: { duration: DURATION.base } },
     closed: { opacity: 0, transition: { duration: DURATION.fast }, transitionEnd: { visibility: "hidden" } }
@@ -34407,7 +34635,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const store = useDrakeStore();
     const actions = useLegacyActions();
     const open = useDrake((state) => state.ui.panelOpen);
-    return /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(
       motion2.div,
       {
         className: "drk-panel",
@@ -34419,13 +34647,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
           if (event.target === event.currentTarget) actions.close();
         },
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(motion2.div, { className: "drk-panel__window", role: "dialog", "aria-label": t("shell.title"), variants: WINDOW, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("header", { className: "drk-panel__titlebar", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("img", { className: "drk-panel__mark", src: DRAKE_ICON, alt: "", "aria-hidden": "true" }),
-              /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("h1", { className: "drk-panel__title", children: t("shell.title") }),
-              /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("kbd", { className: "drk-panel__hint", children: t("shell.hotkeyHint") }),
-              /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: "drk-panel__actions", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(motion2.div, { className: "drk-panel__window", role: "dialog", "aria-label": t("shell.title"), variants: WINDOW, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("header", { className: "drk-panel__titlebar", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("img", { className: "drk-panel__mark", src: DRAKE_ICON, alt: "", "aria-hidden": "true" }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h1", { className: "drk-panel__title", children: t("shell.title") }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("kbd", { className: "drk-panel__hint", children: t("shell.hotkeyHint") }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "drk-panel__actions", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(
                   "button",
                   {
                     type: "button",
@@ -34439,7 +34667,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
                     children: "?"
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(
                   "button",
                   {
                     type: "button",
@@ -34455,24 +34683,24 @@ button.bug-report-button[data-drake-toggle]:disabled {
                 )
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: "drk-panel__body", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(Sidebar, {}),
-              /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(LegacyScreen, {})
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "drk-panel__body", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Sidebar, {}),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(LegacyScreen, {})
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(ShellFooter, {})
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(ShellFooter, {})
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(CreditsModal, {})
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(CreditsModal, {})
         ]
       }
     );
   }
 
   // src/app/App.jsx
-  var import_jsx_runtime26 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime27 = __toESM(require_jsx_runtime(), 1);
   function App({ sfx, portalTarget, store, actions }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(AppProviders, { sfx, portalTarget, store, actions, children: /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "drake-app", "data-drake-app": "", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(PanelFrame, {}),
-      false ? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(DevShowcase, {}) : null
+    return /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(AppProviders, { sfx, portalTarget, store, actions, children: /* @__PURE__ */ (0, import_jsx_runtime27.jsxs)("div", { className: "drake-app", "data-drake-app": "", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(PanelFrame, {}),
+      false ? /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(DevShowcase, {}) : null
     ] }) });
   }
 
@@ -34525,7 +34753,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default, shell_default, Segmented_default, TextInput_default, screens_default];
 
   // src/app/main.jsx
-  var import_jsx_runtime27 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime28 = __toESM(require_jsx_runtime(), 1);
   var APP_LAYER_ID = "drake-app-layer";
   var mounted = /* @__PURE__ */ new WeakMap();
   function startApp(shadow, { sfx, store, actions } = {}) {
@@ -34534,7 +34762,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     layer.id = APP_LAYER_ID;
     const app = mountReactRoot(shadow, {
       styles: APP_STYLES,
-      element: /* @__PURE__ */ (0, import_jsx_runtime27.jsx)(App, { sfx, portalTarget: layer, store, actions })
+      element: /* @__PURE__ */ (0, import_jsx_runtime28.jsx)(App, { sfx, portalTarget: layer, store, actions })
     });
     shadow.appendChild(layer);
     const result = {
@@ -35219,7 +35447,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         });
       }
       const BOX = { min: 120, max: Math.round(window.innerHeight * 0.46) };
-      const GRIP = 16;
+      const GRIP2 = 16;
       function updateCount() {
         const el = shadow.getElementById("status-count");
         if (el) el.textContent = describeStatus(statusText);
@@ -35294,7 +35522,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       content.addEventListener("mousedown", (e) => {
         const box = e.target;
         if (box.id !== "status-text") return;
-        const inGrip = e.offsetX > box.clientWidth - GRIP && e.offsetY > box.clientHeight - GRIP;
+        const inGrip = e.offsetX > box.clientWidth - GRIP2 && e.offsetY > box.clientHeight - GRIP2;
         if (inGrip) markManual(box);
       });
       function updateSkinGrid() {
