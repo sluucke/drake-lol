@@ -10,6 +10,7 @@ export function createSessionSlice({ appVersion }) {
       updateUi: { phase: 'idle' },
       hostLabel: '',
       statusLine: null,
+      revealTiming: { lastMs: 0, lastConcurrency: 1 },
     },
 
     setLocale(locale) {

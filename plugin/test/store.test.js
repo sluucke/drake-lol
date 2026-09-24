@@ -125,3 +125,12 @@ describe('shell state', () => {
     expect(store.getState().ui.escapeLayers).toBe(0);
   });
 });
+
+describe('reveal timing', () => {
+  it('defaults and syncs from the legacy module', () => {
+    const store = createDrakeStore();
+    expect(store.getState().session.revealTiming).toEqual({ lastMs: 0, lastConcurrency: 1 });
+    store.getState().syncLegacy({ revealTiming: { lastMs: 9000, lastConcurrency: 2 } });
+    expect(store.getState().session.revealTiming).toEqual({ lastMs: 9000, lastConcurrency: 2 });
+  });
+});

@@ -17738,8 +17738,8 @@ ${BUILD_PANEL_CSS}
     if (puuid) {
       try {
         const summoner = await lcu2.get(SUMMONER_BY_PUUID_ROUTE(puuid));
-        const resolved = formatRiotId(summoner);
-        if (resolved) return resolved;
+        const resolved2 = formatRiotId(summoner);
+        if (resolved2) return resolved2;
       } catch {
       }
     }
@@ -20608,10 +20608,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
     if (direct) return { riotId: direct, puuid: "" };
     if (resolvedPuuid) {
       try {
-        const resolved = await lcu2.get(SUMMONER_BY_PUUID_ROUTE(resolvedPuuid));
+        const resolved2 = await lcu2.get(SUMMONER_BY_PUUID_ROUTE(resolvedPuuid));
         return {
-          riotId: formatRiotId(resolved),
-          puuid: resolved?.puuid || resolvedPuuid
+          riotId: formatRiotId(resolved2),
+          puuid: resolved2?.puuid || resolvedPuuid
         };
       } catch {
         return { riotId: "", puuid: resolvedPuuid };
@@ -20619,10 +20619,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     if (!player?.summonerId) return { riotId: "", puuid: "" };
     try {
-      const resolved = await lcu2.get(SUMMONER_BY_ID_ROUTE(player.summonerId));
+      const resolved2 = await lcu2.get(SUMMONER_BY_ID_ROUTE(player.summonerId));
       return {
-        riotId: formatRiotId(resolved),
-        puuid: resolved?.puuid || ""
+        riotId: formatRiotId(resolved2),
+        puuid: resolved2?.puuid || ""
       };
     } catch {
       return { riotId: "", puuid: "" };
@@ -27113,9 +27113,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const [token, fallback] = parseCSSVariable(current);
     if (!token)
       return;
-    const resolved = window.getComputedStyle(element).getPropertyValue(token);
-    if (resolved) {
-      const trimmed = resolved.trim();
+    const resolved2 = window.getComputedStyle(element).getPropertyValue(token);
+    if (resolved2) {
+      const trimmed = resolved2.trim();
       return isNumericalString(trimmed) ? parseFloat(trimmed) : trimmed;
     }
     return isCSSVariableToken(fallback) ? getVariableValue(fallback, element, depth + 1) : fallback;
@@ -27179,8 +27179,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return isKeyframesTarget(v) ? v[v.length - 1] || 0 : v;
   }
   function setTarget(visualElement, definition) {
-    const resolved = resolveVariant(visualElement, definition);
-    let { transitionEnd = {}, transition = {}, ...target } = resolved || {};
+    const resolved2 = resolveVariant(visualElement, definition);
+    let { transitionEnd = {}, transition = {}, ...target } = resolved2 || {};
     target = { ...target, ...transitionEnd };
     for (const key in target) {
       const value = resolveFinalValueInKeyframes(target[key]);
@@ -27293,12 +27293,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
 
   // node_modules/motion-dom/dist/es/animation/interfaces/visual-element-variant.mjs
   function animateVariant(visualElement, variant, options = {}) {
-    const resolved = resolveVariant(visualElement, variant, options.type === "exit" ? visualElement.presenceContext?.custom : void 0);
-    let { transition = visualElement.getDefaultTransition() || {} } = resolved || {};
+    const resolved2 = resolveVariant(visualElement, variant, options.type === "exit" ? visualElement.presenceContext?.custom : void 0);
+    let { transition = visualElement.getDefaultTransition() || {} } = resolved2 || {};
     if (options.transitionOverride) {
       transition = options.transitionOverride;
     }
-    const getAnimation = resolved ? () => Promise.all(animateTarget(visualElement, resolved, options)) : () => Promise.resolve();
+    const getAnimation = resolved2 ? () => Promise.all(animateTarget(visualElement, resolved2, options)) : () => Promise.resolve();
     const getChildAnimations = visualElement.variantChildren && visualElement.variantChildren.size ? (forwardDelay = 0) => {
       const { delayChildren = 0, staggerChildren, staggerDirection } = transition;
       return animateChildren(visualElement, variant, forwardDelay, delayChildren, staggerChildren, staggerDirection, options);
@@ -27569,9 +27569,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (typeof keyframe === "string") {
           keyframe = keyframe.trim();
           if (isCSSVariableToken(keyframe)) {
-            const resolved = getVariableValue(keyframe, element.current);
-            if (resolved !== void 0) {
-              unresolvedKeyframes[i] = resolved;
+            const resolved2 = getVariableValue(keyframe, element.current);
+            if (resolved2 !== void 0) {
+              unresolvedKeyframes[i] = resolved2;
             }
             if (i === unresolvedKeyframes.length - 1) {
               this.finalKeyframe = keyframe;
@@ -29158,9 +29158,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let isInitialRender = true;
     let wasReset = false;
     const buildResolvedTypeValues = (type) => (acc, definition) => {
-      const resolved = resolveVariant(visualElement, definition, type === "exit" ? visualElement.presenceContext?.custom : void 0);
-      if (resolved) {
-        const { transition, transitionEnd, ...target } = resolved;
+      const resolved2 = resolveVariant(visualElement, definition, type === "exit" ? visualElement.presenceContext?.custom : void 0);
+      if (resolved2) {
+        const { transition, transitionEnd, ...target } = resolved2;
         acc = { ...acc, ...target, ...transitionEnd };
       }
       return acc;
@@ -31496,9 +31496,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     if (variantToSet && typeof variantToSet !== "boolean" && !isAnimationControls(variantToSet)) {
       const list = Array.isArray(variantToSet) ? variantToSet : [variantToSet];
       for (let i = 0; i < list.length; i++) {
-        const resolved = resolveVariantFromProps(props, list[i]);
-        if (resolved) {
-          const { transitionEnd, transition, ...target } = resolved;
+        const resolved2 = resolveVariantFromProps(props, list[i]);
+        if (resolved2) {
+          const { transitionEnd, transition, ...target } = resolved2;
           for (const key in target) {
             let valueTarget = target[key];
             if (Array.isArray(valueTarget)) {
@@ -31829,9 +31829,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (this.isExitComplete) {
           const { initial, custom } = this.node.getProps();
           if (typeof initial === "string" || typeof initial === "object" && initial !== null && !Array.isArray(initial)) {
-            const resolved = resolveVariant(this.node, initial, custom);
-            if (resolved) {
-              const { transition, transitionEnd, ...target } = resolved;
+            const resolved2 = resolveVariant(this.node, initial, custom);
+            if (resolved2) {
+              const { transition, transitionEnd, ...target } = resolved2;
               for (const key in target) {
                 this.node.getValue(key)?.jump(target[key]);
               }
@@ -33712,7 +33712,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
         statusText: "",
         updateUi: { phase: "idle" },
         hostLabel: "",
-        statusLine: null
+        statusLine: null,
+        revealTiming: { lastMs: 0, lastConcurrency: 1 }
       },
       setLocale(locale) {
         set((state) => ({ session: { ...state.session, locale } }));
@@ -33767,14 +33768,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
       ...settingsSlice(set, get),
       ...sessionSlice(set, get),
       ...uiSlice(set, get),
-      syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, updateUi, statusText, appVersion: version, idle }) {
+      syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, updateUi, statusText, appVersion: version, idle, revealTiming }) {
         set((state) => ({
           settings: {
             ...state.settings,
             ...values ? { values: { ...values } } : {},
             ...trayDown === void 0 ? {} : { trayDown: !!trayDown }
           },
-          session: { ...state.session, ...defined({ updateUi, statusText, appVersion: version, idle }) },
+          session: { ...state.session, ...defined({ updateUi, statusText, appVersion: version, idle, revealTiming }) },
           ui: { ...state.ui, ...defined({ screen, overlay, tourIndex }) }
         }));
       }
@@ -33793,13 +33794,22 @@ button.bug-report-button[data-drake-toggle]:disabled {
 
   // src/app/shell/LegacyActions.jsx
   var import_react30 = __toESM(require_react(), 1);
+  var resolved = async () => ({ ok: true });
   var NOOP_ACTIONS = {
     navigate() {
     },
     close() {
     },
     openUrl() {
-    }
+    },
+    setSettings: resolved,
+    saveStatus: resolved,
+    revealLobby: async () => ({ ok: true, count: 0 }),
+    dodge: resolved,
+    checkUpdates: async () => {
+    },
+    installUpdate: resolved,
+    restartClient: resolved
   };
   var LegacyActionsContext = (0, import_react30.createContext)(NOOP_ACTIONS);
   function useLegacyActions() {
@@ -34031,23 +34041,41 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return reduced;
   }
 
+  // src/app/screens/registry.jsx
+  var REACT_SCREENS = {};
+  function isReactScreen(id3) {
+    return Object.prototype.hasOwnProperty.call(REACT_SCREENS, id3);
+  }
+
   // src/app/shell/LegacyScreen.jsx
   var import_jsx_runtime19 = __toESM(require_jsx_runtime(), 1);
-  function LegacyScreen() {
+  function LegacyScreen({ screens = REACT_SCREENS }) {
     const contentRef = (0, import_react42.useRef)(null);
     const firstRef = (0, import_react42.useRef)(true);
     const screenId = useDrake((state) => state.ui.screen);
     const reduced = useReducedMotion();
+    const Screen = screens[screenId] || null;
     (0, import_react42.useEffect)(() => {
       if (firstRef.current) {
         firstRef.current = false;
         return;
       }
-      if (reduced || !contentRef.current) return;
+      if (Screen || reduced || !contentRef.current) return;
       animate(contentRef.current, { opacity: [0, 1], y: [8, 0] }, { duration: DURATION.base, ease: EASE_OUT });
-    }, [screenId, reduced]);
+    }, [screenId, reduced, Screen]);
     return /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(import_jsx_runtime19.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { ref: contentRef, id: "content", className: "content drk-legacy-screen" }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { ref: contentRef, id: "content", className: "content drk-legacy-screen", hidden: !!Screen }),
+      Screen && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
+        motion2.div,
+        {
+          className: "content drk-screen",
+          initial: reduced ? false : { opacity: 0, y: 8 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: DURATION.base, ease: EASE_OUT },
+          children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Screen, {})
+        },
+        screenId
+      ),
       /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { id: "onboard-layer", className: "onboard-layer", hidden: true })
     ] });
   }
@@ -34438,7 +34466,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
         updateUi,
         statusText,
         appVersion,
-        idle: inGameIdle
+        idle: inGameIdle,
+        revealTiming: { lastMs: teamRevealLastLoadMs, lastConcurrency: teamRevealLastConcurrency }
       });
     }
     const ui2 = mountUI({
@@ -34624,15 +34653,17 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (showDodge) startDodgeReposition();
     }
     async function runDodge(btn) {
-      if (!btn || dodgeBusy || btn.disabled) {
+      if (dodgeBusy || btn && btn.disabled) {
         console.log(TAG9, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
-        return;
+        return { ok: false, busy: true, reason: "" };
       }
       dodgeBusy = true;
-      btn.disabled = true;
-      btn.textContent = "Dodging\u2026";
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Dodging\u2026";
+      }
       say("Dodging\u2026", true);
-      console.log(TAG9, "dodge click", btn.id);
+      console.log(TAG9, "dodge click", btn?.id);
       if (stopDodgeReposition) {
         stopDodgeReposition();
         stopDodgeReposition = null;
@@ -34642,7 +34673,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
         console.log(TAG9, "dodge result", result);
         const msg = result.ok ? `Dodged champ select${result.detail ? ` (${result.detail})` : ""}` : result.reason;
         say(msg, result.ok);
-        btn.textContent = result.ok ? "Dodged!" : "Failed";
+        if (btn) btn.textContent = result.ok ? "Dodged!" : "Failed";
+        return result;
       } finally {
         resetDodgeUi({ keepLabel: true });
         if (champSelectActive && settings.queue_dodge_in_client !== false) startDodgeReposition();
@@ -34746,7 +34778,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
       function paint() {
         syncStore();
-        if (screen === "settings") {
+        if (isReactScreen(screen)) {
+          content.innerHTML = "";
+        } else if (screen === "settings") {
           content.innerHTML = renderSettings(settings, {
             disabled: trayDown,
             version: appVersion,
@@ -34986,6 +35020,58 @@ button.bug-report-button[data-drake-toggle]:disabled {
         await goToScreen(id3);
         paint();
       };
+      function applySettingSideEffects(keys) {
+        if (keys.includes("queue_team_reveal_in_client") && teamRevealDom) {
+          teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+        }
+        if (keys.includes("queue_dodge_in_client")) {
+          syncDodgeDockVisibility();
+        }
+      }
+      function applySettingsPatch(patch) {
+        const keys = Object.keys(patch);
+        const previous = Object.fromEntries(keys.map((key) => [key, settings[key]]));
+        settings = { ...settings, ...patch };
+        applySettingSideEffects(keys);
+        paint();
+        return commit(patch, () => {
+          settings = { ...settings, ...previous };
+          applySettingSideEffects(keys);
+        });
+      }
+      async function revealLobby(providerId) {
+        let region = "";
+        try {
+          region = (await lcu2.get("/riotclient/region-locale")).region || "";
+        } catch {
+        }
+        const reveal = makeReveal({
+          lcu: lcu2,
+          region,
+          open: (url) => opener.open(url).then((r) => {
+            if (!r.ok) say(r.reason, false);
+          })
+        });
+        return reveal.reveal(providerId);
+      }
+      async function installUpdate() {
+        const result = await updater.apply();
+        if (!result.ok) {
+          trayDown = result.reason.includes("not running");
+          updateUi = { phase: "error", message: result.reason };
+          paint();
+        }
+        return result;
+      }
+      Object.assign(legacyActions, {
+        setSettings: applySettingsPatch,
+        saveStatus: (text) => status.write(text),
+        revealLobby,
+        dodge: () => runDodge(null),
+        checkUpdates: () => runUpdateCheck(),
+        installUpdate,
+        restartClient: () => restarter.restart()
+      });
       shadow.getElementById("onboard-layer").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-onboard]");
         if (!btn || onboardLock.busy) return;

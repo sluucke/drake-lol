@@ -68,6 +68,7 @@ import { wireDrakeSelects } from './drakeSelect.js';
 import { startApp } from '../app/main.jsx';
 import { createDrakeStore } from '../app/store/createDrakeStore.js';
 import { loadLocale } from '../app/i18n/loadLocale.js';
+import { isReactScreen } from '../app/screens/registry.jsx';
 
 const TAG = '[Drake]';
 
@@ -208,6 +209,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       statusText,
       appVersion,
       idle: inGameIdle,
+      revealTiming: { lastMs: teamRevealLastLoadMs, lastConcurrency: teamRevealLastConcurrency },
     });
   }
 
@@ -418,15 +420,17 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   }
 
   async function runDodge(btn) {
-    if (!btn || dodgeBusy || btn.disabled) {
+    if (dodgeBusy || (btn && btn.disabled)) {
       console.log(TAG, 'dodge ignored', { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
-      return;
+      return { ok: false, busy: true, reason: '' };
     }
     dodgeBusy = true;
-    btn.disabled = true;
-    btn.textContent = 'Dodging…';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Dodging…';
+    }
     say('Dodging…', true);
-    console.log(TAG, 'dodge click', btn.id);
+    console.log(TAG, 'dodge click', btn?.id);
     if (stopDodgeReposition) {
       stopDodgeReposition();
       stopDodgeReposition = null;
@@ -438,7 +442,8 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         ? `Dodged champ select${result.detail ? ` (${result.detail})` : ''}`
         : result.reason;
       say(msg, result.ok);
-      btn.textContent = result.ok ? 'Dodged!' : 'Failed';
+      if (btn) btn.textContent = result.ok ? 'Dodged!' : 'Failed';
+      return result;
     } finally {
       resetDodgeUi({ keepLabel: true });
       if (champSelectActive && settings.queue_dodge_in_client !== false) startDodgeReposition();
@@ -552,7 +557,9 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
 
     function paint() {
       syncStore();
-      if (screen === 'settings') {
+      if (isReactScreen(screen)) {
+        content.innerHTML = '';
+      } else if (screen === 'settings') {
         content.innerHTML = renderSettings(settings, {
           disabled: trayDown,
           version: appVersion,
@@ -815,6 +822,64 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       await goToScreen(id);
       paint();
     };
+
+    function applySettingSideEffects(keys) {
+      if (keys.includes('queue_team_reveal_in_client') && teamRevealDom) {
+        teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+      }
+      if (keys.includes('queue_dodge_in_client')) {
+        syncDodgeDockVisibility();
+      }
+    }
+
+    function applySettingsPatch(patch) {
+      const keys = Object.keys(patch);
+      const previous = Object.fromEntries(keys.map((key) => [key, settings[key]]));
+      settings = { ...settings, ...patch };
+      applySettingSideEffects(keys);
+      paint();
+      return commit(patch, () => {
+        settings = { ...settings, ...previous };
+        applySettingSideEffects(keys);
+      });
+    }
+
+    async function revealLobby(providerId) {
+      let region = '';
+      try {
+        region = (await lcu.get('/riotclient/region-locale')).region || '';
+      } catch {
+      }
+      const reveal = makeReveal({
+        lcu,
+        region,
+        open: (url) =>
+          opener.open(url).then((r) => {
+            if (!r.ok) say(r.reason, false);
+          }),
+      });
+      return reveal.reveal(providerId);
+    }
+
+    async function installUpdate() {
+      const result = await updater.apply();
+      if (!result.ok) {
+        trayDown = result.reason.includes('not running');
+        updateUi = { phase: 'error', message: result.reason };
+        paint();
+      }
+      return result;
+    }
+
+    Object.assign(legacyActions, {
+      setSettings: applySettingsPatch,
+      saveStatus: (text) => status.write(text),
+      revealLobby,
+      dodge: () => runDodge(null),
+      checkUpdates: () => runUpdateCheck(),
+      installUpdate,
+      restartClient: () => restarter.restart(),
+    });
 
     shadow.getElementById('onboard-layer').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-onboard]');
