@@ -13,5 +13,35 @@
       "one": "{count} segundo",
       "other": "{count} segundos"
     }
+  },
+  "shell": {
+    "title": "Drake",
+    "hotkeyHint": "Ctrl + D",
+    "close": "Fechar",
+    "creditsButton": "Créditos",
+    "nav": {
+      "auto-accept": "Aceite automático",
+      "auto-pick": "Pick automático",
+      "auto-ban": "Ban automático",
+      "queue": "Fila",
+      "status": "Status",
+      "profile": "Perfil",
+      "friends": "Amigos",
+      "whats-new": "Novidades",
+      "settings": "Configurações"
+    },
+    "footer": {
+      "trayUp": "Conectado ao Drake na bandeja",
+      "trayDown": "O Drake não está rodando na bandeja"
+    },
+    "credits": {
+      "title": "Créditos",
+      "disclaimer": "O Drake é um software open source não oficial. Não é afiliado à Riot Games.",
+      "createdBy": "Criado por",
+      "specialThanks": "Agradecimentos especiais",
+      "inspiredBy": "Inspirado em",
+      "assets": "Recursos",
+      "github": "GitHub"
+    }
   }
 }

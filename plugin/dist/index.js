@@ -24405,6 +24405,36 @@ button.bug-report-button[data-drake-toggle]:disabled {
         one: "{count} second",
         other: "{count} seconds"
       }
+    },
+    shell: {
+      title: "Drake",
+      hotkeyHint: "Ctrl + D",
+      close: "Close",
+      creditsButton: "Credits",
+      nav: {
+        "auto-accept": "Auto Accept",
+        "auto-pick": "Auto Pick",
+        "auto-ban": "Auto Ban",
+        queue: "Queue",
+        status: "Status",
+        profile: "Profile",
+        friends: "Friends",
+        "whats-new": "What's New",
+        settings: "Settings"
+      },
+      footer: {
+        trayUp: "Connected to the tray",
+        trayDown: "Drake tray is not running"
+      },
+      credits: {
+        title: "Credits",
+        disclaimer: "Drake is unofficial open source software. Not affiliated with Riot Games.",
+        createdBy: "Created by",
+        specialThanks: "Special thanks",
+        inspiredBy: "Inspired by",
+        assets: "Assets",
+        github: "GitHub"
+      }
     }
   };
 
@@ -24423,6 +24453,36 @@ button.bug-report-button[data-drake-toggle]:disabled {
       seconds: {
         one: "{count} segundo",
         other: "{count} segundos"
+      }
+    },
+    shell: {
+      title: "Drake",
+      hotkeyHint: "Ctrl + D",
+      close: "Fechar",
+      creditsButton: "Cr\xE9ditos",
+      nav: {
+        "auto-accept": "Aceite autom\xE1tico",
+        "auto-pick": "Pick autom\xE1tico",
+        "auto-ban": "Ban autom\xE1tico",
+        queue: "Fila",
+        status: "Status",
+        profile: "Perfil",
+        friends: "Amigos",
+        "whats-new": "Novidades",
+        settings: "Configura\xE7\xF5es"
+      },
+      footer: {
+        trayUp: "Conectado ao Drake na bandeja",
+        trayDown: "O Drake n\xE3o est\xE1 rodando na bandeja"
+      },
+      credits: {
+        title: "Cr\xE9ditos",
+        disclaimer: "O Drake \xE9 um software open source n\xE3o oficial. N\xE3o \xE9 afiliado \xE0 Riot Games.",
+        createdBy: "Criado por",
+        specialThanks: "Agradecimentos especiais",
+        inspiredBy: "Inspirado em",
+        assets: "Recursos",
+        github: "GitHub"
       }
     }
   };
@@ -24613,19 +24673,31 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return useStore((0, import_react8.useContext)(StoreContext), selector);
   }
 
+  // src/app/shell/LegacyActions.jsx
+  var import_react9 = __toESM(require_react(), 1);
+  var NOOP_ACTIONS = {
+    navigate() {
+    },
+    close() {
+    },
+    openUrl() {
+    }
+  };
+  var LegacyActionsContext = (0, import_react9.createContext)(NOOP_ACTIONS);
+
   // src/app/AppProviders.jsx
   var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
   function LocaleBridge({ children }) {
     const locale = useDrake((state) => state.session.locale);
     return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(I18nProvider, { locale, children });
   }
-  function AppProviders({ sfx, portalTarget = null, store, children }) {
-    const content = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SfxContext.Provider, { value: sfx || NOOP_SFX, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(PortalTargetContext.Provider, { value: portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(LocaleBridge, { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(MotionConfig, { reducedMotion: "user", children }) }) }) });
+  function AppProviders({ sfx, portalTarget = null, store, actions, children }) {
+    const content = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SfxContext.Provider, { value: sfx || NOOP_SFX, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(PortalTargetContext.Provider, { value: portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(LegacyActionsContext.Provider, { value: actions || NOOP_ACTIONS, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(LocaleBridge, { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(MotionConfig, { reducedMotion: "user", children }) }) }) }) });
     return store ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(StoreContext.Provider, { value: store, children: content }) : content;
   }
 
   // src/app/dev/Showcase.jsx
-  var import_react16 = __toESM(require_react(), 1);
+  var import_react17 = __toESM(require_react(), 1);
 
   // src/app/ui/Button.jsx
   var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
@@ -24636,10 +24708,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Modal.jsx
-  var import_react11 = __toESM(require_react(), 1);
+  var import_react12 = __toESM(require_react(), 1);
 
   // src/app/hooks/useEscapeLayer.js
-  var import_react10 = __toESM(require_react(), 1);
+  var import_react11 = __toESM(require_react(), 1);
 
   // src/app/ui/Layer.jsx
   var import_react_dom2 = __toESM(require_react_dom(), 1);
@@ -24648,7 +24720,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Select.jsx
-  var import_react12 = __toESM(require_react(), 1);
+  var import_react13 = __toESM(require_react(), 1);
   var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Skeleton.jsx
@@ -24658,15 +24730,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Tabs.jsx
-  var import_react13 = __toESM(require_react(), 1);
+  var import_react14 = __toESM(require_react(), 1);
   var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Toggle.jsx
-  var import_react14 = __toESM(require_react(), 1);
+  var import_react15 = __toESM(require_react(), 1);
   var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Tooltip.jsx
-  var import_react15 = __toESM(require_react(), 1);
+  var import_react16 = __toESM(require_react(), 1);
   var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/dev/Showcase.jsx

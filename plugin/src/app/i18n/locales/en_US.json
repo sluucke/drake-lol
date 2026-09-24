@@ -13,5 +13,35 @@
       "one": "{count} second",
       "other": "{count} seconds"
     }
+  },
+  "shell": {
+    "title": "Drake",
+    "hotkeyHint": "Ctrl + D",
+    "close": "Close",
+    "creditsButton": "Credits",
+    "nav": {
+      "auto-accept": "Auto Accept",
+      "auto-pick": "Auto Pick",
+      "auto-ban": "Auto Ban",
+      "queue": "Queue",
+      "status": "Status",
+      "profile": "Profile",
+      "friends": "Friends",
+      "whats-new": "What's New",
+      "settings": "Settings"
+    },
+    "footer": {
+      "trayUp": "Connected to the tray",
+      "trayDown": "Drake tray is not running"
+    },
+    "credits": {
+      "title": "Credits",
+      "disclaimer": "Drake is unofficial open source software. Not affiliated with Riot Games.",
+      "createdBy": "Created by",
+      "specialThanks": "Special thanks",
+      "inspiredBy": "Inspired by",
+      "assets": "Assets",
+      "github": "GitHub"
+    }
   }
 }
