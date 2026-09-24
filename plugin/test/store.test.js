@@ -17,7 +17,7 @@ describe('createDrakeStore', () => {
     expect(state.settings.trayDown).toBe(false);
     expect(state.session.appVersion).toBe('0.3.25');
     expect(state.session.locale).toBe('en_US');
-    expect(state.ui).toEqual({ panelOpen: false, screen: 'auto-accept', overlay: '', tourIndex: -1 });
+    expect(state.ui).toEqual({ panelOpen: false, screen: 'auto-accept', overlay: '', tourIndex: -1, creditsOpen: false, escapeLayers: 0 });
   });
 
   it('updates session and ui', () => {
@@ -90,5 +90,38 @@ describe('createDrakeStore', () => {
     expect(state.session.locale).toBe('pt_BR');
     expect(state.settings.trayDown).toBe(true);
     expect(state.settings.values).toEqual({ a: 1 });
+  });
+});
+
+describe('shell state', () => {
+  it('tracks host label and status line', () => {
+    const store = createDrakeStore();
+    expect(store.getState().session.hostLabel).toBe('');
+    expect(store.getState().session.statusLine).toBeNull();
+    store.getState().setSession({ hostLabel: 'Drake 0.3.25' });
+    store.getState().setStatusLine({ text: 'Saved', tone: 'good' });
+    expect(store.getState().session.hostLabel).toBe('Drake 0.3.25');
+    expect(store.getState().session.statusLine).toEqual({ text: 'Saved', tone: 'good' });
+    store.getState().setStatusLine(null);
+    expect(store.getState().session.statusLine).toBeNull();
+  });
+
+  it('opens and closes credits', () => {
+    const store = createDrakeStore();
+    store.getState().setCreditsOpen(true);
+    expect(store.getState().ui.creditsOpen).toBe(true);
+    store.getState().setCreditsOpen(false);
+    expect(store.getState().ui.creditsOpen).toBe(false);
+  });
+
+  it('counts escape layers without going negative', () => {
+    const store = createDrakeStore();
+    store.getState().pushEscapeLayer();
+    store.getState().pushEscapeLayer();
+    expect(store.getState().ui.escapeLayers).toBe(2);
+    store.getState().popEscapeLayer();
+    store.getState().popEscapeLayer();
+    store.getState().popEscapeLayer();
+    expect(store.getState().ui.escapeLayers).toBe(0);
   });
 });

@@ -49,4 +49,11 @@ describe('mountReactRoot', () => {
     expect(shadow.getElementById(APP_ROOT_ID)).toBeNull();
     expect(shadow.querySelector('style[data-drake-style]')).toBeNull();
   });
+
+  it('renders synchronously so callers can query the DOM right away', () => {
+    const shadow = makeShadow();
+    const mounted = mountReactRoot(shadow, { element: <div id="sync-probe">now</div> });
+    expect(shadow.getElementById('sync-probe').textContent).toBe('now');
+    mounted.unmount();
+  });
 });

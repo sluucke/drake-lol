@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 
 export const APP_ROOT_ID = 'drake-app-root';
@@ -15,7 +16,7 @@ export function mountReactRoot(shadow, { styles = [], element }) {
   container.id = APP_ROOT_ID;
   shadow.appendChild(container);
   const root = createRoot(container);
-  root.render(element);
+  flushSync(() => root.render(element));
   return {
     container,
     root,

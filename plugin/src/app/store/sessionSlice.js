@@ -8,6 +8,8 @@ export function createSessionSlice({ appVersion }) {
       idle: false,
       statusText: '',
       updateUi: { phase: 'idle' },
+      hostLabel: '',
+      statusLine: null,
     },
 
     setLocale(locale) {
@@ -16,6 +18,10 @@ export function createSessionSlice({ appVersion }) {
 
     setSession(partial) {
       set((state) => ({ session: { ...state.session, ...partial } }));
+    },
+
+    setStatusLine(line) {
+      set((state) => ({ session: { ...state.session, statusLine: line || null } }));
     },
   });
 }
