@@ -156,6 +156,14 @@
       "instaLockHelp": "Locks the champion in the instant the pick opens, instead of only hovering it. Nobody can take it from you, and you cannot change your mind.",
       "rolesLabel": "Pick roles",
       "empty": "Click up to 2 champions for this role — first is your pick, second is the backup."
+    },
+    "autoBan": {
+      "title": "Auto Ban",
+      "subtitle": "Bans a champion for you when the ban phase reaches your turn.",
+      "toggle": "Ban a champion automatically",
+      "toggleHelp": "A ban is always locked in — hovering a ban bans nothing.",
+      "champion": "Champion",
+      "empty": "Click a champion to ban — click again or ✕ to clear."
     }
   },
   "roles": {

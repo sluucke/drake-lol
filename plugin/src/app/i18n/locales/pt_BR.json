@@ -156,6 +156,14 @@
       "instaLockHelp": "Trava o campeão assim que a escolha abre, em vez de só selecioná-lo. Ninguém pode pegá-lo de você, e você não pode mudar de ideia.",
       "rolesLabel": "Rotas",
       "empty": "Clique em até 2 campeões para esta rota — o primeiro é o seu pick, o segundo é o reserva."
+    },
+    "autoBan": {
+      "title": "Ban automático",
+      "subtitle": "Bane um campeão por você quando chegar a sua vez na fase de banimento.",
+      "toggle": "Banir um campeão automaticamente",
+      "toggleHelp": "O ban é sempre confirmado — só selecionar não bane nada.",
+      "champion": "Campeão",
+      "empty": "Clique em um campeão para banir — clique de novo ou em ✕ para limpar."
     }
   },
   "roles": {
