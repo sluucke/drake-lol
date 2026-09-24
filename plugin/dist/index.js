@@ -33715,6 +33715,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
           other: "Removed {count} friends"
         },
         removedPartial: "Removed {removed}, {failed} failed"
+      },
+      whatsNew: {
+        title: "What's New",
+        subtitle: "Changes in v{version}",
+        recent: "Recent changes",
+        empty: "No notes for this version.",
+        continue: "Continue"
       }
     },
     roles: {
@@ -33751,6 +33758,159 @@ button.bug-report-button[data-drake-toggle]:disabled {
         RANKED_SOLO_5x5: "Solo/Duo",
         RANKED_FLEX_SR: "Flex",
         RANKED_TFT: "TFT"
+      }
+    },
+    whatsNew: {
+      v0_3_25: [
+        {
+          title: "Lobby reveal regions fixed",
+          body: "External lobby reveal (Porofessor / OP.GG) now maps Riot platform ids correctly \u2014 e.g. LA2 \u2192 las \u2014 and OP.GG uses the current /lol/multisearch URL. Reported by Julio Maggioni."
+        }
+      ],
+      v0_3_24: [
+        {
+          title: "Dropdowns actually work now",
+          body: "Rank, Region, and every other dropdown in Drake (Queue settings, Profile) responded to clicks unreliably or not at all for some users \u2014 replaced with a dropdown Drake fully controls, so picking an option always sticks."
+        },
+        {
+          title: "Fixed Recent W/L, KDA, and Last 12h showing 0",
+          body: "A queue-detection bug could zero out a teammate\u2019s recent stats in Team Reveal. Fixed at the source."
+        },
+        {
+          title: "Build Panel, redesigned",
+          body: "If you missed it: champ select builds from OP.GG \u2014 runes, items by phase, skill order, matchups, and top players \u2014 now laid out closer to what you\u2019d see on Mobalytics, with one-click Apply actions and Create Item Set. Open it from Ctrl+Shift+D."
+        }
+      ],
+      v0_3_23: [
+        {
+          title: "Team reveal match history via tray proxy",
+          body: "Champ select scouting fetches recent games through the Drake tray proxy so W/L and Last 5 load reliably alongside names and ranks."
+        },
+        {
+          title: "Match loading skeletons",
+          body: "Opening Team Scouting while matches are still loading shows skeletons instead of empty 0W/0L placeholders."
+        }
+      ],
+      v0_3_22: [
+        {
+          title: "Build panel",
+          body: "Champ select builds from OP.GG: runes, items, skill order, summoner spells, matchups, and top players \u2014 with Apply actions and Create Item Set."
+        },
+        {
+          title: "Tighter build layout",
+          body: "Summoner Spells sit under Skill Order so the right column fills and you scroll less to see the full loadout."
+        }
+      ],
+      v0_3_21: [
+        {
+          title: "Chat reveal waits for connect",
+          body: "Team reveal keeps retrying until champ select chat connects, then posts the name map and rewrites authors."
+        }
+      ],
+      v0_3_20: [
+        {
+          title: "Reveal names in champ select chat",
+          body: "Team reveal posts a private name map in chat and rewrites message authors to Riot IDs while you are in champ select."
+        },
+        {
+          title: "Credits",
+          body: "A ? next to Close opens credits for Drake and the tools that inspired it."
+        },
+        {
+          title: "Fresh lobby W/L each queue",
+          body: "Match history is fetched without HTTP cache so your W/L updates after the last game."
+        },
+        {
+          title: "Update prompt when auto-update is off",
+          body: "Starting Drake asks whether to install a newer release if automatic updates are disabled."
+        }
+      ],
+      v0_3_19: [
+        {
+          title: "Reveal follows swaps with you",
+          body: "In-client team reveal remaps names when you trade cells with an ally, including when their identity is still obfuscated."
+        },
+        {
+          title: "Auto Ban clear control",
+          body: "Selected ban shows as a chip with icon and \u2715 \u2014 no need to search the champion again to deselect."
+        },
+        {
+          title: "Cancel Queue leaves search",
+          body: "Cancel Queue declines the ready check and also exits matchmaking search so you are fully out of queue."
+        }
+      ],
+      v0_3_18: [
+        {
+          title: "Auto Pick by role",
+          body: "Choose up to 2 champions for Top, Jungle, Mid, ADC, and Support. Picks wait until your role is assigned \u2014 old global picks were cleared."
+        },
+        {
+          title: "Lobby reveal resets between games",
+          body: "Ally names from the last lobby no longer stick when you queue again; scrub only rewrites rows that still show our reveal."
+        }
+      ],
+      v0_3_17: [
+        {
+          title: "Welcome tour",
+          body: "First open shows a short welcome with an optional spotlight tour of the Ctrl+D screens. Skip anytime."
+        },
+        {
+          title: "What's New",
+          body: "After an update, Ctrl+D opens a changelog. Reopen it anytime from the sidebar; feature rows jump to that screen."
+        },
+        {
+          title: "Reveal follows role swaps",
+          body: "In-client team reveal remaps names when players trade cells in champ select."
+        },
+        {
+          title: "Ranked pool controls",
+          body: "Choose Solo+Flex, current queue, or any queue for recent games, plus sample size, last-5 pool, and fetch concurrency."
+        }
+      ],
+      v0_3_16: [
+        {
+          title: "Pick WR on cards",
+          body: "Reveal cards show games and win rate for the champion they locked."
+        },
+        {
+          title: "Champ select dodge",
+          body: "Optional in-client dodge button (on by default) from Queue settings."
+        }
+      ]
+    },
+    onboarding: {
+      welcome: {
+        copy: "Tools that sit beside the client. A short tour covers the screens you will use most.",
+        tour: "Take the tour",
+        skip: "Skip"
+      },
+      tour: {
+        progress: "{current} / {total}",
+        next: "Next",
+        done: "Done",
+        skip: "Skip",
+        steps: [
+          {
+            title: "Auto Accept",
+            body: "Accept ready checks automatically, with an optional delay so you can still decline by hand."
+          },
+          {
+            title: "Queue",
+            body: "Champ-select tools: dodge helpers and optional in-client team reveal."
+          },
+          {
+            title: "Auto Pick & Ban",
+            body: "Set up to two champions per role. Auto pick waits until your lane is assigned."
+          },
+          {
+            title: "Status",
+            body: "Set a long status message and lock Online, Offline, Mobile, or Busy."
+          },
+          {
+            title: "Settings",
+            body: "Startup, updates, and client reload live here."
+          }
+        ]
       }
     }
   };
@@ -33969,6 +34129,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
           other: "{count} amigos removidos"
         },
         removedPartial: "{removed} removidos, {failed} falharam"
+      },
+      whatsNew: {
+        title: "Novidades",
+        subtitle: "Mudan\xE7as na v{version}",
+        recent: "Mudan\xE7as recentes",
+        empty: "Nenhuma nota para esta vers\xE3o.",
+        continue: "Continuar"
       }
     },
     roles: {
@@ -34005,6 +34172,159 @@ button.bug-report-button[data-drake-toggle]:disabled {
         RANKED_SOLO_5x5: "Solo/Duo",
         RANKED_FLEX_SR: "Flex\xEDvel",
         RANKED_TFT: "TFT"
+      }
+    },
+    whatsNew: {
+      v0_3_25: [
+        {
+          title: "Regi\xF5es do revelar lobby corrigidas",
+          body: "O revelar lobby externo (Porofessor / OP.GG) agora mapeia corretamente os ids de plataforma da Riot \u2014 por exemplo LA2 \u2192 las \u2014 e o OP.GG usa a URL atual /lol/multisearch. Relatado por Julio Maggioni."
+        }
+      ],
+      v0_3_24: [
+        {
+          title: "Os dropdowns funcionam de verdade agora",
+          body: "Rank, Regi\xE3o e todos os outros dropdowns do Drake (configura\xE7\xF5es de Fila, Perfil) respondiam a cliques de forma inst\xE1vel, ou nem respondiam, para alguns usu\xE1rios \u2014 foram trocados por um dropdown controlado pelo Drake, ent\xE3o a op\xE7\xE3o escolhida sempre fica."
+        },
+        {
+          title: "Corrigido W/L recente, KDA e \xDAltimas 12h mostrando 0",
+          body: "Um bug na detec\xE7\xE3o de fila podia zerar as estat\xEDsticas recentes de um aliado no Team Reveal. Corrigido na origem."
+        },
+        {
+          title: "Painel de Build, redesenhado",
+          body: "Caso tenha perdido: builds da sele\xE7\xE3o de campe\xF5es vindas do OP.GG \u2014 runas, itens por fase, ordem de habilidades, matchups e top players \u2014 agora organizadas de forma mais parecida com o que voc\xEA veria no Mobalytics, com a\xE7\xF5es de Aplicar em um clique e Criar Conjunto de Itens. Abra com Ctrl+Shift+D."
+        }
+      ],
+      v0_3_23: [
+        {
+          title: "Hist\xF3rico de partidas do team reveal pelo proxy da bandeja",
+          body: "O scouting da sele\xE7\xE3o de campe\xF5es busca as partidas recentes pelo proxy do Drake na bandeja, ent\xE3o W/L e \xDAltimas 5 carregam de forma confi\xE1vel junto com nomes e elos."
+        },
+        {
+          title: "Skeletons ao carregar partidas",
+          body: "Abrir o Team Scouting enquanto as partidas ainda carregam mostra skeletons em vez de placeholders vazios 0V/0D."
+        }
+      ],
+      v0_3_22: [
+        {
+          title: "Painel de build",
+          body: "Builds da sele\xE7\xE3o de campe\xF5es vindas do OP.GG: runas, itens, ordem de habilidades, feiti\xE7os de invocador, matchups e top players \u2014 com a\xE7\xF5es de Aplicar e Criar Conjunto de Itens."
+        },
+        {
+          title: "Layout de build mais compacto",
+          body: "Os Feiti\xE7os de Invocador ficam abaixo da Ordem de Habilidades, ent\xE3o a coluna da direita fica preenchida e voc\xEA rola menos para ver o conjunto completo."
+        }
+      ],
+      v0_3_21: [
+        {
+          title: "Revelar no chat espera a conex\xE3o",
+          body: "O team reveal continua tentando at\xE9 o chat da sele\xE7\xE3o de campe\xF5es conectar, e ent\xE3o publica o mapa de nomes e reescreve os autores."
+        }
+      ],
+      v0_3_20: [
+        {
+          title: "Revelar nomes no chat da sele\xE7\xE3o de campe\xF5es",
+          body: "O team reveal publica um mapa de nomes privado no chat e reescreve os autores das mensagens para Riot IDs enquanto voc\xEA est\xE1 na sele\xE7\xE3o de campe\xF5es."
+        },
+        {
+          title: "Cr\xE9ditos",
+          body: "Um ? ao lado de Fechar abre os cr\xE9ditos do Drake e das ferramentas que o inspiraram."
+        },
+        {
+          title: "W/L do lobby atualizado a cada fila",
+          body: "O hist\xF3rico de partidas \xE9 buscado sem cache HTTP, ent\xE3o seu W/L atualiza depois da \xFAltima partida."
+        },
+        {
+          title: "Aviso de atualiza\xE7\xE3o com a atualiza\xE7\xE3o autom\xE1tica desligada",
+          body: "Ao iniciar, o Drake pergunta se deve instalar uma vers\xE3o mais nova quando as atualiza\xE7\xF5es autom\xE1ticas est\xE3o desativadas."
+        }
+      ],
+      v0_3_19: [
+        {
+          title: "O revelar acompanha as trocas",
+          body: "O team reveal no cliente remapeia os nomes quando voc\xEA troca de posi\xE7\xE3o com um aliado, inclusive quando a identidade dele ainda est\xE1 oculta."
+        },
+        {
+          title: "Controle para limpar o Ban autom\xE1tico",
+          body: "O ban selecionado aparece como um chip com \xEDcone e \u2715 \u2014 n\xE3o precisa buscar o campe\xE3o de novo para desmarcar."
+        },
+        {
+          title: "Cancelar fila sai da busca",
+          body: "Cancelar fila recusa a verifica\xE7\xE3o de partida e tamb\xE9m sai da busca, para voc\xEA ficar totalmente fora da fila."
+        }
+      ],
+      v0_3_18: [
+        {
+          title: "Pick autom\xE1tico por rota",
+          body: "Escolha at\xE9 2 campe\xF5es para Topo, Selva, Meio, Atirador e Suporte. Os picks esperam sua rota ser definida \u2014 os picks globais antigos foram apagados."
+        },
+        {
+          title: "Revelar lobby reinicia entre partidas",
+          body: "Os nomes dos aliados do \xFAltimo lobby n\xE3o ficam mais presos quando voc\xEA entra na fila de novo; a limpeza s\xF3 reescreve as linhas que ainda mostram nossa revela\xE7\xE3o."
+        }
+      ],
+      v0_3_17: [
+        {
+          title: "Tour de boas-vindas",
+          body: "A primeira abertura mostra uma breve boas-vindas com um tour opcional pelas telas do Ctrl+D. Pule quando quiser."
+        },
+        {
+          title: "Novidades",
+          body: "Depois de uma atualiza\xE7\xE3o, o Ctrl+D abre um registro de mudan\xE7as. Reabra quando quiser pela barra lateral; os itens levam voc\xEA \xE0 tela correspondente."
+        },
+        {
+          title: "O revelar acompanha trocas de rota",
+          body: "O team reveal no cliente remapeia os nomes quando jogadores trocam de posi\xE7\xE3o na sele\xE7\xE3o de campe\xF5es."
+        },
+        {
+          title: "Controles da fila ranqueada",
+          body: "Escolha Solo+Flex, a fila atual ou qualquer fila para as partidas recentes, al\xE9m do tamanho da amostra, fila das \xFAltimas 5 e buscas simult\xE2neas."
+        }
+      ],
+      v0_3_16: [
+        {
+          title: "WR do pick nos cards",
+          body: "Os cards de revela\xE7\xE3o mostram partidas e taxa de vit\xF3ria com o campe\xE3o que o jogador travou."
+        },
+        {
+          title: "Dodge na sele\xE7\xE3o de campe\xF5es",
+          body: "Bot\xE3o de dodge opcional no cliente (ligado por padr\xE3o) nas configura\xE7\xF5es de Fila."
+        }
+      ]
+    },
+    onboarding: {
+      welcome: {
+        copy: "Ferramentas que ficam ao lado do cliente. Um tour r\xE1pido mostra as telas que voc\xEA mais vai usar.",
+        tour: "Fazer o tour",
+        skip: "Pular"
+      },
+      tour: {
+        progress: "{current} / {total}",
+        next: "Pr\xF3ximo",
+        done: "Concluir",
+        skip: "Pular",
+        steps: [
+          {
+            title: "Aceite autom\xE1tico",
+            body: "Aceita verifica\xE7\xF5es de partida automaticamente, com um atraso opcional para voc\xEA ainda poder recusar manualmente."
+          },
+          {
+            title: "Fila",
+            body: "Ferramentas da sele\xE7\xE3o de campe\xF5es: ajudas de dodge e revela\xE7\xE3o opcional do time no cliente."
+          },
+          {
+            title: "Pick e Ban autom\xE1ticos",
+            body: "Defina at\xE9 dois campe\xF5es por rota. O pick autom\xE1tico espera sua rota ser definida."
+          },
+          {
+            title: "Status",
+            body: "Defina uma mensagem de status longa e trave Online, Offline, Celular ou Ocupado."
+          },
+          {
+            title: "Configura\xE7\xF5es",
+            body: "Inicializa\xE7\xE3o, atualiza\xE7\xF5es e recarregamento do cliente ficam aqui."
+          }
+        ]
       }
     }
   };

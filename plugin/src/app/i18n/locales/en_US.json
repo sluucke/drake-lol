@@ -211,6 +211,13 @@
         "other": "Removed {count} friends"
       },
       "removedPartial": "Removed {removed}, {failed} failed"
+    },
+    "whatsNew": {
+      "title": "What's New",
+      "subtitle": "Changes in v{version}",
+      "recent": "Recent changes",
+      "empty": "No notes for this version.",
+      "continue": "Continue"
     }
   },
   "roles": {
@@ -247,6 +254,159 @@
       "RANKED_SOLO_5x5": "Solo/Duo",
       "RANKED_FLEX_SR": "Flex",
       "RANKED_TFT": "TFT"
+    }
+  },
+  "whatsNew": {
+    "v0_3_25": [
+      {
+        "title": "Lobby reveal regions fixed",
+        "body": "External lobby reveal (Porofessor / OP.GG) now maps Riot platform ids correctly — e.g. LA2 → las — and OP.GG uses the current /lol/multisearch URL. Reported by Julio Maggioni."
+      }
+    ],
+    "v0_3_24": [
+      {
+        "title": "Dropdowns actually work now",
+        "body": "Rank, Region, and every other dropdown in Drake (Queue settings, Profile) responded to clicks unreliably or not at all for some users — replaced with a dropdown Drake fully controls, so picking an option always sticks."
+      },
+      {
+        "title": "Fixed Recent W/L, KDA, and Last 12h showing 0",
+        "body": "A queue-detection bug could zero out a teammate’s recent stats in Team Reveal. Fixed at the source."
+      },
+      {
+        "title": "Build Panel, redesigned",
+        "body": "If you missed it: champ select builds from OP.GG — runes, items by phase, skill order, matchups, and top players — now laid out closer to what you’d see on Mobalytics, with one-click Apply actions and Create Item Set. Open it from Ctrl+Shift+D."
+      }
+    ],
+    "v0_3_23": [
+      {
+        "title": "Team reveal match history via tray proxy",
+        "body": "Champ select scouting fetches recent games through the Drake tray proxy so W/L and Last 5 load reliably alongside names and ranks."
+      },
+      {
+        "title": "Match loading skeletons",
+        "body": "Opening Team Scouting while matches are still loading shows skeletons instead of empty 0W/0L placeholders."
+      }
+    ],
+    "v0_3_22": [
+      {
+        "title": "Build panel",
+        "body": "Champ select builds from OP.GG: runes, items, skill order, summoner spells, matchups, and top players — with Apply actions and Create Item Set."
+      },
+      {
+        "title": "Tighter build layout",
+        "body": "Summoner Spells sit under Skill Order so the right column fills and you scroll less to see the full loadout."
+      }
+    ],
+    "v0_3_21": [
+      {
+        "title": "Chat reveal waits for connect",
+        "body": "Team reveal keeps retrying until champ select chat connects, then posts the name map and rewrites authors."
+      }
+    ],
+    "v0_3_20": [
+      {
+        "title": "Reveal names in champ select chat",
+        "body": "Team reveal posts a private name map in chat and rewrites message authors to Riot IDs while you are in champ select."
+      },
+      {
+        "title": "Credits",
+        "body": "A ? next to Close opens credits for Drake and the tools that inspired it."
+      },
+      {
+        "title": "Fresh lobby W/L each queue",
+        "body": "Match history is fetched without HTTP cache so your W/L updates after the last game."
+      },
+      {
+        "title": "Update prompt when auto-update is off",
+        "body": "Starting Drake asks whether to install a newer release if automatic updates are disabled."
+      }
+    ],
+    "v0_3_19": [
+      {
+        "title": "Reveal follows swaps with you",
+        "body": "In-client team reveal remaps names when you trade cells with an ally, including when their identity is still obfuscated."
+      },
+      {
+        "title": "Auto Ban clear control",
+        "body": "Selected ban shows as a chip with icon and ✕ — no need to search the champion again to deselect."
+      },
+      {
+        "title": "Cancel Queue leaves search",
+        "body": "Cancel Queue declines the ready check and also exits matchmaking search so you are fully out of queue."
+      }
+    ],
+    "v0_3_18": [
+      {
+        "title": "Auto Pick by role",
+        "body": "Choose up to 2 champions for Top, Jungle, Mid, ADC, and Support. Picks wait until your role is assigned — old global picks were cleared."
+      },
+      {
+        "title": "Lobby reveal resets between games",
+        "body": "Ally names from the last lobby no longer stick when you queue again; scrub only rewrites rows that still show our reveal."
+      }
+    ],
+    "v0_3_17": [
+      {
+        "title": "Welcome tour",
+        "body": "First open shows a short welcome with an optional spotlight tour of the Ctrl+D screens. Skip anytime."
+      },
+      {
+        "title": "What's New",
+        "body": "After an update, Ctrl+D opens a changelog. Reopen it anytime from the sidebar; feature rows jump to that screen."
+      },
+      {
+        "title": "Reveal follows role swaps",
+        "body": "In-client team reveal remaps names when players trade cells in champ select."
+      },
+      {
+        "title": "Ranked pool controls",
+        "body": "Choose Solo+Flex, current queue, or any queue for recent games, plus sample size, last-5 pool, and fetch concurrency."
+      }
+    ],
+    "v0_3_16": [
+      {
+        "title": "Pick WR on cards",
+        "body": "Reveal cards show games and win rate for the champion they locked."
+      },
+      {
+        "title": "Champ select dodge",
+        "body": "Optional in-client dodge button (on by default) from Queue settings."
+      }
+    ]
+  },
+  "onboarding": {
+    "welcome": {
+      "copy": "Tools that sit beside the client. A short tour covers the screens you will use most.",
+      "tour": "Take the tour",
+      "skip": "Skip"
+    },
+    "tour": {
+      "progress": "{current} / {total}",
+      "next": "Next",
+      "done": "Done",
+      "skip": "Skip",
+      "steps": [
+        {
+          "title": "Auto Accept",
+          "body": "Accept ready checks automatically, with an optional delay so you can still decline by hand."
+        },
+        {
+          "title": "Queue",
+          "body": "Champ-select tools: dodge helpers and optional in-client team reveal."
+        },
+        {
+          "title": "Auto Pick & Ban",
+          "body": "Set up to two champions per role. Auto pick waits until your lane is assigned."
+        },
+        {
+          "title": "Status",
+          "body": "Set a long status message and lock Online, Offline, Mobile, or Busy."
+        },
+        {
+          "title": "Settings",
+          "body": "Startup, updates, and client reload live here."
+        }
+      ]
     }
   }
 }

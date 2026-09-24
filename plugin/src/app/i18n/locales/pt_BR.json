@@ -211,6 +211,13 @@
         "other": "{count} amigos removidos"
       },
       "removedPartial": "{removed} removidos, {failed} falharam"
+    },
+    "whatsNew": {
+      "title": "Novidades",
+      "subtitle": "Mudanças na v{version}",
+      "recent": "Mudanças recentes",
+      "empty": "Nenhuma nota para esta versão.",
+      "continue": "Continuar"
     }
   },
   "roles": {
@@ -247,6 +254,159 @@
       "RANKED_SOLO_5x5": "Solo/Duo",
       "RANKED_FLEX_SR": "Flexível",
       "RANKED_TFT": "TFT"
+    }
+  },
+  "whatsNew": {
+    "v0_3_25": [
+      {
+        "title": "Regiões do revelar lobby corrigidas",
+        "body": "O revelar lobby externo (Porofessor / OP.GG) agora mapeia corretamente os ids de plataforma da Riot — por exemplo LA2 → las — e o OP.GG usa a URL atual /lol/multisearch. Relatado por Julio Maggioni."
+      }
+    ],
+    "v0_3_24": [
+      {
+        "title": "Os dropdowns funcionam de verdade agora",
+        "body": "Rank, Região e todos os outros dropdowns do Drake (configurações de Fila, Perfil) respondiam a cliques de forma instável, ou nem respondiam, para alguns usuários — foram trocados por um dropdown controlado pelo Drake, então a opção escolhida sempre fica."
+      },
+      {
+        "title": "Corrigido W/L recente, KDA e Últimas 12h mostrando 0",
+        "body": "Um bug na detecção de fila podia zerar as estatísticas recentes de um aliado no Team Reveal. Corrigido na origem."
+      },
+      {
+        "title": "Painel de Build, redesenhado",
+        "body": "Caso tenha perdido: builds da seleção de campeões vindas do OP.GG — runas, itens por fase, ordem de habilidades, matchups e top players — agora organizadas de forma mais parecida com o que você veria no Mobalytics, com ações de Aplicar em um clique e Criar Conjunto de Itens. Abra com Ctrl+Shift+D."
+      }
+    ],
+    "v0_3_23": [
+      {
+        "title": "Histórico de partidas do team reveal pelo proxy da bandeja",
+        "body": "O scouting da seleção de campeões busca as partidas recentes pelo proxy do Drake na bandeja, então W/L e Últimas 5 carregam de forma confiável junto com nomes e elos."
+      },
+      {
+        "title": "Skeletons ao carregar partidas",
+        "body": "Abrir o Team Scouting enquanto as partidas ainda carregam mostra skeletons em vez de placeholders vazios 0V/0D."
+      }
+    ],
+    "v0_3_22": [
+      {
+        "title": "Painel de build",
+        "body": "Builds da seleção de campeões vindas do OP.GG: runas, itens, ordem de habilidades, feitiços de invocador, matchups e top players — com ações de Aplicar e Criar Conjunto de Itens."
+      },
+      {
+        "title": "Layout de build mais compacto",
+        "body": "Os Feitiços de Invocador ficam abaixo da Ordem de Habilidades, então a coluna da direita fica preenchida e você rola menos para ver o conjunto completo."
+      }
+    ],
+    "v0_3_21": [
+      {
+        "title": "Revelar no chat espera a conexão",
+        "body": "O team reveal continua tentando até o chat da seleção de campeões conectar, e então publica o mapa de nomes e reescreve os autores."
+      }
+    ],
+    "v0_3_20": [
+      {
+        "title": "Revelar nomes no chat da seleção de campeões",
+        "body": "O team reveal publica um mapa de nomes privado no chat e reescreve os autores das mensagens para Riot IDs enquanto você está na seleção de campeões."
+      },
+      {
+        "title": "Créditos",
+        "body": "Um ? ao lado de Fechar abre os créditos do Drake e das ferramentas que o inspiraram."
+      },
+      {
+        "title": "W/L do lobby atualizado a cada fila",
+        "body": "O histórico de partidas é buscado sem cache HTTP, então seu W/L atualiza depois da última partida."
+      },
+      {
+        "title": "Aviso de atualização com a atualização automática desligada",
+        "body": "Ao iniciar, o Drake pergunta se deve instalar uma versão mais nova quando as atualizações automáticas estão desativadas."
+      }
+    ],
+    "v0_3_19": [
+      {
+        "title": "O revelar acompanha as trocas",
+        "body": "O team reveal no cliente remapeia os nomes quando você troca de posição com um aliado, inclusive quando a identidade dele ainda está oculta."
+      },
+      {
+        "title": "Controle para limpar o Ban automático",
+        "body": "O ban selecionado aparece como um chip com ícone e ✕ — não precisa buscar o campeão de novo para desmarcar."
+      },
+      {
+        "title": "Cancelar fila sai da busca",
+        "body": "Cancelar fila recusa a verificação de partida e também sai da busca, para você ficar totalmente fora da fila."
+      }
+    ],
+    "v0_3_18": [
+      {
+        "title": "Pick automático por rota",
+        "body": "Escolha até 2 campeões para Topo, Selva, Meio, Atirador e Suporte. Os picks esperam sua rota ser definida — os picks globais antigos foram apagados."
+      },
+      {
+        "title": "Revelar lobby reinicia entre partidas",
+        "body": "Os nomes dos aliados do último lobby não ficam mais presos quando você entra na fila de novo; a limpeza só reescreve as linhas que ainda mostram nossa revelação."
+      }
+    ],
+    "v0_3_17": [
+      {
+        "title": "Tour de boas-vindas",
+        "body": "A primeira abertura mostra uma breve boas-vindas com um tour opcional pelas telas do Ctrl+D. Pule quando quiser."
+      },
+      {
+        "title": "Novidades",
+        "body": "Depois de uma atualização, o Ctrl+D abre um registro de mudanças. Reabra quando quiser pela barra lateral; os itens levam você à tela correspondente."
+      },
+      {
+        "title": "O revelar acompanha trocas de rota",
+        "body": "O team reveal no cliente remapeia os nomes quando jogadores trocam de posição na seleção de campeões."
+      },
+      {
+        "title": "Controles da fila ranqueada",
+        "body": "Escolha Solo+Flex, a fila atual ou qualquer fila para as partidas recentes, além do tamanho da amostra, fila das últimas 5 e buscas simultâneas."
+      }
+    ],
+    "v0_3_16": [
+      {
+        "title": "WR do pick nos cards",
+        "body": "Os cards de revelação mostram partidas e taxa de vitória com o campeão que o jogador travou."
+      },
+      {
+        "title": "Dodge na seleção de campeões",
+        "body": "Botão de dodge opcional no cliente (ligado por padrão) nas configurações de Fila."
+      }
+    ]
+  },
+  "onboarding": {
+    "welcome": {
+      "copy": "Ferramentas que ficam ao lado do cliente. Um tour rápido mostra as telas que você mais vai usar.",
+      "tour": "Fazer o tour",
+      "skip": "Pular"
+    },
+    "tour": {
+      "progress": "{current} / {total}",
+      "next": "Próximo",
+      "done": "Concluir",
+      "skip": "Pular",
+      "steps": [
+        {
+          "title": "Aceite automático",
+          "body": "Aceita verificações de partida automaticamente, com um atraso opcional para você ainda poder recusar manualmente."
+        },
+        {
+          "title": "Fila",
+          "body": "Ferramentas da seleção de campeões: ajudas de dodge e revelação opcional do time no cliente."
+        },
+        {
+          "title": "Pick e Ban automáticos",
+          "body": "Defina até dois campeões por rota. O pick automático espera sua rota ser definida."
+        },
+        {
+          "title": "Status",
+          "body": "Defina uma mensagem de status longa e trave Online, Offline, Celular ou Ocupado."
+        },
+        {
+          "title": "Configurações",
+          "body": "Inicialização, atualizações e recarregamento do cliente ficam aqui."
+        }
+      ]
     }
   }
 }
