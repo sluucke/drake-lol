@@ -454,6 +454,81 @@
         "revealedSide": "Session revealed · {side} · Press Ctrl+Shift+D to view it.",
         "view": "View"
       }
+    },
+    "build": {
+      "champion": "Champion",
+      "championFallback": "Champion {id}",
+      "modes": {
+        "ranked": "Ranked",
+        "aram": "ARAM"
+      },
+      "patch": "Patch {patch}",
+      "rank": "Rank",
+      "region": "Region",
+      "globalRegion": "Global",
+      "stats": {
+        "win": "Win",
+        "pick": "Pick",
+        "ban": "Ban",
+        "kda": "KDA",
+        "games": "Games"
+      },
+      "tiers": {
+        "all": "All Ranks",
+        "ibsg": "Iron–Silver",
+        "gold_plus": "Gold+",
+        "platinum_plus": "Platinum+",
+        "emerald_plus": "Emerald+",
+        "diamond_plus": "Diamond+",
+        "master": "Master",
+        "grandmaster": "Grandmaster",
+        "challenger": "Challenger"
+      },
+      "viewing": "Viewing player build:",
+      "restore": "✕ Restore core build",
+      "restoreTitle": "Restore default build",
+      "pickChampion": "Pick a champion to see build recommendations",
+      "loading": "Loading build data…",
+      "noData": "No data for {tier}",
+      "seeAllRanks": "See All Ranks",
+      "retry": "Retry",
+      "opggError": "Could not reach OP.GG",
+      "cards": {
+        "runes": "Runes",
+        "items": "Items",
+        "spells": "Summoner Spells",
+        "skills": "Skill Order",
+        "matchups": "Matchups",
+        "topPlayers": "Top Players (OP.GG)"
+      },
+      "empty": {
+        "runes": "No rune data",
+        "items": "No item data",
+        "spells": "No spell data",
+        "matchups": "No data"
+      },
+      "phases": {
+        "starter": "Starter",
+        "boots": "Boots",
+        "core": "Core",
+        "situational": "Situational"
+      },
+      "actions": {
+        "apply": "Apply",
+        "applied": "Applied",
+        "applying": "Applying…",
+        "failed": "Failed — retry",
+        "createItemSet": "Create Item Set"
+      },
+      "wr": "{value} WR",
+      "winRate": "Win Rate",
+      "games": "Games",
+      "strong": "Strong Against",
+      "weak": "Weak Against",
+      "loadingPlayers": "Loading players…",
+      "unavailable": "Unavailable",
+      "unknown": "Unknown",
+      "playerTitle": "{tier} · {games} games"
     }
   }
 }

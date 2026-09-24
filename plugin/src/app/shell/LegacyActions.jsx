@@ -31,6 +31,16 @@ export const NOOP_ACTIONS = {
   wireBuildSelects() {},
   buildChange() {},
   buildClick() {},
+  loadBuild: async () => {},
+  setBuildTier() {},
+  setBuildRegion() {},
+  retryBuild: async () => {},
+  showAllRanks() {},
+  viewPlayerBuild: async () => {},
+  clearPlayerBuild() {},
+  applyBuildRunes: async () => {},
+  applyBuildSpells: async () => {},
+  applyBuildItems: async () => {},
 };
 
 export const LegacyActionsContext = createContext(NOOP_ACTIONS);

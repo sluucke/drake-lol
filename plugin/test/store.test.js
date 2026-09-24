@@ -205,3 +205,17 @@ describe('team reveal slice', () => {
     expect(store.getState().teamReveal.activeTab).toBe('scouting');
   });
 });
+
+describe('build slice', () => {
+  it('defaults and replaces snapshots', () => {
+    const store = createDrakeStore();
+    const { build } = store.getState();
+    expect(build.championId).toBe(0);
+    expect(build.tier).toBe('emerald_plus');
+    expect(build.region).toBe('global');
+    expect(build.topPlayers).toEqual({ loading: false, ok: false, players: [], reason: '' });
+    expect(build.runeStatus).toBe('idle');
+    store.getState().setBuild({ championId: 157, tier: 'master' });
+    expect(store.getState().build).toEqual({ championId: 157, tier: 'master' });
+  });
+});

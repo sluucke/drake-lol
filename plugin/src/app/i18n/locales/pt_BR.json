@@ -454,6 +454,81 @@
         "revealedSide": "Sessão revelada · {side} · Pressione Ctrl+Shift+D para ver.",
         "view": "Ver"
       }
+    },
+    "build": {
+      "champion": "Campeão",
+      "championFallback": "Campeão {id}",
+      "modes": {
+        "ranked": "Ranqueada",
+        "aram": "ARAM"
+      },
+      "patch": "Patch {patch}",
+      "rank": "Elo",
+      "region": "Região",
+      "globalRegion": "Global",
+      "stats": {
+        "win": "Vitória",
+        "pick": "Escolha",
+        "ban": "Ban",
+        "kda": "KDA",
+        "games": "Partidas"
+      },
+      "tiers": {
+        "all": "Todos os elos",
+        "ibsg": "Ferro–Prata",
+        "gold_plus": "Ouro+",
+        "platinum_plus": "Platina+",
+        "emerald_plus": "Esmeralda+",
+        "diamond_plus": "Diamante+",
+        "master": "Mestre",
+        "grandmaster": "Grão-Mestre",
+        "challenger": "Desafiante"
+      },
+      "viewing": "Vendo a build do jogador:",
+      "restore": "✕ Restaurar build principal",
+      "restoreTitle": "Restaurar build padrão",
+      "pickChampion": "Escolha um campeão para ver recomendações de build",
+      "loading": "Carregando dados da build…",
+      "noData": "Sem dados para {tier}",
+      "seeAllRanks": "Ver todos os elos",
+      "retry": "Tentar novamente",
+      "opggError": "Não foi possível acessar o OP.GG",
+      "cards": {
+        "runes": "Runas",
+        "items": "Itens",
+        "spells": "Feitiços de Invocador",
+        "skills": "Ordem de Habilidades",
+        "matchups": "Matchups",
+        "topPlayers": "Top jogadores (OP.GG)"
+      },
+      "empty": {
+        "runes": "Sem dados de runas",
+        "items": "Sem dados de itens",
+        "spells": "Sem dados de feitiços",
+        "matchups": "Sem dados"
+      },
+      "phases": {
+        "starter": "Inicial",
+        "boots": "Botas",
+        "core": "Principal",
+        "situational": "Situacional"
+      },
+      "actions": {
+        "apply": "Aplicar",
+        "applied": "Aplicado",
+        "applying": "Aplicando…",
+        "failed": "Falhou — tentar de novo",
+        "createItemSet": "Criar conjunto de itens"
+      },
+      "wr": "{value} WR",
+      "winRate": "Taxa de vitória",
+      "games": "Partidas",
+      "strong": "Forte contra",
+      "weak": "Fraco contra",
+      "loadingPlayers": "Carregando jogadores…",
+      "unavailable": "Indisponível",
+      "unknown": "Desconhecido",
+      "playerTitle": "{tier} · {games} partidas"
     }
   }
 }

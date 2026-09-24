@@ -34011,6 +34011,81 @@ button.bug-report-button[data-drake-toggle]:disabled {
           revealedSide: "Session revealed \xB7 {side} \xB7 Press Ctrl+Shift+D to view it.",
           view: "View"
         }
+      },
+      build: {
+        champion: "Champion",
+        championFallback: "Champion {id}",
+        modes: {
+          ranked: "Ranked",
+          aram: "ARAM"
+        },
+        patch: "Patch {patch}",
+        rank: "Rank",
+        region: "Region",
+        globalRegion: "Global",
+        stats: {
+          win: "Win",
+          pick: "Pick",
+          ban: "Ban",
+          kda: "KDA",
+          games: "Games"
+        },
+        tiers: {
+          all: "All Ranks",
+          ibsg: "Iron\u2013Silver",
+          gold_plus: "Gold+",
+          platinum_plus: "Platinum+",
+          emerald_plus: "Emerald+",
+          diamond_plus: "Diamond+",
+          master: "Master",
+          grandmaster: "Grandmaster",
+          challenger: "Challenger"
+        },
+        viewing: "Viewing player build:",
+        restore: "\u2715 Restore core build",
+        restoreTitle: "Restore default build",
+        pickChampion: "Pick a champion to see build recommendations",
+        loading: "Loading build data\u2026",
+        noData: "No data for {tier}",
+        seeAllRanks: "See All Ranks",
+        retry: "Retry",
+        opggError: "Could not reach OP.GG",
+        cards: {
+          runes: "Runes",
+          items: "Items",
+          spells: "Summoner Spells",
+          skills: "Skill Order",
+          matchups: "Matchups",
+          topPlayers: "Top Players (OP.GG)"
+        },
+        empty: {
+          runes: "No rune data",
+          items: "No item data",
+          spells: "No spell data",
+          matchups: "No data"
+        },
+        phases: {
+          starter: "Starter",
+          boots: "Boots",
+          core: "Core",
+          situational: "Situational"
+        },
+        actions: {
+          apply: "Apply",
+          applied: "Applied",
+          applying: "Applying\u2026",
+          failed: "Failed \u2014 retry",
+          createItemSet: "Create Item Set"
+        },
+        wr: "{value} WR",
+        winRate: "Win Rate",
+        games: "Games",
+        strong: "Strong Against",
+        weak: "Weak Against",
+        loadingPlayers: "Loading players\u2026",
+        unavailable: "Unavailable",
+        unknown: "Unknown",
+        playerTitle: "{tier} \xB7 {games} games"
       }
     }
   };
@@ -34472,6 +34547,81 @@ button.bug-report-button[data-drake-toggle]:disabled {
           revealedSide: "Sess\xE3o revelada \xB7 {side} \xB7 Pressione Ctrl+Shift+D para ver.",
           view: "Ver"
         }
+      },
+      build: {
+        champion: "Campe\xE3o",
+        championFallback: "Campe\xE3o {id}",
+        modes: {
+          ranked: "Ranqueada",
+          aram: "ARAM"
+        },
+        patch: "Patch {patch}",
+        rank: "Elo",
+        region: "Regi\xE3o",
+        globalRegion: "Global",
+        stats: {
+          win: "Vit\xF3ria",
+          pick: "Escolha",
+          ban: "Ban",
+          kda: "KDA",
+          games: "Partidas"
+        },
+        tiers: {
+          all: "Todos os elos",
+          ibsg: "Ferro\u2013Prata",
+          gold_plus: "Ouro+",
+          platinum_plus: "Platina+",
+          emerald_plus: "Esmeralda+",
+          diamond_plus: "Diamante+",
+          master: "Mestre",
+          grandmaster: "Gr\xE3o-Mestre",
+          challenger: "Desafiante"
+        },
+        viewing: "Vendo a build do jogador:",
+        restore: "\u2715 Restaurar build principal",
+        restoreTitle: "Restaurar build padr\xE3o",
+        pickChampion: "Escolha um campe\xE3o para ver recomenda\xE7\xF5es de build",
+        loading: "Carregando dados da build\u2026",
+        noData: "Sem dados para {tier}",
+        seeAllRanks: "Ver todos os elos",
+        retry: "Tentar novamente",
+        opggError: "N\xE3o foi poss\xEDvel acessar o OP.GG",
+        cards: {
+          runes: "Runas",
+          items: "Itens",
+          spells: "Feiti\xE7os de Invocador",
+          skills: "Ordem de Habilidades",
+          matchups: "Matchups",
+          topPlayers: "Top jogadores (OP.GG)"
+        },
+        empty: {
+          runes: "Sem dados de runas",
+          items: "Sem dados de itens",
+          spells: "Sem dados de feiti\xE7os",
+          matchups: "Sem dados"
+        },
+        phases: {
+          starter: "Inicial",
+          boots: "Botas",
+          core: "Principal",
+          situational: "Situacional"
+        },
+        actions: {
+          apply: "Aplicar",
+          applied: "Aplicado",
+          applying: "Aplicando\u2026",
+          failed: "Falhou \u2014 tentar de novo",
+          createItemSet: "Criar conjunto de itens"
+        },
+        wr: "{value} WR",
+        winRate: "Taxa de vit\xF3ria",
+        games: "Partidas",
+        strong: "Forte contra",
+        weak: "Fraco contra",
+        loadingPlayers: "Carregando jogadores\u2026",
+        unavailable: "Indispon\xEDvel",
+        unknown: "Desconhecido",
+        playerTitle: "{tier} \xB7 {games} partidas"
       }
     }
   };
@@ -34666,6 +34816,35 @@ button.bug-report-button[data-drake-toggle]:disabled {
     });
   }
 
+  // src/app/store/buildSlice.js
+  var BUILD_DEFAULTS = {
+    championId: 0,
+    championName: "",
+    position: "",
+    mode: "ranked",
+    tier: "emerald_plus",
+    region: "global",
+    patch: "",
+    loading: false,
+    error: "",
+    build: null,
+    averageBuild: null,
+    topPlayers: { loading: false, ok: false, players: [], reason: "" },
+    viewingPlayer: "",
+    runeStatus: "idle",
+    itemSetStatus: "idle",
+    spellStatus: "idle",
+    championNames: {}
+  };
+  function createBuildSlice() {
+    return (set) => ({
+      build: { ...BUILD_DEFAULTS, topPlayers: { ...BUILD_DEFAULTS.topPlayers } },
+      setBuild(snapshot) {
+        set({ build: snapshot });
+      }
+    });
+  }
+
   // src/app/store/createDrakeStore.js
   function defined(fields) {
     return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== void 0));
@@ -34675,11 +34854,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const sessionSlice = createSessionSlice({ appVersion });
     const uiSlice = createUiSlice();
     const teamRevealSlice = createTeamRevealSlice();
+    const buildSlice = createBuildSlice();
     return createStore((set, get) => ({
       ...settingsSlice(set, get),
       ...sessionSlice(set, get),
       ...uiSlice(set, get),
       ...teamRevealSlice(set, get),
+      ...buildSlice(set, get),
       syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, ...session }) {
         set((state) => ({
           settings: {
@@ -34749,6 +34930,26 @@ button.bug-report-button[data-drake-toggle]:disabled {
     buildChange() {
     },
     buildClick() {
+    },
+    loadBuild: async () => {
+    },
+    setBuildTier() {
+    },
+    setBuildRegion() {
+    },
+    retryBuild: async () => {
+    },
+    showAllRanks() {
+    },
+    viewPlayerBuild: async () => {
+    },
+    clearPlayerBuild() {
+    },
+    applyBuildRunes: async () => {
+    },
+    applyBuildSpells: async () => {
+    },
+    applyBuildItems: async () => {
     }
   };
   var LegacyActionsContext = (0, import_react30.createContext)(NOOP_ACTIONS);
@@ -37375,6 +37576,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         fetchImpl: fetch
       });
       buildPanel = makeBuildPanel({
+        headless: true,
         doc: document,
         overlayRoot: shadow,
         lcu: lcu2,
@@ -37385,6 +37587,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
         getSummonerId: () => summonerIdLoader.get()
       });
       void summonerIdLoader.load();
+      buildPanel.onUpdate(() => store.getState().setBuild(buildPanel.getSnapshot()));
+      store.getState().setBuild(buildPanel.getSnapshot());
       teamRevealDom = makeTeamRevealDom({
         publishView: (view) => store.getState().setTeamReveal(view),
         doc: document,
@@ -37814,6 +38018,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
         }),
         buildChange: (event) => buildPanel?.handleChange?.(event),
         buildClick: (event) => buildPanel?.handleClick?.(event)
+      });
+      Object.assign(legacyActions, {
+        loadBuild: () => buildPanel?.loadBuild(),
+        setBuildTier: (value) => buildPanel?.setTier(value),
+        setBuildRegion: (value) => buildPanel?.setRegion(value),
+        retryBuild: () => buildPanel?.retry(),
+        showAllRanks: () => buildPanel?.showAllRanks(),
+        viewPlayerBuild: (riotId2, region) => buildPanel?.viewPlayer(riotId2, region),
+        clearPlayerBuild: () => buildPanel?.clearPlayer(),
+        applyBuildRunes: (index) => buildPanel?.applyRunes(index),
+        applyBuildSpells: (index) => buildPanel?.applySpells(index),
+        applyBuildItems: () => buildPanel?.applyItems()
       });
       content.addEventListener("input", (e) => {
         if (e.target.id !== "status-text") return;

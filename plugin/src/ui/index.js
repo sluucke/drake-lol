@@ -492,6 +492,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     });
 
     buildPanel = makeBuildPanel({
+      headless: true,
       doc: document,
       overlayRoot: shadow,
       lcu,
@@ -503,6 +504,8 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     });
     void summonerIdLoader.load();
 
+    buildPanel.onUpdate(() => store.getState().setBuild(buildPanel.getSnapshot()));
+    store.getState().setBuild(buildPanel.getSnapshot());
     teamRevealDom = makeTeamRevealDom({
       publishView: (view) => store.getState().setTeamReveal(view),
       doc: document,
@@ -971,6 +974,19 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         }),
       buildChange: (event) => buildPanel?.handleChange?.(event),
       buildClick: (event) => buildPanel?.handleClick?.(event),
+    });
+
+    Object.assign(legacyActions, {
+      loadBuild: () => buildPanel?.loadBuild(),
+      setBuildTier: (value) => buildPanel?.setTier(value),
+      setBuildRegion: (value) => buildPanel?.setRegion(value),
+      retryBuild: () => buildPanel?.retry(),
+      showAllRanks: () => buildPanel?.showAllRanks(),
+      viewPlayerBuild: (riotId, region) => buildPanel?.viewPlayer(riotId, region),
+      clearPlayerBuild: () => buildPanel?.clearPlayer(),
+      applyBuildRunes: (index) => buildPanel?.applyRunes(index),
+      applyBuildSpells: (index) => buildPanel?.applySpells(index),
+      applyBuildItems: () => buildPanel?.applyItems(),
     });
 
     content.addEventListener('input', (e) => {
