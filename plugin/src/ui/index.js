@@ -19,7 +19,6 @@ import {
   renderWhatsNew,
   renderTourCard,
   SCREENS,
-  CREDITS,
 } from './panel.js';
 import {
   decideOpenMode,
@@ -188,6 +187,12 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     reloadConfig: loadConfig,
   });
 
+  const legacyActions = {
+    navigate: () => {},
+    close: () => ui.close(),
+    openUrl: (url) => openCreditUrl(url),
+  };
+
   const store = createDrakeStore({ settings, appVersion, settingsClient: client });
   if (__DRAKE_DEV__) window.__drakeStore = store;
   void loadLocale(lcu).then((locale) => store.getState().setLocale(locale));
@@ -214,7 +219,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     onOpenChange: (open) => {
       store.getState().setPanelOpen(open);
       if (!shadowRoot) return;
-      shadowRoot.getElementById('scrim').style.display = open ? 'grid' : 'none';
       syncSocialToggle(document, open);
       if (!open) closeCredits();
     },
@@ -226,6 +230,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       else if (buildPanel) buildPanel.toggle();
     },
     onEscape: () => {
+      if (store.getState().ui.escapeLayers > 0) return true;
       if (teamRevealDom && teamRevealDom.isOpen()) {
         teamRevealDom.closeCards();
         return true;
@@ -234,25 +239,13 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         buildPanel.close();
         return true;
       }
-      if (!shadowRoot) return false;
-      const modal = shadowRoot.getElementById('credits-modal');
-      if (!modal || modal.hidden) return false;
-      closeCredits();
-      return true;
+      return false;
     },
     onMount: wire,
   });
 
   function closeCredits() {
-    if (!shadowRoot) return;
-    const modal = shadowRoot.getElementById('credits-modal');
-    if (modal) modal.hidden = true;
-  }
-
-  function openCredits() {
-    if (!shadowRoot) return;
-    const modal = shadowRoot.getElementById('credits-modal');
-    if (modal) modal.hidden = false;
+    store.getState().setCreditsOpen(false);
   }
 
   function openCreditUrl(url) {
@@ -455,13 +448,11 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
 
   function wire(shadow, api) {
     shadowRoot = shadow;
-    startApp(shadow, { sfx, store });
+    startApp(shadow, { sfx, store, actions: legacyActions });
     const content = shadow.getElementById('content');
-    const statusEl = shadow.getElementById('status');
 
     function sayUi(text, good) {
-      statusEl.textContent = text;
-      statusEl.className = good ? 'status-good' : 'status-bad';
+      store.getState().setStatusLine({ text, tone: good ? 'good' : 'bad' });
     }
 
     say = sayUi;
@@ -470,12 +461,13 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       console.log(TAG, 'dodge', detail);
     };
 
-    shadow.getElementById('scrim').style.display = 'none';
 
     startSocialWatch(api);
-    shadow.getElementById('host-label').textContent = formatHostLabel({
-      appVersion,
-      loaderVersion: typeof Pengu !== 'undefined' && Pengu.version ? Pengu.version : '',
+    store.getState().setSession({
+      hostLabel: formatHostLabel({
+        appVersion,
+        loaderVersion: typeof Pengu !== 'undefined' && Pengu.version ? Pengu.version : '',
+      }),
     });
     const proxyFetch = makeProxyFetch({
       port: cfg.port,
@@ -534,9 +526,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     function paintOnboard() {
       const layer = shadow.getElementById('onboard-layer');
       if (!layer) return;
-      for (const item of shadow.querySelectorAll('[data-tour-active]')) {
-        item.removeAttribute('data-tour-active');
-      }
       if (overlay === 'welcome') {
         layer.innerHTML = renderWelcome();
         layer.hidden = false;
@@ -555,8 +544,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
           total: TOUR_STEPS.length,
         });
         layer.hidden = false;
-        const navItem = shadow.querySelector(`[data-screen="${step.screen}"]`);
-        if (navItem) navItem.setAttribute('data-tour-active', 'true');
         return;
       }
       layer.innerHTML = '';
@@ -632,11 +619,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
           maxDelayMs: MAX_DELAY_MS,
         });
       }
-      statusEl.textContent = trayDown ? 'Drake tray is not running' : 'Connected to the tray';
-      statusEl.className = trayDown ? 'status-bad' : 'status-good';
-      for (const item of shadow.querySelectorAll('[data-screen]')) {
-        item.setAttribute('aria-selected', String(item.dataset.screen === screen));
-      }
+      store.getState().setStatusLine(null);
       wireDrakeSelects(content, ({ dropdown, value }) => {
         applyPanelDropdown(dropdown, value);
       });
@@ -722,8 +705,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       revert();
       trayDown = result.reason.includes('not running');
       paint();
-      statusEl.textContent = result.reason;
-      statusEl.className = 'status-bad';
+      store.getState().setStatusLine({ text: result.reason, tone: 'bad' });
       console.log(TAG, 'could not save -', result.reason);
       return { ok: false, reason: result.reason };
     }
@@ -829,12 +811,10 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       autoSize(shadow.getElementById('status-text'), BOX);
     }
 
-    shadow.querySelector('.nav').addEventListener('click', async (e) => {
-      const item = e.target.closest('[data-screen]');
-      if (!item) return;
-      await goToScreen(item.dataset.screen);
+    legacyActions.navigate = async (id) => {
+      await goToScreen(id);
       paint();
-    });
+    };
 
     shadow.getElementById('onboard-layer').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-onboard]');
@@ -1309,28 +1289,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       },
       true,
     );
-
-    shadow.getElementById('close').addEventListener('click', () => api.close());
-    shadow.getElementById('credits-open').addEventListener('click', () => openCredits());
-    shadow.getElementById('credits-close').addEventListener('click', () => closeCredits());
-    shadow.getElementById('credits-modal').addEventListener('click', (e) => {
-      if (e.target.closest('[data-credits-dismiss]')) {
-        closeCredits();
-        return;
-      }
-      const link = e.target.closest('[data-credit-href]');
-      if (link) {
-        openCreditUrl(link.getAttribute('data-credit-href'));
-        return;
-      }
-      if (e.target.closest('[data-credit-open-repo]')) {
-        openCreditUrl(CREDITS.repoUrl);
-      }
-    });
-
-    shadow.getElementById('scrim').addEventListener('click', (e) => {
-      if (e.target.id === 'scrim') api.close();
-    });
 
     paint();
   }

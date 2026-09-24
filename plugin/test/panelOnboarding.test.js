@@ -15,11 +15,10 @@ describe('onboarding panel', () => {
     expect(ids).toContain('whats-new');
   });
 
-  it('shell hosts an onboard layer and non-interactive brand hooks', () => {
+  it('leaves the onboarding layer and brand to the React shell', () => {
     const html = renderShell();
-    expect(html).toContain('id="onboard-layer"');
-    expect(html).toContain('class="mark"');
-    expect(html).toContain('class="title"');
+    expect(html).not.toContain('id="onboard-layer"');
+    expect(html).not.toContain('class="mark"');
   });
 
   it('welcome has skip and tour actions', () => {
