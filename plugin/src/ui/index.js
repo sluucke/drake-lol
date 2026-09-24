@@ -192,6 +192,15 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     navigate: () => {},
     close: () => ui.close(),
     openUrl: (url) => openCreditUrl(url),
+    togglePanel: () => ui.toggle(),
+    cancelQueue: async () => {
+      store.getState().patchChampSelect({ cancelable: false });
+      try {
+        await cancelQueue(lcu);
+      } catch {
+        console.log(TAG, 'could not cancel the queue');
+      }
+    },
   };
 
   const store = createDrakeStore({ settings, appVersion, settingsClient: client });
@@ -272,7 +281,9 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   
   
   function setReadyCheck(payload) {
-    if (inGameIdle || !shadowRoot) return;
+    if (inGameIdle) return;
+    store.getState().patchChampSelect({ cancelable: canCancel(payload) });
+    if (!shadowRoot) return;
     shadowRoot.getElementById('cancel-dock').hidden = !canCancel(payload);
   }
 
@@ -345,6 +356,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       }
       champSelectActive = false;
       champSelectSession = null;
+      store.getState().resetChampSelect();
       if (teamRevealDom) {
         void teamRevealDom.handleSession(null);
         teamRevealDom.setEnabled(false);
@@ -414,6 +426,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     if (!shadowRoot) return;
     const dock = shadowRoot.getElementById('dodge-dock');
     champSelectActive = inChampSelect(session);
+    store.getState().patchChampSelect({ active: champSelectActive });
     if (teamRevealDom) void teamRevealDom.handleSession(session);
     feedBuildPanel(session);
     const showDodge = champSelectActive && settings.queue_dodge_in_client !== false;
@@ -436,6 +449,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       return { ok: false, busy: true, reason: '' };
     }
     dodgeBusy = true;
+    store.getState().patchChampSelect({ dodge: 'busy' });
     if (btn) {
       btn.disabled = true;
       btn.textContent = 'Dodging…';
@@ -453,12 +467,16 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         ? `Dodged champ select${result.detail ? ` (${result.detail})` : ''}`
         : result.reason;
       say(msg, result.ok);
+      store.getState().patchChampSelect({ dodge: result.ok ? 'done' : 'failed' });
       if (btn) btn.textContent = result.ok ? 'Dodged!' : 'Failed';
       return result;
     } finally {
       resetDodgeUi({ keepLabel: true });
       if (champSelectActive && settings.queue_dodge_in_client !== false) startDodgeReposition();
-      window.setTimeout(() => resetDodgeUi(), 2500);
+      window.setTimeout(() => {
+        resetDodgeUi();
+        store.getState().patchChampSelect({ dodge: 'idle' });
+      }, 2500);
     }
   }
 

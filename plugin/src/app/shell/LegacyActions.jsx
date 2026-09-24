@@ -37,6 +37,8 @@ export const NOOP_ACTIONS = {
   applyBuildRunes: async () => {},
   applyBuildSpells: async () => {},
   applyBuildItems: async () => {},
+  cancelQueue: async () => {},
+  togglePanel() {},
 };
 
 export const LegacyActionsContext = createContext(NOOP_ACTIONS);

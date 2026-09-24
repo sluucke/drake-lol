@@ -34845,6 +34845,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
     });
   }
 
+  // src/app/store/champSelectSlice.js
+  var CHAMP_SELECT_DEFAULTS = { active: false, cancelable: false, dodge: "idle" };
+  function createChampSelectSlice() {
+    return (set) => ({
+      champSelect: { ...CHAMP_SELECT_DEFAULTS },
+      patchChampSelect(partial) {
+        set((state) => ({ champSelect: { ...state.champSelect, ...partial } }));
+      },
+      resetChampSelect() {
+        set({ champSelect: { ...CHAMP_SELECT_DEFAULTS } });
+      }
+    });
+  }
+
   // src/app/store/createDrakeStore.js
   function defined(fields) {
     return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== void 0));
@@ -34855,12 +34869,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const uiSlice = createUiSlice();
     const teamRevealSlice = createTeamRevealSlice();
     const buildSlice = createBuildSlice();
+    const champSelectSlice = createChampSelectSlice();
     return createStore((set, get) => ({
       ...settingsSlice(set, get),
       ...sessionSlice(set, get),
       ...uiSlice(set, get),
       ...teamRevealSlice(set, get),
       ...buildSlice(set, get),
+      ...champSelectSlice(set, get),
       syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, ...session }) {
         set((state) => ({
           settings: {
@@ -34943,6 +34959,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
     applyBuildSpells: async () => {
     },
     applyBuildItems: async () => {
+    },
+    cancelQueue: async () => {
+    },
+    togglePanel() {
     }
   };
   var LegacyActionsContext = (0, import_react30.createContext)(NOOP_ACTIONS);
@@ -37706,7 +37726,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
       navigate: () => {
       },
       close: () => ui2.close(),
-      openUrl: (url) => openCreditUrl(url)
+      openUrl: (url) => openCreditUrl(url),
+      togglePanel: () => ui2.toggle(),
+      cancelQueue: async () => {
+        store.getState().patchChampSelect({ cancelable: false });
+        try {
+          await cancelQueue(lcu2);
+        } catch {
+          console.log(TAG9, "could not cancel the queue");
+        }
+      }
     };
     const store = createDrakeStore({ settings, appVersion, settingsClient: client });
     if (false) window.__drakeStore = store;
@@ -37778,7 +37807,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
       });
     }
     function setReadyCheck(payload) {
-      if (inGameIdle || !shadowRoot) return;
+      if (inGameIdle) return;
+      store.getState().patchChampSelect({ cancelable: canCancel(payload) });
+      if (!shadowRoot) return;
       shadowRoot.getElementById("cancel-dock").hidden = !canCancel(payload);
     }
     function resetDodgeUi({ keepLabel = false } = {}) {
@@ -37845,6 +37876,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         }
         champSelectActive = false;
         champSelectSession = null;
+        store.getState().resetChampSelect();
         if (teamRevealDom) {
           void teamRevealDom.handleSession(null);
           teamRevealDom.setEnabled(false);
@@ -37903,6 +37935,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (!shadowRoot) return;
       const dock = shadowRoot.getElementById("dodge-dock");
       champSelectActive = inChampSelect(session);
+      store.getState().patchChampSelect({ active: champSelectActive });
       if (teamRevealDom) void teamRevealDom.handleSession(session);
       feedBuildPanel(session);
       const showDodge = champSelectActive && settings.queue_dodge_in_client !== false;
@@ -37924,6 +37957,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         return { ok: false, busy: true, reason: "" };
       }
       dodgeBusy = true;
+      store.getState().patchChampSelect({ dodge: "busy" });
       if (btn) {
         btn.disabled = true;
         btn.textContent = "Dodging\u2026";
@@ -37939,12 +37973,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
         console.log(TAG9, "dodge result", result);
         const msg = result.ok ? `Dodged champ select${result.detail ? ` (${result.detail})` : ""}` : result.reason;
         say(msg, result.ok);
+        store.getState().patchChampSelect({ dodge: result.ok ? "done" : "failed" });
         if (btn) btn.textContent = result.ok ? "Dodged!" : "Failed";
         return result;
       } finally {
         resetDodgeUi({ keepLabel: true });
         if (champSelectActive && settings.queue_dodge_in_client !== false) startDodgeReposition();
-        window.setTimeout(() => resetDodgeUi(), 2500);
+        window.setTimeout(() => {
+          resetDodgeUi();
+          store.getState().patchChampSelect({ dodge: "idle" });
+        }, 2500);
       }
     }
     function wire(shadow, api) {

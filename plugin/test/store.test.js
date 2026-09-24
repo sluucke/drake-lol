@@ -219,3 +219,20 @@ describe('build slice', () => {
     expect(store.getState().build).toEqual({ championId: 157, tier: 'master' });
   });
 });
+
+describe('champSelect slice', () => {
+  it('starts idle', () => {
+    const store = createDrakeStore();
+    expect(store.getState().champSelect).toEqual({ active: false, cancelable: false, dodge: 'idle' });
+  });
+
+  it('patches and resets', () => {
+    const store = createDrakeStore();
+    store.getState().patchChampSelect({ active: true, dodge: 'busy' });
+    expect(store.getState().champSelect).toEqual({ active: true, cancelable: false, dodge: 'busy' });
+    store.getState().patchChampSelect({ cancelable: true });
+    expect(store.getState().champSelect.cancelable).toBe(true);
+    store.getState().resetChampSelect();
+    expect(store.getState().champSelect).toEqual({ active: false, cancelable: false, dodge: 'idle' });
+  });
+});

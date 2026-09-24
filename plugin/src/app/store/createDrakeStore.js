@@ -4,6 +4,7 @@ import { createSessionSlice } from './sessionSlice.js';
 import { createUiSlice } from './uiSlice.js';
 import { createTeamRevealSlice } from './teamRevealSlice.js';
 import { createBuildSlice } from './buildSlice.js';
+import { createChampSelectSlice } from './champSelectSlice.js';
 
 function defined(fields) {
   return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
@@ -15,6 +16,7 @@ export function createDrakeStore({ settings = {}, appVersion = '0.0.0', settings
   const uiSlice = createUiSlice();
   const teamRevealSlice = createTeamRevealSlice();
   const buildSlice = createBuildSlice();
+  const champSelectSlice = createChampSelectSlice();
 
   return createStore((set, get) => ({
     ...settingsSlice(set, get),
@@ -22,6 +24,7 @@ export function createDrakeStore({ settings = {}, appVersion = '0.0.0', settings
     ...uiSlice(set, get),
     ...teamRevealSlice(set, get),
     ...buildSlice(set, get),
+    ...champSelectSlice(set, get),
 
     syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, ...session }) {
       set((state) => ({
