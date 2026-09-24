@@ -27,3 +27,53 @@
     transition-duration: 1ms !important;
   }
 }
+
+:host,
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #010a13;
+  border-left: 1px solid #1e2328;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #785a28, #463714);
+  border: 1px solid #010a13;
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #c8aa6e, #785a28);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #c8aa6e;
+}
+
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-corner {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+::-webkit-resizer {
+  background:
+    linear-gradient(135deg, transparent 0 42%, #785a28 42% 52%, transparent 52% 66%),
+    linear-gradient(135deg, transparent 0 66%, #785a28 66% 76%, transparent 76%);
+  background-color: #010a13;
+}
+
+.drk-panel .content {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 24px;
+  overflow-y: auto;
+}

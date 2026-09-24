@@ -82,6 +82,14 @@ beforeEach(() => {
 });
 
 describe('mountUI', () => {
+  it('mounts without a legacy render function', () => {
+    const onMount = vi.fn();
+    mountUI({ doc, win, onMount });
+    const host = doc.documentElement.children.find((c) => c.id === HOST_ID);
+    expect(host.shadow).not.toBeNull();
+    expect(onMount).toHaveBeenCalledWith(host.shadow, expect.anything());
+  });
+
   it('attaches the host to documentElement, not body', () => {
 
 

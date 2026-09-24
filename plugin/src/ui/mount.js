@@ -94,7 +94,7 @@ function createUI({
     host.id = HOST_ID;
     host.style.cssText = hostCss();
     const shadow = host.attachShadow({ mode: 'open' });
-    shadow.innerHTML = render();
+    if (render) shadow.innerHTML = render();
     doc.documentElement.appendChild(host);
     if (onMount) onMount(shadow, api);
   }
