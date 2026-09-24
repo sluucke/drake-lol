@@ -23625,6 +23625,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var TAG7 = "[Drake]";
   var CACHE_TTL_MS = 10 * 60 * 1e3;
   function makeBuildPanel({
+    headless = false,
     doc,
     overlayRoot,
     lcu: lcu2,
@@ -23692,6 +23693,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}`;
     }
     function ensureOverlay() {
+      if (headless) return null;
       if (overlay) return overlay;
       const owner = overlayRoot?.ownerDocument || doc;
       const node = owner?.createElement?.("div");
@@ -23726,27 +23728,77 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
       notify();
     }
+    function setTier(value) {
+      if (!value || value === state.tier) return;
+      state.tier = value;
+      void saveSettings({ build_tier: state.tier });
+      void loadBuild();
+      notify();
+    }
+    function setRegion(value) {
+      if (!value || value === state.region) return;
+      state.region = value;
+      void saveSettings({ build_region: state.region });
+      void loadBuild();
+      notify();
+    }
     function applyDropdownSelect(dropdown, value) {
       if (!dropdown || !value) return false;
       const isTier = dropdown.matches?.("[data-build-tier]") || dropdown.dataset?.buildTier !== void 0;
       const isRegion = dropdown.matches?.("[data-build-region]") || dropdown.dataset?.buildRegion !== void 0;
       if (isTier) {
-        if (value === state.tier) return true;
-        state.tier = value;
-        void saveSettings({ build_tier: state.tier });
-        void loadBuild();
-        notify();
+        setTier(value);
         return true;
       }
       if (isRegion) {
-        if (value === state.region) return true;
-        state.region = value;
-        void saveSettings({ build_region: state.region });
-        void loadBuild();
-        notify();
+        setRegion(value);
         return true;
       }
       return false;
+    }
+    function clearPlayer() {
+      generation += 1;
+      state.viewingPlayer = "";
+      state.build = state.averageBuild;
+      paint();
+    }
+    function applyRunes(index) {
+      const page = state.build?.runePages?.[Number(index) || 0];
+      if (!page) return Promise.resolve();
+      return runAction(
+        "runeStatus",
+        () => applyRunePageImpl(lcu2, {
+          name: `${state.championName || "Drake"} Build`,
+          primaryStyleId: page.primaryStyleId,
+          subStyleId: page.subStyleId,
+          selectedPerkIds: page.selectedPerkIds
+        })
+      );
+    }
+    function applySpells(index) {
+      const entry = state.build?.spells?.[Number(index) || 0];
+      if (!entry?.ids?.length) return Promise.resolve();
+      return runAction(
+        "spellStatus",
+        () => applySummonerSpellsImpl(lcu2, { spell1Id: entry.ids[0], spell2Id: entry.ids[1] })
+      );
+    }
+    function applyItems() {
+      const itemSet = buildItemSet({
+        championId: state.championId,
+        championName: state.championName,
+        build: state.build
+      });
+      if (!itemSet) return Promise.resolve();
+      return runAction("itemSetStatus", () => applyItemSetImpl(lcu2, getSummonerId(), itemSet));
+    }
+    function getSnapshot() {
+      const { getChampName: _getChampName, ...rest } = state;
+      const counters = [...state.build?.counters?.strong || [], ...state.build?.counters?.weak || []];
+      const championNames = Object.fromEntries(
+        counters.map((c) => [c.championId, getChampName(Number(c.championId)) || ""])
+      );
+      return { ...rest, topPlayers: { ...state.topPlayers }, championNames };
     }
     async function loadBuild({ force = false } = {}) {
       ensureSettingsRead();
@@ -23896,18 +23948,12 @@ button.bug-report-button[data-drake-toggle]:disabled {
       }
       if (hit("data-build-tier-all")) {
         event?.stopPropagation?.();
-        state.tier = "all";
-        void saveSettings({ build_tier: "all" });
-        void loadBuild();
-        notify();
+        setTier("all");
         return true;
       }
       if (hit("data-build-clear-player")) {
         event?.stopPropagation?.();
-        generation += 1;
-        state.viewingPlayer = "";
-        state.build = state.averageBuild;
-        paint();
+        clearPlayer();
         return true;
       }
       const playerBtn = hit("data-build-player");
@@ -23922,39 +23968,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const runeBtn = hit("data-build-apply-runes");
       if (runeBtn) {
         event?.stopPropagation?.();
-        const page = state.build?.runePages?.[Number(runeBtn.dataset.buildApplyRunes) || 0];
-        if (!page) return true;
-        void runAction(
-          "runeStatus",
-          () => applyRunePageImpl(lcu2, {
-            name: `${state.championName || "Drake"} Build`,
-            primaryStyleId: page.primaryStyleId,
-            subStyleId: page.subStyleId,
-            selectedPerkIds: page.selectedPerkIds
-          })
-        );
+        void applyRunes(runeBtn.dataset.buildApplyRunes);
         return true;
       }
       const spellBtn = hit("data-build-apply-spells");
       if (spellBtn) {
         event?.stopPropagation?.();
-        const entry = state.build?.spells?.[Number(spellBtn.dataset.buildApplySpells) || 0];
-        if (!entry?.ids?.length) return true;
-        void runAction(
-          "spellStatus",
-          () => applySummonerSpellsImpl(lcu2, { spell1Id: entry.ids[0], spell2Id: entry.ids[1] })
-        );
+        void applySpells(spellBtn.dataset.buildApplySpells);
         return true;
       }
       if (hit("data-build-apply-items")) {
         event?.stopPropagation?.();
-        const itemSet = buildItemSet({
-          championId: state.championId,
-          championName: state.championName,
-          build: state.build
-        });
-        if (!itemSet) return true;
-        void runAction("itemSetStatus", () => applyItemSetImpl(lcu2, getSummonerId(), itemSet));
+        void applyItems();
         return true;
       }
       return false;
@@ -23974,10 +23999,17 @@ button.bug-report-button[data-drake-toggle]:disabled {
       const position = session?.position || "";
       const mode = session?.mode === "aram" ? "aram" : "ranked";
       if (championId === state.championId && position === state.position && mode === state.mode) {
-        if (refreshChampionName() && open) {
-          paint();
-          if (!state.topPlayers.ok && !state.topPlayers.loading) {
-            void loadTopPlayers(generation, cacheKey());
+        if (refreshChampionName()) {
+          if (open) {
+            paint();
+            if (!state.topPlayers.ok && !state.topPlayers.loading) {
+              void loadTopPlayers(generation, cacheKey());
+            }
+          } else {
+            notify();
+            if (headless && state.build && !state.topPlayers.ok && !state.topPlayers.loading) {
+              void loadTopPlayers(generation, cacheKey());
+            }
           }
         }
         return;
@@ -23991,6 +24023,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       state.itemSetStatus = "idle";
       state.spellStatus = "idle";
       if (open) void loadBuild();
+      else notify();
     }
     function openPanel() {
       if (!enabled || open) return;
@@ -24034,6 +24067,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
       handleChange,
       handleClick,
       applyDropdownSelect,
+      setTier,
+      setRegion,
+      retry: () => loadBuild({ force: true }),
+      showAllRanks: () => setTier("all"),
+      viewPlayer: (riotId, region) => handlePlayerBuild(riotId, region || "kr"),
+      clearPlayer,
+      applyRunes,
+      applySpells,
+      applyItems,
+      getSnapshot,
       onUpdate: (fn) => {
         listeners.add(fn);
         return () => listeners.delete(fn);
