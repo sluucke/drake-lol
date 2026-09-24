@@ -8,6 +8,7 @@ import { DURATION, EASE_OUT } from '../ui/motion.js';
 import { useLegacyActions } from './LegacyActions.jsx';
 import { LegacyScreen } from './LegacyScreen.jsx';
 import { ShellFooter } from './ShellFooter.jsx';
+import { CreditsModal } from './CreditsModal.jsx';
 import { Sidebar } from './Sidebar.jsx';
 
 const SCRIM = {
@@ -76,6 +77,7 @@ export function PanelFrame() {
         </div>
         <ShellFooter />
       </motion.div>
+      <CreditsModal />
     </motion.div>
   );
 }
