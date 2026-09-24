@@ -9,5 +9,6 @@ import modal from '../ui/Modal.css';
 import tooltip from '../ui/Tooltip.css';
 import skeleton from '../ui/Skeleton.css';
 import slider from '../ui/Slider.css';
+import shell from '../shell/shell.css';
 
-export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs, modal, tooltip, skeleton, slider];
+export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs, modal, tooltip, skeleton, slider, shell];
