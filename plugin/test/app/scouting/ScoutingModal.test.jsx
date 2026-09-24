@@ -14,10 +14,6 @@ function makeActions() {
     closeScouting: vi.fn(),
     setScoutingTab: vi.fn(),
     muteScouting: vi.fn(async () => {}),
-    renderBuildHtml: vi.fn(() => '<div class="build-panel"><button data-build-retry="1">Retry</button></div>'),
-    wireBuildSelects: vi.fn(),
-    buildChange: vi.fn(),
-    buildClick: vi.fn(() => true),
   };
 }
 
@@ -68,16 +64,13 @@ describe('ScoutingModal', () => {
     expect(actions.closeScouting).toHaveBeenCalledTimes(2);
   });
 
-  it('bridges the legacy build tab', async () => {
-    const { portalTarget, actions, store } = setup({ activeTab: 'build', buildSig: 'a' });
-    const legacy = portalTarget.querySelector('.drk-scout__legacy');
-    expect(legacy.className).toContain('team-reveal-shell');
-    expect(within(legacy).getByRole('button', { name: 'Retry' })).toBeTruthy();
-    expect(actions.wireBuildSelects).toHaveBeenCalledWith(legacy);
-    fireEvent.click(within(legacy).getByRole('button', { name: 'Retry' }));
-    expect(actions.buildClick).toHaveBeenCalledTimes(1);
-    act(() => store.getState().setTeamReveal({ buildSig: 'b' }));
-    expect(actions.renderBuildHtml).toHaveBeenCalledTimes(2);
+  it('renders the native build tab', () => {
+    const { portalTarget, store } = setup({ activeTab: 'build' });
+    act(() =>
+      store.getState().setBuild({ ...store.getState().build, championId: 0 }),
+    );
+    expect(within(portalTarget).getByText('Pick a champion to see build recommendations')).toBeTruthy();
+    expect(portalTarget.querySelector('.drk-scout__legacy')).toBeNull();
     expect(screen.queryByText('Mute All')).toBeNull();
   });
 

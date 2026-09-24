@@ -4,7 +4,7 @@ import { useDrake } from '../../store/StoreContext.jsx';
 import { Button } from '../../ui/Button.jsx';
 import { Modal } from '../../ui/Modal.jsx';
 import { Tabs } from '../../ui/Tabs.jsx';
-import { LegacyBuildTab } from './LegacyBuildTab.jsx';
+import { BuildTab } from '../build/BuildTab.jsx';
 import { ScoutCard } from './ScoutCard.jsx';
 
 const TAB_IDS = ['scouting', 'build'];
@@ -50,7 +50,7 @@ export function ScoutingModal() {
       className="drk-scout"
     >
       {!scouting ? (
-        <LegacyBuildTab buildSig={view.buildSig} />
+        <BuildTab />
       ) : view.rows.length ? (
         <div className="drk-scout__grid">
           {view.rows.map((row, index) => (

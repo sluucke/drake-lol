@@ -6,6 +6,8 @@ import { useDrake } from '../../store/StoreContext.jsx';
 import { Button } from '../../ui/Button.jsx';
 import { DURATION } from '../../ui/motion.js';
 import { BuildHeader } from './BuildHeader.jsx';
+import { ItemsCard, RunesCard, SkillOrderCard, SpellsCard } from './BuildCards.jsx';
+import { MatchupsCard, TopPlayersCard } from './BuildSidebar.jsx';
 
 const OPGG_ERROR = 'Could not reach OP.GG';
 
@@ -13,7 +15,28 @@ function Placeholder({ children, error = false }) {
   return <div className={['drk-build-placeholder', error && 'is-error'].filter(Boolean).join(' ')}>{children}</div>;
 }
 
-export function BuildTab({ body = null }) {
+export function BuildBody() {
+  return (
+    <div className="drk-build-body">
+      <aside className="drk-build-sidebar">
+        <TopPlayersCard />
+        <MatchupsCard />
+      </aside>
+      <div className="drk-build-main">
+        <div className="drk-build-col">
+          <RunesCard />
+          <ItemsCard />
+        </div>
+        <div className="drk-build-col">
+          <SkillOrderCard />
+          <SpellsCard />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BuildTab({ body = <BuildBody /> }) {
   const t = useT();
   const actions = useLegacyActions();
   const state = useDrake((s) => s.build);

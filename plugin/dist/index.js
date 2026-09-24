@@ -23903,15 +23903,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
       };
       paint();
     }
-    async function runAction(statusKey, fn) {
-      state[statusKey] = "applying";
+    async function runAction(statusKey2, fn) {
+      state[statusKey2] = "applying";
       paint();
       try {
         const res = await fn();
-        state[statusKey] = res?.success ? "applied" : "failed";
+        state[statusKey2] = res?.success ? "applied" : "failed";
       } catch (err) {
         console.warn(TAG7, "action failed:", err?.message || err);
-        state[statusKey] = "failed";
+        state[statusKey2] = "failed";
       }
       paint();
     }
@@ -34924,13 +34924,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
     },
     muteScouting: async () => {
     },
-    renderBuildHtml: () => "",
-    wireBuildSelects() {
-    },
-    buildChange() {
-    },
-    buildClick() {
-    },
     loadBuild: async () => {
     },
     setBuildTier() {
@@ -35282,7 +35275,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     id: id3
   }) {
     const sfx = useSfx();
-    const pct2 = max === min ? 0 : (value - min) / (max - min) * 100;
+    const pct3 = max === min ? 0 : (value - min) / (max - min) * 100;
     return /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: ["drk-slider", disabled && "is-disabled"].filter(Boolean).join(" "), children: [
       /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
         "input",
@@ -35296,7 +35289,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           value,
           disabled,
           "aria-label": ariaLabel,
-          style: { "--drk-slider-fill": `${pct2}%` },
+          style: { "--drk-slider-fill": `${pct3}%` },
           onChange: (event) => onChange?.(Number(event.target.value)),
           onPointerUp: (event) => {
             if (disabled) return;
@@ -36847,33 +36840,433 @@ button.bug-report-button[data-drake-toggle]:disabled {
     );
   }
 
-  // src/app/overlays/scouting/LegacyBuildTab.jsx
+  // src/app/overlays/build/BuildTab.jsx
   var import_react71 = __toESM(require_react(), 1);
+
+  // src/app/overlays/build/format.jsx
   var import_jsx_runtime45 = __toESM(require_jsx_runtime(), 1);
-  function LegacyBuildTab({ buildSig }) {
-    const ref = (0, import_react71.useRef)(null);
+  function pct2(value) {
+    if (value == null || Number.isNaN(Number(value))) return "\u2014";
+    const num = Number(value);
+    return Number.isInteger(num) ? `${num}%` : `${Math.round(num * 10) / 10}%`;
+  }
+  function wrTone(winRate2) {
+    if (winRate2 == null || Number.isNaN(Number(winRate2))) return "";
+    return Number(winRate2) >= 50 ? "positive" : "negative";
+  }
+  var RANK_KEYS = ["challenger", "grandmaster", "master", "diamond", "emerald", "platinum", "gold", "silver", "bronze", "iron"];
+  function rankIconKey(tier) {
+    const raw = String(tier || "").trim().toLowerCase();
+    const hit = RANK_KEYS.find((key) => raw.includes(key));
+    return hit ? hit.toUpperCase() : "UNRANKED";
+  }
+  function statusKey(status, idleKey) {
+    if (status === "applying") return "overlays.build.actions.applying";
+    if (status === "applied") return "overlays.build.actions.applied";
+    if (status === "failed") return "overlays.build.actions.failed";
+    return idleKey;
+  }
+  function WinRate({ value, suffix = "" }) {
+    const tone = wrTone(value);
+    return /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("span", { className: ["drk-build-wr", tone && `is-${tone}`].filter(Boolean).join(" "), children: `${pct2(value)}${suffix}` });
+  }
+
+  // src/app/overlays/build/BuildHeader.jsx
+  var import_jsx_runtime46 = __toESM(require_jsx_runtime(), 1);
+  var ROLE_KEYS = /* @__PURE__ */ new Set(["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]);
+  function BuildHeader() {
+    const t = useT();
+    const format = useFormat();
     const actions = useLegacyActions();
-    (0, import_react71.useLayoutEffect)(() => {
-      const node = ref.current;
-      if (!node) return;
-      node.innerHTML = actions.renderBuildHtml();
-      actions.wireBuildSelects(node);
-    }, [buildSig, actions]);
-    return /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(
-      "div",
-      {
-        ref,
-        className: "team-reveal-shell drk-scout__legacy",
-        onChange: (event) => actions.buildChange(event.nativeEvent),
-        onClick: (event) => {
-          if (event.target.closest?.("[data-build-close]")) {
-            actions.closeScouting();
-            return;
-          }
-          actions.buildClick(event.nativeEvent);
+    const state = useDrake((s) => s.build);
+    const position = String(state.position || "").toUpperCase();
+    const roleIcon = position ? roleIconUrl(position) : "";
+    const role = ROLE_KEYS.has(position) ? t(`roles.${position}`) : roleLabel(position) || position;
+    const stats = state.build?.stats;
+    const tierOptions = OPGG_TIERS.map((tier) => ({
+      value: tier.value,
+      label: t(`overlays.build.tiers.${tier.value}`),
+      icon: RANK_ICONS[rankIconKey(tier.value)]
+    }));
+    const regionOptions = OPGG_REGIONS.map((region) => ({
+      value: region.value,
+      label: region.value === "global" ? t("overlays.build.globalRegion") : region.label
+    }));
+    return /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("header", { className: "drk-build-header", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "drk-build-identity", children: [
+        state.championId ? /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("img", { className: "drk-build-champ", src: iconUrl(state.championId), alt: state.championName }) : null,
+        /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "drk-build-identity__meta", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "drk-build-identity__name", children: state.championName || t("overlays.build.champion") }),
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "drk-build-identity__sub", children: [
+            position && /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { className: "drk-build-role", children: [
+              roleIcon && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("img", { src: roleIcon, alt: "" }),
+              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { children: role })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "drk-build-tag", children: t(`overlays.build.modes.${state.mode === "aram" ? "aram" : "ranked"}`) }),
+            state.patch && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "drk-build-patch", children: t("overlays.build.patch", { patch: state.patch }) })
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "drk-build-filters", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("label", { className: "drk-build-filter", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { children: t("overlays.build.rank") }),
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Select, { value: state.tier, options: tierOptions, ariaLabel: t("overlays.build.rank"), onChange: (v) => actions.setBuildTier(v) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("label", { className: "drk-build-filter", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { children: t("overlays.build.region") }),
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Select, { value: state.region, options: regionOptions, ariaLabel: t("overlays.build.region"), onChange: (v) => actions.setBuildRegion(v) })
+        ] })
+      ] }),
+      stats && /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "drk-build-stats", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(WinRate, { value: stats.winRate }),
+          " ",
+          t("overlays.build.stats.win")
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("b", { children: pct2(stats.pickRate) }),
+          " ",
+          t("overlays.build.stats.pick")
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("b", { children: pct2(stats.banRate) }),
+          " ",
+          t("overlays.build.stats.ban")
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("b", { children: stats.kda ?? "\u2014" }),
+          " ",
+          t("overlays.build.stats.kda")
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("b", { children: format.number(stats.play || 0) }),
+          " ",
+          t("overlays.build.stats.games")
+        ] })
+      ] })
+    ] });
+  }
+
+  // src/app/overlays/build/BuildCards.jsx
+  var import_jsx_runtime47 = __toESM(require_jsx_runtime(), 1);
+  var SKILL_KEYS = ["Q", "W", "E", "R"];
+  var LEVELS = Array.from({ length: 15 }, (_, i) => i + 1);
+  function useBuild() {
+    return useDrake((s) => s.build);
+  }
+  function PickRate({ entry }) {
+    const format = useFormat();
+    const games = Number(entry?.play) > 0 ? ` (${format.number(entry.play)})` : "";
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-pr", children: `${pct2(entry?.pickRate)}${games}` });
+  }
+  function ItemIcons({ ids, hextechFirst = false }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "drk-build-icons", children: ids.map((id3, index) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("span", { className: "drk-build-icons__slot", children: [
+      index > 0 && /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-arrow", children: "\u203A" }),
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(
+        "img",
+        {
+          className: ["drk-build-icon", hextechFirst && index === 0 && "is-hextech"].filter(Boolean).join(" "),
+          src: itemIconUrl(id3),
+          alt: itemName(id3),
+          title: itemName(id3)
         }
+      )
+    ] }, `${id3}-${index}`)) });
+  }
+  function ActionButton({ status, idleKey, onClick }) {
+    const t = useT();
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(Button, { size: "sm", variant: "secondary", disabled: status === "applying", onClick, children: t(statusKey(status, idleKey)) });
+  }
+  function RunesCard() {
+    const t = useT();
+    const actions = useLegacyActions();
+    const state = useBuild();
+    const pages = state.build?.runePages || [];
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(Card, { title: t("overlays.build.cards.runes"), children: pages.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("p", { className: "drk-help", children: t("overlays.build.empty.runes") }) : pages.map((page, index) => {
+      const ids = page.selectedPerkIds || [];
+      const shards = ids.filter((id3) => id3 >= 5e3 && id3 < 6e3);
+      const perks2 = ids.filter((id3) => !(id3 >= 5e3 && id3 < 6e3));
+      const [keystone, ...rest] = perks2;
+      const primary = rest.slice(0, 3);
+      const secondary = rest.slice(3);
+      return /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-row drk-build-rune-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-row__lead", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-num", children: `${index + 1}.` }),
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("img", { className: "drk-build-style", src: perkStyleIconUrl(page.primaryStyleId), alt: perkStyleName(page.primaryStyleId), title: perkStyleName(page.primaryStyleId) }),
+          keystone ? /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("img", { className: "drk-build-keystone", src: perkIconUrl(keystone), alt: perkName(keystone), title: perkName(keystone) }) : null,
+          primary.map((id3) => /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("img", { className: "drk-build-perk", src: perkIconUrl(id3), alt: perkName(id3), title: perkName(id3) }, id3)),
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-divider" }),
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("img", { className: "drk-build-style", src: perkStyleIconUrl(page.subStyleId), alt: perkStyleName(page.subStyleId), title: perkStyleName(page.subStyleId) }),
+          secondary.map((id3) => /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("img", { className: "drk-build-perk", src: perkIconUrl(id3), alt: perkName(id3), title: perkName(id3) }, id3))
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-row__stats", children: [
+          shards.map((id3, i) => /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("img", { className: "drk-build-shard", src: perkIconUrl(id3), alt: perkName(id3), title: perkName(id3) }, `${id3}-${i}`)),
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(WinRate, { value: page.winRate, suffix: " WR" }),
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(PickRate, { entry: page }),
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(ActionButton, { status: state.runeStatus, idleKey: "overlays.build.actions.apply", onClick: () => actions.applyBuildRunes(index) })
+        ] })
+      ] }, index);
+    }) });
+  }
+  function PhaseRow({ label, entry }) {
+    if (!entry?.ids?.length) return null;
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-phase", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-phase__label", children: label }),
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(ItemIcons, { ids: entry.ids }),
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("span", { className: "drk-build-row__stats", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(WinRate, { value: entry.winRate, suffix: " WR" }),
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(PickRate, { entry })
+      ] })
+    ] });
+  }
+  function ItemsCard() {
+    const t = useT();
+    const actions = useLegacyActions();
+    const state = useBuild();
+    const items2 = state.build?.items || { starter: [], boots: [], core: [], last: [] };
+    const empty = !items2.starter?.length && !items2.boots?.length && !items2.core?.length && !items2.last?.length;
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(
+      Card,
+      {
+        title: t("overlays.build.cards.items"),
+        actions: /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(ActionButton, { status: state.itemSetStatus, idleKey: "overlays.build.actions.createItemSet", onClick: () => actions.applyBuildItems() }),
+        children: empty ? /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("p", { className: "drk-help", children: t("overlays.build.empty.items") }) : /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)(import_jsx_runtime47.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(PhaseRow, { label: t("overlays.build.phases.starter"), entry: items2.starter?.[0] }),
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(PhaseRow, { label: t("overlays.build.phases.boots"), entry: items2.boots?.[0] }),
+          items2.core?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)(import_jsx_runtime47.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-phase__label", children: t("overlays.build.phases.core") }),
+            items2.core.map((entry, index) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: ["drk-build-row", "drk-build-core-row", index === 0 && "is-hextech"].filter(Boolean).join(" "), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-row__lead", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-num", children: `${index + 1}.` }),
+                /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(ItemIcons, { ids: entry.ids, hextechFirst: index === 0 })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-row__stats", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(WinRate, { value: entry.winRate, suffix: " WR" }),
+                /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(PickRate, { entry }),
+                /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-bar", children: /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("i", { style: { width: `${Math.min(100, Number(entry.pickRate) || 0)}%` } }) })
+              ] })
+            ] }, index))
+          ] }),
+          items2.last?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-phase", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-phase__label", children: t("overlays.build.phases.situational") }),
+            /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "drk-build-trend", children: items2.last.map((entry, index) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-trend__cell", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: pct2(entry.pickRate) }),
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("img", { className: "drk-build-icon", src: itemIconUrl(entry.ids[0]), alt: itemName(entry.ids[0]), title: itemName(entry.ids[0]) })
+            ] }, index)) })
+          ] })
+        ] })
       }
     );
+  }
+  function SpellsCard() {
+    const t = useT();
+    const actions = useLegacyActions();
+    const state = useBuild();
+    const spells2 = state.build?.spells || [];
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(Card, { title: t("overlays.build.cards.spells"), children: spells2.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("p", { className: "drk-help", children: t("overlays.build.empty.spells") }) : spells2.map((entry, index) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-row", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-row__lead", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-num", children: `${index + 1}.` }),
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "drk-build-icons", children: entry.ids.map((id3) => /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("img", { className: "drk-build-icon", src: spellIconUrl(id3), alt: spellName(id3), title: spellName(id3) }, id3)) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-row__stats", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(WinRate, { value: entry.winRate, suffix: " WR" }),
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(PickRate, { entry }),
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(ActionButton, { status: state.spellStatus, idleKey: "overlays.build.actions.apply", onClick: () => actions.applyBuildSpells(index) })
+      ] })
+    ] }, index)) });
+  }
+  function SkillOrderCard() {
+    const t = useT();
+    const format = useFormat();
+    const state = useBuild();
+    const skills = state.build?.skills || { order: [], masteries: [] };
+    const order = skills.order || [];
+    if (!order.length && !(skills.masteries || []).length) return null;
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)(Card, { title: t("overlays.build.cards.skills"), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "drk-skill-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("table", { className: "drk-skill-table", children: /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("tbody", { children: SKILL_KEYS.map((key) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("tr", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("th", { scope: "row", children: /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-skill-key", children: key }) }),
+        LEVELS.map((level) => {
+          const active = order[level - 1] === key;
+          return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("td", { className: ["drk-skill-cell", active && "is-active"].filter(Boolean).join(" "), children: active ? level : "" }, level);
+        })
+      ] }, key)) }) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-row__stats", children: [
+        skills.winRate != null && /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(WinRate, { value: skills.winRate }),
+          " ",
+          t("overlays.build.winRate")
+        ] }),
+        skills.play ? /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("b", { children: format.number(skills.play) }),
+          " ",
+          t("overlays.build.games")
+        ] }) : null
+      ] })
+    ] });
+  }
+
+  // src/app/overlays/build/BuildSidebar.jsx
+  var import_jsx_runtime48 = __toESM(require_jsx_runtime(), 1);
+  function TopPlayersCard() {
+    const t = useT();
+    const sfx = useSfx();
+    const format = useFormat();
+    const actions = useLegacyActions();
+    const state = useDrake((s) => s.build);
+    const top = state.topPlayers;
+    let body;
+    if (top.loading) {
+      body = /* @__PURE__ */ (0, import_jsx_runtime48.jsxs)("div", { className: "drk-build-placeholder", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("span", { className: "drk-build-spinner", "aria-hidden": "true" }),
+        t("overlays.build.loadingPlayers")
+      ] });
+    } else if (!top.ok || !top.players.length) {
+      body = /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("p", { className: "drk-help", children: top.reason || t("overlays.build.unavailable") });
+    } else {
+      body = /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("div", { className: "drk-toplist", children: top.players.map((player) => {
+        const games = player.played ? format.number(player.played) : "\u2014";
+        return /* @__PURE__ */ (0, import_jsx_runtime48.jsxs)(
+          "button",
+          {
+            type: "button",
+            className: ["drk-toplist__row", state.viewingPlayer === player.name && "is-active"].filter(Boolean).join(" "),
+            title: t("overlays.build.playerTitle", { tier: player.tier, games }),
+            onMouseEnter: () => sfx.play(SFX.hover),
+            onClick: () => {
+              sfx.play(SFX.click);
+              actions.viewPlayerBuild(player.name, (player.region || "kr").toLowerCase());
+            },
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("span", { className: "drk-toplist__rank", children: `#${player.ranking ?? "\u2014"}` }),
+              /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("img", { src: RANK_ICONS[rankIconKey(player.tier)], alt: "" }),
+              /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("span", { className: "drk-toplist__name", children: player.name || t("overlays.build.unknown") }),
+              player.winRate != null ? /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(WinRate, { value: player.winRate }) : /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("span", { children: "\u2014" })
+            ]
+          },
+          player.name
+        );
+      }) });
+    }
+    return /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(Card, { title: t("overlays.build.cards.topPlayers"), children: body });
+  }
+  function CounterList({ list, tone }) {
+    const t = useT();
+    const format = useFormat();
+    const names = useDrake((s) => s.build.championNames) || {};
+    if (!list.length) return /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("p", { className: "drk-help", children: t("overlays.build.empty.matchups") });
+    return list.map((counter) => /* @__PURE__ */ (0, import_jsx_runtime48.jsxs)("div", { className: `drk-counter is-${tone}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("img", { src: iconUrl(counter.championId), alt: "" }),
+      /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("span", { children: names[counter.championId] || t("overlays.build.championFallback", { id: counter.championId }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(WinRate, { value: counter.winRate }),
+      /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("span", { className: "drk-counter__play", children: format.number(counter.play || 0) })
+    ] }, counter.championId));
+  }
+  function MatchupsCard() {
+    const t = useT();
+    const state = useDrake((s) => s.build);
+    const counters = state.build?.counters || { strong: [], weak: [] };
+    if (state.mode === "aram" || !counters.strong?.length && !counters.weak?.length) return null;
+    return /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(Card, { title: t("overlays.build.cards.matchups"), children: /* @__PURE__ */ (0, import_jsx_runtime48.jsxs)("div", { className: "drk-counters", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime48.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("div", { className: "drk-counter-head is-strong", children: t("overlays.build.strong") }),
+        /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(CounterList, { list: counters.strong || [], tone: "strong" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime48.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("div", { className: "drk-counter-head is-weak", children: t("overlays.build.weak") }),
+        /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(CounterList, { list: counters.weak || [], tone: "weak" })
+      ] })
+    ] }) });
+  }
+
+  // src/app/overlays/build/BuildTab.jsx
+  var import_jsx_runtime49 = __toESM(require_jsx_runtime(), 1);
+  var OPGG_ERROR = "Could not reach OP.GG";
+  function Placeholder({ children, error = false }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { className: ["drk-build-placeholder", error && "is-error"].filter(Boolean).join(" "), children });
+  }
+  function BuildBody() {
+    return /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "drk-build-body", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("aside", { className: "drk-build-sidebar", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(TopPlayersCard, {}),
+        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(MatchupsCard, {})
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "drk-build-main", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "drk-build-col", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(RunesCard, {}),
+          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(ItemsCard, {})
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "drk-build-col", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(SkillOrderCard, {}),
+          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(SpellsCard, {})
+        ] })
+      ] })
+    ] });
+  }
+  function BuildTab({ body = /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(BuildBody, {}) }) {
+    const t = useT();
+    const actions = useLegacyActions();
+    const state = useDrake((s) => s.build);
+    const firstRef = (0, import_react71.useRef)(true);
+    (0, import_react71.useEffect)(() => {
+      if (firstRef.current) {
+        firstRef.current = false;
+        return;
+      }
+      if (state.championId) void actions.loadBuild();
+    }, [state.championId]);
+    let content;
+    if (!state.championId) {
+      content = /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(Placeholder, { children: t("overlays.build.pickChampion") });
+    } else if (state.loading) {
+      content = /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(Placeholder, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("span", { className: "drk-build-spinner", "aria-hidden": "true" }),
+        t("overlays.build.loading")
+      ] });
+    } else if (state.error) {
+      content = /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(Placeholder, { error: true, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("span", { children: state.error === OPGG_ERROR ? t("overlays.build.opggError") : state.error }),
+        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(Button, { size: "sm", onClick: () => actions.retryBuild(), children: t("overlays.build.retry") })
+      ] });
+    } else if (!state.build?.hasData) {
+      content = /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(Placeholder, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("span", { children: t("overlays.build.noData", { tier: t(`overlays.build.tiers.${state.tier}`) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(Button, { size: "sm", onClick: () => actions.showAllRanks(), children: t("overlays.build.seeAllRanks") })
+      ] });
+    } else {
+      content = body;
+    }
+    return /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "drk-build", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(BuildHeader, {}),
+      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(AnimatePresence, { initial: false, children: state.viewingPlayer && /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(
+        motion2.div,
+        {
+          className: "drk-build-viewing",
+          initial: { opacity: 0, y: -6 },
+          animate: { opacity: 1, y: 0 },
+          exit: { opacity: 0, y: -6 },
+          transition: { duration: DURATION.base },
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("span", { children: [
+              t("overlays.build.viewing"),
+              " ",
+              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("b", { children: state.viewingPlayer })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+              "button",
+              {
+                type: "button",
+                className: "drk-build-viewing__restore",
+                title: t("overlays.build.restoreTitle"),
+                onClick: () => actions.clearPlayerBuild(),
+                children: t("overlays.build.restore")
+              }
+            )
+          ]
+        },
+        "viewing"
+      ) }),
+      content
+    ] });
   }
 
   // src/app/overlays/scouting/format.js
@@ -36893,54 +37286,54 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/overlays/scouting/ScoutCard.jsx
-  var import_jsx_runtime46 = __toESM(require_jsx_runtime(), 1);
-  var ROLE_KEYS = /* @__PURE__ */ new Set(["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]);
+  var import_jsx_runtime50 = __toESM(require_jsx_runtime(), 1);
+  var ROLE_KEYS2 = /* @__PURE__ */ new Set(["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]);
   function RankBlock({ label, rank }) {
     const t = useT();
     const tier = String(rank?.tier || "").toUpperCase();
-    return /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "drk-scout-rank", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("img", { className: "drk-scout-rank__icon", src: RANK_ICONS[tier] || RANK_ICONS.UNRANKED, alt: "" }),
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "drk-scout-rank__meta", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "drk-scout-rank__queue", children: label }),
-        /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "drk-scout-rank__tier", children: formatRank(rank, t) })
+    return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "drk-scout-rank", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("img", { className: "drk-scout-rank__icon", src: RANK_ICONS[tier] || RANK_ICONS.UNRANKED, alt: "" }),
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "drk-scout-rank__meta", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "drk-scout-rank__queue", children: label }),
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "drk-scout-rank__tier", children: formatRank(rank, t) })
       ] })
     ] });
   }
   function WinLoss({ wins, losses, rate }) {
     const t = useT();
-    return /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { className: "drk-wl", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "is-win", children: t("overlays.scouting.winsShort", { count: wins || 0 }) }),
+    return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("span", { className: "drk-wl", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "is-win", children: t("overlays.scouting.winsShort", { count: wins || 0 }) }),
       "/",
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "is-loss", children: t("overlays.scouting.lossesShort", { count: losses || 0 }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "is-loss", children: t("overlays.scouting.lossesShort", { count: losses || 0 }) }),
       ` \xB7 ${winRate(wins, losses, rate)}%`
     ] });
   }
   function ChampChip({ id: id3, name, detail }) {
     const t = useT();
-    return /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { className: "drk-scout-champ", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("img", { className: "drk-scout-champ__icon", src: iconUrl(id3), alt: "" }),
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { children: [name || t("overlays.scouting.unknown"), detail].filter(Boolean).join(" \xB7 ") })
+    return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("span", { className: "drk-scout-champ", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("img", { className: "drk-scout-champ__icon", src: iconUrl(id3), alt: "" }),
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { children: [name || t("overlays.scouting.unknown"), detail].filter(Boolean).join(" \xB7 ") })
     ] });
   }
   function Row2({ label, children }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "drk-scout-card__row", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("dt", { className: "drk-scout-card__row-label", children: label }),
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("dd", { className: "drk-scout-card__row-value", children })
+    return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "drk-scout-card__row", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dt", { className: "drk-scout-card__row-label", children: label }),
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dd", { className: "drk-scout-card__row-value", children })
     ] });
   }
   function RecentGames({ games, pending }) {
     if (pending) {
-      return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "drk-scout-games", "aria-busy": "true", children: Array.from({ length: 5 }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Skeleton, { variant: "circle", width: 22 }, i)) });
+      return /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "drk-scout-games", "aria-busy": "true", children: Array.from({ length: 5 }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Skeleton, { variant: "circle", width: 22 }, i)) });
     }
     if (!games?.length) return "\u2014";
-    return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "drk-scout-games", children: games.map((game, index) => /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "drk-scout-games", children: games.map((game, index) => /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(
       "span",
       {
         className: ["drk-scout-game", game.win ? "is-win" : "is-loss"].join(" "),
         title: `${game.championName} ${game.kills}/${game.deaths}/${game.assists}`,
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("img", { src: iconUrl(game.championId), alt: game.championName }),
-          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "drk-scout-game__kda", children: `${game.kills}/${game.deaths}/${game.assists}` })
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("img", { src: iconUrl(game.championId), alt: game.championName }),
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "drk-scout-game__kda", children: `${game.kills}/${game.deaths}/${game.assists}` })
         ]
       },
       index
@@ -36951,11 +37344,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
     const pending = !!row.matchesPending;
     const position = String(row.assignedPosition || "").toUpperCase();
     const roleIcon = position ? roleIconUrl(position) : "";
-    const roleName = ROLE_KEYS.has(position) ? t(`roles.${position}`) : roleLabel(position);
-    const skel = /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Skeleton, { width: 88 });
+    const roleName = ROLE_KEYS2.has(position) ? t(`roles.${position}`) : roleLabel(position);
+    const skel = /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Skeleton, { width: 88 });
     const wl = (w, l) => `${t("overlays.scouting.winsShort", { count: w || 0 })}/${t("overlays.scouting.lossesShort", { count: l || 0 })}`;
     const games = (count) => t("overlays.scouting.games", { count });
-    const season = row.seasonMostPlayedChampionId ? /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
+    const season = row.seasonMostPlayedChampionId ? /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
       ChampChip,
       {
         id: row.seasonMostPlayedChampionId,
@@ -36967,7 +37360,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         ].join(" \xB7 ") : ""
       }
     ) : "\u2014";
-    return /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(
       motion2.section,
       {
         className: ["drk-scout-card", row.isLocalPlayer && "is-you", pending && "is-loading"].filter(Boolean).join(" "),
@@ -36975,28 +37368,28 @@ button.bug-report-button[data-drake-toggle]:disabled {
         animate: { opacity: 1, y: 0 },
         transition: { delay: staggerDelay(index), duration: DURATION.base },
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("header", { className: "drk-scout-card__head", children: [
-            roleIcon && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("img", { className: "drk-scout-card__role", src: roleIcon, alt: "", title: roleName }),
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("h3", { className: "drk-scout-card__name", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("header", { className: "drk-scout-card__head", children: [
+            roleIcon && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("img", { className: "drk-scout-card__role", src: roleIcon, alt: "", title: roleName }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("h3", { className: "drk-scout-card__name", children: [
               row.riotId || t("overlays.scouting.unknown"),
-              row.isLocalPlayer && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "drk-scout-card__you", children: ` ${t("overlays.scouting.you")}` })
+              row.isLocalPlayer && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "drk-scout-card__you", children: ` ${t("overlays.scouting.you")}` })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "drk-scout-card__ranks", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(RankBlock, { label: t("overlays.scouting.queues.solo"), rank: row.soloRank }),
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(RankBlock, { label: t("overlays.scouting.queues.flex"), rank: row.flexRank })
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "drk-scout-card__ranks", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(RankBlock, { label: t("overlays.scouting.queues.solo"), rank: row.soloRank }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(RankBlock, { label: t("overlays.scouting.queues.flex"), rank: row.flexRank })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("dl", { className: "drk-scout-card__rows", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("dl", { className: "drk-scout-card__rows", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
               Row2,
               {
                 label: !pending && row.matchesUsed ? t("overlays.scouting.rows.recentWlGames", { count: row.matchesUsed }) : t("overlays.scouting.rows.recentWl"),
-                children: pending ? skel : /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(WinLoss, { wins: row.wins, losses: row.losses, rate: row.winRate })
+                children: pending ? skel : /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(WinLoss, { wins: row.wins, losses: row.losses, rate: row.winRate })
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Row2, { label: t("overlays.scouting.rows.kda"), children: pending ? skel : String(row.kda ?? "\u2014") }),
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Row2, { label: t("overlays.scouting.rows.last12h"), children: pending ? skel : wl(row.last12hWins, row.last12hLosses) }),
-            row.pickedChampionId ? /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Row2, { label: t("overlays.scouting.rows.picked"), children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Row2, { label: t("overlays.scouting.rows.kda"), children: pending ? skel : String(row.kda ?? "\u2014") }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Row2, { label: t("overlays.scouting.rows.last12h"), children: pending ? skel : wl(row.last12hWins, row.last12hLosses) }),
+            row.pickedChampionId ? /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Row2, { label: t("overlays.scouting.rows.picked"), children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
               ChampChip,
               {
                 id: row.pickedChampionId,
@@ -37004,8 +37397,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
                 detail: row.pickedGames ? `${games(row.pickedGames)} \xB7 ${row.pickedWinRate ?? 0}%` : t("overlays.scouting.noGames")
               }
             ) }) : null,
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Row2, { label: t("overlays.scouting.rows.seasonMain"), children: pending ? skel : season }),
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Row2, { label: t("overlays.scouting.rows.last5"), children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(RecentGames, { games: row.recentGames, pending }) })
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Row2, { label: t("overlays.scouting.rows.seasonMain"), children: pending ? skel : season }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Row2, { label: t("overlays.scouting.rows.last5"), children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(RecentGames, { games: row.recentGames, pending }) })
           ] })
         ]
       }
@@ -37013,15 +37406,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/overlays/scouting/ScoutingModal.jsx
-  var import_jsx_runtime47 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime51 = __toESM(require_jsx_runtime(), 1);
   var TAB_IDS2 = ["scouting", "build"];
   function ScoutingModal() {
     const t = useT();
     const actions = useLegacyActions();
     const view = useDrake((state) => state.teamReveal);
     const scouting = view.activeTab !== "build";
-    const header = /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-scout__head", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(
+    const header = /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { className: "drk-scout__head", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
         Tabs,
         {
           tabs: TAB_IDS2.map((id3) => ({ id: id3, label: t(`overlays.scouting.tabs.${id3}`) })),
@@ -37029,9 +37422,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
           onChange: (tab) => actions.setScoutingTab(tab)
         }
       ),
-      scouting && /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-scout__meta", children: [
-        view.side && /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: `drk-side is-${view.side.color}`, children: t(`overlays.scouting.side.${view.side.side}`) }),
-        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(
+      scouting && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { className: "drk-scout__meta", children: [
+        view.side && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("span", { className: `drk-side is-${view.side.color}`, children: t(`overlays.scouting.side.${view.side.side}`) }),
+        /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
           Button,
           {
             size: "sm",
@@ -37043,7 +37436,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         )
       ] })
     ] });
-    return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
       Modal,
       {
         open: view.open,
@@ -37052,30 +37445,30 @@ button.bug-report-button[data-drake-toggle]:disabled {
         ariaLabel: t("overlays.scouting.title"),
         width: 1180,
         className: "drk-scout",
-        children: !scouting ? /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(LegacyBuildTab, { buildSig: view.buildSig }) : view.rows.length ? /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "drk-scout__grid", children: view.rows.map((row, index) => /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(ScoutCard, { row, index }, row.cellId ?? index)) }) : /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("p", { className: "drk-help", children: t("overlays.scouting.empty") })
+        children: !scouting ? /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(BuildTab, {}) : view.rows.length ? /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("div", { className: "drk-scout__grid", children: view.rows.map((row, index) => /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(ScoutCard, { row, index }, row.cellId ?? index)) }) : /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { className: "drk-help", children: t("overlays.scouting.empty") })
       }
     );
   }
 
   // src/app/overlays/scouting/ScoutingToast.jsx
-  var import_react73 = __toESM(require_react(), 1);
-  var import_jsx_runtime48 = __toESM(require_jsx_runtime(), 1);
+  var import_react74 = __toESM(require_react(), 1);
+  var import_jsx_runtime52 = __toESM(require_jsx_runtime(), 1);
   function ScoutingToast() {
     const t = useT();
     const actions = useLegacyActions();
     const view = useDrake((state) => state.teamReveal);
-    const [dismissedSeq, setDismissedSeq] = (0, import_react73.useState)(-1);
+    const [dismissedSeq, setDismissedSeq] = (0, import_react74.useState)(-1);
     const loading2 = view.statusPhase === "loading";
     const ready = view.statusPhase === "ready" && dismissedSeq !== view.statusSeq;
     const visible = view.enabled && !view.open && (loading2 || ready);
-    (0, import_react73.useEffect)(() => {
+    (0, import_react74.useEffect)(() => {
       if (view.statusPhase !== "ready" || view.open) return void 0;
       const seq = view.statusSeq;
       const timer = setTimeout(() => setDismissedSeq(seq), STATUS_READY_MS);
       return () => clearTimeout(timer);
     }, [view.statusPhase, view.statusSeq, view.open]);
     const text = loading2 ? t("overlays.scouting.toast.revealing") : view.side ? t("overlays.scouting.toast.revealedSide", { side: t(`overlays.scouting.side.${view.side.side}`) }) : t("overlays.scouting.toast.revealed");
-    return /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(Layer, { children: /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(AnimatePresence, { children: visible && /* @__PURE__ */ (0, import_jsx_runtime48.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(Layer, { children: /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(AnimatePresence, { children: visible && /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)(
       motion2.div,
       {
         role: "status",
@@ -37085,10 +37478,10 @@ button.bug-report-button[data-drake-toggle]:disabled {
         exit: { opacity: 0, x: 24 },
         transition: { duration: DURATION.base, ease: EASE_OUT },
         children: [
-          loading2 && /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("span", { className: "drk-scout-toast__spinner", "aria-hidden": "true" }),
-          /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("span", { children: text }),
-          !loading2 && /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(Button, { size: "sm", onClick: () => actions.openScouting(), children: t("overlays.scouting.toast.view") }),
-          !loading2 && /* @__PURE__ */ (0, import_jsx_runtime48.jsx)(
+          loading2 && /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("span", { className: "drk-scout-toast__spinner", "aria-hidden": "true" }),
+          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("span", { children: text }),
+          !loading2 && /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(Button, { size: "sm", onClick: () => actions.openScouting(), children: t("overlays.scouting.toast.view") }),
+          !loading2 && /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(
             "span",
             {
               className: "drk-scout-toast__bar",
@@ -37104,13 +37497,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/App.jsx
-  var import_jsx_runtime49 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime53 = __toESM(require_jsx_runtime(), 1);
   function App({ sfx, portalTarget, store, actions }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(AppProviders, { sfx, portalTarget, store, actions, children: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "drake-app", "data-drake-app": "", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(PanelFrame, {}),
-      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(ScoutingModal, {}),
-      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(ScoutingToast, {}),
-      false ? /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(DevShowcase, {}) : null
+    return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(AppProviders, { sfx, portalTarget, store, actions, children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "drake-app", "data-drake-app": "", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(PanelFrame, {}),
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(ScoutingModal, {}),
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(ScoutingToast, {}),
+      false ? /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(DevShowcase, {}) : null
     ] }) });
   }
 
@@ -37178,7 +37571,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default, shell_default, Segmented_default, TextInput_default, screens_default, champions_default, profile_default, onboarding_default, scouting_default, build_default];
 
   // src/app/main.jsx
-  var import_jsx_runtime50 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime54 = __toESM(require_jsx_runtime(), 1);
   var APP_LAYER_ID = "drake-app-layer";
   var mounted = /* @__PURE__ */ new WeakMap();
   function startApp(shadow, { sfx, store, actions } = {}) {
@@ -37187,7 +37580,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     layer.id = APP_LAYER_ID;
     const app = mountReactRoot(shadow, {
       styles: APP_STYLES,
-      element: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(App, { sfx, portalTarget: layer, store, actions })
+      element: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(App, { sfx, portalTarget: layer, store, actions })
     });
     shadow.appendChild(layer);
     const result = {
@@ -38014,13 +38407,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         openScouting: () => teamRevealDom?.openCards(),
         closeScouting: () => teamRevealDom?.closeCards(),
         setScoutingTab: (tab) => teamRevealDom?.setActiveTab(tab),
-        muteScouting: () => teamRevealDom?.muteAll(),
-        renderBuildHtml: () => buildPanel?.renderHtml ? buildPanel.renderHtml() : "",
-        wireBuildSelects: (root) => wireDrakeSelects(root, ({ dropdown, value }) => {
-          buildPanel?.applyDropdownSelect?.(dropdown, value);
-        }),
-        buildChange: (event) => buildPanel?.handleChange?.(event),
-        buildClick: (event) => buildPanel?.handleClick?.(event)
+        muteScouting: () => teamRevealDom?.muteAll()
       });
       Object.assign(legacyActions, {
         loadBuild: () => buildPanel?.loadBuild(),

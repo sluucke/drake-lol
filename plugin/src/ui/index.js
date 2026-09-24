@@ -967,13 +967,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       closeScouting: () => teamRevealDom?.closeCards(),
       setScoutingTab: (tab) => teamRevealDom?.setActiveTab(tab),
       muteScouting: () => teamRevealDom?.muteAll(),
-      renderBuildHtml: () => (buildPanel?.renderHtml ? buildPanel.renderHtml() : ''),
-      wireBuildSelects: (root) =>
-        wireDrakeSelects(root, ({ dropdown, value }) => {
-          buildPanel?.applyDropdownSelect?.(dropdown, value);
-        }),
-      buildChange: (event) => buildPanel?.handleChange?.(event),
-      buildClick: (event) => buildPanel?.handleClick?.(event),
     });
 
     Object.assign(legacyActions, {
