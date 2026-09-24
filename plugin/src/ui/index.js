@@ -53,7 +53,6 @@ import { makeUpdater } from '../features/update.js';
 import { loadConfig } from '../config.js';
 import { canCancel, cancelQueue } from '../autoAccept.js';
 import { inChampSelect } from './dodgeDock.js';
-import { mountSocialToggle, syncSocialToggle, watchSocialToggle } from './socialToggle.js';
 import { subscribe } from '../subscribe.js';
 import {
   buildTeamRevealSnapshot,
@@ -119,7 +118,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let pendingOnboard = null;
   const onboardLock = { busy: false };
   let shadowRoot = null;
-  let stopSocialToggle = null;
   let dodgeBusy = false;
   let champSelectActive = false;
   let champSelectSession = null;
@@ -240,7 +238,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     onOpenChange: (open) => {
       store.getState().setPanelOpen(open);
       if (!shadowRoot) return;
-      syncSocialToggle(document, open);
       if (!open) closeCredits();
     },
     onTeamRevealCardsToggle: () => {
@@ -284,34 +281,12 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     store.getState().patchChampSelect({ cancelable: canCancel(payload) });
   }
 
-  function startSocialWatch(api) {
-    const panel = api || ui;
-    if (stopSocialToggle || !shadowRoot || !panel) return;
-    stopSocialToggle = watchSocialToggle(document, window, () => {
-      mountSocialToggle(document, {
-        onToggle: () => panel.toggle(),
-        isOpen: () => panel.isOpen(),
-      });
-    });
-    mountSocialToggle(document, {
-      onToggle: () => panel.toggle(),
-      isOpen: () => panel.isOpen(),
-    });
-  }
-
-  function stopSocialWatch() {
-    if (!stopSocialToggle) return;
-    stopSocialToggle();
-    stopSocialToggle = null;
-  }
-
   function setIdle(next) {
     if (next === inGameIdle) return;
     inGameIdle = next;
     syncStore();
     if (inGameIdle) {
       ui.close();
-      stopSocialWatch();
       champSelectActive = false;
       champSelectSession = null;
       store.getState().resetChampSelect();
@@ -322,7 +297,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       feedBuildPanel(null);
       return;
     }
-    startSocialWatch();
     if (teamRevealDom) teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
   }
 
@@ -420,8 +394,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       console.log(TAG, 'dodge', detail);
     };
 
-
-    startSocialWatch(api);
     store.getState().setSession({
       hostLabel: formatHostLabel({
         appVersion,

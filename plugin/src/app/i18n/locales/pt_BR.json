@@ -532,6 +532,10 @@
     },
     "docks": {
       "cancelQueue": "Cancelar fila"
+    },
+    "socialToggle": {
+      "open": "Abrir o Drake",
+      "close": "Fechar o Drake"
     }
   }
 }

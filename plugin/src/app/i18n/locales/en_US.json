@@ -532,6 +532,10 @@
     },
     "docks": {
       "cancelQueue": "Cancel Queue"
+    },
+    "socialToggle": {
+      "open": "Open Drake",
+      "close": "Close Drake"
     }
   }
 }
