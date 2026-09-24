@@ -194,6 +194,23 @@
       "riotName": "Name",
       "riotTag": "TAG",
       "saveRiotId": "Save ID"
+    },
+    "friends": {
+      "title": "Friends",
+      "empty": "Nobody on the list, or the client has not shared it yet.",
+      "summary": "{online} online of {total}. Notes are the ones you set in the client.",
+      "warning": "Removing everyone cannot be undone from Drake.",
+      "removeAll": "Remove all",
+      "confirmTitle": "Remove all friends?",
+      "confirm": {
+        "one": "This removes {count} friend. It cannot be undone from Drake.",
+        "other": "This removes all {count} friends. It cannot be undone from Drake."
+      },
+      "removed": {
+        "one": "Removed {count} friend",
+        "other": "Removed {count} friends"
+      },
+      "removedPartial": "Removed {removed}, {failed} failed"
     }
   },
   "roles": {

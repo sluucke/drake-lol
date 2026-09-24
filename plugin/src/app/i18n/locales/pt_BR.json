@@ -194,6 +194,23 @@
       "riotName": "Nome",
       "riotTag": "TAG",
       "saveRiotId": "Salvar ID"
+    },
+    "friends": {
+      "title": "Amigos",
+      "empty": "Ninguém na lista, ou o cliente ainda não a compartilhou.",
+      "summary": "{online} online de {total}. As notas são as que você definiu no cliente.",
+      "warning": "Remover todos não pode ser desfeito pelo Drake.",
+      "removeAll": "Remover todos",
+      "confirmTitle": "Remover todos os amigos?",
+      "confirm": {
+        "one": "Isso remove {count} amigo. Não pode ser desfeito pelo Drake.",
+        "other": "Isso remove todos os {count} amigos. Não pode ser desfeito pelo Drake."
+      },
+      "removed": {
+        "one": "{count} amigo removido",
+        "other": "{count} amigos removidos"
+      },
+      "removedPartial": "{removed} removidos, {failed} falharam"
     }
   },
   "roles": {
