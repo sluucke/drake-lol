@@ -19579,23 +19579,22 @@ ${BUILD_PANEL_CSS}
     const rect = anchor.getBoundingClientRect();
     return `${Math.round(rect.left)}:${Math.round(rect.top)}:${Math.round(rect.width)}:${Math.round(rect.height)}:${win.innerHeight}`;
   }
+  function dockStyle(anchor, win) {
+    if (!anchor) return { left: "auto", right: "20px", bottom: "70px", transform: "none" };
+    const rect = anchor.getBoundingClientRect();
+    return {
+      left: `${rect.left + rect.width / 2}px`,
+      right: "auto",
+      bottom: `${win.innerHeight - rect.top + DOCK_GAP_PX}px`,
+      transform: "translateX(-50%)"
+    };
+  }
   function layoutDock(dockEl, anchor, win) {
     if (!dockEl) return false;
     const key = layoutKey(dockEl, anchor, win);
     if (dockEl.dataset.layoutKey === key) return true;
     dockEl.dataset.layoutKey = key;
-    if (!anchor) {
-      dockEl.style.left = "auto";
-      dockEl.style.right = "20px";
-      dockEl.style.bottom = "70px";
-      dockEl.style.transform = "none";
-      return true;
-    }
-    const rect = anchor.getBoundingClientRect();
-    dockEl.style.right = "auto";
-    dockEl.style.left = `${rect.left + rect.width / 2}px`;
-    dockEl.style.bottom = `${win.innerHeight - rect.top + DOCK_GAP_PX}px`;
-    dockEl.style.transform = "translateX(-50%)";
+    Object.assign(dockEl.style, dockStyle(anchor, win));
     return true;
   }
   function watchAnchor(doc, win, cb) {
@@ -34086,6 +34085,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
         unavailable: "Unavailable",
         unknown: "Unknown",
         playerTitle: "{tier} \xB7 {games} games"
+      },
+      docks: {
+        cancelQueue: "Cancel Queue"
       }
     }
   };
@@ -34622,6 +34624,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
         unavailable: "Indispon\xEDvel",
         unknown: "Desconhecido",
         playerTitle: "{tier} \xB7 {games} partidas"
+      },
+      docks: {
+        cancelQueue: "Cancelar fila"
       }
     }
   };
@@ -37587,8 +37592,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
   // src/app/overlays/build/build.css
   var build_default = ".drk-build {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-4);\n}\n\n.drk-build-header {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: var(--space-4);\n  padding-bottom: var(--space-3);\n  border-bottom: 1px solid var(--surface-2);\n}\n\n.drk-build-identity {\n  display: flex;\n  align-items: center;\n  gap: var(--space-3);\n}\n\n.drk-build-champ {\n  width: 48px;\n  height: 48px;\n  border: 2px solid var(--gold-2);\n  border-radius: 50%;\n  box-shadow: var(--glow-gold);\n}\n\n.drk-build-identity__name {\n  font-family: var(--font-heading);\n  font-size: var(--text-xl);\n  font-weight: 700;\n  letter-spacing: 0.08em;\n  text-transform: uppercase;\n  color: var(--gold-1);\n}\n\n.drk-build-identity__sub {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2);\n  font-size: var(--text-sm);\n  color: var(--text);\n}\n\n.drk-build-role {\n  display: inline-flex;\n  align-items: center;\n  gap: var(--space-1);\n}\n\n.drk-build-role img {\n  width: 18px;\n  height: 18px;\n}\n\n.drk-build-tag,\n.drk-build-patch {\n  padding: 1px var(--space-2);\n  font-size: var(--text-xs);\n  border: 1px solid var(--surface-3);\n  border-radius: var(--radius-sm);\n}\n\n.drk-build-filters {\n  display: flex;\n  gap: var(--space-3);\n  margin-left: auto;\n}\n\n.drk-build-filter {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2);\n  font-size: var(--text-xs);\n  letter-spacing: 0.1em;\n  text-transform: uppercase;\n  color: var(--text-muted);\n}\n\n.drk-build-stats {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-5);\n  width: 100%;\n  font-size: var(--text-sm);\n  color: var(--text);\n}\n\n.drk-build-stats b {\n  color: var(--text-strong);\n}\n\n.drk-build-wr {\n  font-weight: 700;\n  color: var(--hex-2);\n}\n\n.drk-build-wr.is-positive {\n  color: #2de071;\n}\n\n.drk-build-wr.is-negative {\n  color: #e84057;\n}\n\n.drk-build-viewing {\n  position: sticky;\n  top: 0;\n  z-index: 2;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-3);\n  padding: var(--space-2) var(--space-3);\n  font-size: var(--text-sm);\n  color: var(--gold-1);\n  background: linear-gradient(90deg, rgba(200, 170, 110, 0.2), rgba(1, 10, 19, 0.9));\n  border: 1px solid var(--gold-4);\n  border-radius: var(--radius-sm);\n}\n\n.drk-build-viewing__restore {\n  padding: 2px var(--space-2);\n  font-size: var(--text-xs);\n  color: var(--gold-2);\n  background: none;\n  border: 1px solid var(--gold-4);\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n}\n\n.drk-build-placeholder {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: var(--space-3);\n  padding: var(--space-8);\n  text-align: center;\n  color: var(--text);\n}\n\n.drk-build-placeholder.is-error {\n  color: #e84057;\n}\n\n.drk-build-spinner {\n  width: 18px;\n  height: 18px;\n  border: 2px solid var(--hex-4);\n  border-top-color: var(--hex-2);\n  border-radius: 50%;\n  animation: drk-spin 0.8s linear infinite;\n}\n\n.drk-build-body {\n  display: flex;\n  gap: var(--space-4);\n}\n\n.drk-build-sidebar {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-4);\n  width: 240px;\n  flex-shrink: 0;\n}\n\n.drk-build-main {\n  display: grid;\n  flex: 1;\n  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));\n  gap: var(--space-4);\n  align-items: start;\n}\n\n.drk-build-col {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-4);\n}\n\n@media (max-width: 860px) {\n  .drk-build-body {\n    flex-direction: column;\n  }\n\n  .drk-build-sidebar {\n    width: 100%;\n  }\n}\n\n.drk-build-row {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  justify-content: space-between;\n  gap: var(--space-2);\n  padding: var(--space-2);\n  border-radius: var(--radius-sm);\n  transition: background var(--dur-fast) var(--ease-out);\n}\n\n.drk-build-row:hover {\n  background: rgba(200, 170, 110, 0.06);\n}\n\n.drk-build-row.is-hextech {\n  background: linear-gradient(90deg, rgba(10, 203, 230, 0.12), transparent);\n  box-shadow: inset 2px 0 0 var(--hex-2);\n}\n\n.drk-build-row__lead {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2);\n}\n\n.drk-build-num {\n  min-width: 18px;\n  font-family: var(--font-heading);\n  font-size: var(--text-sm);\n  color: var(--text-muted);\n}\n\n.drk-build-row.is-hextech .drk-build-num {\n  color: var(--hex-2);\n  text-shadow: 0 0 6px rgba(10, 203, 230, 0.6);\n}\n\n.drk-build-row__stats {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2);\n  font-size: var(--text-xs);\n  color: var(--text);\n}\n\n.drk-build-icons {\n  display: flex;\n  align-items: center;\n  gap: 2px;\n}\n\n.drk-build-arrow {\n  color: var(--text-muted);\n}\n\n.drk-build-icon {\n  width: 30px;\n  height: 30px;\n  border: 1px solid var(--surface-3);\n  border-radius: var(--radius-sm);\n}\n\n.drk-build-icon.is-hextech {\n  border-color: var(--hex-2);\n  box-shadow: var(--glow-hex);\n  animation: drk-hextech-pulse 2s var(--ease-out) infinite;\n}\n\n@keyframes drk-hextech-pulse {\n  0%,\n  100% {\n    box-shadow: 0 0 6px rgba(10, 203, 230, 0.35);\n  }\n  50% {\n    box-shadow: 0 0 14px rgba(10, 203, 230, 0.7);\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .drk-build-icon.is-hextech {\n    animation: none;\n  }\n}\n\n.drk-build-perk {\n  width: 22px;\n  height: 22px;\n  border-radius: 50%;\n}\n\n.drk-build-keystone {\n  width: 28px;\n  height: 28px;\n}\n\n.drk-build-style {\n  width: 24px;\n  height: 24px;\n}\n\n.drk-build-shard {\n  width: 18px;\n  height: 18px;\n}\n\n.drk-build-divider {\n  width: 1px;\n  height: 22px;\n  background: var(--surface-3);\n}\n\n.drk-build-phase {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2);\n}\n\n.drk-build-phase__label {\n  width: 72px;\n  font-family: var(--font-heading);\n  font-size: var(--text-xs);\n  letter-spacing: 0.08em;\n  text-transform: uppercase;\n  color: var(--text-muted);\n}\n\n.drk-build-bar {\n  width: 54px;\n  height: 4px;\n  background: var(--surface-2);\n  border-radius: 2px;\n  overflow: hidden;\n}\n\n.drk-build-bar i {\n  display: block;\n  height: 100%;\n  background: linear-gradient(90deg, var(--gold-4), var(--gold-2));\n}\n\n.drk-build-trend {\n  display: flex;\n  gap: var(--space-2);\n  overflow-x: auto;\n}\n\n.drk-build-trend__cell {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 2px;\n  font-size: 10px;\n  color: var(--text);\n}\n\n.drk-skill-table {\n  border-collapse: separate;\n  border-spacing: 2px;\n}\n\n.drk-skill-table th {\n  padding-right: var(--space-2);\n}\n\n.drk-skill-key {\n  display: grid;\n  place-items: center;\n  width: 22px;\n  height: 22px;\n  font-family: var(--font-heading);\n  font-size: var(--text-sm);\n  color: var(--gold-1);\n  background: var(--surface-2);\n  border-radius: var(--radius-sm);\n}\n\n.drk-skill-cell {\n  width: 22px;\n  height: 22px;\n  font-size: 10px;\n  text-align: center;\n  color: transparent;\n  background: rgba(60, 60, 65, 0.35);\n  border-radius: var(--radius-sm);\n}\n\n.drk-skill-cell.is-active {\n  color: var(--surface-0);\n  font-weight: 700;\n  background: var(--hex-2);\n  box-shadow: 0 0 6px rgba(10, 203, 230, 0.5);\n}\n\n.drk-counters {\n  display: flex;\n  flex-direction: column;\n  gap: var(--space-3);\n}\n\n.drk-counter-head {\n  font-size: var(--text-xs);\n  letter-spacing: 0.08em;\n  text-transform: uppercase;\n}\n\n.drk-counter-head.is-strong {\n  color: #2de071;\n}\n\n.drk-counter-head.is-weak {\n  color: #e84057;\n}\n\n.drk-counter {\n  display: grid;\n  grid-template-columns: 24px 1fr auto auto;\n  align-items: center;\n  gap: var(--space-2);\n  font-size: var(--text-sm);\n}\n\n.drk-counter img {\n  width: 24px;\n  height: 24px;\n  border-radius: 50%;\n}\n\n.drk-counter__play {\n  font-size: var(--text-xs);\n  color: var(--text-muted);\n}\n\n.drk-toplist {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.drk-toplist__row {\n  display: grid;\n  grid-template-columns: 28px 20px 1fr auto;\n  align-items: center;\n  gap: var(--space-2);\n  padding: var(--space-1) var(--space-2);\n  font-size: var(--text-sm);\n  text-align: left;\n  color: var(--text-strong);\n  background: none;\n  border: 1px solid transparent;\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  pointer-events: auto;\n  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);\n}\n\n.drk-toplist__row:hover,\n.drk-toplist__row.is-active {\n  background: rgba(200, 170, 110, 0.1);\n  border-color: var(--gold-4);\n}\n\n.drk-toplist__rank {\n  font-size: var(--text-xs);\n  color: var(--text-muted);\n}\n\n.drk-toplist__row img {\n  width: 18px;\n  height: 18px;\n}\n\n.drk-toplist__name {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n";
 
+  // src/app/overlays/docks/docks.css
+  var docks_default = ".drk-dock {\r\n  position: fixed;\r\n  pointer-events: auto;\r\n  z-index: 2;\r\n}\r\n\r\n.drk-dock--cancel {\r\n  left: 50%;\r\n  bottom: 12vh;\r\n  transform: translateX(-50%);\r\n  z-index: 1;\r\n}\r\n\r\n.drk-dock .drk-btn {\r\n  min-width: 168px;\r\n}\r\n";
+
   // src/app/styles/index.js
-  var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default, shell_default, Segmented_default, TextInput_default, screens_default, champions_default, profile_default, onboarding_default, scouting_default, build_default];
+  var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default, shell_default, Segmented_default, TextInput_default, screens_default, champions_default, profile_default, onboarding_default, scouting_default, build_default, docks_default];
 
   // src/app/main.jsx
   var import_jsx_runtime54 = __toESM(require_jsx_runtime(), 1);

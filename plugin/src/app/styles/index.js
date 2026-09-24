@@ -18,5 +18,6 @@ import profile from '../screens/profile/profile.css';
 import onboarding from '../shell/onboarding.css';
 import scouting from '../overlays/scouting/scouting.css';
 import build from '../overlays/build/build.css';
+import docks from '../overlays/docks/docks.css';
 
-export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs, modal, tooltip, skeleton, slider, shell, segmented, textInput, screens, champions, profile, onboarding, scouting, build];
+export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs, modal, tooltip, skeleton, slider, shell, segmented, textInput, screens, champions, profile, onboarding, scouting, build, docks];

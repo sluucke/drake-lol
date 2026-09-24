@@ -26,26 +26,24 @@ export function layoutKey(dockEl, anchor, win) {
   return `${Math.round(rect.left)}:${Math.round(rect.top)}:${Math.round(rect.width)}:${Math.round(rect.height)}:${win.innerHeight}`;
 }
 
+export function dockStyle(anchor, win) {
+  if (!anchor) return { left: 'auto', right: '20px', bottom: '70px', transform: 'none' };
+  const rect = anchor.getBoundingClientRect();
+  return {
+    left: `${rect.left + rect.width / 2}px`,
+    right: 'auto',
+    bottom: `${win.innerHeight - rect.top + DOCK_GAP_PX}px`,
+    transform: 'translateX(-50%)',
+  };
+}
+
 export function layoutDock(dockEl, anchor, win) {
   if (!dockEl) return false;
 
   const key = layoutKey(dockEl, anchor, win);
   if (dockEl.dataset.layoutKey === key) return true;
   dockEl.dataset.layoutKey = key;
-
-  if (!anchor) {
-    dockEl.style.left = 'auto';
-    dockEl.style.right = '20px';
-    dockEl.style.bottom = '70px';
-    dockEl.style.transform = 'none';
-    return true;
-  }
-
-  const rect = anchor.getBoundingClientRect();
-  dockEl.style.right = 'auto';
-  dockEl.style.left = `${rect.left + rect.width / 2}px`;
-  dockEl.style.bottom = `${win.innerHeight - rect.top + DOCK_GAP_PX}px`;
-  dockEl.style.transform = 'translateX(-50%)';
+  Object.assign(dockEl.style, dockStyle(anchor, win));
   return true;
 }
 

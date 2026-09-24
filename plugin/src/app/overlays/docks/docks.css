@@ -1,0 +1,16 @@
+.drk-dock {
+  position: fixed;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.drk-dock--cancel {
+  left: 50%;
+  bottom: 12vh;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.drk-dock .drk-btn {
+  min-width: 168px;
+}

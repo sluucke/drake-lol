@@ -529,6 +529,9 @@
       "unavailable": "Indisponível",
       "unknown": "Desconhecido",
       "playerTitle": "{tier} · {games} partidas"
+    },
+    "docks": {
+      "cancelQueue": "Cancelar fila"
     }
   }
 }
