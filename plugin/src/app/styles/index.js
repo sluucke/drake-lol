@@ -5,5 +5,6 @@ import card from '../ui/Card.css';
 import toggle from '../ui/Toggle.css';
 import select from '../ui/Select.css';
 import tabs from '../ui/Tabs.css';
+import modal from '../ui/Modal.css';
 
-export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs];
+export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs, modal];
