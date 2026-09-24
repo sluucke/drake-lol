@@ -455,30 +455,6 @@ export const CSS = `
 .slider:disabled::-webkit-slider-thumb { background: #5c5b57; cursor: default; }
 
 
-
-
-
-.cancel-dock {
-  position: fixed;
-  left: 50%;
-  bottom: 12vh;
-  transform: translateX(-50%);
-  pointer-events: auto;
-  z-index: 1;
-}
-.cancel-dock[hidden] { display: none; }
-
-
-
-
-
-.dodge-dock {
-  position: fixed;
-  pointer-events: auto;
-  z-index: 2;
-}
-.dodge-dock[hidden] { display: none; }
-
 .hextech-btn {
   display: inline-flex;
   align-items: center;

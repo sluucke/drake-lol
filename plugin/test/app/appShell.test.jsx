@@ -30,4 +30,14 @@ describe('app shell mount', () => {
     expect(actions.close).toHaveBeenCalledTimes(1);
     act(() => app.unmount());
   });
+
+  it('renders the client docks in the app layer', () => {
+    const shadow = makeShadow();
+    const store = createDrakeStore();
+    store.getState().patchChampSelect({ cancelable: true });
+    const app = startApp(shadow, { store, actions: { navigate: vi.fn(), close: vi.fn(), openUrl: vi.fn() } });
+    const button = [...shadow.querySelectorAll('.drk-dock button')].find((b) => b.textContent === 'Cancel Queue');
+    expect(button).toBeTruthy();
+    act(() => app.unmount());
+  });
 });

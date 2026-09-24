@@ -52,7 +52,7 @@ import { makeSettingsClient } from './settingsClient.js';
 import { makeUpdater } from '../features/update.js';
 import { loadConfig } from '../config.js';
 import { canCancel, cancelQueue } from '../autoAccept.js';
-import { findAnchor, inChampSelect, layoutDock, watchAnchor } from './dodgeDock.js';
+import { inChampSelect } from './dodgeDock.js';
 import { mountSocialToggle, syncSocialToggle, watchSocialToggle } from './socialToggle.js';
 import { subscribe } from '../subscribe.js';
 import {
@@ -119,7 +119,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let pendingOnboard = null;
   const onboardLock = { busy: false };
   let shadowRoot = null;
-  let stopDodgeReposition = null;
   let stopSocialToggle = null;
   let dodgeBusy = false;
   let champSelectActive = false;
@@ -283,43 +282,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   function setReadyCheck(payload) {
     if (inGameIdle) return;
     store.getState().patchChampSelect({ cancelable: canCancel(payload) });
-    if (!shadowRoot) return;
-    shadowRoot.getElementById('cancel-dock').hidden = !canCancel(payload);
-  }
-
-  function resetDodgeUi({ keepLabel = false } = {}) {
-    dodgeBusy = false;
-    if (!shadowRoot) return;
-    for (const id of ['dodge-champ-select', 'dodge']) {
-      const el = shadowRoot.getElementById(id);
-      if (!el) continue;
-      el.disabled = false;
-      if (!keepLabel) el.textContent = 'Dodge';
-    }
-  }
-
-  function startDodgeReposition() {
-    if (!shadowRoot || !champSelectActive || settings.queue_dodge_in_client === false) return;
-    const dock = shadowRoot.getElementById('dodge-dock');
-    const reposition = () => {
-      if (dodgeBusy) return;
-      layoutDock(dock, findAnchor(document), window);
-    };
-    reposition();
-    stopDodgeReposition = watchAnchor(document, window, reposition);
-  }
-
-  function syncDodgeDockVisibility() {
-    if (!shadowRoot) return;
-    const dock = shadowRoot.getElementById('dodge-dock');
-    if (!dock) return;
-    const show = champSelectActive && settings.queue_dodge_in_client !== false;
-    dock.hidden = !show;
-    if (stopDodgeReposition) {
-      stopDodgeReposition();
-      stopDodgeReposition = null;
-    }
-    if (show) startDodgeReposition();
   }
 
   function startSocialWatch(api) {
@@ -350,10 +312,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     if (inGameIdle) {
       ui.close();
       stopSocialWatch();
-      if (stopDodgeReposition) {
-        stopDodgeReposition();
-        stopDodgeReposition = null;
-      }
       champSelectActive = false;
       champSelectSession = null;
       store.getState().resetChampSelect();
@@ -362,12 +320,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         teamRevealDom.setEnabled(false);
       }
       feedBuildPanel(null);
-      if (shadowRoot) {
-        const dodge = shadowRoot.getElementById('dodge-dock');
-        if (dodge) dodge.hidden = true;
-        const cancel = shadowRoot.getElementById('cancel-dock');
-        if (cancel) cancel.hidden = true;
-      }
       return;
     }
     startSocialWatch();
@@ -423,43 +375,21 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   function setChampSelect(session) {
     if (inGameIdle) return;
     champSelectSession = session;
-    if (!shadowRoot) return;
-    const dock = shadowRoot.getElementById('dodge-dock');
     champSelectActive = inChampSelect(session);
     store.getState().patchChampSelect({ active: champSelectActive });
+    if (!shadowRoot) return;
     if (teamRevealDom) void teamRevealDom.handleSession(session);
     feedBuildPanel(session);
-    const showDodge = champSelectActive && settings.queue_dodge_in_client !== false;
-    dock.hidden = !showDodge;
-    if (stopDodgeReposition) {
-      stopDodgeReposition();
-      stopDodgeReposition = null;
-    }
-    if (!champSelectActive) {
-      resetDodgeUi();
-      return;
-    }
-    resetDodgeUi();
-    if (showDodge) startDodgeReposition();
   }
 
-  async function runDodge(btn) {
-    if (dodgeBusy || (btn && btn.disabled)) {
-      console.log(TAG, 'dodge ignored', { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
+  async function runDodge() {
+    if (dodgeBusy) {
+      console.log(TAG, 'dodge ignored', { dodgeBusy });
       return { ok: false, busy: true, reason: '' };
     }
     dodgeBusy = true;
     store.getState().patchChampSelect({ dodge: 'busy' });
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = 'Dodging…';
-    }
     say('Dodging…', true);
-    console.log(TAG, 'dodge click', btn?.id);
-    if (stopDodgeReposition) {
-      stopDodgeReposition();
-      stopDodgeReposition = null;
-    }
     try {
       const result = await dodger.dodge();
       console.log(TAG, 'dodge result', result);
@@ -468,15 +398,10 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         : result.reason;
       say(msg, result.ok);
       store.getState().patchChampSelect({ dodge: result.ok ? 'done' : 'failed' });
-      if (btn) btn.textContent = result.ok ? 'Dodged!' : 'Failed';
       return result;
     } finally {
-      resetDodgeUi({ keepLabel: true });
-      if (champSelectActive && settings.queue_dodge_in_client !== false) startDodgeReposition();
-      window.setTimeout(() => {
-        resetDodgeUi();
-        store.getState().patchChampSelect({ dodge: 'idle' });
-      }, 2500);
+      dodgeBusy = false;
+      window.setTimeout(() => store.getState().patchChampSelect({ dodge: 'idle' }), 2500);
     }
   }
 
@@ -832,9 +757,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       if (keys.includes('queue_team_reveal_in_client') && teamRevealDom) {
         teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
       }
-      if (keys.includes('queue_dodge_in_client')) {
-        syncDodgeDockVisibility();
-      }
     }
 
     function applySettingsPatch(patch) {
@@ -880,7 +802,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       setSettings: applySettingsPatch,
       saveStatus: (text) => status.write(text),
       revealLobby,
-      dodge: () => runDodge(null),
+      dodge: () => runDodge(),
       checkUpdates: () => runUpdateCheck(),
       installUpdate,
       restartClient: () => restarter.restart(),
@@ -1173,13 +1095,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         return;
       }
 
-      const dodgeBtn = e.target.closest('#dodge');
-      if (dodgeBtn) {
-        e.stopPropagation();
-        void runDodge(dodgeBtn);
-        return;
-      }
-
       if (e.target.id === 'restart-client') {
         const btn = e.target;
         btn.disabled = true;
@@ -1319,17 +1234,11 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       if (key === 'queue_team_reveal_in_client' && teamRevealDom) {
         teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
       }
-      if (key === 'queue_dodge_in_client') {
-        syncDodgeDockVisibility();
-      }
       paint();
       commit({ [key]: settings[key] }, () => {
         settings = { ...settings, [key]: previous };
         if (key === 'queue_team_reveal_in_client' && teamRevealDom) {
           teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
-        }
-        if (key === 'queue_dodge_in_client') {
-          syncDodgeDockVisibility();
         }
       });
     });
@@ -1368,20 +1277,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       applyPanelDropdown(e.target, e.target.value);
     });
 
-    shadow.getElementById('cancel-queue').addEventListener('click', async () => {
-      const dock = shadow.getElementById('cancel-dock');
-      dock.hidden = true;
-      try {
-        await cancelQueue(lcu);
-      } catch {
-        console.log(TAG, 'could not cancel the queue');
-      }
-    });
-
-    shadow.getElementById('dodge-champ-select').addEventListener('click', (e) => {
-      e.stopPropagation();
-      void runDodge(e.currentTarget);
-    });
 
     
     

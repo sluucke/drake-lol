@@ -16036,30 +16036,6 @@
 .slider:disabled::-webkit-slider-thumb { background: #5c5b57; cursor: default; }
 
 
-
-
-
-.cancel-dock {
-  position: fixed;
-  left: 50%;
-  bottom: 12vh;
-  transform: translateX(-50%);
-  pointer-events: auto;
-  z-index: 1;
-}
-.cancel-dock[hidden] { display: none; }
-
-
-
-
-
-.dodge-dock {
-  position: fixed;
-  pointer-events: auto;
-  z-index: 2;
-}
-.dodge-dock[hidden] { display: none; }
-
 .hextech-btn {
   display: inline-flex;
   align-items: center;
@@ -18176,15 +18152,7 @@ ${BUILD_PANEL_CSS}
   };
   function renderShell() {
     return `
-    <style>${CSS2}</style>
-
-    <div class="cancel-dock" id="cancel-dock" hidden>
-      <button class="hextech-btn hextech-btn-danger" id="cancel-queue">Cancel Queue</button>
-    </div>
-
-    <div class="dodge-dock" id="dodge-dock" hidden>
-      <button class="hextech-btn hextech-btn-danger" id="dodge-champ-select">Dodge</button>
-    </div>`;
+    <style>${CSS2}</style>`;
   }
   function renderWhatsNew(entry, { version } = {}) {
     const ver = escapeHtml2(version || entry?.version || "");
@@ -19588,14 +19556,6 @@ ${BUILD_PANEL_CSS}
       bottom: `${win.innerHeight - rect.top + DOCK_GAP_PX}px`,
       transform: "translateX(-50%)"
     };
-  }
-  function layoutDock(dockEl, anchor, win) {
-    if (!dockEl) return false;
-    const key = layoutKey(dockEl, anchor, win);
-    if (dockEl.dataset.layoutKey === key) return true;
-    dockEl.dataset.layoutKey = key;
-    Object.assign(dockEl.style, dockStyle(anchor, win));
-    return true;
   }
   function watchAnchor(doc, win, cb) {
     let frame2 = 0;
@@ -37521,14 +37481,66 @@ button.bug-report-button[data-drake-toggle]:disabled {
     ) }) });
   }
 
-  // src/app/App.jsx
+  // src/app/hooks/useDockStyle.js
+  var import_react76 = __toESM(require_react(), 1);
+  function useDockStyle(active, { doc = document, win = window } = {}) {
+    const [style, setStyle2] = (0, import_react76.useState)(() => dockStyle(null, win));
+    (0, import_react76.useEffect)(() => {
+      if (!active) return void 0;
+      let key = "";
+      const update = () => {
+        const anchor = findAnchor(doc);
+        const next = layoutKey(null, anchor, win);
+        if (next === key) return;
+        key = next;
+        setStyle2(dockStyle(anchor, win));
+      };
+      update();
+      return watchAnchor(doc, win, update);
+    }, [active, doc, win]);
+    return style;
+  }
+
+  // src/app/overlays/docks/ClientDocks.jsx
   var import_jsx_runtime53 = __toESM(require_jsx_runtime(), 1);
+  var DODGE_LABELS2 = { idle: "dodgeButton", busy: "dodging", done: "dodged", failed: "dodgeFailed" };
+  var RISE = {
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: 10 },
+    transition: { duration: DURATION.base, ease: EASE_OUT }
+  };
+  function DodgeDock({ dodge, onDodge }) {
+    const t = useT();
+    const style = useDockStyle(dodge !== "busy");
+    return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { className: "drk-dock drk-dock--dodge", style, children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(motion2.div, { ...RISE, children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Button, { variant: "danger", disabled: dodge === "busy", onClick: onDodge, children: t(`screens.queue.${DODGE_LABELS2[dodge] || DODGE_LABELS2.idle}`) }) }) });
+  }
+  function CancelDock({ onCancel }) {
+    const t = useT();
+    return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { className: "drk-dock drk-dock--cancel", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(motion2.div, { ...RISE, children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Button, { variant: "danger", onClick: onCancel, children: t("overlays.docks.cancelQueue") }) }) });
+  }
+  function ClientDocks() {
+    const actions = useLegacyActions();
+    const idle = useDrake((s) => !!s.session.idle);
+    const champSelect = useDrake((s) => s.champSelect);
+    const dodgeEnabled = useDrake((s) => s.settings.values?.queue_dodge_in_client !== false);
+    const showDodge = !idle && champSelect.active && dodgeEnabled;
+    const showCancel = !idle && champSelect.cancelable;
+    return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Layer, { children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)(AnimatePresence, { children: [
+      showCancel ? /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(CancelDock, { onCancel: () => void actions.cancelQueue() }, "cancel") : null,
+      showDodge ? /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(DodgeDock, { dodge: champSelect.dodge, onDodge: () => void actions.dodge() }, "dodge") : null
+    ] }) });
+  }
+
+  // src/app/App.jsx
+  var import_jsx_runtime54 = __toESM(require_jsx_runtime(), 1);
   function App({ sfx, portalTarget, store, actions }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(AppProviders, { sfx, portalTarget, store, actions, children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "drake-app", "data-drake-app": "", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(PanelFrame, {}),
-      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(ScoutingModal, {}),
-      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(ScoutingToast, {}),
-      false ? /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(DevShowcase, {}) : null
+    return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(AppProviders, { sfx, portalTarget, store, actions, children: /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "drake-app", "data-drake-app": "", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(PanelFrame, {}),
+      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(ScoutingModal, {}),
+      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(ScoutingToast, {}),
+      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(ClientDocks, {}),
+      false ? /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(DevShowcase, {}) : null
     ] }) });
   }
 
@@ -37599,7 +37611,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default, shell_default, Segmented_default, TextInput_default, screens_default, champions_default, profile_default, onboarding_default, scouting_default, build_default, docks_default];
 
   // src/app/main.jsx
-  var import_jsx_runtime54 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime55 = __toESM(require_jsx_runtime(), 1);
   var APP_LAYER_ID = "drake-app-layer";
   var mounted = /* @__PURE__ */ new WeakMap();
   function startApp(shadow, { sfx, store, actions } = {}) {
@@ -37608,7 +37620,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     layer.id = APP_LAYER_ID;
     const app = mountReactRoot(shadow, {
       styles: APP_STYLES,
-      element: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(App, { sfx, portalTarget: layer, store, actions })
+      element: /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(App, { sfx, portalTarget: layer, store, actions })
     });
     shadow.appendChild(layer);
     const result = {
@@ -37668,7 +37680,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let pendingOnboard = null;
     const onboardLock = { busy: false };
     let shadowRoot = null;
-    let stopDodgeReposition = null;
     let stopSocialToggle = null;
     let dodgeBusy = false;
     let champSelectActive = false;
@@ -37817,40 +37828,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function setReadyCheck(payload) {
       if (inGameIdle) return;
       store.getState().patchChampSelect({ cancelable: canCancel(payload) });
-      if (!shadowRoot) return;
-      shadowRoot.getElementById("cancel-dock").hidden = !canCancel(payload);
-    }
-    function resetDodgeUi({ keepLabel = false } = {}) {
-      dodgeBusy = false;
-      if (!shadowRoot) return;
-      for (const id3 of ["dodge-champ-select", "dodge"]) {
-        const el = shadowRoot.getElementById(id3);
-        if (!el) continue;
-        el.disabled = false;
-        if (!keepLabel) el.textContent = "Dodge";
-      }
-    }
-    function startDodgeReposition() {
-      if (!shadowRoot || !champSelectActive || settings.queue_dodge_in_client === false) return;
-      const dock = shadowRoot.getElementById("dodge-dock");
-      const reposition = () => {
-        if (dodgeBusy) return;
-        layoutDock(dock, findAnchor(document), window);
-      };
-      reposition();
-      stopDodgeReposition = watchAnchor(document, window, reposition);
-    }
-    function syncDodgeDockVisibility() {
-      if (!shadowRoot) return;
-      const dock = shadowRoot.getElementById("dodge-dock");
-      if (!dock) return;
-      const show = champSelectActive && settings.queue_dodge_in_client !== false;
-      dock.hidden = !show;
-      if (stopDodgeReposition) {
-        stopDodgeReposition();
-        stopDodgeReposition = null;
-      }
-      if (show) startDodgeReposition();
     }
     function startSocialWatch(api) {
       const panel = api || ui2;
@@ -37878,10 +37855,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
       if (inGameIdle) {
         ui2.close();
         stopSocialWatch();
-        if (stopDodgeReposition) {
-          stopDodgeReposition();
-          stopDodgeReposition = null;
-        }
         champSelectActive = false;
         champSelectSession = null;
         store.getState().resetChampSelect();
@@ -37890,12 +37863,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
           teamRevealDom.setEnabled(false);
         }
         feedBuildPanel(null);
-        if (shadowRoot) {
-          const dodge = shadowRoot.getElementById("dodge-dock");
-          if (dodge) dodge.hidden = true;
-          const cancel = shadowRoot.getElementById("cancel-dock");
-          if (cancel) cancel.hidden = true;
-        }
         return;
       }
       startSocialWatch();
@@ -37940,57 +37907,30 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function setChampSelect(session) {
       if (inGameIdle) return;
       champSelectSession = session;
-      if (!shadowRoot) return;
-      const dock = shadowRoot.getElementById("dodge-dock");
       champSelectActive = inChampSelect(session);
       store.getState().patchChampSelect({ active: champSelectActive });
+      if (!shadowRoot) return;
       if (teamRevealDom) void teamRevealDom.handleSession(session);
       feedBuildPanel(session);
-      const showDodge = champSelectActive && settings.queue_dodge_in_client !== false;
-      dock.hidden = !showDodge;
-      if (stopDodgeReposition) {
-        stopDodgeReposition();
-        stopDodgeReposition = null;
-      }
-      if (!champSelectActive) {
-        resetDodgeUi();
-        return;
-      }
-      resetDodgeUi();
-      if (showDodge) startDodgeReposition();
     }
-    async function runDodge(btn) {
-      if (dodgeBusy || btn && btn.disabled) {
-        console.log(TAG9, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
+    async function runDodge() {
+      if (dodgeBusy) {
+        console.log(TAG9, "dodge ignored", { dodgeBusy });
         return { ok: false, busy: true, reason: "" };
       }
       dodgeBusy = true;
       store.getState().patchChampSelect({ dodge: "busy" });
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = "Dodging\u2026";
-      }
       say("Dodging\u2026", true);
-      console.log(TAG9, "dodge click", btn?.id);
-      if (stopDodgeReposition) {
-        stopDodgeReposition();
-        stopDodgeReposition = null;
-      }
       try {
         const result = await dodger.dodge();
         console.log(TAG9, "dodge result", result);
         const msg = result.ok ? `Dodged champ select${result.detail ? ` (${result.detail})` : ""}` : result.reason;
         say(msg, result.ok);
         store.getState().patchChampSelect({ dodge: result.ok ? "done" : "failed" });
-        if (btn) btn.textContent = result.ok ? "Dodged!" : "Failed";
         return result;
       } finally {
-        resetDodgeUi({ keepLabel: true });
-        if (champSelectActive && settings.queue_dodge_in_client !== false) startDodgeReposition();
-        window.setTimeout(() => {
-          resetDodgeUi();
-          store.getState().patchChampSelect({ dodge: "idle" });
-        }, 2500);
+        dodgeBusy = false;
+        window.setTimeout(() => store.getState().patchChampSelect({ dodge: "idle" }), 2500);
       }
     }
     function wire(shadow, api) {
@@ -38313,9 +38253,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (keys.includes("queue_team_reveal_in_client") && teamRevealDom) {
           teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
         }
-        if (keys.includes("queue_dodge_in_client")) {
-          syncDodgeDockVisibility();
-        }
       }
       function applySettingsPatch(patch) {
         const keys = Object.keys(patch);
@@ -38356,7 +38293,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         setSettings: applySettingsPatch,
         saveStatus: (text) => status.write(text),
         revealLobby,
-        dodge: () => runDodge(null),
+        dodge: () => runDodge(),
         checkUpdates: () => runUpdateCheck(),
         installUpdate,
         restartClient: () => restarter.restart()
@@ -38601,12 +38538,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
           say(result2.ok ? `Looking up ${result2.count} summoners` : result2.reason, result2.ok);
           return;
         }
-        const dodgeBtn = e.target.closest("#dodge");
-        if (dodgeBtn) {
-          e.stopPropagation();
-          void runDodge(dodgeBtn);
-          return;
-        }
         if (e.target.id === "restart-client") {
           const btn2 = e.target;
           btn2.disabled = true;
@@ -38726,17 +38657,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
         if (key === "queue_team_reveal_in_client" && teamRevealDom) {
           teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
         }
-        if (key === "queue_dodge_in_client") {
-          syncDodgeDockVisibility();
-        }
         paint();
         commit({ [key]: settings[key] }, () => {
           settings = { ...settings, [key]: previous };
           if (key === "queue_team_reveal_in_client" && teamRevealDom) {
             teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
-          }
-          if (key === "queue_dodge_in_client") {
-            syncDodgeDockVisibility();
           }
         });
       });
@@ -38771,19 +38696,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
           return;
         }
         applyPanelDropdown(e.target, e.target.value);
-      });
-      shadow.getElementById("cancel-queue").addEventListener("click", async () => {
-        const dock = shadow.getElementById("cancel-dock");
-        dock.hidden = true;
-        try {
-          await cancelQueue(lcu2);
-        } catch {
-          console.log(TAG9, "could not cancel the queue");
-        }
-      });
-      shadow.getElementById("dodge-champ-select").addEventListener("click", (e) => {
-        e.stopPropagation();
-        void runDodge(e.currentTarget);
       });
       const INTERACTIVE = ".navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .credit-link, .select-field, .slider, [data-onboard], [data-whats-new-screen]";
       shadow.addEventListener(

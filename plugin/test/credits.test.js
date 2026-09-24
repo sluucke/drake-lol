@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { renderShell, CREDITS } from '../src/ui/panel.js';
 
 describe('credits', () => {
-  it('no longer renders the panel chrome in the legacy shell', () => {
+  it('no longer renders the panel chrome or the docks in the legacy shell', () => {
     const html = renderShell();
     expect(html).not.toContain('id="scrim"');
     expect(html).not.toContain('id="credits-modal"');
-    expect(html).toContain('id="cancel-dock"');
-    expect(html).toContain('id="dodge-dock"');
+    expect(html).not.toContain('id="cancel-dock"');
+    expect(html).not.toContain('id="dodge-dock"');
   });
 
   it('keeps the credit entries', () => {

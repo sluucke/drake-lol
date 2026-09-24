@@ -46,15 +46,7 @@ export const CREDITS = {
 
 export function renderShell() {
   return `
-    <style>${CSS}</style>
-
-    <div class="cancel-dock" id="cancel-dock" hidden>
-      <button class="hextech-btn hextech-btn-danger" id="cancel-queue">Cancel Queue</button>
-    </div>
-
-    <div class="dodge-dock" id="dodge-dock" hidden>
-      <button class="hextech-btn hextech-btn-danger" id="dodge-champ-select">Dodge</button>
-    </div>`;
+    <style>${CSS}</style>`;
 }
 
 export function renderWelcome() {

@@ -3,6 +3,7 @@ import { DevShowcase } from './dev/Showcase.jsx';
 import { PanelFrame } from './shell/PanelFrame.jsx';
 import { ScoutingModal } from './overlays/scouting/ScoutingModal.jsx';
 import { ScoutingToast } from './overlays/scouting/ScoutingToast.jsx';
+import { ClientDocks } from './overlays/docks/ClientDocks.jsx';
 
 export function App({ sfx, portalTarget, store, actions }) {
   return (
@@ -11,6 +12,7 @@ export function App({ sfx, portalTarget, store, actions }) {
         <PanelFrame />
         <ScoutingModal />
         <ScoutingToast />
+        <ClientDocks />
         {__DRAKE_DEV__ ? <DevShowcase /> : null}
       </div>
     </AppProviders>

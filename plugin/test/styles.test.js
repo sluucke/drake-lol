@@ -11,14 +11,6 @@ describe('pointer-events opt-in', () => {
   it('the panel backdrop accepts pointer events', () => {
     expect(block('.scrim')).toMatch(/pointer-events:\s*auto/);
   });
-
-  it('the ready-check cancel dock accepts pointer events', () => {
-    expect(block('.cancel-dock')).toMatch(/pointer-events:\s*auto/);
-  });
-
-  it('the champ-select dodge dock accepts pointer events', () => {
-    expect(block('.dodge-dock')).toMatch(/pointer-events:\s*auto/);
-  });
 });
 
 describe('window', () => {
