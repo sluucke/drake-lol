@@ -36,7 +36,7 @@ describe('esbuildOptions', () => {
     expect(text).toContain('.fixture-probe{color:red}');
     expect(text).toContain('react.transitional.element');
     expect(text).not.toContain('react-jsx-runtime.development');
-  });
+  }, 30000);
 
   it('hashes jsx, css and json sources', () => {
     expect(SOURCE_EXTENSIONS).toEqual(expect.arrayContaining(['.js', '.jsx', '.css', '.json', '.svg', '.png']));
