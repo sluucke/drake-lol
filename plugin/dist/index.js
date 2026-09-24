@@ -24324,10 +24324,55 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(SfxContext.Provider, { value: sfx || NOOP_SFX, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PortalTargetContext.Provider, { value: portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MotionConfig, { reducedMotion: "user", children }) }) });
   }
 
-  // src/app/App.jsx
+  // src/app/dev/Showcase.jsx
+  var import_react12 = __toESM(require_react(), 1);
+
+  // src/app/ui/Button.jsx
   var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
+  var CLICK = { primary: SFX.click, secondary: SFX.secondary, danger: SFX.secondary, ghost: SFX.tab };
+  var HOVER = { primary: SFX.goldHover, secondary: SFX.hover, danger: SFX.hover, ghost: SFX.hover };
+
+  // src/app/ui/Card.jsx
+  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/ui/Modal.jsx
+  var import_react7 = __toESM(require_react(), 1);
+
+  // src/app/ui/Layer.jsx
+  var import_react_dom = __toESM(require_react_dom(), 1);
+
+  // src/app/ui/Modal.jsx
+  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/ui/Select.jsx
+  var import_react8 = __toESM(require_react(), 1);
+  var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/ui/Skeleton.jsx
+  var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/ui/Slider.jsx
+  var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/ui/Tabs.jsx
+  var import_react9 = __toESM(require_react(), 1);
+  var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/ui/Toggle.jsx
+  var import_react10 = __toESM(require_react(), 1);
+  var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/ui/Tooltip.jsx
+  var import_react11 = __toESM(require_react(), 1);
+  var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/dev/Showcase.jsx
+  var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/App.jsx
+  var import_jsx_runtime13 = __toESM(require_jsx_runtime(), 1);
   function App({ sfx, portalTarget }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AppProviders, { sfx, portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "drake-app", "data-drake-app": "" }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(AppProviders, { sfx, portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "drake-app", "data-drake-app": "", children: false ? /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(DevShowcase, {}) : null }) });
   }
 
   // src/app/styles/tokens.css
@@ -24367,7 +24412,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default];
 
   // src/app/main.jsx
-  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime14 = __toESM(require_jsx_runtime(), 1);
   var APP_LAYER_ID = "drake-app-layer";
   var mounted = /* @__PURE__ */ new WeakMap();
   function startApp(shadow, { sfx } = {}) {
@@ -24376,7 +24421,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     layer.id = APP_LAYER_ID;
     const app = mountReactRoot(shadow, {
       styles: APP_STYLES,
-      element: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(App, { sfx, portalTarget: layer })
+      element: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(App, { sfx, portalTarget: layer })
     });
     shadow.appendChild(layer);
     const result = {
