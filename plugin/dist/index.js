@@ -33668,6 +33668,36 @@ button.bug-report-button[data-drake-toggle]:disabled {
         toggleHelp: "A ban is always locked in \u2014 hovering a ban bans nothing.",
         champion: "Champion",
         empty: "Click a champion to ban \u2014 click again or \u2715 to clear."
+      },
+      profile: {
+        title: "Profile",
+        subtitle: "What other players see. None of this changes your account.",
+        tabs: {
+          rank: "Rank",
+          banner: "Banner",
+          "riot-id": "Riot ID"
+        },
+        tier: "Tier",
+        division: "Division",
+        queue: "Queue",
+        crystal: "Crystal",
+        rankHelp: "Shown next to your name in chat. Your real rank is unchanged.",
+        reset: "Reset",
+        apply: "Apply",
+        applied: "Applied",
+        badgesTitle: "Challenge badges",
+        badgesHelp: "The three tokens on your profile. Clone copies the first into all three slots.",
+        removeBadges: "Remove badges",
+        cloneBadge: "Clone first to all 3",
+        badgesRemoved: "Badges removed",
+        badgeCloned: "Cloned first badge to all 3",
+        skinSearch: "Search {count} skins...",
+        noSkins: "No skins match.",
+        backgroundSet: "Profile background set",
+        riotHelp: "Renaming is rate-limited by Riot, not by Drake. If it refuses, that is their cooldown talking.",
+        riotName: "Name",
+        riotTag: "TAG",
+        saveRiotId: "Save ID"
       }
     },
     roles: {
@@ -33685,6 +33715,25 @@ button.bug-report-button[data-drake-toggle]:disabled {
       selected: {
         one: "{count} selected",
         other: "{count} selected"
+      }
+    },
+    ranks: {
+      tiers: {
+        IRON: "Iron",
+        BRONZE: "Bronze",
+        SILVER: "Silver",
+        GOLD: "Gold",
+        PLATINUM: "Platinum",
+        EMERALD: "Emerald",
+        DIAMOND: "Diamond",
+        MASTER: "Master",
+        GRANDMASTER: "Grandmaster",
+        CHALLENGER: "Challenger"
+      },
+      queues: {
+        RANKED_SOLO_5x5: "Solo/Duo",
+        RANKED_FLEX_SR: "Flex",
+        RANKED_TFT: "TFT"
       }
     }
   };
@@ -33856,6 +33905,36 @@ button.bug-report-button[data-drake-toggle]:disabled {
         toggleHelp: "O ban \xE9 sempre confirmado \u2014 s\xF3 selecionar n\xE3o bane nada.",
         champion: "Campe\xE3o",
         empty: "Clique em um campe\xE3o para banir \u2014 clique de novo ou em \u2715 para limpar."
+      },
+      profile: {
+        title: "Perfil",
+        subtitle: "O que os outros jogadores veem. Nada disso altera sua conta.",
+        tabs: {
+          rank: "Elo",
+          banner: "Banner",
+          "riot-id": "Riot ID"
+        },
+        tier: "Elo",
+        division: "Divis\xE3o",
+        queue: "Fila",
+        crystal: "Cristal",
+        rankHelp: "Aparece ao lado do seu nome no chat. Seu elo real n\xE3o muda.",
+        reset: "Redefinir",
+        apply: "Aplicar",
+        applied: "Aplicado",
+        badgesTitle: "Ins\xEDgnias de desafio",
+        badgesHelp: "Os tr\xEAs emblemas do seu perfil. Clonar copia o primeiro para os tr\xEAs espa\xE7os.",
+        removeBadges: "Remover ins\xEDgnias",
+        cloneBadge: "Clonar o primeiro para os 3",
+        badgesRemoved: "Ins\xEDgnias removidas",
+        badgeCloned: "Primeira ins\xEDgnia clonada para os 3",
+        skinSearch: "Buscar em {count} skins...",
+        noSkins: "Nenhuma skin encontrada.",
+        backgroundSet: "Fundo do perfil definido",
+        riotHelp: "A troca de nome \xE9 limitada pela Riot, n\xE3o pelo Drake. Se recusar, \xE9 o tempo de espera deles.",
+        riotName: "Nome",
+        riotTag: "TAG",
+        saveRiotId: "Salvar ID"
       }
     },
     roles: {
@@ -33873,6 +33952,25 @@ button.bug-report-button[data-drake-toggle]:disabled {
       selected: {
         one: "{count} selecionado",
         other: "{count} selecionados"
+      }
+    },
+    ranks: {
+      tiers: {
+        IRON: "Ferro",
+        BRONZE: "Bronze",
+        SILVER: "Prata",
+        GOLD: "Ouro",
+        PLATINUM: "Platina",
+        EMERALD: "Esmeralda",
+        DIAMOND: "Diamante",
+        MASTER: "Mestre",
+        GRANDMASTER: "Gr\xE3o-Mestre",
+        CHALLENGER: "Desafiante"
+      },
+      queues: {
+        RANKED_SOLO_5x5: "Solo/Duo",
+        RANKED_FLEX_SR: "Flex\xEDvel",
+        RANKED_TFT: "TFT"
       }
     }
   };
@@ -35516,8 +35614,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
   // src/app/screens/champions/champions.css
   var champions_default = ".drk-champ-search .drk-input {\n  padding-left: var(--space-8);\n  background:\n    radial-gradient(circle at 14px 50%, transparent 5px, var(--gold-4) 5px 6.5px, transparent 7px) no-repeat,\n    linear-gradient(45deg, transparent 47%, var(--gold-4) 47% 53%, transparent 53%) 19px 19px / 6px 6px no-repeat,\n    var(--surface-0);\n}\n\n.drk-champ-grid {\n  display: grid;\n  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));\n  gap: var(--space-2);\n  max-height: 300px;\n  padding: var(--space-1);\n  overflow-y: auto;\n}\n\n.drk-champ-grid.is-compact {\n  max-height: 220px;\n}\n\n.drk-champ {\n  position: relative;\n  aspect-ratio: 1;\n  padding: 0;\n  background: var(--surface-0);\n  border: 1px solid var(--surface-3);\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  overflow: hidden;\n  pointer-events: auto;\n  transition:\n    border-color var(--dur-fast) var(--ease-out),\n    box-shadow var(--dur-fast) var(--ease-out),\n    filter var(--dur-fast) var(--ease-out);\n  filter: grayscale(0.55) brightness(0.8);\n}\n\n.drk-champ img {\n  width: 100%;\n  height: 100%;\n  display: block;\n  transform: scale(1.08);\n}\n\n.drk-champ:hover {\n  filter: none;\n  border-color: var(--gold-4);\n}\n\n.drk-champ.is-on {\n  filter: none;\n  border-color: var(--gold-2);\n  box-shadow: var(--glow-gold);\n}\n\n.drk-champ:focus-visible {\n  outline: 1px solid var(--focus);\n  outline-offset: 1px;\n}\n\n.drk-champ__slot {\n  position: absolute;\n  top: 2px;\n  left: 2px;\n  display: grid;\n  place-items: center;\n  width: 16px;\n  height: 16px;\n  font-family: var(--font-heading);\n  font-size: var(--text-xs);\n  font-weight: 700;\n  color: var(--surface-0);\n  background: linear-gradient(180deg, var(--gold-1), var(--gold-2));\n  border-radius: 50%;\n  box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);\n  pointer-events: none;\n}\n\n.drk-role-tabs {\n  display: grid;\n  grid-template-columns: repeat(5, 1fr);\n  gap: var(--space-1);\n}\n\n.drk-role-tab {\n  position: relative;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 2px;\n  padding: var(--space-2) var(--space-1);\n  font-family: var(--font-heading);\n  font-size: var(--text-xs);\n  letter-spacing: 0.06em;\n  text-transform: uppercase;\n  color: var(--text);\n  background: var(--surface-0);\n  border: 1px solid var(--surface-3);\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  pointer-events: auto;\n  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);\n}\n\n.drk-role-tab:hover,\n.drk-role-tab.is-active {\n  color: var(--gold-1);\n  border-color: var(--gold-4);\n}\n\n.drk-role-tab__bg {\n  position: absolute;\n  inset: 0;\n  background: linear-gradient(180deg, rgba(200, 170, 110, 0.18), rgba(1, 10, 19, 0.2));\n  border: 1px solid var(--gold-3);\n  border-radius: var(--radius-sm);\n  box-shadow: var(--glow-gold);\n}\n\n.drk-role-tab__icon,\n.drk-role-tab__label,\n.drk-role-tab__count {\n  position: relative;\n}\n\n.drk-role-tab__icon {\n  width: 20px;\n  height: 20px;\n}\n\n.drk-role-tab__count {\n  min-width: 18px;\n  padding: 0 var(--space-1);\n  font-size: 10px;\n  color: var(--text-muted);\n  background: var(--surface-2);\n  border-radius: 999px;\n}\n\n.drk-role-tab.is-active .drk-role-tab__count {\n  color: var(--surface-0);\n  background: linear-gradient(180deg, var(--gold-1), var(--gold-2));\n}\n\n.drk-pick-head {\n  display: flex;\n  align-items: baseline;\n  justify-content: space-between;\n}\n\n.drk-pick-head__value {\n  font-size: var(--text-sm);\n  color: var(--gold-2);\n}\n\n.drk-pick-summary {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--space-2);\n  margin: 0;\n  padding: 0;\n  list-style: none;\n}\n\n.drk-pick-summary.is-empty {\n  font-size: var(--text-sm);\n  color: var(--text-muted);\n}\n\n.drk-pick-summary__item {\n  display: inline-flex;\n  align-items: center;\n  gap: var(--space-2);\n  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);\n  color: var(--text-strong);\n  background: linear-gradient(90deg, rgba(200, 170, 110, 0.12), rgba(1, 10, 19, 0.6));\n  border: 1px solid var(--gold-4);\n  border-radius: 999px;\n}\n\n.drk-pick-summary__num {\n  display: grid;\n  place-items: center;\n  width: 18px;\n  height: 18px;\n  font-family: var(--font-heading);\n  font-size: var(--text-xs);\n  font-weight: 700;\n  color: var(--surface-0);\n  background: linear-gradient(180deg, var(--gold-1), var(--gold-2));\n  border-radius: 50%;\n}\n\n.drk-pick-summary__icon {\n  width: 24px;\n  height: 24px;\n  border-radius: 50%;\n}\n\n.drk-pick-summary__name {\n  font-size: var(--text-sm);\n}\n\n.drk-pick-summary__remove {\n  display: grid;\n  place-items: center;\n  width: 20px;\n  height: 20px;\n  padding: 0;\n  font-size: 10px;\n  color: var(--text);\n  background: var(--surface-0);\n  border: 1px solid var(--surface-3);\n  border-radius: 50%;\n  cursor: pointer;\n  pointer-events: auto;\n  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);\n}\n\n.drk-pick-summary__remove:hover {\n  color: var(--gold-1);\n  border-color: var(--danger);\n}\n";
 
+  // src/app/screens/profile/profile.css
+  var profile_default = ".drk-rank-grid {\n  display: grid;\n  grid-template-columns: repeat(5, 1fr);\n  gap: var(--space-2);\n}\n\n.drk-rank {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: var(--space-1);\n  padding: var(--space-2) var(--space-1);\n  font-family: var(--font-heading);\n  font-size: var(--text-xs);\n  letter-spacing: 0.06em;\n  text-transform: uppercase;\n  color: var(--text);\n  background: var(--surface-0);\n  border: 1px solid var(--surface-3);\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  pointer-events: auto;\n  transition:\n    color var(--dur-fast) var(--ease-out),\n    border-color var(--dur-fast) var(--ease-out),\n    box-shadow var(--dur-fast) var(--ease-out),\n    transform var(--dur-fast) var(--ease-out);\n}\n\n.drk-rank img {\n  width: 40px;\n  height: 40px;\n  filter: grayscale(0.6);\n  transition: filter var(--dur-fast) var(--ease-out);\n}\n\n.drk-rank:hover {\n  color: var(--gold-1);\n  border-color: var(--gold-4);\n  transform: translateY(-1px);\n}\n\n.drk-rank:hover img,\n.drk-rank.is-on img {\n  filter: none;\n}\n\n.drk-rank.is-on {\n  color: var(--gold-1);\n  background: linear-gradient(180deg, rgba(200, 170, 110, 0.18), var(--surface-0));\n  border-color: var(--gold-2);\n  box-shadow: var(--glow-gold);\n}\n\n.drk-skin-viewport {\n  height: 300px;\n  overflow-y: auto;\n  pointer-events: auto;\n}\n\n.drk-skin-spacer {\n  position: relative;\n}\n\n.drk-skin-grid {\n  display: grid;\n  grid-template-columns: repeat(5, 1fr);\n  gap: 8px;\n}\n\n.drk-skin {\n  position: relative;\n  height: 84px;\n  padding: 0;\n  overflow: hidden;\n  background: var(--surface-0);\n  border: 1px solid var(--surface-3);\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);\n}\n\n.drk-skin img {\n  width: 100%;\n  height: 62px;\n  object-fit: cover;\n  display: block;\n  transition: transform var(--dur-base) var(--ease-out);\n}\n\n.drk-skin span {\n  display: block;\n  padding: 2px var(--space-1);\n  font-size: 10px;\n  color: var(--text);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n.drk-skin:hover {\n  border-color: var(--gold-4);\n}\n\n.drk-skin:hover img {\n  transform: scale(1.06);\n}\n\n.drk-skin.is-on {\n  border-color: var(--gold-2);\n  box-shadow: var(--glow-gold);\n}\n\n.drk-skin.is-on span {\n  color: var(--gold-1);\n}\n\n.drk-riot-id {\n  display: grid;\n  grid-template-columns: 1fr auto 96px;\n  align-items: center;\n  gap: var(--space-2);\n}\n\n.drk-riot-id__hash {\n  width: 16px;\n  height: 16px;\n  opacity: 0.7;\n}\n\n.drk-friend-list {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  margin: 0;\n  padding: 0;\n  list-style: none;\n}\n\n.drk-friend {\n  display: grid;\n  grid-template-columns: 10px minmax(120px, auto) 1fr;\n  align-items: center;\n  gap: var(--space-3);\n  padding: var(--space-2) var(--space-3);\n  background: linear-gradient(90deg, rgba(30, 35, 40, 0.5), transparent);\n  border-radius: var(--radius-sm);\n}\n\n.drk-friend__dot {\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background: var(--surface-3);\n}\n\n.drk-friend__dot.is-online {\n  background: var(--win);\n  box-shadow: 0 0 6px var(--win);\n}\n\n.drk-friend__name {\n  color: var(--text-strong);\n}\n\n.drk-friend__note {\n  font-size: var(--text-sm);\n  color: var(--text-muted);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n";
+
   // src/app/styles/index.js
-  var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default, shell_default, Segmented_default, TextInput_default, screens_default, champions_default];
+  var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default, shell_default, Segmented_default, TextInput_default, screens_default, champions_default, profile_default];
 
   // src/app/main.jsx
   var import_jsx_runtime38 = __toESM(require_jsx_runtime(), 1);

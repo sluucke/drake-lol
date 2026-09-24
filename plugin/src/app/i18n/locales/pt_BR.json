@@ -164,6 +164,36 @@
       "toggleHelp": "O ban é sempre confirmado — só selecionar não bane nada.",
       "champion": "Campeão",
       "empty": "Clique em um campeão para banir — clique de novo ou em ✕ para limpar."
+    },
+    "profile": {
+      "title": "Perfil",
+      "subtitle": "O que os outros jogadores veem. Nada disso altera sua conta.",
+      "tabs": {
+        "rank": "Elo",
+        "banner": "Banner",
+        "riot-id": "Riot ID"
+      },
+      "tier": "Elo",
+      "division": "Divisão",
+      "queue": "Fila",
+      "crystal": "Cristal",
+      "rankHelp": "Aparece ao lado do seu nome no chat. Seu elo real não muda.",
+      "reset": "Redefinir",
+      "apply": "Aplicar",
+      "applied": "Aplicado",
+      "badgesTitle": "Insígnias de desafio",
+      "badgesHelp": "Os três emblemas do seu perfil. Clonar copia o primeiro para os três espaços.",
+      "removeBadges": "Remover insígnias",
+      "cloneBadge": "Clonar o primeiro para os 3",
+      "badgesRemoved": "Insígnias removidas",
+      "badgeCloned": "Primeira insígnia clonada para os 3",
+      "skinSearch": "Buscar em {count} skins...",
+      "noSkins": "Nenhuma skin encontrada.",
+      "backgroundSet": "Fundo do perfil definido",
+      "riotHelp": "A troca de nome é limitada pela Riot, não pelo Drake. Se recusar, é o tempo de espera deles.",
+      "riotName": "Nome",
+      "riotTag": "TAG",
+      "saveRiotId": "Salvar ID"
     }
   },
   "roles": {
@@ -181,6 +211,25 @@
     "selected": {
       "one": "{count} selecionado",
       "other": "{count} selecionados"
+    }
+  },
+  "ranks": {
+    "tiers": {
+      "IRON": "Ferro",
+      "BRONZE": "Bronze",
+      "SILVER": "Prata",
+      "GOLD": "Ouro",
+      "PLATINUM": "Platina",
+      "EMERALD": "Esmeralda",
+      "DIAMOND": "Diamante",
+      "MASTER": "Mestre",
+      "GRANDMASTER": "Grão-Mestre",
+      "CHALLENGER": "Desafiante"
+    },
+    "queues": {
+      "RANKED_SOLO_5x5": "Solo/Duo",
+      "RANKED_FLEX_SR": "Flexível",
+      "RANKED_TFT": "TFT"
     }
   }
 }

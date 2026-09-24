@@ -164,6 +164,36 @@
       "toggleHelp": "A ban is always locked in — hovering a ban bans nothing.",
       "champion": "Champion",
       "empty": "Click a champion to ban — click again or ✕ to clear."
+    },
+    "profile": {
+      "title": "Profile",
+      "subtitle": "What other players see. None of this changes your account.",
+      "tabs": {
+        "rank": "Rank",
+        "banner": "Banner",
+        "riot-id": "Riot ID"
+      },
+      "tier": "Tier",
+      "division": "Division",
+      "queue": "Queue",
+      "crystal": "Crystal",
+      "rankHelp": "Shown next to your name in chat. Your real rank is unchanged.",
+      "reset": "Reset",
+      "apply": "Apply",
+      "applied": "Applied",
+      "badgesTitle": "Challenge badges",
+      "badgesHelp": "The three tokens on your profile. Clone copies the first into all three slots.",
+      "removeBadges": "Remove badges",
+      "cloneBadge": "Clone first to all 3",
+      "badgesRemoved": "Badges removed",
+      "badgeCloned": "Cloned first badge to all 3",
+      "skinSearch": "Search {count} skins...",
+      "noSkins": "No skins match.",
+      "backgroundSet": "Profile background set",
+      "riotHelp": "Renaming is rate-limited by Riot, not by Drake. If it refuses, that is their cooldown talking.",
+      "riotName": "Name",
+      "riotTag": "TAG",
+      "saveRiotId": "Save ID"
     }
   },
   "roles": {
@@ -181,6 +211,25 @@
     "selected": {
       "one": "{count} selected",
       "other": "{count} selected"
+    }
+  },
+  "ranks": {
+    "tiers": {
+      "IRON": "Iron",
+      "BRONZE": "Bronze",
+      "SILVER": "Silver",
+      "GOLD": "Gold",
+      "PLATINUM": "Platinum",
+      "EMERALD": "Emerald",
+      "DIAMOND": "Diamond",
+      "MASTER": "Master",
+      "GRANDMASTER": "Grandmaster",
+      "CHALLENGER": "Challenger"
+    },
+    "queues": {
+      "RANKED_SOLO_5x5": "Solo/Duo",
+      "RANKED_FLEX_SR": "Flex",
+      "RANKED_TFT": "TFT"
     }
   }
 }
