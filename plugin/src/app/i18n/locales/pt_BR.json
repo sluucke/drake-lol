@@ -118,6 +118,34 @@
       "muteAll": "Silenciar aliados automaticamente na seleção de campeões",
       "autoMessage": "Enviar mensagem automática ao conectar no chat",
       "autoMessagePlaceholder": "Mensagem a enviar quando o chat conectar..."
+    },
+    "settings": {
+      "title": "Configurações",
+      "subtitle": "Como o próprio Drake se comporta.",
+      "runAtStartup": "Iniciar o Drake com o Windows",
+      "runAtStartupHelp": "Mantém o cliente injetado antes de abrir, para que este painel esteja sempre disponível.",
+      "autoReload": "Recarregar o cliente quando o Drake iniciar",
+      "autoReloadHelp": "Usado apenas quando o Drake encontra o cliente já aberto sem o Drake carregado.",
+      "autoUpdate": "Instalar atualizações automaticamente",
+      "autoUpdateHelp": "Baixa a versão mais recente do GitHub e executa o instalador. O Windows vai pedir permissão porque o Drake fica em Arquivos de Programas.",
+      "updates": "Atualizações",
+      "version": "v{version}",
+      "checkUpdates": "Procurar atualizações",
+      "checking": "Verificando…",
+      "upToDate": "O Drake está atualizado.",
+      "available": "{version} está disponível.",
+      "install": "Instalar agora",
+      "noInstaller": "{version} está no GitHub, mas ainda não tem instalador para Windows.",
+      "checkFailed": "Não foi possível procurar atualizações.",
+      "downloading": "Baixando e instalando a atualização…",
+      "installing": "Instalando atualização…",
+      "alreadyCurrent": "O Drake já está atualizado",
+      "unlockStatus": "Desbloquear o campo de mensagem de status",
+      "unlockStatusHelp": "Remove o limite de 25 caracteres do cliente na sua mensagem de status e dá mais espaço ao campo. Vale a partir do próximo recarregamento do cliente.",
+      "client": "Cliente",
+      "clientHelp": "Recarrega a interface do cliente do League. Use quando o Drake foi injetado com o cliente já aberto, ou após uma mudança que só vale depois de recarregar.",
+      "restart": "Reiniciar cliente",
+      "restarting": "Reiniciando o cliente…"
     }
   }
 }

@@ -118,6 +118,34 @@
       "muteAll": "Auto-mute teammates in champ select",
       "autoMessage": "Auto-send message on chat connect",
       "autoMessagePlaceholder": "Message to send when chat connects..."
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "How Drake itself behaves.",
+      "runAtStartup": "Start Drake with Windows",
+      "runAtStartupHelp": "Keeps the client injected before it launches, so this panel is always available.",
+      "autoReload": "Reload the client when Drake starts",
+      "autoReloadHelp": "Only used when Drake finds the client already running without Drake loaded.",
+      "autoUpdate": "Install updates automatically",
+      "autoUpdateHelp": "Downloads the latest GitHub release and runs the installer. Windows will ask for permission because Drake lives in Program Files.",
+      "updates": "Updates",
+      "version": "v{version}",
+      "checkUpdates": "Check for updates",
+      "checking": "Checking…",
+      "upToDate": "Drake is up to date.",
+      "available": "{version} is available.",
+      "install": "Install now",
+      "noInstaller": "{version} is on GitHub but has no Windows installer yet.",
+      "checkFailed": "Could not check for updates.",
+      "downloading": "Downloading and installing the update…",
+      "installing": "Installing update…",
+      "alreadyCurrent": "Drake is already up to date",
+      "unlockStatus": "Unlock the status message field",
+      "unlockStatusHelp": "Removes the client's 25-character cap on your own status message and gives the field room to breathe. Takes effect on the next client reload.",
+      "client": "Client",
+      "clientHelp": "Reloads the League client UI. Use this when Drake injected while the client was already open, or after a change that only applies on a reload.",
+      "restart": "Restart client",
+      "restarting": "Restarting the client…"
     }
   }
 }
