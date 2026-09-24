@@ -784,7 +784,7 @@
   var require_react_dom_production = __commonJS({
     "node_modules/react-dom/cjs/react-dom.production.js"(exports) {
       "use strict";
-      var React = require_react();
+      var React2 = require_react();
       function formatProdErrorMessage(code) {
         var url = "https://react.dev/errors/" + code;
         if (1 < arguments.length) {
@@ -826,7 +826,7 @@
           implementation
         };
       }
-      var ReactSharedInternals = React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+      var ReactSharedInternals = React2.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       function getCrossOriginStringAs(as, input) {
         if ("font" === as) return "";
         if ("string" === typeof input)
@@ -968,7 +968,7 @@
     "node_modules/react-dom/cjs/react-dom-client.production.js"(exports) {
       "use strict";
       var Scheduler = require_scheduler();
-      var React = require_react();
+      var React2 = require_react();
       var ReactDOM = require_react_dom();
       function formatProdErrorMessage(code) {
         var url = "https://react.dev/errors/" + code;
@@ -1261,7 +1261,7 @@
         return null;
       }
       var isArrayImpl = Array.isArray;
-      var ReactSharedInternals = React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+      var ReactSharedInternals = React2.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       var ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       var sharedNotPendingObject = {
         pending: false,
@@ -14410,7 +14410,7 @@
           0 === i && attemptExplicitHydrationTarget(target);
         }
       };
-      var isomorphicReactPackageVersion$jscomp$inline_2043 = React.version;
+      var isomorphicReactPackageVersion$jscomp$inline_2043 = React2.version;
       if ("19.3.0" !== isomorphicReactPackageVersion$jscomp$inline_2043)
         throw Error(
           formatProdErrorMessage(
@@ -19992,18 +19992,18 @@ button.bug-report-button[data-drake-toggle]:disabled {
       stats: { win, kills, deaths, assists }
     };
   }
-  function slimIdentity(identity) {
-    const player = identity?.player || {};
+  function slimIdentity(identity2) {
+    const player = identity2?.player || {};
     return {
-      participantId: identity.participantId,
+      participantId: identity2.participantId,
       player: { puuid: readPuuid(player) }
     };
   }
   function participantMatches(participant, puuid) {
     return Boolean(puuid) && readPuuid(participant) === puuid;
   }
-  function identityMatches(identity, puuid) {
-    return Boolean(puuid) && readPuuid(identity?.player || {}) === puuid;
+  function identityMatches(identity2, puuid) {
+    return Boolean(puuid) && readPuuid(identity2?.player || {}) === puuid;
   }
   function slimMatchGame(entry, focusPuuid = "") {
     if (!entry) return null;
@@ -20016,7 +20016,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         participants = focused;
         const keepIds = new Set(focused.map((participant) => Number(participant.participantId)).filter(Boolean));
         identities = identities.filter(
-          (identity) => identityMatches(identity, focusPuuid) || keepIds.has(Number(identity.participantId))
+          (identity2) => identityMatches(identity2, focusPuuid) || keepIds.has(Number(identity2.participantId))
         );
       }
     }
@@ -20471,13 +20471,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
   function resolveParticipantByIdentity(game, puuid) {
     const identities = Array.isArray(game?.participantIdentities) ? game.participantIdentities : [];
     const participants = Array.isArray(game?.participants) ? game.participants : [];
-    const identity = identities.find((entry) => {
+    const identity2 = identities.find((entry) => {
       const player = entry?.player || {};
       const idPuuid = player?.puuid || player?.playerPuuid || player?.summoner?.puuid;
       return idPuuid === puuid;
     });
-    if (!identity?.participantId) return null;
-    return participants.find((entry) => Number(entry?.participantId) === Number(identity.participantId)) || null;
+    if (!identity2?.participantId) return null;
+    return participants.find((entry) => Number(entry?.participantId) === Number(identity2.participantId)) || null;
   }
   function resolveParticipant(game, puuid) {
     return pickParticipant(game, puuid) || resolveParticipantByIdentity(game, puuid);
@@ -20729,9 +20729,9 @@ button.bug-report-button[data-drake-toggle]:disabled {
     if (signal?.aborted) return [];
     const shells = await mapPool(team, concurrency, async (player, index) => {
       const cellId = Number(player?.cellId ?? index);
-      const identity = await resolveIdentity(player, lcu2);
-      const puuid = identity.puuid;
-      const riotId = identity.riotId;
+      const identity2 = await resolveIdentity(player, lcu2);
+      const puuid = identity2.puuid;
+      const riotId = identity2.riotId;
       let rankedPayload = null;
       if (puuid) {
         try {
@@ -24318,34 +24318,24 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_react5 = __toESM(require_react(), 1);
   var PortalTargetContext = (0, import_react5.createContext)(null);
 
-  // src/app/AppProviders.jsx
-  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
-  function AppProviders({ sfx, portalTarget = null, children }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(SfxContext.Provider, { value: sfx || NOOP_SFX, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PortalTargetContext.Provider, { value: portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MotionConfig, { reducedMotion: "user", children }) }) });
-  }
-
-  // src/app/dev/Showcase.jsx
-  var import_react13 = __toESM(require_react(), 1);
-
-  // src/app/ui/Button.jsx
-  var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
-  var CLICK = { primary: SFX.click, secondary: SFX.secondary, danger: SFX.secondary, ghost: SFX.tab };
-  var HOVER = { primary: SFX.goldHover, secondary: SFX.hover, danger: SFX.hover, ghost: SFX.hover };
-
-  // src/app/ui/Card.jsx
-  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
-
-  // src/app/ui/Modal.jsx
-  var import_react8 = __toESM(require_react(), 1);
-
   // src/app/i18n/I18nProvider.jsx
-  var import_react7 = __toESM(require_react(), 1);
+  var import_react6 = __toESM(require_react(), 1);
 
   // src/app/i18n/runtime.js
   var DEFAULT_LOCALE = "en_US";
   var TAG8 = "[Drake]";
   function toLanguageTag(locale) {
     return String(locale || DEFAULT_LOCALE).replace("_", "-");
+  }
+  function languageOf(locale) {
+    return String(locale).split("_")[0].toLowerCase();
+  }
+  function resolveLocale(raw, available) {
+    const wanted = String(raw || "").replace("-", "_");
+    if (!wanted) return DEFAULT_LOCALE;
+    if (available.includes(wanted)) return wanted;
+    const lang = languageOf(wanted);
+    return available.find((locale) => languageOf(locale) === lang) || DEFAULT_LOCALE;
   }
   function lookup(dict, key) {
     const value = key.split(".").reduce((node, part) => node && typeof node === "object" ? node[part] : void 0, dict);
@@ -24441,7 +24431,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var AVAILABLE_LOCALES = Object.keys(DICTS);
 
   // src/app/i18n/I18nProvider.jsx
-  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
   function makeValue(locale) {
     const tag = toLanguageTag(locale);
     const t = createTranslator(locale, DICTS);
@@ -24454,7 +24444,177 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return { locale, t, format: { number, percent } };
   }
   var DEFAULT_VALUE = makeValue(DEFAULT_LOCALE);
-  var I18nContext = (0, import_react7.createContext)(DEFAULT_VALUE);
+  var I18nContext = (0, import_react6.createContext)(DEFAULT_VALUE);
+  function I18nProvider({ locale = DEFAULT_LOCALE, children }) {
+    const value = (0, import_react6.useMemo)(() => locale === DEFAULT_LOCALE ? DEFAULT_VALUE : makeValue(locale), [locale]);
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(I18nContext.Provider, { value, children });
+  }
+
+  // src/app/store/StoreContext.jsx
+  var import_react8 = __toESM(require_react(), 1);
+
+  // node_modules/zustand/esm/vanilla.mjs
+  var createStoreImpl = (createState) => {
+    let state;
+    const listeners = /* @__PURE__ */ new Set();
+    const setState = (partial, replace) => {
+      const nextState = typeof partial === "function" ? partial(state) : partial;
+      if (!Object.is(nextState, state)) {
+        const previousState = state;
+        state = (replace != null ? replace : typeof nextState !== "object" || nextState === null) ? nextState : Object.assign({}, state, nextState);
+        listeners.forEach((listener) => listener(state, previousState));
+      }
+    };
+    const getState = () => state;
+    const getInitialState = () => initialState;
+    const subscribe2 = (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+    const api = { setState, getState, getInitialState, subscribe: subscribe2 };
+    const initialState = state = createState(setState, getState, api);
+    return api;
+  };
+  var createStore = ((createState) => createState ? createStoreImpl(createState) : createStoreImpl);
+
+  // node_modules/zustand/esm/react.mjs
+  var import_react7 = __toESM(require_react(), 1);
+  var identity = (arg) => arg;
+  function useStore(api, selector = identity) {
+    const slice = import_react7.default.useSyncExternalStore(
+      api.subscribe,
+      import_react7.default.useCallback(() => selector(api.getState()), [api, selector]),
+      import_react7.default.useCallback(() => selector(api.getInitialState()), [api, selector])
+    );
+    import_react7.default.useDebugValue(slice);
+    return slice;
+  }
+
+  // src/app/store/settingsSlice.js
+  var TRAY_DOWN_HINT = "not running";
+  function revertKeys(current, previous, patch) {
+    const next = { ...current };
+    for (const key of Object.keys(patch)) {
+      if (Object.prototype.hasOwnProperty.call(previous, key)) next[key] = previous[key];
+      else delete next[key];
+    }
+    return next;
+  }
+  function createSettingsSlice({ settings, settingsClient }) {
+    return (set, get) => ({
+      settings: { values: { ...settings }, trayDown: false, error: "" },
+      async saveSettings(patch) {
+        const previous = get().settings.values;
+        set((state) => ({
+          settings: { ...state.settings, values: { ...state.settings.values, ...patch }, error: "" }
+        }));
+        if (!settingsClient) return { ok: true };
+        const result = await settingsClient.save(patch);
+        if (result.ok) {
+          set((state) => ({ settings: { ...state.settings, trayDown: false } }));
+          return result;
+        }
+        set((state) => ({
+          settings: {
+            values: revertKeys(state.settings.values, previous, patch),
+            trayDown: String(result.reason || "").includes(TRAY_DOWN_HINT),
+            error: result.reason || ""
+          }
+        }));
+        return result;
+      }
+    });
+  }
+
+  // src/app/store/sessionSlice.js
+  function createSessionSlice({ appVersion }) {
+    return (set) => ({
+      session: {
+        appVersion,
+        locale: DEFAULT_LOCALE,
+        idle: false,
+        statusText: "",
+        updateUi: { phase: "idle" }
+      },
+      setLocale(locale) {
+        set((state) => ({ session: { ...state.session, locale } }));
+      },
+      setSession(partial) {
+        set((state) => ({ session: { ...state.session, ...partial } }));
+      }
+    });
+  }
+
+  // src/app/store/uiSlice.js
+  function createUiSlice() {
+    return (set) => ({
+      ui: { panelOpen: false, screen: "auto-accept", overlay: "", tourIndex: -1 },
+      setPanelOpen(open) {
+        set((state) => ({ ui: { ...state.ui, panelOpen: !!open } }));
+      },
+      setUi(partial) {
+        set((state) => ({ ui: { ...state.ui, ...partial } }));
+      }
+    });
+  }
+
+  // src/app/store/createDrakeStore.js
+  function defined(fields) {
+    return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== void 0));
+  }
+  function createDrakeStore({ settings = {}, appVersion = "0.0.0", settingsClient = null } = {}) {
+    const settingsSlice = createSettingsSlice({ settings, settingsClient });
+    const sessionSlice = createSessionSlice({ appVersion });
+    const uiSlice = createUiSlice();
+    return createStore((set, get) => ({
+      ...settingsSlice(set, get),
+      ...sessionSlice(set, get),
+      ...uiSlice(set, get),
+      syncLegacy({ settings: values, trayDown, screen, overlay, tourIndex, updateUi, statusText, appVersion: version, idle }) {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            ...values ? { values: { ...values } } : {},
+            ...trayDown === void 0 ? {} : { trayDown: !!trayDown }
+          },
+          session: { ...state.session, ...defined({ updateUi, statusText, appVersion: version, idle }) },
+          ui: { ...state.ui, ...defined({ screen, overlay, tourIndex }) }
+        }));
+      }
+    }));
+  }
+
+  // src/app/store/StoreContext.jsx
+  var FALLBACK_STORE = createDrakeStore();
+  var StoreContext = (0, import_react8.createContext)(FALLBACK_STORE);
+  function useDrake(selector) {
+    return useStore((0, import_react8.useContext)(StoreContext), selector);
+  }
+
+  // src/app/AppProviders.jsx
+  var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
+  function LocaleBridge({ children }) {
+    const locale = useDrake((state) => state.session.locale);
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(I18nProvider, { locale, children });
+  }
+  function AppProviders({ sfx, portalTarget = null, store, children }) {
+    const content = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SfxContext.Provider, { value: sfx || NOOP_SFX, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(PortalTargetContext.Provider, { value: portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(LocaleBridge, { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(MotionConfig, { reducedMotion: "user", children }) }) }) });
+    return store ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(StoreContext.Provider, { value: store, children: content }) : content;
+  }
+
+  // src/app/dev/Showcase.jsx
+  var import_react15 = __toESM(require_react(), 1);
+
+  // src/app/ui/Button.jsx
+  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+  var CLICK = { primary: SFX.click, secondary: SFX.secondary, danger: SFX.secondary, ghost: SFX.tab };
+  var HOVER = { primary: SFX.goldHover, secondary: SFX.hover, danger: SFX.hover, ghost: SFX.hover };
+
+  // src/app/ui/Card.jsx
+  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/ui/Modal.jsx
+  var import_react10 = __toESM(require_react(), 1);
 
   // src/app/ui/Layer.jsx
   var import_react_dom = __toESM(require_react_dom(), 1);
@@ -24463,7 +24623,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Select.jsx
-  var import_react9 = __toESM(require_react(), 1);
+  var import_react11 = __toESM(require_react(), 1);
   var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Skeleton.jsx
@@ -24473,15 +24633,15 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Tabs.jsx
-  var import_react10 = __toESM(require_react(), 1);
+  var import_react12 = __toESM(require_react(), 1);
   var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Toggle.jsx
-  var import_react11 = __toESM(require_react(), 1);
+  var import_react13 = __toESM(require_react(), 1);
   var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Tooltip.jsx
-  var import_react12 = __toESM(require_react(), 1);
+  var import_react14 = __toESM(require_react(), 1);
   var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/dev/Showcase.jsx
@@ -24489,8 +24649,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
 
   // src/app/App.jsx
   var import_jsx_runtime14 = __toESM(require_jsx_runtime(), 1);
-  function App({ sfx, portalTarget }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(AppProviders, { sfx, portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "drake-app", "data-drake-app": "", children: false ? /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(DevShowcase, {}) : null }) });
+  function App({ sfx, portalTarget, store }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(AppProviders, { sfx, portalTarget, store, children: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "drake-app", "data-drake-app": "", children: false ? /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(DevShowcase, {}) : null }) });
   }
 
   // src/app/styles/tokens.css
@@ -24533,13 +24693,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime15 = __toESM(require_jsx_runtime(), 1);
   var APP_LAYER_ID = "drake-app-layer";
   var mounted = /* @__PURE__ */ new WeakMap();
-  function startApp(shadow, { sfx } = {}) {
+  function startApp(shadow, { sfx, store } = {}) {
     if (mounted.has(shadow)) return mounted.get(shadow);
     const layer = shadow.ownerDocument.createElement("div");
     layer.id = APP_LAYER_ID;
     const app = mountReactRoot(shadow, {
       styles: APP_STYLES,
-      element: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(App, { sfx, portalTarget: layer })
+      element: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(App, { sfx, portalTarget: layer, store })
     });
     shadow.appendChild(layer);
     const result = {
@@ -24552,6 +24712,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
     };
     mounted.set(shadow, result);
     return result;
+  }
+
+  // src/app/i18n/loadLocale.js
+  async function loadLocale(lcu2) {
+    try {
+      const body = await lcu2.get("/riotclient/region-locale");
+      return resolveLocale(body?.locale, AVAILABLE_LOCALES);
+    } catch {
+      return DEFAULT_LOCALE;
+    }
   }
 
   // src/ui/index.js
@@ -24651,12 +24821,29 @@ button.bug-report-button[data-drake-toggle]:disabled {
       token: cfg.token,
       reloadConfig: loadConfig
     });
+    const store = createDrakeStore({ settings, appVersion, settingsClient: client });
+    if (false) window.__drakeStore = store;
+    void loadLocale(lcu2).then((locale) => store.getState().setLocale(locale));
+    function syncStore() {
+      store.getState().syncLegacy({
+        settings,
+        trayDown,
+        screen,
+        overlay,
+        tourIndex,
+        updateUi,
+        statusText,
+        appVersion,
+        idle: inGameIdle
+      });
+    }
     const ui2 = mountUI({
       doc: document,
       win: window,
       render: renderShell,
       isIdle: () => inGameIdle,
       onOpenChange: (open) => {
+        store.getState().setPanelOpen(open);
         if (!shadowRoot) return;
         shadowRoot.getElementById("scrim").style.display = open ? "grid" : "none";
         syncSocialToggle(document, open);
@@ -24760,6 +24947,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     function setIdle(next) {
       if (next === inGameIdle) return;
       inGameIdle = next;
+      syncStore();
       if (inGameIdle) {
         ui2.close();
         stopSocialWatch();
@@ -24870,7 +25058,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     function wire(shadow, api) {
       shadowRoot = shadow;
-      startApp(shadow, { sfx });
+      startApp(shadow, { sfx, store });
       const content = shadow.getElementById("content");
       const statusEl = shadow.getElementById("status");
       function sayUi(text, good) {
@@ -24970,6 +25158,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         layer.hidden = true;
       }
       function paint() {
+        syncStore();
         if (screen === "settings") {
           content.innerHTML = renderSettings(settings, {
             disabled: trayDown,

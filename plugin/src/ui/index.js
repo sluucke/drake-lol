@@ -67,6 +67,8 @@ import { makeProxyFetch } from '../features/proxyFetch.js';
 import { makeSummonerIdLoader } from '../features/summonerId.js';
 import { wireDrakeSelects } from './drakeSelect.js';
 import { startApp } from '../app/main.jsx';
+import { createDrakeStore } from '../app/store/createDrakeStore.js';
+import { loadLocale } from '../app/i18n/loadLocale.js';
 
 const TAG = '[Drake]';
 
@@ -186,12 +188,31 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     reloadConfig: loadConfig,
   });
 
+  const store = createDrakeStore({ settings, appVersion, settingsClient: client });
+  if (__DRAKE_DEV__) window.__drakeStore = store;
+  void loadLocale(lcu).then((locale) => store.getState().setLocale(locale));
+
+  function syncStore() {
+    store.getState().syncLegacy({
+      settings,
+      trayDown,
+      screen,
+      overlay,
+      tourIndex,
+      updateUi,
+      statusText,
+      appVersion,
+      idle: inGameIdle,
+    });
+  }
+
   const ui = mountUI({
     doc: document,
     win: window,
     render: renderShell,
     isIdle: () => inGameIdle,
     onOpenChange: (open) => {
+      store.getState().setPanelOpen(open);
       if (!shadowRoot) return;
       shadowRoot.getElementById('scrim').style.display = open ? 'grid' : 'none';
       syncSocialToggle(document, open);
@@ -308,6 +329,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   function setIdle(next) {
     if (next === inGameIdle) return;
     inGameIdle = next;
+    syncStore();
     if (inGameIdle) {
       ui.close();
       stopSocialWatch();
@@ -433,7 +455,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
 
   function wire(shadow, api) {
     shadowRoot = shadow;
-    startApp(shadow, { sfx });
+    startApp(shadow, { sfx, store });
     const content = shadow.getElementById('content');
     const statusEl = shadow.getElementById('status');
 
@@ -542,6 +564,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     }
 
     function paint() {
+      syncStore();
       if (screen === 'settings') {
         content.innerHTML = renderSettings(settings, {
           disabled: trayDown,
