@@ -1,0 +1,106 @@
+.drk-select {
+  position: relative;
+  display: inline-flex;
+  min-width: 140px;
+  pointer-events: auto;
+}
+
+.drk-select__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--space-3);
+  font-family: var(--font-text);
+  font-size: var(--text-sm);
+  color: var(--text-strong);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface-0));
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.drk-select__trigger:hover:not(:disabled),
+.drk-select.is-open .drk-select__trigger {
+  border-color: var(--gold-3);
+  box-shadow: var(--glow-gold);
+}
+
+.drk-select__trigger:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.drk-select__value {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drk-select__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--gold-2);
+  border-bottom: 2px solid var(--gold-2);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.drk-select.is-open .drk-select__chevron {
+  transform: translateY(2px) rotate(225deg);
+}
+
+.drk-select__icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.drk-select__list {
+  z-index: 10;
+  max-height: 280px;
+  margin: 0;
+  padding: var(--space-1) 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--surface-glass);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--gold-4);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+  pointer-events: auto;
+}
+
+.drk-select__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.drk-select__option:hover {
+  color: var(--gold-1);
+  background: rgba(200, 170, 110, 0.1);
+}
+
+.drk-select__option.is-selected {
+  color: var(--gold-1);
+  background: rgba(200, 170, 110, 0.16);
+  box-shadow: inset 2px 0 0 var(--gold-2);
+}
+
+.drk-select.is-disabled {
+  opacity: 0.45;
+}
+
+.drk-select.is-disabled .drk-select__trigger {
+  cursor: default;
+}
