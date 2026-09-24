@@ -2,14 +2,16 @@ import { useEffect, useId, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SFX } from '../../ui/sfx.js';
 import { useSfx } from '../hooks/useSfx.js';
+import { useT } from '../i18n/I18nProvider.jsx';
 import { Layer } from './Layer.jsx';
 import { DURATION, EASE_OUT } from './motion.js';
 
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, width = 560, closeLabel = 'Close', className = '', children }) {
+export function Modal({ open, onClose, title, width = 560, closeLabel, className = '', children }) {
   const sfx = useSfx();
+  const t = useT();
   const dialogRef = useRef(null);
   const onCloseRef = useRef(onClose);
   const titleId = useId();
@@ -86,7 +88,7 @@ export function Modal({ open, onClose, title, width = 560, closeLabel = 'Close',
                 <button
                   type="button"
                   className="drk-modal__close"
-                  aria-label={closeLabel}
+                  aria-label={closeLabel ?? t('common.close')}
                   onMouseEnter={() => sfx.play(SFX.hover)}
                   onClick={close}
                 />

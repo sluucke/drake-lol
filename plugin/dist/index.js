@@ -24325,7 +24325,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/app/dev/Showcase.jsx
-  var import_react12 = __toESM(require_react(), 1);
+  var import_react13 = __toESM(require_react(), 1);
 
   // src/app/ui/Button.jsx
   var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
@@ -24336,43 +24336,161 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
 
   // src/app/ui/Modal.jsx
+  var import_react8 = __toESM(require_react(), 1);
+
+  // src/app/i18n/I18nProvider.jsx
   var import_react7 = __toESM(require_react(), 1);
+
+  // src/app/i18n/runtime.js
+  var DEFAULT_LOCALE = "en_US";
+  var TAG8 = "[Drake]";
+  function toLanguageTag(locale) {
+    return String(locale || DEFAULT_LOCALE).replace("_", "-");
+  }
+  function lookup(dict, key) {
+    const value = key.split(".").reduce((node, part) => node && typeof node === "object" ? node[part] : void 0, dict);
+    return typeof value === "string" ? value : void 0;
+  }
+  function interpolate(text, vars) {
+    if (!vars) return text;
+    return text.replace(/\{(\w+)\}/g, (match, name) => vars[name] == null ? match : String(vars[name]));
+  }
+  function pluralRules(locale) {
+    try {
+      return new Intl.PluralRules(toLanguageTag(locale));
+    } catch {
+      return new Intl.PluralRules("en-US");
+    }
+  }
+  function createTranslator(locale, dicts, { warn = console.warn } = {}) {
+    const primary = dicts[locale] || {};
+    const fallback = dicts[DEFAULT_LOCALE] || {};
+    const rules = pluralRules(locale);
+    const warned = /* @__PURE__ */ new Set();
+    function report(key) {
+      if (warned.has(key)) return;
+      warned.add(key);
+      warn(TAG8, `missing translation "${key}" for ${locale}`);
+    }
+    function find(key) {
+      const own = lookup(primary, key);
+      if (own !== void 0) return own;
+      const base = lookup(fallback, key);
+      if (base !== void 0 && primary !== fallback) report(key);
+      return base;
+    }
+    function pick(key, vars) {
+      if (vars && typeof vars.count === "number") {
+        for (const candidate of [`${key}.${rules.select(vars.count)}`, `${key}.other`]) {
+          const value = find(candidate);
+          if (value !== void 0) return value;
+        }
+      }
+      return find(key);
+    }
+    return function t(key, vars) {
+      const value = pick(key, vars);
+      if (value === void 0) {
+        report(key);
+        return key;
+      }
+      return interpolate(value, vars);
+    };
+  }
+
+  // src/app/i18n/locales/en_US.json
+  var en_US_default = {
+    common: {
+      close: "Close",
+      loading: "Loading\u2026",
+      save: "Save",
+      cancel: "Cancel",
+      retry: "Try again",
+      on: "On",
+      off: "Off"
+    },
+    time: {
+      seconds: {
+        one: "{count} second",
+        other: "{count} seconds"
+      }
+    }
+  };
+
+  // src/app/i18n/locales/pt_BR.json
+  var pt_BR_default = {
+    common: {
+      close: "Fechar",
+      loading: "Carregando\u2026",
+      save: "Salvar",
+      cancel: "Cancelar",
+      retry: "Tentar novamente",
+      on: "Ligado",
+      off: "Desligado"
+    },
+    time: {
+      seconds: {
+        one: "{count} segundo",
+        other: "{count} segundos"
+      }
+    }
+  };
+
+  // src/app/i18n/locales/index.js
+  var DICTS = { en_US: en_US_default, pt_BR: pt_BR_default };
+  var AVAILABLE_LOCALES = Object.keys(DICTS);
+
+  // src/app/i18n/I18nProvider.jsx
+  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+  function makeValue(locale) {
+    const tag = toLanguageTag(locale);
+    const t = createTranslator(locale, DICTS);
+    const number = (value, options) => new Intl.NumberFormat(tag, options).format(value);
+    const percent = (ratio2, digits = 0) => new Intl.NumberFormat(tag, {
+      style: "percent",
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }).format(ratio2);
+    return { locale, t, format: { number, percent } };
+  }
+  var DEFAULT_VALUE = makeValue(DEFAULT_LOCALE);
+  var I18nContext = (0, import_react7.createContext)(DEFAULT_VALUE);
 
   // src/app/ui/Layer.jsx
   var import_react_dom = __toESM(require_react_dom(), 1);
 
   // src/app/ui/Modal.jsx
-  var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
-
-  // src/app/ui/Select.jsx
-  var import_react8 = __toESM(require_react(), 1);
   var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
 
-  // src/app/ui/Skeleton.jsx
+  // src/app/ui/Select.jsx
+  var import_react9 = __toESM(require_react(), 1);
   var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
 
-  // src/app/ui/Slider.jsx
+  // src/app/ui/Skeleton.jsx
   var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
 
-  // src/app/ui/Tabs.jsx
-  var import_react9 = __toESM(require_react(), 1);
+  // src/app/ui/Slider.jsx
   var import_jsx_runtime9 = __toESM(require_jsx_runtime(), 1);
 
-  // src/app/ui/Toggle.jsx
+  // src/app/ui/Tabs.jsx
   var import_react10 = __toESM(require_react(), 1);
   var import_jsx_runtime10 = __toESM(require_jsx_runtime(), 1);
 
-  // src/app/ui/Tooltip.jsx
+  // src/app/ui/Toggle.jsx
   var import_react11 = __toESM(require_react(), 1);
   var import_jsx_runtime11 = __toESM(require_jsx_runtime(), 1);
 
-  // src/app/dev/Showcase.jsx
+  // src/app/ui/Tooltip.jsx
+  var import_react12 = __toESM(require_react(), 1);
   var import_jsx_runtime12 = __toESM(require_jsx_runtime(), 1);
 
-  // src/app/App.jsx
+  // src/app/dev/Showcase.jsx
   var import_jsx_runtime13 = __toESM(require_jsx_runtime(), 1);
+
+  // src/app/App.jsx
+  var import_jsx_runtime14 = __toESM(require_jsx_runtime(), 1);
   function App({ sfx, portalTarget }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(AppProviders, { sfx, portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "drake-app", "data-drake-app": "", children: false ? /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(DevShowcase, {}) : null }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(AppProviders, { sfx, portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "drake-app", "data-drake-app": "", children: false ? /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(DevShowcase, {}) : null }) });
   }
 
   // src/app/styles/tokens.css
@@ -24412,7 +24530,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default];
 
   // src/app/main.jsx
-  var import_jsx_runtime14 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime15 = __toESM(require_jsx_runtime(), 1);
   var APP_LAYER_ID = "drake-app-layer";
   var mounted = /* @__PURE__ */ new WeakMap();
   function startApp(shadow, { sfx } = {}) {
@@ -24421,7 +24539,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     layer.id = APP_LAYER_ID;
     const app = mountReactRoot(shadow, {
       styles: APP_STYLES,
-      element: /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(App, { sfx, portalTarget: layer })
+      element: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(App, { sfx, portalTarget: layer })
     });
     shadow.appendChild(layer);
     const result = {
@@ -24437,7 +24555,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/ui/index.js
-  var TAG8 = "[Drake]";
+  var TAG9 = "[Drake]";
   function readLocalCell(session) {
     const cellId = Number(session?.localPlayerCellId ?? -1);
     const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
@@ -24494,8 +24612,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
       skins: ""
     };
     const status = makeStatus({ lcu: lcu2 });
-    let dodgeStatus = (detail) => console.log(TAG8, "dodge", detail);
-    let say = (text, good) => console.log(TAG8, text, good ? "ok" : "err");
+    let dodgeStatus = (detail) => console.log(TAG9, "dodge", detail);
+    let say = (text, good) => console.log(TAG9, text, good ? "ok" : "err");
     const dodger = makeDodge({
       onStatus: (detail) => dodgeStatus(detail)
     });
@@ -24675,7 +24793,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
           teamRevealChampsLoading = null;
           return teamRevealChamps;
         }).catch((err) => {
-          console.log(TAG8, "could not load champion names -", err?.message || err);
+          console.log(TAG9, "could not load champion names -", err?.message || err);
           teamRevealChampsLoading = null;
           return [];
         });
@@ -24726,21 +24844,21 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     async function runDodge(btn) {
       if (!btn || dodgeBusy || btn.disabled) {
-        console.log(TAG8, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
+        console.log(TAG9, "dodge ignored", { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
         return;
       }
       dodgeBusy = true;
       btn.disabled = true;
       btn.textContent = "Dodging\u2026";
       say("Dodging\u2026", true);
-      console.log(TAG8, "dodge click", btn.id);
+      console.log(TAG9, "dodge click", btn.id);
       if (stopDodgeReposition) {
         stopDodgeReposition();
         stopDodgeReposition = null;
       }
       try {
         const result = await dodger.dodge();
-        console.log(TAG8, "dodge result", result);
+        console.log(TAG9, "dodge result", result);
         const msg = result.ok ? `Dodged champ select${result.detail ? ` (${result.detail})` : ""}` : result.reason;
         say(msg, result.ok);
         btn.textContent = result.ok ? "Dodged!" : "Failed";
@@ -24762,7 +24880,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       say = sayUi;
       dodgeStatus = (detail) => {
         sayUi(detail, true);
-        console.log(TAG8, "dodge", detail);
+        console.log(TAG9, "dodge", detail);
       };
       shadow.getElementById("scrim").style.display = "none";
       startSocialWatch(api);
@@ -24998,7 +25116,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         paint();
         statusEl.textContent = result.reason;
         statusEl.className = "status-bad";
-        console.log(TAG8, "could not save -", result.reason);
+        console.log(TAG9, "could not save -", result.reason);
         return { ok: false, reason: result.reason };
       }
       async function goToScreen(next) {
@@ -25458,7 +25576,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         try {
           await cancelQueue(lcu2);
         } catch {
-          console.log(TAG8, "could not cancel the queue");
+          console.log(TAG9, "could not cancel the queue");
         }
       });
       shadow.getElementById("dodge-champ-select").addEventListener("click", (e) => {
@@ -25843,7 +25961,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   }
 
   // src/index.js
-  var TAG9 = "[Drake]";
+  var TAG10 = "[Drake]";
   var lcu = makeLcu();
   var presence = makePresence({ lcu });
   var stopFeatures = () => {
@@ -25885,7 +26003,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
         subscribe,
         getSession: () => lcu.get("/lol-champ-select/v1/session"),
         onResult: (d, r, was) => console.log(
-          TAG9,
+          TAG10,
           d.kind,
           d.championId,
           r.ok ? "ok" : "failed: " + r.reason,
@@ -25900,7 +26018,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     const stopUnlocks = startUnlocks({
       enabled: !!settings.unlock_status_message,
-      onFirstUnlock: (n) => console.log(TAG9, "unlocked the status message input", n > 1 ? n : "")
+      onFirstUnlock: (n) => console.log(TAG10, "unlocked the status message input", n > 1 ? n : "")
     });
     stopProfileRank = startProfileRankRefresh({
       subscribe,
@@ -25924,7 +26042,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   async function start() {
     const cfg = await loadConfig();
     if (!cfg) {
-      console.log(TAG9, "no config.json found; the tray app may not be running");
+      console.log(TAG10, "no config.json found; the tray app may not be running");
       ui = startUI({ cfg: { port: 0, token: "", settings: {} }, lcu });
       return;
     }
@@ -25937,20 +26055,20 @@ button.bug-report-button[data-drake-toggle]:disabled {
     });
     const host = typeof Pengu !== "undefined" && Pengu.version ? `pengu ${Pengu.version}` : "unknown";
     const ok = await startHeartbeat({ checkIn: transport.checkIn, host });
-    console.log(TAG9, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
-    console.log(TAG9, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
+    console.log(TAG10, "check-in", ok ? "ok" : "failed", "| settings", JSON.stringify(cfg.settings));
+    console.log(TAG10, "lcu events", socketPushAvailable() ? "pushed by the loader" : "polled");
     ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
     wireFeatures(cfg.settings);
     startInGameIdle({
       subscribe,
       onChange(idle) {
         idleInGame = idle;
-        console.log(TAG9, idle ? "idle in game" : "active in client");
+        console.log(TAG10, idle ? "idle in game" : "active in client");
         if (idle) sleepPlugin();
         else wakePlugin();
       }
     });
-    console.log(TAG9, "UI ready \u2014 press Ctrl+D");
+    console.log(TAG10, "UI ready \u2014 press Ctrl+D");
   }
   if (document.readyState === "complete") start();
   else window.addEventListener("load", start);
