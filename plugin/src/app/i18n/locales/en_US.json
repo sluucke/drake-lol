@@ -75,6 +75,49 @@
       "save": "Save",
       "saved": "Status saved · {summary}",
       "saveFailed": "Could not save: {reason}"
+    },
+    "queue": {
+      "title": "Queue",
+      "subtitle": "Tools for champ select.",
+      "revealTitle": "Lobby reveal",
+      "revealHelp": "Looks your whole team up on a scouting site. Only works while you are in champ select, because that is when the names exist.",
+      "provider": "Scouting site",
+      "revealButton": "Reveal Lobby",
+      "lookingUp": {
+        "one": "Looking up {count} summoner",
+        "other": "Looking up {count} summoners"
+      },
+      "inClient": "Reveal my team in-client",
+      "inClientHelp": "Rewrites ally rows and enables the Ctrl+Shift+D cards overlay while in champ select.",
+      "sampleSize": "Sample size",
+      "recentPool": "Recent pool",
+      "last5Pool": "Last 5 pool",
+      "concurrency": "Fetch at once",
+      "pool": {
+        "ranked_both": "Solo + Flex",
+        "current_queue": "Current queue",
+        "any": "Any queue"
+      },
+      "currentQueueWarn": "Current queue can look sparse if that player rarely plays this queue.",
+      "concurrencyWarn": "Higher concurrency loads the client harder and can hit rate limits.",
+      "estimate": "About ~{seconds}s for a full lobby at this setting.",
+      "recommend": {
+        "one": "Based on your last reveal, we suggest resolving {count} player at a time.",
+        "other": "Based on your last reveal, we suggest resolving {count} players at a time."
+      },
+      "optionsDisabled": "Enable in-client reveal to change these.",
+      "dodgeTitle": "Dodge",
+      "dodgeHelp": "Leaves champ select. Costs you the usual dodge penalty — Drake does not confirm first, so only press it if you mean it.",
+      "dodgeToggle": "Show dodge button in champ select",
+      "dodgeToggleHelp": "Places a Dodge button over the client while you are in champ select.",
+      "dodgeButton": "Dodge",
+      "dodging": "Dodging…",
+      "dodged": "Dodged!",
+      "dodgeFailed": "Failed",
+      "mapSide": "Show map side in champ select",
+      "muteAll": "Auto-mute teammates in champ select",
+      "autoMessage": "Auto-send message on chat connect",
+      "autoMessagePlaceholder": "Message to send when chat connects..."
     }
   }
 }

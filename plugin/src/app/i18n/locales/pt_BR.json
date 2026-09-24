@@ -75,6 +75,49 @@
       "save": "Salvar",
       "saved": "Status salvo · {summary}",
       "saveFailed": "Não foi possível salvar: {reason}"
+    },
+    "queue": {
+      "title": "Fila",
+      "subtitle": "Ferramentas para a seleção de campeões.",
+      "revealTitle": "Revelar lobby",
+      "revealHelp": "Pesquisa todo o seu time em um site de scouting. Só funciona durante a seleção de campeões, que é quando os nomes existem.",
+      "provider": "Site de scouting",
+      "revealButton": "Revelar lobby",
+      "lookingUp": {
+        "one": "Pesquisando {count} invocador",
+        "other": "Pesquisando {count} invocadores"
+      },
+      "inClient": "Revelar meu time no cliente",
+      "inClientHelp": "Reescreve as linhas dos aliados e habilita os cards com Ctrl+Shift+D durante a seleção de campeões.",
+      "sampleSize": "Tamanho da amostra",
+      "recentPool": "Filas recentes",
+      "last5Pool": "Filas das últimas 5",
+      "concurrency": "Buscas simultâneas",
+      "pool": {
+        "ranked_both": "Solo + Flex",
+        "current_queue": "Fila atual",
+        "any": "Qualquer fila"
+      },
+      "currentQueueWarn": "A fila atual pode ter poucos dados se o jogador raramente joga essa fila.",
+      "concurrencyWarn": "Mais buscas simultâneas pesam mais no cliente e podem atingir limites de requisição.",
+      "estimate": "Cerca de ~{seconds}s para um lobby completo com essa configuração.",
+      "recommend": {
+        "one": "Com base na sua última revelação, sugerimos resolver {count} jogador por vez.",
+        "other": "Com base na sua última revelação, sugerimos resolver {count} jogadores por vez."
+      },
+      "optionsDisabled": "Ative a revelação no cliente para alterar estas opções.",
+      "dodgeTitle": "Dodge",
+      "dodgeHelp": "Sai da seleção de campeões. Aplica a penalidade normal de dodge — o Drake não pede confirmação, então só aperte se tiver certeza.",
+      "dodgeToggle": "Mostrar botão de dodge na seleção de campeões",
+      "dodgeToggleHelp": "Coloca um botão de Dodge sobre o cliente durante a seleção de campeões.",
+      "dodgeButton": "Dodge",
+      "dodging": "Saindo…",
+      "dodged": "Saiu!",
+      "dodgeFailed": "Falhou",
+      "mapSide": "Mostrar o lado do mapa na seleção de campeões",
+      "muteAll": "Silenciar aliados automaticamente na seleção de campeões",
+      "autoMessage": "Enviar mensagem automática ao conectar no chat",
+      "autoMessagePlaceholder": "Mensagem a enviar quando o chat conectar..."
     }
   }
 }
