@@ -1,0 +1,7 @@
+#drake-app-root {
+  pointer-events: none;
+}
+
+#drake-app-root .drake-app {
+  display: contents;
+}

@@ -66,6 +66,7 @@ import { makeBuildPanel } from './buildPanel.js';
 import { makeProxyFetch } from '../features/proxyFetch.js';
 import { makeSummonerIdLoader } from '../features/summonerId.js';
 import { wireDrakeSelects } from './drakeSelect.js';
+import { startApp } from '../app/main.jsx';
 
 const TAG = '[Drake]';
 
@@ -432,6 +433,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
 
   function wire(shadow, api) {
     shadowRoot = shadow;
+    startApp(shadow);
     const content = shadow.getElementById('content');
     const statusEl = shadow.getElementById('status');
 
