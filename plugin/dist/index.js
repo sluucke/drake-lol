@@ -24210,17 +24210,38 @@ button.bug-report-button[data-drake-toggle]:disabled {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "drake-app", "data-drake-app": "" });
   }
 
+  // src/app/styles/tokens.css
+  var tokens_default = ":host {\n  --gold-1: #f0e6d2;\n  --gold-2: #c8aa6e;\n  --gold-3: #c89b3c;\n  --gold-4: #785a28;\n  --gold-5: #463714;\n  --hex-1: #cdfafa;\n  --hex-2: #0acbe6;\n  --hex-3: #0596aa;\n  --hex-4: #005a82;\n  --hex-5: #0a323c;\n  --surface-0: #010a13;\n  --surface-1: #091428;\n  --surface-2: #1e2328;\n  --surface-3: #3c3c41;\n  --surface-glass: rgba(1, 10, 19, 0.82);\n  --text-strong: #f0e6d2;\n  --text: #a09b8c;\n  --text-muted: #5c5b57;\n  --win: #1fb86a;\n  --loss: #d9534f;\n  --warn: #e0a92b;\n  --danger: #c33c3c;\n  --border: #463714;\n  --border-strong: #785a28;\n  --focus: #0acbe6;\n  --font-heading: var(--font-display, 'Beaufort for LOL'), serif;\n  --font-text: var(--font-body, 'Spiegel'), 'Segoe UI', system-ui, sans-serif;\n  --text-xs: 11px;\n  --text-sm: 12px;\n  --text-md: 14px;\n  --text-lg: 16px;\n  --text-xl: 20px;\n  --text-2xl: 26px;\n  --space-1: 4px;\n  --space-2: 8px;\n  --space-3: 12px;\n  --space-4: 16px;\n  --space-5: 20px;\n  --space-6: 24px;\n  --space-7: 28px;\n  --space-8: 32px;\n  --radius-sm: 2px;\n  --radius-md: 4px;\n  --radius-lg: 8px;\n  --shadow-1: 0 8px 24px rgba(0, 0, 0, 0.45);\n  --glow-gold: 0 0 12px rgba(200, 170, 110, 0.35);\n  --glow-hex: 0 0 12px rgba(10, 203, 230, 0.35);\n  --dur-fast: 120ms;\n  --dur-base: 180ms;\n  --dur-slow: 280ms;\n  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);\n  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);\n}\n";
+
   // src/app/styles/base.css
-  var base_default = "#drake-app-root {\n  pointer-events: none;\n}\n\n#drake-app-root .drake-app {\n  display: contents;\n}\n";
+  var base_default = "#drake-app-root {\n  pointer-events: none;\n}\n\n#drake-app-root .drake-app {\n  display: contents;\n}\n\n#drake-app-layer {\n  position: fixed;\n  inset: 0;\n  pointer-events: none;\n  z-index: 2147483000;\n  font-family: var(--font-text);\n  color: var(--text);\n}\n\n#drake-app-root,\n#drake-app-layer {\n  -webkit-font-smoothing: antialiased;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  #drake-app-root *,\n  #drake-app-layer * {\n    animation-duration: 1ms !important;\n    transition-duration: 1ms !important;\n  }\n}\n";
+
+  // src/app/styles/index.js
+  var APP_STYLES = [tokens_default, base_default];
 
   // src/app/main.jsx
   var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+  var APP_LAYER_ID = "drake-app-layer";
   var mounted = /* @__PURE__ */ new WeakMap();
-  function startApp(shadow) {
+  function startApp(shadow, { sfx } = {}) {
     if (mounted.has(shadow)) return mounted.get(shadow);
-    const app = mountReactRoot(shadow, { styles: [base_default], element: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(App, {}) });
-    mounted.set(shadow, app);
-    return app;
+    const layer = shadow.ownerDocument.createElement("div");
+    layer.id = APP_LAYER_ID;
+    const app = mountReactRoot(shadow, {
+      styles: APP_STYLES,
+      element: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(App, { sfx, portalTarget: layer })
+    });
+    shadow.appendChild(layer);
+    const result = {
+      ...app,
+      layer,
+      unmount() {
+        app.unmount();
+        layer.remove();
+      }
+    };
+    mounted.set(shadow, result);
+    return result;
   }
 
   // src/ui/index.js
