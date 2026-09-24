@@ -1,0 +1,17 @@
+{
+  "common": {
+    "close": "Fechar",
+    "loading": "Carregando…",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "retry": "Tentar novamente",
+    "on": "Ligado",
+    "off": "Desligado"
+  },
+  "time": {
+    "seconds": {
+      "one": "{count} segundo",
+      "other": "{count} segundos"
+    }
+  }
+}

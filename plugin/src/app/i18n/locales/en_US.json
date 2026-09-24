@@ -1,0 +1,17 @@
+{
+  "common": {
+    "close": "Close",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "on": "On",
+    "off": "Off"
+  },
+  "time": {
+    "seconds": {
+      "one": "{count} second",
+      "other": "{count} seconds"
+    }
+  }
+}
