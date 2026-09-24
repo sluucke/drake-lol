@@ -21543,6 +21543,16 @@ button.bug-report-button[data-drake-toggle]:disabled {
     label.dataset[APPLIED_KEY] = "1";
     label.dataset[LABEL_SIG_KEY] = sig;
   }
+  function withChampionNames(row, getChampName) {
+    const { historyGames, ...rest } = row || {};
+    const name = (id3) => id3 ? getChampName(Number(id3)) || "" : "";
+    return {
+      ...rest,
+      pickedChampionName: name(rest.pickedChampionId),
+      seasonMostPlayedChampionName: name(rest.seasonMostPlayedChampionId),
+      recentGames: (rest.recentGames || []).map((game) => ({ ...game, championName: name(game.championId) }))
+    };
+  }
   function makeTeamRevealDom({
     doc,
     subscribe: subscribe2,
@@ -21561,7 +21571,8 @@ button.bug-report-button[data-drake-toggle]:disabled {
     clearTimeoutImpl = clearTimeout,
     statusReadyMs = STATUS_READY_MS,
     onRevealTiming,
-    MutationObserverImpl
+    MutationObserverImpl,
+    publishView = null
   }) {
     const chat = makeTeamRevealChat({ doc, MutationObserverImpl });
     let enabled = false;
@@ -21591,6 +21602,22 @@ button.bug-report-button[data-drake-toggle]:disabled {
     let muteStatus = "idle";
     let autoMutedLobbyKey = "";
     let lastAutoMessageLobbyKey = "";
+    let statusSeq = 0;
+    function publish() {
+      if (!publishView) return;
+      const sideInfo = getShowMapSide() ? readMapSide(currentSession) : null;
+      publishView({
+        enabled,
+        open,
+        activeTab,
+        statusPhase,
+        statusSeq,
+        muteStatus,
+        side: sideInfo?.label ? { side: sideInfo.side, color: sideInfo.color } : null,
+        rows: snapshot.map((row) => withChampionNames(row, getChampName)),
+        buildSig: buildPanel?.getStateSig ? buildPanel.getStateSig() : ""
+      });
+    }
     function stopRevealLoad() {
       loadGen += 1;
       if (loadAbort) {
@@ -21737,6 +21764,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       return JSON.stringify(teamFingerprint(session));
     }
     function ensureOverlay() {
+      if (publishView) return null;
       if (overlay) return overlay;
       const existing = overlayRoot?.querySelector?.(".team-reveal-overlay");
       if (existing) {
@@ -21914,6 +21942,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     function setStatus(phase) {
       statusPhase = phase;
+      statusSeq += 1;
+      if (publishView) {
+        publish();
+        return;
+      }
       const node = ensureStatus();
       if (!node) return;
       const visible = enabled && (phase === "loading" || phase === "ready") && !open;
@@ -21937,6 +21970,11 @@ button.bug-report-button[data-drake-toggle]:disabled {
       else stopReadyDismiss();
     }
     function renderVisibility() {
+      if (publishView) {
+        if (!open) lastCardsRenderSig = "";
+        publish();
+        return;
+      }
       if (!overlay) return;
       if (open) {
         const showMapSide = getShowMapSide();
@@ -22229,6 +22267,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
       isOpen: () => open,
       getActiveTab: () => activeTab,
       setActiveTab,
+      muteAll: handleMuteAll,
       teardown
     };
   }
