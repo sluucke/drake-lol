@@ -5,7 +5,13 @@
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __getProtoOf = Object.getPrototypeOf;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
-  var __commonJS = (cb, mod) => function __require() {
+  var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+    get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+  }) : x)(function(x) {
+    if (typeof require !== "undefined") return require.apply(this, arguments);
+    throw Error('Dynamic require of "' + x + '" is not supported');
+  });
+  var __commonJS = (cb, mod) => function __require2() {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
   var __copyProps = (to, from, except, desc) => {
@@ -24204,10 +24210,124 @@ button.bug-report-button[data-drake-toggle]:disabled {
     };
   }
 
-  // src/app/App.jsx
+  // node_modules/framer-motion/dist/es/utils/use-constant.mjs
+  var import_react = __toESM(require_react(), 1);
+  function useConstant(init) {
+    const ref = (0, import_react.useRef)(null);
+    if (ref.current === null) {
+      ref.current = init();
+    }
+    return ref.current;
+  }
+
+  // node_modules/motion-dom/dist/es/animation/utils/resolve-transition.mjs
+  function resolveTransition(transition, parentTransition) {
+    if (transition?.inherit && parentTransition) {
+      const { inherit: _, ...rest } = transition;
+      return { ...parentTransition, ...rest };
+    }
+    return transition;
+  }
+
+  // node_modules/framer-motion/dist/es/context/MotionConfigContext.mjs
+  var import_react2 = __toESM(require_react(), 1);
+  var MotionConfigContext = (0, import_react2.createContext)({
+    transformPagePoint: (p) => p,
+    isStatic: false,
+    reducedMotion: "never"
+  });
+
+  // node_modules/framer-motion/dist/es/components/MotionConfig/index.mjs
   var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
-  function App() {
-    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "drake-app", "data-drake-app": "" });
+  var import_react3 = __toESM(require_react(), 1);
+
+  // node_modules/framer-motion/dist/es/motion/utils/valid-prop.mjs
+  var validMotionProps = /* @__PURE__ */ new Set([
+    "animate",
+    "exit",
+    "variants",
+    "initial",
+    "style",
+    "values",
+    "variants",
+    "transition",
+    "transformTemplate",
+    "custom",
+    "inherit",
+    "onBeforeLayoutMeasure",
+    "onAnimationStart",
+    "onAnimationComplete",
+    "onUpdate",
+    "onDragStart",
+    "onDrag",
+    "onDragEnd",
+    "onMeasureDragConstraints",
+    "onDirectionLock",
+    "onDragTransitionEnd",
+    "_dragX",
+    "_dragY",
+    "onHoverStart",
+    "onHoverEnd",
+    "onViewportEnter",
+    "onViewportLeave",
+    "globalTapTarget",
+    "propagate",
+    "ignoreStrict",
+    "viewport"
+  ]);
+  function isValidMotionProp(key) {
+    return key.startsWith("while") || key.startsWith("drag") && key !== "draggable" || key.startsWith("layout") || key.startsWith("onTap") || key.startsWith("onPan") || key.startsWith("onLayout") || validMotionProps.has(key);
+  }
+
+  // node_modules/framer-motion/dist/es/render/dom/utils/filter-props.mjs
+  var shouldForward = (key) => !isValidMotionProp(key);
+  function loadExternalIsValidProp(isValidProp) {
+    if (typeof isValidProp !== "function")
+      return;
+    shouldForward = (key) => key.startsWith("on") ? !isValidMotionProp(key) : isValidProp(key);
+  }
+  try {
+    const emotionPkg = "@emotion/is-prop-valid";
+    loadExternalIsValidProp(__require(emotionPkg).default);
+  } catch {
+  }
+
+  // node_modules/framer-motion/dist/es/components/MotionConfig/index.mjs
+  function MotionConfig({ children, isValidProp, ...config }) {
+    isValidProp && loadExternalIsValidProp(isValidProp);
+    const parentConfig = (0, import_react3.useContext)(MotionConfigContext);
+    config = { ...parentConfig, ...config };
+    config.transition = resolveTransition(config.transition, parentConfig.transition);
+    config.isStatic = useConstant(() => config.isStatic);
+    const context = (0, import_react3.useMemo)(() => config, [
+      JSON.stringify(config.transition),
+      config.transformPagePoint,
+      config.reducedMotion,
+      config.skipAnimations
+    ]);
+    return (0, import_jsx_runtime.jsx)(MotionConfigContext.Provider, { value: context, children });
+  }
+
+  // src/app/hooks/useSfx.js
+  var import_react4 = __toESM(require_react(), 1);
+  var NOOP_SFX = { play() {
+  } };
+  var SfxContext = (0, import_react4.createContext)(NOOP_SFX);
+
+  // src/app/hooks/usePortalTarget.js
+  var import_react5 = __toESM(require_react(), 1);
+  var PortalTargetContext = (0, import_react5.createContext)(null);
+
+  // src/app/AppProviders.jsx
+  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+  function AppProviders({ sfx, portalTarget = null, children }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(SfxContext.Provider, { value: sfx || NOOP_SFX, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PortalTargetContext.Provider, { value: portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MotionConfig, { reducedMotion: "user", children }) }) });
+  }
+
+  // src/app/App.jsx
+  var import_jsx_runtime3 = __toESM(require_jsx_runtime(), 1);
+  function App({ sfx, portalTarget }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AppProviders, { sfx, portalTarget, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "drake-app", "data-drake-app": "" }) });
   }
 
   // src/app/styles/tokens.css
@@ -24220,7 +24340,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
   var APP_STYLES = [tokens_default, base_default];
 
   // src/app/main.jsx
-  var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
+  var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
   var APP_LAYER_ID = "drake-app-layer";
   var mounted = /* @__PURE__ */ new WeakMap();
   function startApp(shadow, { sfx } = {}) {
@@ -24229,7 +24349,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     layer.id = APP_LAYER_ID;
     const app = mountReactRoot(shadow, {
       styles: APP_STYLES,
-      element: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(App, { sfx, portalTarget: layer })
+      element: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(App, { sfx, portalTarget: layer })
     });
     shadow.appendChild(layer);
     const result = {
@@ -24560,7 +24680,7 @@ button.bug-report-button[data-drake-toggle]:disabled {
     }
     function wire(shadow, api) {
       shadowRoot = shadow;
-      startApp(shadow);
+      startApp(shadow, { sfx });
       const content = shadow.getElementById("content");
       const statusEl = shadow.getElementById("status");
       function sayUi(text, good) {

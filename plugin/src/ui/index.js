@@ -433,7 +433,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
 
   function wire(shadow, api) {
     shadowRoot = shadow;
-    startApp(shadow);
+    startApp(shadow, { sfx });
     const content = shadow.getElementById('content');
     const statusEl = shadow.getElementById('status');
 
