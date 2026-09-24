@@ -147,6 +147,15 @@
       "clientHelp": "Reloads the League client UI. Use this when Drake injected while the client was already open, or after a change that only applies on a reload.",
       "restart": "Restart client",
       "restarting": "Restarting the client…"
+    },
+    "autoPick": {
+      "title": "Auto Pick",
+      "subtitle": "Up to 2 champions per role. Picks wait until your lane is assigned — Fill does nothing.",
+      "toggle": "Pick a champion automatically",
+      "instaLock": "Insta Lock",
+      "instaLockHelp": "Locks the champion in the instant the pick opens, instead of only hovering it. Nobody can take it from you, and you cannot change your mind.",
+      "rolesLabel": "Pick roles",
+      "empty": "Click up to 2 champions for this role — first is your pick, second is the backup."
     }
   },
   "roles": {

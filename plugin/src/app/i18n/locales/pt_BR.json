@@ -147,6 +147,15 @@
       "clientHelp": "Recarrega a interface do cliente do League. Use quando o Drake foi injetado com o cliente já aberto, ou após uma mudança que só vale depois de recarregar.",
       "restart": "Reiniciar cliente",
       "restarting": "Reiniciando o cliente…"
+    },
+    "autoPick": {
+      "title": "Pick automático",
+      "subtitle": "Até 2 campeões por rota. O pick espera sua rota ser definida — Preencher não faz nada.",
+      "toggle": "Escolher um campeão automaticamente",
+      "instaLock": "Travar na hora",
+      "instaLockHelp": "Trava o campeão assim que a escolha abre, em vez de só selecioná-lo. Ninguém pode pegá-lo de você, e você não pode mudar de ideia.",
+      "rolesLabel": "Rotas",
+      "empty": "Clique em até 2 campeões para esta rota — o primeiro é o seu pick, o segundo é o reserva."
     }
   },
   "roles": {
