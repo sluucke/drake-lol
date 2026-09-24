@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from './renderWithProviders.jsx';
 import { createDrakeStore } from '../../src/app/store/createDrakeStore.js';
 import { PanelFrame } from '../../src/app/shell/PanelFrame.jsx';
@@ -93,18 +93,18 @@ describe('ShellFooter', () => {
     const { store } = setup();
     act(() => store.getState().setSession({ hostLabel: 'Drake 0.3.25' }));
     expect(screen.getByText('Drake 0.3.25')).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toContain('Connected to the tray');
+    expect(within(document.querySelector('.drk-footer')).getByRole('status').textContent).toContain('Connected to the tray');
   });
 
   it('prefers the legacy status line and falls back to the tray state', async () => {
     const { store } = setup();
     act(() => store.getState().setStatusLine({ text: 'Saved', tone: 'good' }));
-    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Saved'));
+    await waitFor(() => expect(within(document.querySelector('.drk-footer')).getByRole('status').textContent).toContain('Saved'));
     act(() => {
       store.getState().setStatusLine(null);
       store.getState().syncLegacy({ trayDown: true });
     });
-    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Drake tray is not running'));
-    expect(screen.getByRole('status').className).toContain('is-bad');
+    await waitFor(() => expect(within(document.querySelector('.drk-footer')).getByRole('status').textContent).toContain('Drake tray is not running'));
+    expect(within(document.querySelector('.drk-footer')).getByRole('status').className).toContain('is-bad');
   });
 });

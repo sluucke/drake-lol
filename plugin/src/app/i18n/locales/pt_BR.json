@@ -43,5 +43,16 @@
       "assets": "Recursos",
       "github": "GitHub"
     }
+  },
+  "screens": {
+    "autoAccept": {
+      "title": "Aceite automático",
+      "subtitle": "Aceita a verificação de partida assim que ela aparece.",
+      "toggle": "Aceitar partidas automaticamente",
+      "delayLabel": "Aceitar após",
+      "instant": "Na hora",
+      "seconds": "{value}s",
+      "delayHelp": "Uma pequena espera deixa uma janela para recusar manualmente e parece menos mecânica do que aceitar no instante em que o aviso aparece."
+    }
   }
 }
