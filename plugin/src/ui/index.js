@@ -13,13 +13,12 @@ import {
   skinWindow,
   describeStatus,
   formatDelay,
-  formatHostLabel,
   toggleAutoPickChampion,
   renderWelcome,
   renderWhatsNew,
   renderTourCard,
-  SCREENS,
 } from './panel.js';
+import { SCREENS, formatHostLabel } from '../app/shell/shellData.js';
 import {
   decideOpenMode,
   markOnboardingPatch,

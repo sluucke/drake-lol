@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SCREENS } from '../../src/ui/panel.js';
+import { SCREENS } from '../../src/app/shell/shellData.js';
 import { DICTS } from '../../src/app/i18n/locales/index.js';
 import { createTranslator } from '../../src/app/i18n/runtime.js';
 

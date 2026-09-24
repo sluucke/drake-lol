@@ -3,7 +3,7 @@ import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from './renderWithProviders.jsx';
 import { createDrakeStore } from '../../src/app/store/createDrakeStore.js';
 import { CreditsModal } from '../../src/app/shell/CreditsModal.jsx';
-import { CREDITS } from '../../src/ui/panel.js';
+import { CREDITS } from '../../src/app/shell/shellData.js';
 
 function setup(locale) {
   const store = createDrakeStore();

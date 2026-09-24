@@ -3,7 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from './renderWithProviders.jsx';
 import { createDrakeStore } from '../../src/app/store/createDrakeStore.js';
 import { PanelFrame } from '../../src/app/shell/PanelFrame.jsx';
-import { SCREENS } from '../../src/ui/panel.js';
+import { SCREENS } from '../../src/app/shell/shellData.js';
 import { TOUR_STEPS } from '../../src/ui/onboarding.js';
 import { SFX } from '../../src/ui/sfx.js';
 

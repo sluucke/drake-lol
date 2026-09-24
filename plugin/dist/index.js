@@ -18128,7 +18128,7 @@ ${BUILD_PANEL_CSS}
     };
   }
 
-  // src/ui/panel.js
+  // src/app/shell/shellData.js
   var SCREENS = [
     { id: "auto-accept", label: "Auto Accept" },
     { id: "auto-pick", label: "Auto Pick" },
@@ -18150,6 +18150,12 @@ ${BUILD_PANEL_CSS}
     assets: { label: "Community Dragon", href: "https://www.communitydragon.org" },
     repoUrl: "https://github.com/sluucke/drake-lol"
   };
+  function formatHostLabel({ appVersion, loaderVersion }) {
+    const host = loaderVersion ? `loader ${loaderVersion}` : "in client";
+    return `drake ${appVersion || "?"} \xB7 ${host}`;
+  }
+
+  // src/ui/panel.js
   function renderShell() {
     return `
     <style>${CSS2}</style>`;
@@ -18175,10 +18181,6 @@ ${BUILD_PANEL_CSS}
     const screen = item.screen ? escapeHtml2(item.screen) : "";
     const heading = screen ? `<button type="button" class="whats-new-link" data-whats-new-screen="${screen}">${title}</button>` : `<span class="whats-new-title">${title}</span>`;
     return `<li class="whats-new-item">${heading}<p class="whats-new-body">${body}</p></li>`;
-  }
-  function formatHostLabel({ appVersion, loaderVersion }) {
-    const host = loaderVersion ? `loader ${loaderVersion}` : "in client";
-    return `drake ${appVersion || "?"} \xB7 ${host}`;
   }
   function renderCheckRow({ id: id3, label, help, checked, disabled }) {
     return `

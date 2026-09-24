@@ -1,4 +1,4 @@
-import { CREDITS } from '../../ui/panel.js';
+import { CREDITS } from './shellData.js';
 import { SFX } from '../../ui/sfx.js';
 import { useSfx } from '../hooks/useSfx.js';
 import { useT } from '../i18n/I18nProvider.jsx';

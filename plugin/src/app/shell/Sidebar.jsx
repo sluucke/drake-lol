@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { SCREENS } from '../../ui/panel.js';
+import { SCREENS } from './shellData.js';
 import { TOUR_STEPS } from '../../ui/onboarding.js';
 import { SFX } from '../../ui/sfx.js';
 import { useSfx } from '../hooks/useSfx.js';

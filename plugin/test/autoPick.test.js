@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { decideAction, startChampSelectAutomation } from '../src/features/autoPick.js';
 import { SESSION_ROUTE } from '../src/features/champSelect.js';
 import { GAMEFLOW_PHASE_ROUTE } from '../src/features/dodge.js';
-import { renderAutoPick, renderAutoBan, autoPickOrder, toggleAutoPickChampion } from '../src/ui/panel.js';
-import { emptyAutoPickByRole } from '../src/features/autoPickRoles.js';
+import { renderAutoPick, renderAutoBan } from '../src/ui/panel.js';
+import { autoPickOrder, emptyAutoPickByRole, toggleAutoPickChampion } from '../src/features/autoPickRoles.js';
 
 const act = (over = {}) => ({
   id: 1,

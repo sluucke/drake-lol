@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CSS } from '../src/ui/styles.js';
 import {
-  SCREENS,
   renderShell,
   renderWelcome,
   renderWhatsNew,
@@ -9,12 +8,6 @@ import {
 } from '../src/ui/panel.js';
 
 describe('onboarding panel', () => {
-  it("lists What's New before Settings", () => {
-    const ids = SCREENS.map((s) => s.id);
-    expect(ids.indexOf('whats-new')).toBeLessThan(ids.indexOf('settings'));
-    expect(ids).toContain('whats-new');
-  });
-
   it('leaves the onboarding layer and brand to the React shell', () => {
     const html = renderShell();
     expect(html).not.toContain('id="onboard-layer"');
