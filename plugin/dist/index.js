@@ -24357,8 +24357,14 @@ button.bug-report-button[data-drake-toggle]:disabled {
   // src/app/ui/Tooltip.css
   var Tooltip_default = ".drk-tooltip__anchor {\n  display: inline-flex;\n}\n\n.drk-tooltip {\n  max-width: 260px;\n  padding: var(--space-2) var(--space-3);\n  font-size: var(--text-sm);\n  line-height: 1.4;\n  color: var(--text-strong);\n  background: var(--surface-glass);\n  backdrop-filter: blur(6px);\n  border: 1px solid var(--gold-4);\n  border-radius: var(--radius-sm);\n  box-shadow: var(--shadow-1);\n  pointer-events: none;\n  white-space: normal;\n}\n";
 
+  // src/app/ui/Skeleton.css
+  var Skeleton_default = ".drk-skel {\n  display: block;\n  background:\n    linear-gradient(90deg, transparent 0%, rgba(200, 170, 110, 0.12) 50%, transparent 100%) 0 0 / 200% 100% no-repeat,\n    rgba(60, 60, 65, 0.35);\n  border-radius: var(--radius-sm);\n  animation: drk-skel-shimmer 1.4s var(--ease-out) infinite;\n}\n\n@keyframes drk-skel-shimmer {\n  from {\n    background-position: 150% 0, 0 0;\n  }\n  to {\n    background-position: -50% 0, 0 0;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .drk-skel {\n    animation: none;\n  }\n}\n";
+
+  // src/app/ui/Slider.css
+  var Slider_default = ".drk-slider {\n  display: flex;\n  align-items: center;\n  gap: var(--space-3);\n  pointer-events: auto;\n}\n\n.drk-slider__input {\n  flex: 1;\n  height: 4px;\n  margin: 0;\n  appearance: none;\n  -webkit-appearance: none;\n  background: linear-gradient(\n    90deg,\n    var(--hex-3) 0 var(--drk-slider-fill, 0%),\n    var(--surface-3) var(--drk-slider-fill, 0%) 100%\n  );\n  border-radius: 2px;\n  cursor: pointer;\n}\n\n.drk-slider__input::-webkit-slider-thumb {\n  -webkit-appearance: none;\n  width: 14px;\n  height: 14px;\n  background: var(--gold-2);\n  border: 2px solid var(--surface-0);\n  border-radius: 50%;\n  box-shadow: 0 0 0 1px var(--gold-3);\n  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);\n}\n\n.drk-slider__input:hover::-webkit-slider-thumb {\n  transform: scale(1.15);\n  box-shadow: 0 0 0 1px var(--gold-2), var(--glow-gold);\n}\n\n.drk-slider__input:focus-visible {\n  outline: 1px solid var(--focus);\n  outline-offset: 4px;\n}\n\n.drk-slider__value {\n  min-width: 48px;\n  font-family: var(--font-heading);\n  font-size: var(--text-sm);\n  color: var(--gold-1);\n  text-align: right;\n}\n\n.drk-slider.is-disabled {\n  opacity: 0.45;\n}\n";
+
   // src/app/styles/index.js
-  var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default];
+  var APP_STYLES = [tokens_default, base_default, Button_default, Card_default, Toggle_default, Select_default, Tabs_default, Modal_default, Tooltip_default, Skeleton_default, Slider_default];
 
   // src/app/main.jsx
   var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);

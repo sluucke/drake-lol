@@ -1,0 +1,23 @@
+.drk-skel {
+  display: block;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(200, 170, 110, 0.12) 50%, transparent 100%) 0 0 / 200% 100% no-repeat,
+    rgba(60, 60, 65, 0.35);
+  border-radius: var(--radius-sm);
+  animation: drk-skel-shimmer 1.4s var(--ease-out) infinite;
+}
+
+@keyframes drk-skel-shimmer {
+  from {
+    background-position: 150% 0, 0 0;
+  }
+  to {
+    background-position: -50% 0, 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drk-skel {
+    animation: none;
+  }
+}

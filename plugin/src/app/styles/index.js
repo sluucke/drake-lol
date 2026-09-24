@@ -7,5 +7,7 @@ import select from '../ui/Select.css';
 import tabs from '../ui/Tabs.css';
 import modal from '../ui/Modal.css';
 import tooltip from '../ui/Tooltip.css';
+import skeleton from '../ui/Skeleton.css';
+import slider from '../ui/Slider.css';
 
-export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs, modal, tooltip];
+export const APP_STYLES = [tokens, base, button, card, toggle, select, tabs, modal, tooltip, skeleton, slider];
