@@ -44,19 +44,30 @@ describe('overlay boot', () => {
     });
 
     await import('../../../src/overlayMain.jsx');
-    console.log('STEP imported', document.body.innerHTML.slice(0, 200));
     await waitFor(() => expect(document.getElementById('drake-overlay-ui-host')).not.toBeNull());
-    console.log('STEP host mounted', errors);
     expect(errors).toEqual([]);
 
     const shadow = document.getElementById('drake-overlay-ui-host').shadowRoot;
     await waitFor(() => expect(shadow.querySelector('.drk-overlay-fab')).not.toBeNull());
 
-    console.log('STEP fab visible');
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', ctrlKey: true, bubbles: true }));
     });
     await waitFor(() => expect(tray.state.panel_open).toBe(true));
-    expect(shadow.querySelector('.drk-panel')).not.toBeNull();
+    await waitFor(() => expect(shadow.querySelector('.drk-panel').dataset.open).toBe('true'));
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(shadow.querySelector('.drk-panel').dataset.open).toBe('true');
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    await waitFor(() => expect(tray.state.panel_open).toBe(false));
+    await waitFor(() => expect(shadow.querySelector('.drk-overlay-fab')).not.toBeNull());
+    act(() => shadow.querySelector('.drk-overlay-fab').click());
+    await waitFor(() => expect(tray.state.panel_open).toBe(true));
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(shadow.querySelector('.drk-panel').dataset.open).toBe('true');
+    const win = shadow.querySelector('.drk-panel__window');
+    expect(getComputedStyle(win).display).not.toBe('none');
   }, 60000);
 });
