@@ -65,4 +65,18 @@ describe('client host', () => {
       expect(posts.some((p) => p.url.endsWith('/overlay/plugin') && p.body?.toggle_panel === true)).toBe(true),
     );
   }, 60000);
+
+  it('forwards the scouting and build hotkeys to the overlay while streaming', async () => {
+    const { posts } = await boot({ streaming_effective: 'overlay' });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'D', ctrlKey: true, shiftKey: true, bubbles: true }));
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }));
+    });
+    await waitFor(() => {
+      const views = posts.filter((p) => p.url.endsWith('/overlay/plugin') && p.body?.open_view).map((p) => p.body.open_view);
+      expect(views[0]).toBe('scouting');
+      expect(views).toContain('build');
+    });
+  }, 60000);
 });
+

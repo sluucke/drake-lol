@@ -1,6 +1,8 @@
 import { makeLcu } from './lcu.js';
 import { startUI } from './ui/index.js';
 import { createPanelSync } from './features/panelSync.js';
+import { SESSION_ROUTE } from './features/champSelect.js';
+import { subscribe } from './subscribe.js';
 
 const SNAPSHOT_MS = 400;
 const DODGE_FEEDBACK_MS = 2500;
@@ -84,9 +86,12 @@ async function boot() {
   const snap0 = await snapshot();
   let lastSettingsJson = JSON.stringify(snap0.settings || {});
 
+  const overlayFetch = makeOverlayFetch(port, token);
+  const subscribeImpl = (route, handler) => subscribe(route, handler, { fetchImpl: overlayFetch });
   const ui = startUI({
     cfg: snapshotConfig(snap0, token, port),
-    lcu: makeLcu(makeOverlayFetch(port, token)),
+    lcu: makeLcu(overlayFetch),
+    subscribeImpl,
     host: 'overlay',
     mountParent: document.getElementById('root'),
     reloadConfig: async () => snapshotConfig(await snapshot(), token, port),
@@ -119,7 +124,26 @@ async function boot() {
     },
   });
 
+  let stopSession = null;
+  function syncSession(active) {
+    if (active && !stopSession) {
+      stopSession = subscribeImpl(SESSION_ROUTE, (session) => ui.setChampSelect(session));
+    } else if (!active && stopSession) {
+      stopSession();
+      stopSession = null;
+      ui.setChampSelect(null);
+    }
+  }
+
+  store.subscribe((state, prev) => {
+    if (state.teamReveal.open !== prev.teamReveal.open) {
+      void post('/overlay/ui', { modal_open: !!state.teamReveal.open }).catch(() => {});
+    }
+  });
+
   function applySnapshot(snap) {
+    syncSession(!!snap.effective);
+    for (const view of snap.views || []) ui.toggleView(view);
     const state = store.getState();
     state.setSession({ overlayGeometry: { client: snap.client || null, chrome: snap.chrome || null } });
     state.patchChampSelect({

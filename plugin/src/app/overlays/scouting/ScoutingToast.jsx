@@ -4,6 +4,7 @@ import { STATUS_READY_MS } from '../../../ui/teamRevealDom.js';
 import { useT } from '../../i18n/I18nProvider.jsx';
 import { useLegacyActions } from '../../shell/LegacyActions.jsx';
 import { useDrake } from '../../store/StoreContext.jsx';
+import { useStreaming } from '../../hooks/useStreaming.js';
 import { Button } from '../../ui/Button.jsx';
 import { Layer } from '../../ui/Layer.jsx';
 import { DURATION, EASE_OUT } from '../../ui/motion.js';
@@ -12,10 +13,11 @@ export function ScoutingToast() {
   const t = useT();
   const actions = useLegacyActions();
   const view = useDrake((state) => state.teamReveal);
+  const overlayHost = useStreaming().host === 'overlay';
   const [dismissedSeq, setDismissedSeq] = useState(-1);
   const loading = view.statusPhase === 'loading';
   const ready = view.statusPhase === 'ready' && dismissedSeq !== view.statusSeq;
-  const visible = view.enabled && !view.open && (loading || ready);
+  const visible = !overlayHost && view.enabled && !view.open && (loading || ready);
 
   useEffect(() => {
     if (view.statusPhase !== 'ready' || view.open) return undefined;

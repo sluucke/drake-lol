@@ -78,6 +78,7 @@ export function startUI({
   mountParent = null,
   reloadConfig = loadConfig,
   onPanelChange,
+  subscribeImpl = subscribe,
 }) {
   const overlayHost = host === 'overlay';
   let settings = { ...cfg.settings };
@@ -216,7 +217,7 @@ export function startUI({
   }
 
   function revealAllowed() {
-    if (overlayHost) return false;
+    if (overlayHost) return !!settings.queue_team_reveal_in_client;
     if (overlayChromePolicy(streamingEffective).forceRevealOff) return false;
     return !!settings.queue_team_reveal_in_client;
   }
@@ -239,10 +240,17 @@ export function startUI({
       if (!open) closeCredits();
     },
     onTeamRevealCardsToggle: () => {
+      if (!inClientChromeAllowed()) {
+        forwardView('scouting');
+        return;
+      }
       if (teamRevealDom && revealAllowed()) teamRevealDom.toggleCards('scouting');
     },
     onBuildPanelToggle: () => {
-      if (!inClientChromeAllowed()) return;
+      if (!inClientChromeAllowed()) {
+        forwardView('build');
+        return;
+      }
       if (teamRevealDom) teamRevealDom.toggleCards('build');
       else if (buildPanel) buildPanel.toggle();
     },
@@ -352,6 +360,15 @@ export function startUI({
     desiredEffective =
       next.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning);
     refreshStreamingEffective();
+  }
+
+  function forwardView(view) {
+    void postOverlay(cfg.port, cfg.token, '/overlay/plugin', { open_view: view }).catch(() => null);
+  }
+
+  function toggleView(view) {
+    if (!teamRevealDom || !revealAllowed()) return;
+    teamRevealDom.toggleCards(view === 'build' ? 'build' : 'scouting');
   }
 
   function setIdle(next) {
@@ -494,7 +511,7 @@ export function startUI({
     teamRevealDom = makeTeamRevealDom({
       publishView: (view) => store.getState().setTeamReveal(view),
       doc: document,
-      subscribe,
+      subscribe: subscribeImpl,
       lcu,
       buildPanel,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
@@ -853,5 +870,5 @@ export function startUI({
     }
   }
 
-  return { ...ui, setReadyCheck, setChampSelect, setIdle, replaceSettings, store, actions: legacyActions };
+  return { ...ui, setReadyCheck, setChampSelect, setIdle, replaceSettings, toggleView, store, actions: legacyActions };
 }
