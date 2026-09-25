@@ -257,6 +257,16 @@
     }
   },
   "whatsNew": {
+    "v0_4_0": [
+      {
+        "title": "Um Drake totalmente novo",
+        "body": "Todas as telas foram refeitas com um visual hextech refinado, animações mais suaves e layouts mais claros — o painel, o Scouting do time, a aba Build, os botões na seleção de campeões e o botão na barra social."
+      },
+      {
+        "title": "O Drake fala a sua língua",
+        "body": "O Drake agora segue o idioma do cliente do League. Inglês e português do Brasil estão totalmente traduzidos; os outros idiomas usam inglês por enquanto."
+      }
+    ],
     "v0_3_25": [
       {
         "title": "Regiões do revelar lobby corrigidas",

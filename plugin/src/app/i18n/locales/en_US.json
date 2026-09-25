@@ -257,6 +257,16 @@
     }
   },
   "whatsNew": {
+    "v0_4_0": [
+      {
+        "title": "A brand-new Drake",
+        "body": "Every screen was rebuilt with a refined hextech look, smoother animations and clearer layouts — the panel, Team Scouting, the Build tab, the champ select docks and the social bar button."
+      },
+      {
+        "title": "Drake speaks your language",
+        "body": "Drake now follows the League client language. English and Brazilian Portuguese are fully translated; other languages fall back to English for now."
+      }
+    ],
     "v0_3_25": [
       {
         "title": "Lobby reveal regions fixed",

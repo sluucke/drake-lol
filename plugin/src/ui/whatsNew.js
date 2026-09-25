@@ -1,5 +1,20 @@
 export const WHATS_NEW = [
   {
+    version: '0.4.0',
+    items: [
+      {
+        title: 'A brand-new Drake',
+        body: 'Every screen was rebuilt with a refined hextech look, smoother animations and clearer layouts — the panel, Team Scouting, the Build tab, the champ select docks and the social bar button.',
+        screen: 'auto-accept',
+      },
+      {
+        title: 'Drake speaks your language',
+        body: 'Drake now follows the League client language. English and Brazilian Portuguese are fully translated; other languages fall back to English for now.',
+        screen: 'settings',
+      },
+    ],
+  },
+  {
     version: '0.3.25',
     items: [
       {
