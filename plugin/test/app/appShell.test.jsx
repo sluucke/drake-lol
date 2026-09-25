@@ -10,11 +10,11 @@ function makeShadow() {
 }
 
 describe('app shell mount', () => {
-  it('exposes the legacy containers synchronously', () => {
+  it('mounts the panel synchronously without a legacy content container', () => {
     const shadow = makeShadow();
     const store = createDrakeStore();
     const app = startApp(shadow, { store, actions: { navigate: vi.fn(), close: vi.fn(), openUrl: vi.fn() } });
-    expect(shadow.getElementById('content')).not.toBeNull();
+    expect(shadow.getElementById('content')).toBeNull();
     expect(shadow.querySelector('.drk-panel')).not.toBeNull();
     act(() => app.unmount());
   });

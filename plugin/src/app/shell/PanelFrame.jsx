@@ -6,7 +6,7 @@ import { useT } from '../i18n/I18nProvider.jsx';
 import { useDrake, useDrakeStore } from '../store/StoreContext.jsx';
 import { DURATION, EASE_OUT } from '../ui/motion.js';
 import { useLegacyActions } from './LegacyActions.jsx';
-import { LegacyScreen } from './LegacyScreen.jsx';
+import { ScreenHost } from './ScreenHost.jsx';
 import { ShellFooter } from './ShellFooter.jsx';
 import { CreditsModal } from './CreditsModal.jsx';
 import { Sidebar } from './Sidebar.jsx';
@@ -73,7 +73,7 @@ export function PanelFrame() {
         </header>
         <div className="drk-panel__body">
           <Sidebar />
-          <LegacyScreen />
+          <ScreenHost />
         </div>
         <ShellFooter />
       </motion.div>

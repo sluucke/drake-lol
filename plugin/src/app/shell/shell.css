@@ -204,11 +204,6 @@
   }
 }
 
-.drk-legacy-screen {
-  flex: 1;
-  min-width: 0;
-}
-
 .drk-footer {
   display: flex;
   align-items: center;

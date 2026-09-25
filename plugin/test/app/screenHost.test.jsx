@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { act, screen } from '@testing-library/react';
 import { renderWithProviders } from './renderWithProviders.jsx';
 import { createDrakeStore } from '../../src/app/store/createDrakeStore.js';
-import { LegacyScreen } from '../../src/app/shell/LegacyScreen.jsx';
+import { ScreenHost } from '../../src/app/shell/ScreenHost.jsx';
 import { NOOP_ACTIONS } from '../../src/app/shell/LegacyActions.jsx';
 import { isReactScreen } from '../../src/app/screens/registry.jsx';
 
@@ -11,18 +11,14 @@ function QueueProbe() {
 }
 
 describe('screen host', () => {
-  it('renders registered screens and hides the legacy container', () => {
+  it('renders the registered screen for the current id', () => {
     const store = createDrakeStore();
-    const { container } = renderWithProviders(<LegacyScreen screens={{ queue: QueueProbe }} />, { store });
-    const legacy = container.querySelector('#content');
-    expect(legacy.hidden).toBe(false);
+    const { container } = renderWithProviders(<ScreenHost screens={{ queue: QueueProbe }} />, { store });
+    expect(container.querySelector('#content')).toBeNull();
     expect(screen.queryByText('react queue')).toBeNull();
     act(() => store.getState().syncLegacy({ screen: 'queue' }));
-    expect(legacy.hidden).toBe(true);
-    expect(screen.getByText('react queue')).toBeTruthy();
-    expect(container.querySelector('#content')).toBe(legacy);
+    expect(screen.getByText('react queue').closest('.content.drk-screen')).not.toBeNull();
     act(() => store.getState().syncLegacy({ screen: 'not-a-screen' }));
-    expect(legacy.hidden).toBe(false);
     expect(screen.queryByText('react queue')).toBeNull();
   });
 

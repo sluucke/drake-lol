@@ -1,23 +1,4 @@
 import { mountUI } from './mount.js';
-import {
-  renderShell,
-  renderAutoAccept,
-  renderSettings,
-  renderStatus,
-  renderQueue,
-  renderAutoPick,
-  renderAutoBan,
-  renderProfile,
-  renderFriends,
-  renderSkinCells,
-  skinWindow,
-  describeStatus,
-  formatDelay,
-  toggleAutoPickChampion,
-  renderWelcome,
-  renderWhatsNew,
-  renderTourCard,
-} from './panel.js';
 import { SCREENS, formatHostLabel } from '../app/shell/shellData.js';
 import {
   decideOpenMode,
@@ -29,13 +10,12 @@ import {
   withOnboardLock,
   runWhatsNewDismiss,
 } from './onboarding.js';
-import { WHATS_NEW, pickWhatsNew } from './whatsNew.js';
 import { makeStatus } from '../features/status.js';
 import { makeReveal } from '../features/reveal.js';
 import { makeDodge } from '../features/dodge.js';
 import { makeRestartUx } from '../features/restartUx.js';
 import { makeOpener } from '../features/openUrl.js';
-import { loadChampions, searchChampions } from '../features/champions.js';
+import { loadChampions } from '../features/champions.js';
 import { makePresence, readLol, CHAT_ME, QUEUES } from '../features/presence.js';
 import { makeChallenges } from '../features/challenges.js';
 import {
@@ -44,29 +24,22 @@ import {
   readProfileRank,
 } from '../features/profileRank.js';
 import { makeRiotId, loadFriends, removeAllFriends } from '../features/profile.js';
-import { loadSkins, searchSkins, makeBackground } from '../features/skins.js';
-import { autoSize, markManual } from './autoSize.js';
-import { makeSfx, sfxFor } from './sfx.js';
+import { loadSkins, makeBackground } from '../features/skins.js';
+import { makeSfx } from './sfx.js';
 import { makeSettingsClient } from './settingsClient.js';
 import { makeUpdater } from '../features/update.js';
 import { loadConfig } from '../config.js';
 import { canCancel, cancelQueue } from '../autoAccept.js';
 import { inChampSelect } from './dodgeDock.js';
 import { subscribe } from '../subscribe.js';
-import {
-  buildTeamRevealSnapshot,
-  estimateRevealDurationMs,
-  recommendFetchConcurrency,
-} from '../features/teamRevealStats.js';
+import { buildTeamRevealSnapshot } from '../features/teamRevealStats.js';
 import { makeTeamRevealDom } from './teamRevealDom.js';
 import { makeBuildPanel } from './buildPanel.js';
 import { makeProxyFetch } from '../features/proxyFetch.js';
 import { makeSummonerIdLoader } from '../features/summonerId.js';
-import { wireDrakeSelects } from './drakeSelect.js';
 import { startApp } from '../app/main.jsx';
 import { createDrakeStore } from '../app/store/createDrakeStore.js';
 import { loadLocale } from '../app/i18n/loadLocale.js';
-import { isReactScreen } from '../app/screens/registry.jsx';
 
 const TAG = '[Drake]';
 
@@ -89,11 +62,6 @@ function readLocalPosition(session) {
 function isAramSession(session) {
   return Boolean(session?.benchEnabled);
 }
-
-
-
-export const MAX_DELAY_MS = 8000;
-
 
 
 
@@ -121,7 +89,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let champSelectActive = false;
   let champSelectSession = null;
   let statusText = '';
-  let provider = 'porofessor';
   let champions = [];
   let teamRevealChamps = [];
   let teamRevealChampsLoading = null;
@@ -131,13 +98,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let teamRevealLastLoadMs = 0;
   let teamRevealLastConcurrency = 1;
   let inGameIdle = false;
-  let autoPickRole = 'TOP';
   
-  const queries = {
-    auto_pick_champion_id: '',
-    auto_ban_champion_id: '',
-    skins: '',
-  };
   const status = makeStatus({ lcu });
   let dodgeStatus = (detail) => console.log(TAG, 'dodge', detail);
   let say = (text, good) => console.log(TAG, text, good ? 'ok' : 'err');
@@ -154,7 +115,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let profileTab = 'rank';
   let skins = [];
   let backgroundId = 0;
-  let skinFrame = 0;
   const background = makeBackground({ lcu });
   const sfx = makeSfx();
   
@@ -232,7 +192,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   const ui = mountUI({
     doc: document,
     win: window,
-    render: renderShell,
     isIdle: () => inGameIdle,
     onOpenChange: (open) => {
       store.getState().setPanelOpen(open);
@@ -381,7 +340,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   function wire(shadow, api) {
     shadowRoot = shadow;
     startApp(shadow, { sfx, store, actions: legacyActions });
-    const content = shadow.getElementById('content');
 
     function sayUi(text, good) {
       store.getState().setStatusLine({ text, tone: good ? 'good' : 'bad' });
@@ -459,121 +417,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
 
     function paint() {
       syncStore();
-      if (isReactScreen(screen)) {
-        content.innerHTML = '';
-      } else if (screen === 'settings') {
-        content.innerHTML = renderSettings(settings, {
-          disabled: trayDown,
-          version: appVersion,
-          update: updateUi,
-        });
-      } else if (screen === 'auto-pick') {
-        content.innerHTML = renderAutoPick(settings, {
-          disabled: trayDown,
-          list: searchChampions(champions, queries.auto_pick_champion_id),
-          allList: champions,
-          query: queries.auto_pick_champion_id,
-          activeRole: autoPickRole,
-        });
-      } else if (screen === 'auto-ban') {
-        content.innerHTML = renderAutoBan(settings, {
-          disabled: trayDown,
-          list: searchChampions(champions, queries.auto_ban_champion_id),
-          allList: champions,
-          query: queries.auto_ban_champion_id,
-        });
-      } else if (screen === 'profile') {
-        content.innerHTML = renderProfile({
-          tab: profileTab,
-          lol: { ...lol, rankedLeagueTier: pickedTier || lol.rankedLeagueTier,
-                 rankedLeagueDivision: steps['rank-div'],
-                 rankedLeagueQueue: steps['rank-queue'],
-                 challengeCrystalLevel: steps.crystal },
-          skins: searchSkins(skins, queries.skins),
-          skinQuery: queries.skins,
-          backgroundId,
-          skinScroll: 0,
-        });
-      } else if (screen === 'friends') {
-        content.innerHTML = renderFriends(friends);
-      } else if (screen === 'queue') {
-        const concurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
-        const recommended = recommendFetchConcurrency({
-          lastMs: teamRevealLastLoadMs,
-          lastConcurrency: teamRevealLastConcurrency || concurrency,
-        });
-        const estimateMs = estimateRevealDurationMs({
-          concurrency,
-          lastMs: teamRevealLastLoadMs,
-          lastConcurrency: teamRevealLastConcurrency || concurrency,
-        });
-        content.innerHTML = renderQueue({
-          provider,
-          settings,
-          disabled: trayDown,
-          revealTiming: teamRevealLastLoadMs
-            ? { lastMs: teamRevealLastLoadMs, recommended, estimateMs }
-            : null,
-        });
-      } else if (screen === 'status') {
-        content.innerHTML = renderStatus(statusText, settings);
-        updateCount();
-      } else if (screen === 'whats-new') {
-        content.innerHTML = renderWhatsNew(pickWhatsNew(WHATS_NEW, appVersion), {
-          version: appVersion,
-        });
-      } else {
-        content.innerHTML = renderAutoAccept(settings, {
-          disabled: trayDown,
-          maxDelayMs: MAX_DELAY_MS,
-        });
-      }
       store.getState().setStatusLine(null);
-      wireDrakeSelects(content, ({ dropdown, value }) => {
-        applyPanelDropdown(dropdown, value);
-      });
-    }
-
-    function applyPanelDropdown(dropdown, value) {
-      const id = dropdown?.id;
-      if (!id || value === '' || value == null) return;
-
-      if (id in steps) {
-        steps[id] = value;
-        return;
-      }
-
-      if (id === 'presence-availability') {
-        const previous = settings.presence_availability || '';
-        settings = { ...settings, presence_availability: value };
-        paint();
-        commit({ presence_availability: value }, () => {
-          settings = { ...settings, presence_availability: previous };
-          paint();
-        });
-        return;
-      }
-
-      const revealSelect = {
-        'team-reveal-sample-size': 'queue_team_reveal_sample_size',
-        'team-reveal-recent-pool': 'queue_team_reveal_recent_pool',
-        'team-reveal-last5-pool': 'queue_team_reveal_last5_pool',
-        'team-reveal-fetch-concurrency': 'queue_team_reveal_fetch_concurrency',
-      }[id];
-      if (!revealSelect) return;
-
-      const previous = settings[revealSelect];
-      const next =
-        revealSelect === 'queue_team_reveal_sample_size' ||
-        revealSelect === 'queue_team_reveal_fetch_concurrency'
-          ? Number(value)
-          : value;
-      settings = { ...settings, [revealSelect]: next };
-      paint();
-      commit({ [revealSelect]: next }, () => {
-        settings = { ...settings, [revealSelect]: previous };
-        paint();
-      });
     }
 
     function applyUpdateStatus(body) {
@@ -706,17 +550,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
           await stepTour();
         }
       });
-    }
-
-    
-    const BOX = { min: 120, max: Math.round(window.innerHeight * 0.46) };
-    
-    const GRIP = 16;
-
-    function updateCount() {
-      const el = shadow.getElementById('status-count');
-      if (el) el.textContent = describeStatus(statusText);
-      autoSize(shadow.getElementById('status-text'), BOX);
     }
 
     legacyActions.navigate = async (id) => {
@@ -892,404 +725,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       applyBuildSpells: (index) => buildPanel?.applySpells(index),
       applyBuildItems: () => buildPanel?.applyItems(),
     });
-
-    content.addEventListener('input', (e) => {
-      if (e.target.id !== 'status-text') return;
-      statusText = e.target.value;
-      updateCount();
-    });
-
-    
-    
-    
-    content.addEventListener('mousedown', (e) => {
-      const box = e.target;
-      if (box.id !== 'status-text') return;
-      const inGrip =
-        e.offsetX > box.clientWidth - GRIP && e.offsetY > box.clientHeight - GRIP;
-      if (inGrip) markManual(box);
-    });
-
-    
-    
-    
-    
-    
-    
-    
-    function updateSkinGrid() {
-      const viewport = shadow.getElementById('skin-viewport');
-      const gridEl = shadow.getElementById('skin-grid');
-      if (!viewport || !gridEl) return;
-
-      const list = searchSkins(skins, queries.skins);
-      const win = skinWindow(list.length, viewport.scrollTop);
-      gridEl.style.transform = `translateY(${win.offsetY}px)`;
-      gridEl.innerHTML = renderSkinCells(list, backgroundId, win);
-    }
-
-    content.addEventListener(
-      'scroll',
-      (e) => {
-        if (e.target.id !== 'skin-viewport') return;
-        
-        
-        
-        if (skinFrame) return;
-        skinFrame = requestAnimationFrame(() => {
-          skinFrame = 0;
-          updateSkinGrid();
-        });
-      },
-      true,
-    );
-
-    content.addEventListener('change', (e) => {
-      
-      
-      if (e.target.id in steps) {
-        steps[e.target.id] = e.target.value;
-      }
-    });
-
-    
-    
-    content.addEventListener('input', (e) => {
-      const key = e.target.dataset && e.target.dataset.search;
-      if (!key) return;
-      queries[key] = e.target.value;
-      paint();
-      const again = shadow.querySelector(`[data-search="${key}"]`);
-      if (again) {
-        again.focus();
-        again.setSelectionRange(again.value.length, again.value.length);
-      }
-    });
-
-    content.addEventListener('click', async (e) => {
-      const jump = e.target.closest('[data-whats-new-screen]');
-      if (jump) {
-        await withOnboardLock(onboardLock, () => dismissWhatsNew(jump.dataset.whatsNewScreen));
-        return;
-      }
-      if (e.target.closest('[data-onboard="dismiss-whats-new"]')) {
-        await withOnboardLock(onboardLock, () => dismissWhatsNew());
-        return;
-      }
-
-      const applyPickToggle = (id) => {
-        const previous = settings.auto_pick_by_role;
-        settings = toggleAutoPickChampion(settings, autoPickRole, id);
-        paint();
-        commit(
-          {
-            auto_pick_by_role: settings.auto_pick_by_role,
-          },
-          () => {
-            settings = { ...settings, auto_pick_by_role: previous };
-          },
-        );
-      };
-
-      const roleTab = e.target.closest('[data-auto-pick-role]');
-      if (roleTab) {
-        autoPickRole = roleTab.dataset.autoPickRole || 'TOP';
-        paint();
-        return;
-      }
-
-      const removePick = e.target.closest('[data-remove-pick]');
-      if (removePick) {
-        applyPickToggle(Number(removePick.dataset.removePick));
-        return;
-      }
-
-      const removeBan = e.target.closest('[data-remove-ban]');
-      if (removeBan) {
-        const previous = settings.auto_ban_champion_id;
-        settings = { ...settings, auto_ban_champion_id: 0 };
-        paint();
-        commit({ auto_ban_champion_id: 0 }, () => {
-          settings = { ...settings, auto_ban_champion_id: previous };
-        });
-        return;
-      }
-
-      const champ = e.target.closest('[data-champ]');
-      if (champ) {
-        const key = champ.dataset.for;
-        const id = Number(champ.dataset.champ);
-
-        if (key === 'auto_pick') {
-          applyPickToggle(id);
-          return;
-        }
-
-        const previous = settings[key];
-        settings = { ...settings, [key]: previous === id ? 0 : id };
-        paint();
-        commit({ [key]: settings[key] }, () => {
-          settings = { ...settings, [key]: previous };
-        });
-        return;
-      }
-
-      const pill = e.target.closest('[data-provider]');
-      if (pill) {
-        provider = pill.dataset.provider;
-        paint();
-        return;
-      }
-
-      if (e.target.id === 'reveal') {
-        const btn = e.target;
-        btn.disabled = true;
-        
-        
-        
-        let region = '';
-        try {
-          region = (await lcu.get('/riotclient/region-locale')).region || '';
-        } catch {
-        }
-        const reveal = makeReveal({
-          lcu,
-          region,
-          open: (url) =>
-            opener.open(url).then((r) => {
-              if (!r.ok) say(r.reason, false);
-            }),
-        });
-        const result = await reveal.reveal(provider);
-        btn.disabled = false;
-        say(result.ok ? `Looking up ${result.count} summoners` : result.reason, result.ok);
-        return;
-      }
-
-      if (e.target.id === 'restart-client') {
-        const btn = e.target;
-        btn.disabled = true;
-        const result = await restarter.restart();
-        
-        btn.disabled = false;
-        say(result.ok ? 'Restarting the client…' : result.reason, result.ok);
-        return;
-      }
-
-      if (e.target.id === 'check-updates') {
-        await runUpdateCheck();
-        return;
-      }
-
-      if (e.target.id === 'install-update') {
-        const btn = e.target;
-        btn.disabled = true;
-        say('Downloading and installing the update…', true);
-        const result = await updater.apply();
-        if (result.ok && result.installing) {
-          say('Installing update…', true);
-          return;
-        }
-        btn.disabled = false;
-        if (!result.ok) {
-          trayDown = result.reason.includes('not running');
-          updateUi = { phase: 'error', message: result.reason };
-          paint();
-        }
-        say(result.ok ? 'Drake is already up to date' : result.reason, result.ok);
-        return;
-      }
-
-      
-      const ptab = e.target.closest('[data-ptab]');
-      if (ptab) {
-        profileTab = ptab.dataset.ptab;
-        if (profileTab === 'banner' && skins.length === 0) skins = await loadSkins(lcu);
-        paint();
-        return;
-      }
-
-      const tierTile = e.target.closest('[data-tier]');
-      if (tierTile) {
-        pickedTier = tierTile.dataset.tier;
-        paint();
-        return;
-      }
-
-      const skinTile = e.target.closest('[data-skin]');
-      if (skinTile) {
-        const id = Number(skinTile.dataset.skin);
-        backgroundId = id;
-        paint();
-        const result = await background.set(id);
-        say(result.ok ? 'Profile background set' : result.reason, result.ok);
-        return;
-      }
-
-      if (e.target.id === 'friends-remove-all') {
-        const btn = e.target;
-        
-        
-        if (btn.dataset.armed !== '1') {
-          btn.dataset.armed = '1';
-          btn.textContent = `Remove all ${friends.length}? Click again`;
-          return;
-        }
-        btn.disabled = true;
-        const result = await removeAllFriends({ lcu, friends });
-        friends = await loadFriends(lcu);
-        paint();
-        say(
-          result.failed
-            ? `Removed ${result.removed}, ${result.failed} failed`
-            : `Removed ${result.removed} friends`,
-          !result.failed,
-        );
-        return;
-      }
-
-      const profileAction = {
-        'rank-save': saveRankFromState,
-        'rank-clear': clearRankState,
-        'badges-remove': () => challenges.removeBadges(),
-        'badges-clone': () => challenges.cloneFirstBadge(),
-        'riot-id-save': () =>
-          riotId.save(
-            `${shadow.getElementById('riot-name').value}#${shadow.getElementById('riot-tag').value}`,
-          ),
-      }[e.target.id];
-
-      if (profileAction) {
-        const btn = e.target;
-        const actionId = btn.id;
-        btn.disabled = true;
-        const result = await profileAction();
-        try {
-          lol = readLol(await lcu.get(CHAT_ME));
-        } catch {
-        }
-        paint();
-        const okCopy = {
-          'badges-remove': 'Badges removed',
-          'badges-clone': 'Cloned first badge to all 3',
-        }[actionId] || 'Applied';
-        say(result.ok ? okCopy : result.reason, result.ok);
-        return;
-      }
-
-      if (e.target.id === 'status-clear') {
-        statusText = '';
-        paint();
-        return;
-      }
-      if (e.target.id !== 'status-save') return;
-
-      const btn = e.target;
-      btn.disabled = true;
-      const result = await status.write(statusText);
-      btn.disabled = false;
-      say(
-        result.ok
-          ? `Status saved · ${describeStatus(statusText)}`
-          : `Could not save: ${result.reason}`,
-        result.ok,
-      );
-    });
-
-    content.addEventListener('click', (e) => {
-      const row = e.target.closest('[data-setting]');
-      if (!row || row.disabled || row.tagName === 'INPUT' || row.tagName === 'TEXTAREA') return;
-      const key = row.dataset.setting;
-      const previous = settings[key];
-      settings = { ...settings, [key]: !previous };
-      if (key === 'queue_team_reveal_in_client' && teamRevealDom) {
-        teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
-      }
-      paint();
-      commit({ [key]: settings[key] }, () => {
-        settings = { ...settings, [key]: previous };
-        if (key === 'queue_team_reveal_in_client' && teamRevealDom) {
-          teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
-        }
-      });
-    });
-
-    content.addEventListener('input', (e) => {
-      if (e.target.id === 'queue_auto_message') {
-        settings = { ...settings, queue_auto_message: e.target.value };
-        return;
-      }
-      if (e.target.id !== 'delay') return;
-      shadow.getElementById('delay-value').textContent = formatDelay(Number(e.target.value));
-    });
-
-    content.addEventListener('change', (e) => {
-      if (e.target.id === 'queue_auto_message') {
-        const previous = settings.queue_auto_message || '';
-        const value = e.target.value;
-        settings = { ...settings, queue_auto_message: value };
-        commit({ queue_auto_message: value }, () => {
-          settings = { ...settings, queue_auto_message: previous };
-        });
-        return;
-      }
-      if (e.target.id === 'delay') {
-        const previous = settings.auto_accept_delay_ms;
-        settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };
-        commit({ auto_accept_delay_ms: settings.auto_accept_delay_ms }, () => {
-          settings = { ...settings, auto_accept_delay_ms: previous };
-        });
-        return;
-      }
-      if (e.target.id === 'presence-availability') {
-        applyPanelDropdown(e.target, e.target.value);
-        return;
-      }
-      applyPanelDropdown(e.target, e.target.value);
-    });
-
-
-    
-    
-    
-    const INTERACTIVE = '.navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .credit-link, .select-field, .slider, [data-onboard], [data-whats-new-screen]';
-
-    shadow.addEventListener(
-      'mouseover',
-      (e) => {
-        const el = e.target.closest(INTERACTIVE);
-        
-        
-        if (!el || el.disabled) return;
-        if (e.relatedTarget && el.contains(e.relatedTarget)) return;
-        const hover = sfxFor(el).hover;
-        if (hover) sfx.play(hover);
-      },
-      true,
-    );
-
-    shadow.addEventListener(
-      'click',
-      (e) => {
-        const el = e.target.closest(INTERACTIVE);
-        if (!el || el.disabled) return;
-        
-        
-        if (el.classList.contains('slider')) return;
-        sfx.play(sfxFor(el).click);
-      },
-      true,
-    );
-
-    shadow.addEventListener(
-      'input',
-      (e) => {
-        const el = e.target.closest('.slider');
-        if (!el || el.disabled) return;
-        sfx.play(sfxFor(el).click);
-      },
-      true,
-    );
 
     paint();
   }

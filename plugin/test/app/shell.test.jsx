@@ -72,16 +72,13 @@ describe('Sidebar', () => {
   });
 });
 
-describe('LegacyScreen', () => {
-  it('hosts the legacy content container and keeps its content across renders', () => {
+describe('ScreenHost', () => {
+  it('renders the active screen without a legacy content container', () => {
     const { store, container } = setup();
-    const content = container.querySelector('#content');
-    expect(content.className).toContain('content');
+    expect(container.querySelector('#content')).toBeNull();
     expect(container.querySelector('#onboard-layer')).toBeNull();
-    content.innerHTML = '<p id="legacy-probe">legacy</p>';
     act(() => store.getState().syncLegacy({ screen: 'status', statusText: 'x' }));
-    expect(container.querySelector('#legacy-probe').textContent).toBe('legacy');
-    expect(container.querySelector('#content')).toBe(content);
+    expect(container.querySelector('.content.drk-screen')).not.toBeNull();
   });
 });
 
