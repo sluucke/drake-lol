@@ -50,11 +50,12 @@
   width: 24px;
   height: 24px;
   margin-left: auto;
-  background: var(--surface-0);
-  border: 1px solid var(--border-strong);
-  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--gold-4);
+  border-radius: 0;
   cursor: pointer;
-  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out);
 }
 
 .drk-modal__close::before,
@@ -78,7 +79,11 @@
 
 .drk-modal__close:hover {
   border-color: var(--gold-2);
-  box-shadow: var(--glow-gold);
+}
+
+.drk-modal__close:hover::before,
+.drk-modal__close:hover::after {
+  background: var(--text-strong);
 }
 
 .drk-modal__close:focus-visible {

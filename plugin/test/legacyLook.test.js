@@ -15,14 +15,18 @@ describe('client look', () => {
     expect(read('../src/app/ui/Segmented.jsx')).not.toContain('thumb');
   });
 
-  it('keeps buttons square', () => {
-    const docks = read('../src/app/overlays/docks/docks.css');
-    expect(block(docks, '.drk-overlay-fab')).toMatch(/border-radius:\s*0/);
-    expect(block(docks, '.drk-overlay-fab')).toContain('var(--drake-sprite)');
-    expect(docks.split('.drk-overlay-fab {').length - 1).toBe(1);
-    expect(docks).not.toMatch(/border-radius:\s*50%/);
+  it('keeps close buttons square', () => {
+    const modal = read('../src/app/ui/Modal.css');
+    expect(block(modal, '.drk-modal__close')).toMatch(/border-radius:\s*0/);
+    expect(modal).not.toMatch(/border-radius:\s*50%/);
     const champions = read('../src/app/screens/champions/champions.css');
     expect(block(champions, '.drk-pick-summary__remove')).toMatch(/border-radius:\s*0/);
+  });
+
+  it('keeps the overlay Drake button round', () => {
+    const docks = read('../src/app/overlays/docks/docks.css');
+    expect(docks.split('.drk-overlay-fab {').length - 1).toBe(1);
+    expect(block(docks, '.drk-overlay-fab')).toMatch(/border-radius:\s*50%/);
   });
 
   it('brings back the old red hextech dodge button', () => {

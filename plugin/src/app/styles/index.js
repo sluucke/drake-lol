@@ -1,5 +1,4 @@
 import { CHECKBOX_SPRITE } from '../../ui/assets.js';
-import drakeSprite from '../../../assets/drake-spritesheet.png';
 import tokens from './tokens.css';
 import base from './base.css';
 import button from '../ui/Button.css';
@@ -22,6 +21,6 @@ import scouting from '../overlays/scouting/scouting.css';
 import build from '../overlays/build/build.css';
 import docks from '../overlays/docks/docks.css';
 
-const assetTokens = `:host { --checkbox-sprite: url("${CHECKBOX_SPRITE}"); --drake-sprite: url("${drakeSprite}"); }`;
+const assetTokens = `:host { --checkbox-sprite: url("${CHECKBOX_SPRITE}"); }`;
 
 export const APP_STYLES = [tokens, assetTokens, base, button, card, toggle, select, tabs, modal, tooltip, skeleton, slider, shell, segmented, textInput, screens, champions, profile, onboarding, scouting, build, docks];
