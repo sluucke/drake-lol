@@ -560,6 +560,10 @@
     "socialToggle": {
       "open": "Open Drake",
       "close": "Close Drake"
+    },
+    "hint": {
+      "text": "Tip: you can drag the Drake and Dodge buttons anywhere.",
+      "dismiss": "Got it"
     }
   }
 }

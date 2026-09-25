@@ -10,8 +10,10 @@ const GEOMETRY = {
   chrome: { x: 0, y: 0, width: 1280, height: 720 },
 };
 
-function setup({ host = 'overlay', champSelect = {}, panelOpen = false, positions } = {}) {
-  const store = createDrakeStore({ settings: { queue_dodge_in_client: true, overlay_positions: positions } });
+function setup({ host = 'overlay', champSelect = {}, panelOpen = false, positions, hintSeen = true } = {}) {
+  const store = createDrakeStore({
+    settings: { queue_dodge_in_client: true, overlay_positions: positions, overlay_hint_seen: hintSeen },
+  });
   store.getState().setSession({ streaming: { host, effective: 'overlay' }, overlayGeometry: GEOMETRY });
   store.getState().patchChampSelect(champSelect);
   store.getState().setPanelOpen(panelOpen);
@@ -89,6 +91,39 @@ describe('OverlayChrome', () => {
     const fab = within(portalTarget).getByRole('button', { name: 'Open Drake' });
     expect(fab.style.left).toBe('640px');
     expect(fab.style.top).toBe('360px');
+  });
+
+  it('shows new users that the buttons can be moved until they close it', () => {
+    const { portalTarget, actions } = setup({ hintSeen: false });
+    const hint = within(portalTarget).getByRole('note');
+    expect(hint.textContent).toContain('drag');
+    fireEvent.click(within(hint).getByRole('button', { name: 'Got it' }));
+    expect(actions.setSettings).toHaveBeenCalledWith({ overlay_hint_seen: true });
+  });
+
+  it('stops hinting once a button was dragged', async () => {
+    const { portalTarget, actions } = setup({ hintSeen: false });
+    const fab = within(portalTarget).getByRole('button', { name: 'Open Drake' });
+    fireEvent.pointerDown(fab, { button: 0, pointerId: 1, screenX: 1220, screenY: 660 });
+    fireEvent.pointerMove(fab, { pointerId: 1, screenX: 1100, screenY: 600 });
+    fireEvent.pointerUp(fab, { button: 0, pointerId: 1, screenX: 1100, screenY: 600 });
+    await waitFor(() => expect(actions.setSettings).toHaveBeenCalledWith({ overlay_hint_seen: true }));
+  });
+
+  it('retires the hint on its own after a while', () => {
+    vi.useFakeTimers();
+    try {
+      const { actions } = setup({ hintSeen: false });
+      act(() => vi.advanceTimersByTime(12000));
+      expect(actions.setSettings).toHaveBeenCalledWith({ overlay_hint_seen: true });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('never hints users who already saw it', () => {
+    const { portalTarget } = setup({ hintSeen: true });
+    expect(within(portalTarget).queryByRole('note')).toBeNull();
   });
 });
 

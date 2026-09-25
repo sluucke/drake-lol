@@ -22,7 +22,17 @@ describe('overlayPieces', () => {
       fab: { width: 52, height: 52 },
       cancel: { width: 120, height: 48 },
       dodge: { width: 96, height: 32 },
+      hint: { width: 200, height: 56 },
     });
+  });
+
+  it('places the first-time hint above the Drake button, inside the client', () => {
+    const pieces = overlayPieces(client, {}, { hint: true });
+    const fab = pieces.fab;
+    expect(pieces.hint).toEqual({ x: fab.x + 52 - 200, y: fab.y - 8 - 56 });
+    const top = overlayPieces(client, { fab: { x: 0, y: 0 } }, { hint: true });
+    expect(top.hint).toEqual({ x: 100, y: 50 });
+    expect(overlayPieces(client, {}).hint).toBeUndefined();
   });
 
   it('returns null without bounds', () => {

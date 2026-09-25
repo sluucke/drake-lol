@@ -82,6 +82,56 @@
   filter: brightness(1.15);
 }
 
+.drk-overlay-hint {
+  position: fixed;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  pointer-events: auto;
+  color: var(--text-strong, #f0e6d2);
+  font-size: 11px;
+  line-height: 1.3;
+  background: linear-gradient(to bottom, #1e2328, #010a13);
+  border: 1px solid var(--gold-2, #c8aa6e);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+}
+
+.drk-overlay-hint::after {
+  content: '';
+  position: absolute;
+  right: 20px;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  background: #010a13;
+  border-right: 1px solid var(--gold-2, #c8aa6e);
+  border-bottom: 1px solid var(--gold-2, #c8aa6e);
+  transform: rotate(45deg);
+}
+
+.drk-overlay-hint__text {
+  flex: 1;
+}
+
+.drk-overlay-hint__close {
+  flex-shrink: 0;
+  padding: 3px 6px;
+  font: 600 10px/1 var(--font-display, sans-serif);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-1, #f0e6d2);
+  background: transparent;
+  border: 1px solid var(--gold-4, #785a28);
+  cursor: pointer;
+}
+
+.drk-overlay-hint__close:hover {
+  border-color: var(--gold-2, #c8aa6e);
+}
+
 .drk-overlay-dock:disabled {
   opacity: 0.7;
   cursor: default;

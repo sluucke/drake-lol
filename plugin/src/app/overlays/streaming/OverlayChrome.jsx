@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { DRAKE_ICON } from '../../../ui/assets.js';
 import { useStreaming } from '../../hooks/useStreaming.js';
@@ -11,6 +11,7 @@ import { OVERLAY_SIZES, clampToClient, overlayPieces, toRelative } from './overl
 
 const DODGE_LABELS = { idle: 'dodgeButton', busy: 'dodging', done: 'dodged', failed: 'dodgeFailed' };
 const DRAG_THRESHOLD = 4;
+const HINT_LIFETIME_MS = 12000;
 
 const FADE = {
   initial: { opacity: 0, scale: 0.92 },
@@ -124,19 +125,55 @@ export function OverlayChrome() {
   const champSelect = useDrake((s) => s.champSelect);
   const dodgeEnabled = useDrake((s) => s.settings.values?.queue_dodge_in_client !== false);
   const positions = useDrake((s) => s.settings.values?.overlay_positions);
-  if (streaming.host !== 'overlay') return null;
+  const hintSeen = useDrake((s) => s.settings.values?.overlay_hint_seen === true);
+  const hintRetired = useRef(false);
+  const overlayHost = streaming.host === 'overlay';
   const client = geometry?.client || null;
-  const pieces = overlayPieces(client, positions);
-  const visible = !panelOpen && !!pieces;
+  const showHint = overlayHost && !panelOpen && !!client && !hintSeen;
+  const pieces = overlayPieces(client, positions, { hint: showHint });
+  const visible = overlayHost && !panelOpen && !!pieces;
 
-  const save = (kind) => (rel) =>
-    actions.setSettings({
+  const retireHint = () => {
+    if (hintSeen || hintRetired.current) return;
+    hintRetired.current = true;
+    void actions.setSettings({ overlay_hint_seen: true });
+  };
+
+  useEffect(() => {
+    if (!showHint) return undefined;
+    const timer = window.setTimeout(retireHint, HINT_LIFETIME_MS);
+    return () => window.clearTimeout(timer);
+  }, [showHint]);
+
+  if (!overlayHost) return null;
+
+  const save = (kind) => async (rel) => {
+    await actions.setSettings({
       overlay_positions: { fab: positions?.fab || null, dodge: positions?.dodge || null, [kind]: rel },
     });
+    retireHint();
+  };
 
   return (
     <Layer>
       <AnimatePresence>
+        {visible && showHint ? (
+          <motion.div
+            key="hint"
+            role="note"
+            className="drk-overlay-hint"
+            style={place(pieces.hint, OVERLAY_SIZES.hint)}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: [0, -4, 0] }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ opacity: { duration: DURATION.base }, y: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' } }}
+          >
+            <span className="drk-overlay-hint__text">{t('overlays.hint.text')}</span>
+            <button type="button" className="drk-overlay-hint__close" onClick={retireHint}>
+              {t('overlays.hint.dismiss')}
+            </button>
+          </motion.div>
+        ) : null}
         {visible ? (
           <DraggableButton
             key="fab"
