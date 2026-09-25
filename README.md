@@ -28,7 +28,8 @@ Open the overlay with **Ctrl + D**, or click the duck button in the **bottom-rig
 | 💬 | Status | Custom status message and availability |
 | 🏅 | Profile | Rank crest, banner skins, Riot ID tools |
 | 👥 | Friends | Friends list tools |
-| ⚙️ | Settings | Start with Windows, auto reload, auto updates |
+| 🎥 | Streaming mode | Moves Drake into a window OBS / Streamlabs / Discord cannot capture (On, Off or Auto) |
+| ⚙️ | Settings | Start with Windows, auto reload, auto updates, language |
 
 The overlay is built with React and follows the League client language: English and Brazilian Portuguese are fully translated, and other languages fall back to English.
 

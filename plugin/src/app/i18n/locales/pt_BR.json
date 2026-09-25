@@ -272,7 +272,11 @@
       },
       {
         "title": "O Drake fala a sua língua",
-        "body": "O Drake agora segue o idioma do cliente do League. Inglês e português do Brasil estão totalmente traduzidos; os outros idiomas usam inglês por enquanto."
+        "body": "Por padrão o Drake segue o idioma do cliente do League, e você pode escolher outro nas Configurações. Inglês e português do Brasil estão totalmente traduzidos; os outros idiomas usam inglês por enquanto."
+      },
+      {
+        "title": "Modo streamer",
+        "body": "Ligue (ou deixe no Automático) nas Configurações e o Drake passa para uma janela própria que o OBS, o Streamlabs e o Discord não conseguem capturar — você continua vendo tudo, e a sua live não vê nada. A revelação do time fica desligada enquanto ele estiver ativo."
       }
     ],
     "v0_3_25": [

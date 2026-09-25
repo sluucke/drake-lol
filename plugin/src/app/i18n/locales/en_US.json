@@ -272,7 +272,11 @@
       },
       {
         "title": "Drake speaks your language",
-        "body": "Drake now follows the League client language. English and Brazilian Portuguese are fully translated; other languages fall back to English for now."
+        "body": "Drake follows the League client language by default, and you can pick another one in Settings. English and Brazilian Portuguese are fully translated; other languages fall back to English for now."
+      },
+      {
+        "title": "Streaming mode",
+        "body": "Turn it on (or leave it on Auto) in Settings and Drake moves into its own window that OBS, Streamlabs and Discord cannot capture — you still see everything, your stream sees nothing. Team reveal stays off while it is active."
       }
     ],
     "v0_3_25": [
