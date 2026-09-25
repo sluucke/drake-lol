@@ -277,6 +277,13 @@ export function startUI({
     store.getState().patchChampSelect({ cancelable: canCancel(payload) });
   }
 
+  function replaceSettings(next) {
+    settings = { ...settings, ...next };
+    syncRankUiFromSettings();
+    if (onSettingsChanged) onSettingsChanged(settings);
+    syncStore();
+  }
+
   function setStreamingEffective(next) {
     if (next === streamingEffective) return;
     streamingEffective = next;
@@ -834,5 +841,5 @@ export function startUI({
     }
   }
 
-  return { ...ui, setReadyCheck, setChampSelect, setIdle, store, actions: legacyActions };
+  return { ...ui, setReadyCheck, setChampSelect, setIdle, replaceSettings, store, actions: legacyActions };
 }

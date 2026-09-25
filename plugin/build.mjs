@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
-import { SOURCE_EXTENSIONS, esbuildOptions } from './buildConfig.mjs';
+import { SOURCE_EXTENSIONS, esbuildOptions, overlayOptions } from './buildConfig.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 
@@ -32,6 +32,8 @@ function sourceBuildId() {
 const buildId = sourceBuildId();
 writeFileSync(join(root, '.build-id'), buildId);
 
-await build(esbuildOptions({ buildId, dev: process.env.DRAKE_DEV === '1' }));
+const dev = process.env.DRAKE_DEV === '1';
+await build(esbuildOptions({ buildId, dev }));
+await build(overlayOptions({ buildId, dev }));
 
-console.log('built dist/index.js');
+console.log('built dist/index.js and dist/overlay.js');

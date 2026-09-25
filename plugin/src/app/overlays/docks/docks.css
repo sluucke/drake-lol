@@ -14,3 +14,57 @@
 .drk-dock .drk-btn {
   min-width: 168px;
 }
+
+.drk-overlay-fab,
+.drk-overlay-dock {
+  position: fixed;
+  pointer-events: auto;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.drk-overlay-fab {
+  z-index: 5;
+  padding: 0;
+  border: 1px solid var(--gold-dark, #785a28);
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 30% 30%, #3a2a12, #120e08 75%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.drk-overlay-fab:hover {
+  filter: brightness(1.1);
+}
+
+.drk-overlay-fab img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.drk-overlay-dock {
+  z-index: 4;
+  padding: 0 8px;
+  border: 1px solid #c33c3c;
+  background: linear-gradient(to bottom, #1e2328, #2a1515);
+  color: #f0e6d2;
+  font: 600 13px/1 var(--font-display, sans-serif);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drk-overlay-dock:hover:not(:disabled) {
+  color: #ff6b6b;
+  box-shadow: 0 0 8px 0 #c33c3c50;
+}
+
+.drk-overlay-dock:disabled {
+  opacity: 0.7;
+  cursor: default;
+}

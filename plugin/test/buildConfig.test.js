@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
-import { esbuildOptions, SOURCE_EXTENSIONS } from '../buildConfig.mjs';
+import { esbuildOptions, overlayOptions, SOURCE_EXTENSIONS } from '../buildConfig.mjs';
 
 const entry = fileURLToPath(new URL('./fixtures/build/entry.jsx', import.meta.url));
 
@@ -34,6 +34,15 @@ describe('esbuildOptions', () => {
   it('minifies production bundles and keeps dev bundles readable', () => {
     expect(esbuildOptions({ buildId: 'x' }).minify).toBe(true);
     expect(esbuildOptions({ buildId: 'x', dev: true }).minify).toBe(false);
+  });
+
+  it('builds the streaming overlay bundle with the same pipeline', () => {
+    const main = esbuildOptions({ buildId: 'x' });
+    const overlay = overlayOptions({ buildId: 'x' });
+    expect(overlay.entryPoints).toEqual(['src/overlayMain.jsx']);
+    expect(overlay.outfile).toBe('dist/overlay.js');
+    expect(overlay.define).toEqual(main.define);
+    expect(overlay.minify).toBe(true);
   });
 
   it('bundles css imports as text and jsx with the automatic runtime', async () => {

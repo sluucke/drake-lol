@@ -48,7 +48,8 @@ export function ClientDocks() {
   const actions = useLegacyActions();
   const inGame = useDrake((s) => !!s.session.idle);
   const chromeHidden = useInClientChromeHidden();
-  const idle = inGame || chromeHidden;
+  const overlayHost = useDrake((s) => s.session.streaming?.host === 'overlay');
+  const idle = inGame || chromeHidden || overlayHost;
   const champSelect = useDrake((s) => s.champSelect);
   const dodgeEnabled = useDrake((s) => s.settings.values?.queue_dodge_in_client !== false);
   const showDodge = !idle && champSelect.active && dodgeEnabled;

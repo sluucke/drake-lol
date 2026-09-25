@@ -49,3 +49,11 @@ export function esbuildOptions({ buildId, dev = false }) {
     plugins: [svgTextPlugin(), cssTextPlugin()],
   };
 }
+
+export function overlayOptions({ buildId, dev = false }) {
+  return {
+    ...esbuildOptions({ buildId, dev }),
+    entryPoints: ['src/overlayMain.jsx'],
+    outfile: 'dist/overlay.js',
+  };
+}

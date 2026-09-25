@@ -5,6 +5,7 @@ import { ScoutingModal } from './overlays/scouting/ScoutingModal.jsx';
 import { ScoutingToast } from './overlays/scouting/ScoutingToast.jsx';
 import { ClientDocks } from './overlays/docks/ClientDocks.jsx';
 import { SocialToggle } from './overlays/docks/SocialToggle.jsx';
+import { OverlayChrome } from './overlays/streaming/OverlayChrome.jsx';
 
 export function App({ sfx, portalTarget, store, actions }) {
   return (
@@ -15,6 +16,7 @@ export function App({ sfx, portalTarget, store, actions }) {
         <ScoutingToast />
         <ClientDocks />
         <SocialToggle />
+        <OverlayChrome />
         {__DRAKE_DEV__ ? <DevShowcase /> : null}
       </div>
     </AppProviders>

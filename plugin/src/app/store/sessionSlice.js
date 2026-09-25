@@ -18,6 +18,7 @@ export function createSessionSlice({ appVersion }) {
       backgroundId: 0,
       friends: [],
       streaming: { host: 'client', effective: 'in-client' },
+      overlayGeometry: null,
     },
 
     setLocale(locale) {
