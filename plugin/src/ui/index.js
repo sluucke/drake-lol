@@ -379,7 +379,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       publishView: (view) => store.getState().setTeamReveal(view),
       doc: document,
       subscribe,
-      overlayRoot: shadow,
       lcu,
       buildPanel,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
