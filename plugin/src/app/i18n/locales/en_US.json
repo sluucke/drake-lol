@@ -149,7 +149,12 @@
       "restarting": "Restarting the client…",
       "language": "Language",
       "languageHelp": "Drake follows the League client language by default. Pick a language here to always use it instead.",
-      "languageAuto": "Client language ({language})"
+      "languageAuto": "Client language ({language})",
+      "streaming": "Streaming mode",
+      "streamingOff": "Off",
+      "streamingOn": "On",
+      "streamingAuto": "Auto (when a streaming app is open)",
+      "streamingHelp": "Moves Drake into a separate window that OBS, Streamlabs and Discord cannot capture, so your stream never shows it. Team reveal stays off while that window is in use."
     },
     "autoPick": {
       "title": "Auto Pick",

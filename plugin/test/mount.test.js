@@ -144,6 +144,21 @@ describe('mountUI', () => {
     expect(onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
+  it('lets onToggleIntent veto the Ctrl+D toggle', () => {
+    const onToggleIntent = vi.fn(() => false);
+    const ui = mountUI({ doc, win, onToggleIntent });
+    win.dispatch('keydown', { ctrlKey: true, key: 'd', preventDefault() {} });
+    expect(onToggleIntent).toHaveBeenCalledTimes(1);
+    expect(ui.isOpen()).toBe(false);
+  });
+
+  it('mounts under a custom parent with a custom host id', () => {
+    const parent = doc.createElement('div');
+    mountUI({ doc, win, mountParent: parent, hostId: 'drake-overlay-ui-host' });
+    expect(parent.children.map((c) => c.id)).toEqual(['drake-overlay-ui-host']);
+    expect(doc.documentElement.children).toHaveLength(0);
+  });
+
   it('opens on Ctrl+D and closes on Escape', () => {
     const ui = mountUI({ doc, win, render: () => '<div></div>' });
 

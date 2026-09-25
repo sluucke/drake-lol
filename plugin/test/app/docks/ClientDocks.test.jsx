@@ -61,4 +61,10 @@ describe('ClientDocks', () => {
     expect(dock.style.left).toBe('330px');
     expect(dock.style.transform).toBe('translateX(-50%)');
   });
+
+  it('stays out of the client while the streaming overlay is active', () => {
+    const { portalTarget, store } = setup({ active: true, cancelable: true });
+    act(() => store.getState().setSession({ streaming: { host: 'client', effective: 'overlay' } }));
+    return waitFor(() => expect(within(portalTarget).queryByRole('button')).toBeNull());
+  });
 });

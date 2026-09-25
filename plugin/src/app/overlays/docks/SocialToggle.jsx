@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useSocialHost } from '../../hooks/useSocialHost.js';
+import { useInClientChromeHidden } from '../../hooks/useStreaming.js';
 import { useT } from '../../i18n/I18nProvider.jsx';
 import { useLegacyActions } from '../../shell/LegacyActions.jsx';
 import { useDrake } from '../../store/StoreContext.jsx';
@@ -9,7 +10,8 @@ export function SocialToggle() {
   const actions = useLegacyActions();
   const idle = useDrake((s) => !!s.session.idle);
   const open = useDrake((s) => s.ui.panelOpen);
-  const host = useSocialHost(!idle);
+  const hidden = useInClientChromeHidden();
+  const host = useSocialHost(!idle && !hidden);
   if (!host) return null;
   return createPortal(
     <button

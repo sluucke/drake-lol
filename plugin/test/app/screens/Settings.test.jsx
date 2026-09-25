@@ -132,5 +132,14 @@ describe('SettingsScreen', () => {
     act(() => store.getState().syncLegacy({ settings: { ui_language: 'auto' } }));
     expect(screen.getByRole('heading', { name: 'Configurações' })).toBeTruthy();
   });
+
+  it('saves the streaming mode', () => {
+    const { actions, portalTarget } = setup();
+    const trigger = screen.getByRole('button', { name: 'Streaming mode' });
+    expect(trigger.textContent).toContain('Off');
+    fireEvent.click(trigger);
+    fireEvent.click(within(portalTarget).getByRole('option', { name: 'Auto (when a streaming app is open)' }));
+    expect(actions.setSettings).toHaveBeenCalledWith({ streaming_mode: 'auto' });
+  });
 });
 

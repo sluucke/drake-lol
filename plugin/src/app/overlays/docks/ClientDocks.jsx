@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useDockStyle } from '../../hooks/useDockStyle.js';
+import { useInClientChromeHidden } from '../../hooks/useStreaming.js';
 import { useT } from '../../i18n/I18nProvider.jsx';
 import { useLegacyActions } from '../../shell/LegacyActions.jsx';
 import { useDrake } from '../../store/StoreContext.jsx';
@@ -45,7 +46,9 @@ function CancelDock({ onCancel }) {
 
 export function ClientDocks() {
   const actions = useLegacyActions();
-  const idle = useDrake((s) => !!s.session.idle);
+  const inGame = useDrake((s) => !!s.session.idle);
+  const chromeHidden = useInClientChromeHidden();
+  const idle = inGame || chromeHidden;
   const champSelect = useDrake((s) => s.champSelect);
   const dodgeEnabled = useDrake((s) => s.settings.values?.queue_dodge_in_client !== false);
   const showDodge = !idle && champSelect.active && dodgeEnabled;

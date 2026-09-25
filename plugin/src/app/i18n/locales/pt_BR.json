@@ -149,7 +149,12 @@
       "restarting": "Reiniciando o cliente…",
       "language": "Idioma",
       "languageHelp": "Por padrão o Drake segue o idioma do cliente do League. Escolha um idioma aqui para usá-lo sempre.",
-      "languageAuto": "Idioma do cliente ({language})"
+      "languageAuto": "Idioma do cliente ({language})",
+      "streaming": "Modo streamer",
+      "streamingOff": "Desligado",
+      "streamingOn": "Ligado",
+      "streamingAuto": "Automático (quando um app de stream estiver aberto)",
+      "streamingHelp": "Move o Drake para uma janela separada que o OBS, o Streamlabs e o Discord não conseguem capturar, então ele nunca aparece na sua live. A revelação do time fica desligada enquanto essa janela estiver em uso."
     },
     "autoPick": {
       "title": "Pick automático",

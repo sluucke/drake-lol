@@ -54,6 +54,34 @@ function LanguageCard() {
   );
 }
 
+const STREAMING_MODES = [
+  { value: 'off', key: 'streamingOff' },
+  { value: 'on', key: 'streamingOn' },
+  { value: 'auto', key: 'streamingAuto' },
+];
+
+function StreamingCard() {
+  const t = useT();
+  const { values, trayDown, save } = useSettings();
+  const current = STREAMING_MODES.some((m) => m.value === values.streaming_mode) ? values.streaming_mode : 'off';
+  const options = STREAMING_MODES.map((m) => ({ value: m.value, label: t(`screens.settings.${m.key}`) }));
+  return (
+    <Card>
+      <div className="drk-field__row">
+        <span className="drk-field__label">{t('screens.settings.streaming')}</span>
+        <Select
+          value={current}
+          options={options}
+          disabled={trayDown}
+          ariaLabel={t('screens.settings.streaming')}
+          onChange={(next) => save({ streaming_mode: next })}
+        />
+      </div>
+      <Help>{t('screens.settings.streamingHelp')}</Help>
+    </Card>
+  );
+}
+
 export function SettingsScreen() {
   const t = useT();
   const store = useDrakeStore();
@@ -97,6 +125,8 @@ export function SettingsScreen() {
       </Card>
 
       <LanguageCard />
+
+      <StreamingCard />
 
       <Card
         title={t('screens.settings.updates')}

@@ -34,6 +34,8 @@ import { inChampSelect } from './dodgeDock.js';
 import { subscribe } from '../subscribe.js';
 import { buildTeamRevealSnapshot } from '../features/teamRevealStats.js';
 import { makeTeamRevealDom } from './teamRevealDom.js';
+import { effectiveFrom, overlayChromePolicy } from '../features/streaming.js';
+import { clientBoundsFromWindow, postOverlay } from '../features/overlayBridge.js';
 import { makeBuildPanel } from './buildPanel.js';
 import { makeProxyFetch } from '../features/proxyFetch.js';
 import { makeSummonerIdLoader } from '../features/summonerId.js';
@@ -68,19 +70,34 @@ function isAramSession(session) {
 
 
 
-export function startUI({ cfg, onSettingsChanged, lcu }) {
+export function startUI({
+  cfg,
+  onSettingsChanged,
+  lcu,
+  host = 'client',
+  mountParent = null,
+  reloadConfig = loadConfig,
+  onPanelChange,
+}) {
+  const overlayHost = host === 'overlay';
   let settings = { ...cfg.settings };
   let appVersion = cfg.version || '0.0.0';
   let updateUi = { phase: 'idle' };
   let trayDown = false;
-  let openMode = decideOpenMode({
-    onboardingDone: !!settings.onboarding_done,
-    seenVersion: settings.whats_new_seen_version || '',
-    currentVersion: appVersion,
-  });
+  let streamingToolRunning = !!cfg.streaming_tool_running;
+  let streamingEffective = overlayHost
+    ? 'overlay'
+    : cfg.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning);
+  let openMode = overlayHost
+    ? 'default'
+    : decideOpenMode({
+        onboardingDone: !!settings.onboarding_done,
+        seenVersion: settings.whats_new_seen_version || '',
+        currentVersion: appVersion,
+      });
   const opened = applyOpenMode(openMode);
   let screen = opened.screen;
-  let overlay = opened.overlay;
+  let overlay = overlayHost ? '' : opened.overlay;
   let tourIndex = -1;
   let pendingOnboard = null;
   const onboardLock = { busy: false };
@@ -136,12 +153,12 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   const client = makeSettingsClient({
     port: cfg.port,
     token: cfg.token,
-    reloadConfig: loadConfig,
+    reloadConfig,
   });
   const updater = makeUpdater({
     port: cfg.port,
     token: cfg.token,
-    reloadConfig: loadConfig,
+    reloadConfig,
   });
 
   const legacyActions = {
@@ -186,22 +203,43 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       skins,
       backgroundId,
       friends,
+      streaming: { host, effective: streamingEffective },
     });
+  }
+
+  function inClientChromeAllowed() {
+    if (overlayHost) return true;
+    return overlayChromePolicy(streamingEffective).showInClientChrome;
+  }
+
+  function revealAllowed() {
+    if (overlayHost) return false;
+    if (overlayChromePolicy(streamingEffective).forceRevealOff) return false;
+    return !!settings.queue_team_reveal_in_client;
   }
 
   const ui = mountUI({
     doc: document,
     win: window,
     isIdle: () => inGameIdle,
+    mountParent: mountParent || undefined,
+    hostId: overlayHost ? 'drake-overlay-ui-host' : undefined,
+    onToggleIntent: () => {
+      if (inClientChromeAllowed()) return true;
+      void postOverlay(cfg.port, cfg.token, '/overlay/plugin', { toggle_panel: true }).catch(() => null);
+      return false;
+    },
     onOpenChange: (open) => {
       store.getState().setPanelOpen(open);
+      if (onPanelChange) onPanelChange(open);
       if (!shadowRoot) return;
       if (!open) closeCredits();
     },
     onTeamRevealCardsToggle: () => {
-      if (teamRevealDom) teamRevealDom.toggleCards('scouting');
+      if (teamRevealDom && revealAllowed()) teamRevealDom.toggleCards('scouting');
     },
     onBuildPanelToggle: () => {
+      if (!inClientChromeAllowed()) return;
       if (teamRevealDom) teamRevealDom.toggleCards('build');
       else if (buildPanel) buildPanel.toggle();
     },
@@ -239,6 +277,66 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     store.getState().patchChampSelect({ cancelable: canCancel(payload) });
   }
 
+  function setStreamingEffective(next) {
+    if (next === streamingEffective) return;
+    streamingEffective = next;
+    applyStreamingPolicy();
+  }
+
+  function applyStreamingPolicy() {
+    syncStore();
+    if (overlayHost) return;
+    const hostEl = ui.host?.();
+    const allowed = inClientChromeAllowed();
+    if (!allowed) ui.close();
+    if (hostEl) {
+      hostEl.style.visibility = allowed ? '' : 'hidden';
+      if (allowed) hostEl.removeAttribute('data-drake-overlay-mode');
+      else hostEl.setAttribute('data-drake-overlay-mode', '1');
+    }
+    if (teamRevealDom) teamRevealDom.setEnabled(!inGameIdle && revealAllowed());
+    void pushOverlayPluginState();
+  }
+
+  async function pushOverlayPluginState() {
+    if (overlayHost || streamingEffective !== 'overlay') return;
+    const { champSelect } = store.getState();
+    await postOverlay(cfg.port, cfg.token, '/overlay/plugin', {
+      ready_check: !inGameIdle && !!champSelect.cancelable,
+      dodge: !inGameIdle && !!champSelect.active && settings.queue_dodge_in_client !== false,
+      bounds: clientBoundsFromWindow(window),
+    }).catch(() => null);
+  }
+
+  async function drainOverlayActions() {
+    if (overlayHost || streamingEffective !== 'overlay') return;
+    const res = await postOverlay(cfg.port, cfg.token, '/overlay/drain', {}).catch(() => null);
+    const actions = res?.actions || [];
+    for (const action of actions) {
+      if (action === 'cancel') await legacyActions.cancelQueue();
+      else if (action === 'dodge') await runDodge();
+    }
+    if (actions.length) await pushOverlayPluginState();
+  }
+
+  async function pollStreaming() {
+    const next = await reloadConfig();
+    if (!next) return;
+    streamingToolRunning = !!next.streaming_tool_running;
+    if (streamingEffective === 'overlay' && next.settings) {
+      const merged = { ...settings, ...next.settings };
+      if (JSON.stringify(merged) !== JSON.stringify(settings)) {
+        settings = merged;
+        syncRankUiFromSettings();
+        if (onSettingsChanged) onSettingsChanged(settings);
+        syncStore();
+      }
+    }
+    setStreamingEffective(
+      next.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning),
+    );
+  }
+
   function setIdle(next) {
     if (next === inGameIdle) return;
     inGameIdle = next;
@@ -255,7 +353,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       feedBuildPanel(null);
       return;
     }
-    if (teamRevealDom) teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+    if (teamRevealDom) teamRevealDom.setEnabled(revealAllowed());
   }
 
   // Champion names are shared with team reveal, but the build panel must not
@@ -406,7 +504,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         });
       },
     });
-    teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+    teamRevealDom.setEnabled(revealAllowed());
 
     if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
     feedBuildPanel(champSelectSession);
@@ -555,7 +653,10 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
 
     function applySettingSideEffects(keys) {
       if (keys.includes('queue_team_reveal_in_client') && teamRevealDom) {
-        teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+        teamRevealDom.setEnabled(revealAllowed());
+      }
+      if (keys.includes('streaming_mode') && !overlayHost) {
+        setStreamingEffective(effectiveFrom(settings.streaming_mode, streamingToolRunning));
       }
     }
 
@@ -723,7 +824,15 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     });
 
     paint();
+    applyStreamingPolicy();
+    if (!overlayHost) {
+      window.setInterval(() => {
+        void pollStreaming().catch(() => {});
+        void pushOverlayPluginState();
+        void drainOverlayActions();
+      }, 750);
+    }
   }
 
-  return { ...ui, setReadyCheck, setChampSelect, setIdle };
+  return { ...ui, setReadyCheck, setChampSelect, setIdle, store, actions: legacyActions };
 }

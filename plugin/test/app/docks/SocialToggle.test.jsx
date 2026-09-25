@@ -54,6 +54,12 @@ describe('SocialToggle', () => {
     expect(btn.getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('removes itself while the streaming overlay is active', () => {
+    const { bar, store } = setup();
+    act(() => store.getState().setSession({ streaming: { host: 'client', effective: 'overlay' } }));
+    expect(bar.querySelector('button[data-drake-toggle]')).toBeNull();
+  });
+
   it('removes itself while in game', () => {
     const { bar, store } = setup();
     act(() => store.getState().setSession({ idle: true }));
