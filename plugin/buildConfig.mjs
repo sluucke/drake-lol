@@ -40,6 +40,7 @@ export function esbuildOptions({ buildId, dev = false }) {
     outfile: 'dist/index.js',
     loader: { '.png': 'dataurl', '.jsx': 'jsx' },
     jsx: 'automatic',
+    minify: !dev,
     define: {
       __DRAKE_BUILD__: JSON.stringify(buildId),
       __DRAKE_DEV__: JSON.stringify(!!dev),

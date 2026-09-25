@@ -31,6 +31,11 @@ describe('esbuildOptions', () => {
     expect(esbuildOptions({ buildId: 'x', dev: true }).define.__DRAKE_DEV__).toBe('true');
   });
 
+  it('minifies production bundles and keeps dev bundles readable', () => {
+    expect(esbuildOptions({ buildId: 'x' }).minify).toBe(true);
+    expect(esbuildOptions({ buildId: 'x', dev: true }).minify).toBe(false);
+  });
+
   it('bundles css imports as text and jsx with the automatic runtime', async () => {
     const text = await bundle(esbuildOptions({ buildId: 'x' }));
     expect(text).toContain('.fixture-probe{color:red}');
