@@ -20,7 +20,7 @@ describe('screen building blocks', () => {
 
   it('binds a toggle to a setting', () => {
     const { actions } = setup(<SettingToggle id="auto_accept" label="Accept" />, { auto_accept: false });
-    const sw = screen.getByRole('switch', { name: 'Accept' });
+    const sw = screen.getByRole('checkbox', { name: 'Accept' });
     expect(sw.getAttribute('aria-checked')).toBe('false');
     fireEvent.click(sw);
     expect(actions.setSettings).toHaveBeenCalledWith({ auto_accept: true });
@@ -28,12 +28,12 @@ describe('screen building blocks', () => {
 
   it('supports settings that default on', () => {
     setup(<SettingToggle id="queue_show_map_side" label="Map side" defaultOn />);
-    expect(screen.getByRole('switch', { name: 'Map side' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('checkbox', { name: 'Map side' }).getAttribute('aria-checked')).toBe('true');
   });
 
   it('disables toggles while the tray is down', () => {
     const { store } = setup(<SettingToggle id="auto_accept" label="Accept" />);
     act(() => store.getState().syncLegacy({ trayDown: true }));
-    expect(screen.getByRole('switch', { name: 'Accept' }).disabled).toBe(true);
+    expect(screen.getByRole('checkbox', { name: 'Accept' }).disabled).toBe(true);
   });
 });

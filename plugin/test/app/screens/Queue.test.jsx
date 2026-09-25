@@ -62,7 +62,7 @@ describe('QueueScreen', () => {
     const { actions } = setup();
     expect(screen.getByRole('button', { name: 'Sample size' }).disabled).toBe(true);
     expect(screen.getByText('Enable in-client reveal to change these.')).toBeTruthy();
-    fireEvent.click(screen.getByRole('switch', { name: 'Reveal my team in-client' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Reveal my team in-client' }));
     expect(actions.setSettings).toHaveBeenCalledWith({ queue_team_reveal_in_client: true });
   });
 
@@ -97,9 +97,9 @@ describe('QueueScreen', () => {
 
   it('keeps the dodge and map side toggles on by default', () => {
     setup();
-    expect(screen.getByRole('switch', { name: 'Show dodge button in champ select' }).getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByRole('switch', { name: 'Show map side in champ select' }).getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByRole('switch', { name: 'Auto-mute teammates in champ select' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('checkbox', { name: 'Show dodge button in champ select' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('checkbox', { name: 'Show map side in champ select' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('checkbox', { name: 'Auto-mute teammates in champ select' }).getAttribute('aria-checked')).toBe('false');
   });
 
   it('dodges and shows the outcome', async () => {
@@ -124,7 +124,7 @@ describe('QueueScreen', () => {
   it('disables settings but not actions while the tray is down', () => {
     const { store } = setup();
     act(() => store.getState().syncLegacy({ trayDown: true }));
-    expect(screen.getByRole('switch', { name: 'Reveal my team in-client' }).disabled).toBe(true);
+    expect(screen.getByRole('checkbox', { name: 'Reveal my team in-client' }).disabled).toBe(true);
     expect(screen.getByRole('textbox', { name: 'Auto-send message on chat connect' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Reveal Lobby' }).disabled).toBe(false);
     expect(screen.getByRole('button', { name: 'Dodge' }).disabled).toBe(false);

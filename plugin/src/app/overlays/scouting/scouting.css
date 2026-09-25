@@ -227,7 +227,6 @@
   font-size: var(--text-sm);
   color: var(--text-strong);
   background: var(--surface-glass);
-  backdrop-filter: blur(6px);
   border: 1px solid var(--gold-4);
   box-shadow: var(--shadow-1);
   pointer-events: auto;

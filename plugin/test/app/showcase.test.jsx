@@ -13,7 +13,7 @@ describe('showcase', () => {
   it('renders every primitive', () => {
     renderWithProviders(<Showcase />);
     expect(screen.getAllByRole('button').length).toBeGreaterThan(3);
-    expect(screen.getByRole('switch')).toBeTruthy();
+    expect(screen.getByRole('checkbox')).toBeTruthy();
     expect(screen.getByRole('tablist')).toBeTruthy();
     expect(screen.getByRole('slider')).toBeTruthy();
     expect(document.querySelector('.drk-skel')).not.toBeNull();

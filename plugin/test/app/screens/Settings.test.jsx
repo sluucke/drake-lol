@@ -36,11 +36,11 @@ describe('SettingsScreen', () => {
 
   it('binds the four toggles with their defaults', () => {
     const { actions } = setup();
-    expect(screen.getByRole('switch', { name: 'Start Drake with Windows' }).getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByRole('switch', { name: 'Reload the client when Drake starts' }).getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByRole('switch', { name: 'Install updates automatically' }).getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByRole('switch', { name: 'Unlock the status message field' }).getAttribute('aria-checked')).toBe('false');
-    fireEvent.click(screen.getByRole('switch', { name: 'Start Drake with Windows' }));
+    expect(screen.getByRole('checkbox', { name: 'Start Drake with Windows' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('checkbox', { name: 'Reload the client when Drake starts' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('checkbox', { name: 'Install updates automatically' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('checkbox', { name: 'Unlock the status message field' }).getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Start Drake with Windows' }));
     expect(actions.setSettings).toHaveBeenCalledWith({ run_at_startup: true });
   });
 
@@ -100,7 +100,7 @@ describe('SettingsScreen', () => {
   it('disables settings and update checks while the tray is down', () => {
     const { store } = setup();
     act(() => store.getState().syncLegacy({ trayDown: true }));
-    expect(screen.getByRole('switch', { name: 'Start Drake with Windows' }).disabled).toBe(true);
+    expect(screen.getByRole('checkbox', { name: 'Start Drake with Windows' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Check for updates' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Restart client' }).disabled).toBe(false);
   });

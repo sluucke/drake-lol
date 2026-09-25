@@ -37,7 +37,7 @@ describe('AutoAcceptScreen', () => {
   it('toggles auto accept', () => {
     const { actions } = setup({ auto_accept: true, auto_accept_delay_ms: 2500 });
     expect(screen.getByRole('heading', { name: 'Auto Accept' })).toBeTruthy();
-    const sw = screen.getByRole('switch', { name: 'Accept ready checks automatically' });
+    const sw = screen.getByRole('checkbox', { name: 'Accept ready checks automatically' });
     expect(sw.getAttribute('aria-checked')).toBe('true');
     fireEvent.click(sw);
     expect(actions.setSettings).toHaveBeenCalledWith({ auto_accept: false });
@@ -69,7 +69,7 @@ describe('AutoAcceptScreen', () => {
   it('disables everything while the tray is down', () => {
     const { store } = setup({ auto_accept: true });
     act(() => store.getState().syncLegacy({ trayDown: true }));
-    expect(screen.getByRole('switch').disabled).toBe(true);
+    expect(screen.getByRole('checkbox').disabled).toBe(true);
     expect(screen.getByRole('slider').disabled).toBe(true);
   });
 

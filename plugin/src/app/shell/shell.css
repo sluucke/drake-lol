@@ -6,7 +6,6 @@
   background:
     radial-gradient(ellipse 70% 60% at 50% 45%, rgba(1, 10, 19, 0.35), rgba(1, 10, 19, 0.78)),
     rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(3px);
   font-family: var(--font-text);
   color: var(--text);
   pointer-events: none;
@@ -94,26 +93,25 @@
 .drk-panel__icon-btn {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   font-family: var(--font-heading);
-  font-size: var(--text-sm);
+  font-size: 14px;
+  line-height: 1;
   color: var(--gold-2);
-  background: var(--surface-0);
-  border: 1px solid var(--border-strong);
-  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--gold-4);
+  border-radius: 0;
   cursor: pointer;
   transition:
     color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
+    border-color var(--dur-fast) var(--ease-out);
 }
 
 .drk-panel__icon-btn:hover {
-  color: var(--gold-1);
+  color: var(--text-strong);
   border-color: var(--gold-2);
-  box-shadow: var(--glow-gold);
 }
 
 .drk-panel__icon-btn:focus-visible {

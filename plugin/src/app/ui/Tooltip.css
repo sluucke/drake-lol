@@ -9,7 +9,6 @@
   line-height: 1.4;
   color: var(--text-strong);
   background: var(--surface-glass);
-  backdrop-filter: blur(6px);
   border: 1px solid var(--gold-4);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-1);

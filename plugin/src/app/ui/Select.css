@@ -68,7 +68,6 @@
   overflow-y: auto;
   list-style: none;
   background: var(--surface-glass);
-  backdrop-filter: blur(8px);
   border: 1px solid var(--gold-4);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-1);

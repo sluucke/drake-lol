@@ -28,7 +28,7 @@ describe('AutoBanScreen', () => {
 
   it('toggles auto ban', () => {
     const { actions } = setup({ settings: { auto_ban: false } });
-    fireEvent.click(screen.getByRole('switch', { name: 'Ban a champion automatically' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ban a champion automatically' }));
     expect(actions.setSettings).toHaveBeenCalledWith({ auto_ban: true });
   });
 

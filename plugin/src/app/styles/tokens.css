@@ -13,7 +13,7 @@
   --surface-1: #091428;
   --surface-2: #1e2328;
   --surface-3: #3c3c41;
-  --surface-glass: rgba(1, 10, 19, 0.82);
+  --surface-glass: rgba(1, 10, 19, 0.95);
   --text-strong: #f0e6d2;
   --text: #a09b8c;
   --text-muted: #5c5b57;
@@ -40,12 +40,12 @@
   --space-6: 24px;
   --space-7: 28px;
   --space-8: 32px;
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 8px;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 2px;
   --shadow-1: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --glow-gold: 0 0 12px rgba(200, 170, 110, 0.35);
-  --glow-hex: 0 0 12px rgba(10, 203, 230, 0.35);
+  --glow-gold: 0 0 6px rgba(200, 170, 110, 0.25);
+  --glow-hex: 0 0 6px rgba(10, 203, 230, 0.25);
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 280ms;

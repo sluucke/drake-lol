@@ -5,18 +5,18 @@ import { Toggle } from '../../../src/app/ui/Toggle.jsx';
 import { SFX } from '../../../src/ui/sfx.js';
 
 describe('Toggle', () => {
-  it('exposes switch semantics', () => {
+  it('exposes checkbox semantics with the client checkbox look', () => {
     renderWithProviders(<Toggle checked label="Auto accept" help="Accepts matches" onChange={() => {}} />);
-    const sw = screen.getByRole('switch', { name: 'Auto accept' });
+    const sw = screen.getByRole('checkbox', { name: 'Auto accept' });
     expect(sw.getAttribute('aria-checked')).toBe('true');
-    expect(sw.className).toContain('is-on');
+    expect(sw.querySelector('.drk-check__box').dataset.checked).toBe('true');
     expect(screen.getByText('Accepts matches').id).toBe(sw.getAttribute('aria-describedby'));
   });
 
   it('emits the negated value and plays the check sound', () => {
     const onChange = vi.fn();
     const { sfx } = renderWithProviders(<Toggle checked={false} label="X" onChange={onChange} />);
-    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.click(screen.getByRole('checkbox'));
     expect(onChange).toHaveBeenCalledWith(true);
     expect(sfx.play).toHaveBeenCalledWith(SFX.check);
   });
@@ -31,7 +31,7 @@ describe('Toggle', () => {
   it('ignores clicks when disabled', () => {
     const onChange = vi.fn();
     renderWithProviders(<Toggle checked={false} disabled label="X" onChange={onChange} />);
-    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.click(screen.getByRole('checkbox'));
     expect(onChange).not.toHaveBeenCalled();
   });
 });

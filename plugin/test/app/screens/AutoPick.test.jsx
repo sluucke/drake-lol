@@ -32,8 +32,8 @@ describe('AutoPickScreen', () => {
 
   it('binds the toggles and gates insta lock', () => {
     const { actions } = setup({ settings: { auto_pick: false } });
-    expect(screen.getByRole('switch', { name: 'Insta Lock' }).disabled).toBe(true);
-    fireEvent.click(screen.getByRole('switch', { name: 'Pick a champion automatically' }));
+    expect(screen.getByRole('checkbox', { name: 'Insta Lock' }).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pick a champion automatically' }));
     expect(actions.setSettings).toHaveBeenCalledWith({ auto_pick: true });
   });
 
@@ -89,7 +89,7 @@ describe('AutoPickScreen', () => {
   it('never disables the picker while the tray is down', () => {
     const { store } = setup({ settings: BASE });
     act(() => store.getState().syncLegacy({ trayDown: true }));
-    expect(screen.getByRole('switch', { name: 'Pick a champion automatically' }).disabled).toBe(true);
+    expect(screen.getByRole('checkbox', { name: 'Pick a champion automatically' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Yasuo' }).disabled).toBe(false);
   });
 
