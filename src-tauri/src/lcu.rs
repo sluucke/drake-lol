@@ -83,14 +83,67 @@ pub async fn restart_ux() -> Result<(), LcuError> {
         .basic_auth("riot", Some(password))
         .send()
         .await?;
-    // A response arriving is not the same as the request being accepted. A 401
-    // from a stale lockfile password, or a 404, would otherwise be reported as
-    // success while the user watches the menu item do nothing.
     let status = response.status();
     if !status.is_success() {
         return Err(LcuError::Rejected(status));
     }
     Ok(())
+}
+
+pub async fn request(
+    method: &str,
+    route: &str,
+    body: Option<serde_json::Value>,
+) -> Result<(u16, serde_json::Value), LcuError> {
+    let (status, bytes, _ctype) = request_raw(method, route, body).await?;
+    let text = String::from_utf8_lossy(&bytes);
+    let value = if text.trim().is_empty() {
+        serde_json::Value::Null
+    } else {
+        serde_json::from_str(text.trim()).unwrap_or(serde_json::Value::String(text.to_string()))
+    };
+    Ok((status, value))
+}
+
+pub async fn request_raw(
+    method: &str,
+    route: &str,
+    body: Option<serde_json::Value>,
+) -> Result<(u16, Vec<u8>, String), LcuError> {
+    let install_dir = install_dir().ok_or(LcuError::NotRunning)?;
+    let raw = std::fs::read_to_string(lockfile_path(&install_dir))?;
+    let (port, password) = parse_lockfile(&raw)?;
+
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()?;
+    let path = if route.starts_with('/') {
+        route.to_string()
+    } else {
+        format!("/{route}")
+    };
+    let url = format!("https://127.0.0.1:{port}{path}");
+    let mut builder = match method.to_ascii_uppercase().as_str() {
+        "POST" => client.post(&url),
+        "PUT" => client.put(&url),
+        "PATCH" => client.patch(&url),
+        "DELETE" => client.delete(&url),
+        _ => client.get(&url),
+    };
+    builder = builder.basic_auth("riot", Some(&password));
+    if let Some(body) = body {
+        builder = builder.json(&body);
+    }
+    let response = builder.send().await?;
+    let status = response.status().as_u16();
+    let ctype = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/octet-stream")
+        .to_string();
+    let bytes = response.bytes().await?.to_vec();
+    Ok((status, bytes, ctype))
 }
 
 #[cfg(test)]

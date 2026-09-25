@@ -282,6 +282,8 @@ mod tests {
             port: 1,
             version: "0.1.0".into(),
             settings: Default::default(),
+            streaming_effective: "in-client".into(),
+            streaming_tool_running: false,
         }
     }
 
@@ -396,6 +398,8 @@ mod tests {
             port: 1,
             version: "0.1.0".into(),
             settings: Default::default(),
+            streaming_effective: "in-client".into(),
+            streaming_tool_running: false,
         };
 
         let mode = tick(

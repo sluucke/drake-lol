@@ -3,10 +3,12 @@ pub mod configd;
 pub mod deploy;
 pub mod elevate;
 pub mod lcu;
+pub mod overlay;
 pub mod paths;
 pub mod single_instance;
 pub mod slot;
 pub mod startup;
+pub mod streaming;
 pub mod strings;
 pub mod supervisor;
 pub mod update;
@@ -17,6 +19,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
+use tauri::Manager;
 
 const CONFIGD_PORT: u16 = 48151;
 const INDEX_JS: &str = include_str!("../../plugin/dist/index.js");
@@ -313,11 +316,18 @@ pub fn run() {
                     let _ = auto_reload_item.set_checked(settings.auto_reload_on_open);
                     let _ = auto_update_item.set_checked(settings.auto_update);
 
+                    let tool_running = streaming::scan_streaming_tools();
+                    let streaming_effective = streaming::resolve_effective_mode(
+                        &settings.streaming_mode,
+                        tool_running,
+                    );
                     let cfg = configd::PluginConfig {
                         token: loop_state.token.clone(),
                         port: loop_state.port,
                         version: env!("CARGO_PKG_VERSION").to_string(),
                         settings: settings.clone(),
+                        streaming_effective: streaming::effective_label(streaming_effective).into(),
+                        streaming_tool_running: tool_running,
                     };
 
                     // Reconciled here rather than in the click handler so the
@@ -410,6 +420,63 @@ pub fn run() {
                     }
 
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                }
+            });
+
+            let overlay_state = state.clone();
+            let overlay_app = app.handle().clone();
+            let overlay_shutdown = shutting_down.clone();
+            tauri::async_runtime::spawn(async move {
+                let mut was_panel_open = false;
+                let mut sync_cache = overlay::OverlaySyncCache::default();
+                loop {
+                    if overlay_shutdown.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let settings = overlay_state.settings.lock().unwrap().clone();
+                    let tool_running = streaming::scan_streaming_tools();
+                    let streaming_effective = streaming::resolve_effective_mode(
+                        &settings.streaming_mode,
+                        tool_running,
+                    );
+                    let overlay_mode = matches!(
+                        streaming_effective,
+                        streaming::EffectiveStreaming::Overlay
+                    );
+                    let dirty = overlay_state.overlay.lock().unwrap().take_dirty();
+                    let league = overlay::find_league_window();
+                    if let Some(ref lw) = league {
+                        overlay_state.overlay.lock().unwrap().ui.bounds = Some(lw.bounds.clone());
+                    }
+                    let ui = overlay_state.overlay.lock().unwrap().ui.clone();
+                    if overlay_mode {
+                        let overlay_hwnd = overlay_app
+                            .get_webview_window(overlay::WINDOW_LABEL)
+                            .and_then(|w| w.hwnd().ok())
+                            .map(|h| h.0 as isize);
+                        let want = overlay::should_show_overlay(
+                            true,
+                            league.as_ref(),
+                            overlay_hwnd,
+                            ui.panel_open,
+                        );
+                        overlay::sync_window(
+                            &overlay_app,
+                            want,
+                            overlay_state.port,
+                            &overlay_state.token,
+                            league.as_ref(),
+                            &ui,
+                            was_panel_open,
+                            &mut sync_cache,
+                        );
+                    } else {
+                        overlay::hide_quiet(&overlay_app);
+                        sync_cache = overlay::OverlaySyncCache::default();
+                    }
+                    was_panel_open = ui.panel_open;
+                    let wait_ms = if dirty || overlay_mode { 50 } else { 250 };
+                    tokio::time::sleep(std::time::Duration::from_millis(wait_ms)).await;
                 }
             });
 
