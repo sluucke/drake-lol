@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders.jsx';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore.js';
 import { SettingsScreen } from '../../../src/app/screens/Settings.jsx';
@@ -110,4 +110,27 @@ describe('SettingsScreen', () => {
     expect(screen.getByRole('heading', { name: 'Configurações' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reiniciar cliente' })).toBeTruthy();
   });
+
+  it('offers the client language by default and saves an override', () => {
+    const { actions, portalTarget } = setup();
+    const trigger = screen.getByRole('button', { name: 'Language' });
+    expect(trigger.textContent).toContain('Client language (English)');
+    fireEvent.click(trigger);
+    fireEvent.click(within(portalTarget).getByRole('option', { name: 'Português (Brasil)' }));
+    expect(actions.setSettings).toHaveBeenCalledWith({ ui_language: 'pt_BR' });
+  });
+
+  it('follows the client language while the preference is auto', () => {
+    setup({ locale: 'pt_BR', settings: { ui_language: 'auto' } });
+    expect(screen.getByRole('heading', { name: 'Configurações' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Idioma' }).textContent).toContain('Idioma do cliente (Português (Brasil))');
+  });
+
+  it('gives the saved language priority over the client language', () => {
+    const { store } = setup({ locale: 'pt_BR', settings: { ui_language: 'en_US' } });
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeTruthy();
+    act(() => store.getState().syncLegacy({ settings: { ui_language: 'auto' } }));
+    expect(screen.getByRole('heading', { name: 'Configurações' })).toBeTruthy();
+  });
 });
+

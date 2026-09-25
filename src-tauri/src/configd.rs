@@ -92,6 +92,8 @@ pub struct Settings {
     pub build_tier: String,
     #[serde(default = "default_build_region")]
     pub build_region: String,
+    #[serde(default = "default_ui_language")]
+    pub ui_language: String,
 }
 
 fn no_champion() -> u32 {
@@ -189,6 +191,20 @@ fn default_build_region() -> String {
     "global".into()
 }
 
+fn default_ui_language() -> String {
+    "auto".into()
+}
+
+fn normalize_ui_language(value: String) -> String {
+    let valid = (2..=12).contains(&value.len())
+        && value.chars().all(|c| c.is_ascii_alphabetic() || c == '_');
+    if valid {
+        value
+    } else {
+        default_ui_language()
+    }
+}
+
 fn normalize_team_reveal_sample_size(value: u32) -> u32 {
     match value {
         20 | 50 | 100 => value,
@@ -249,6 +265,7 @@ impl Default for Settings {
             whats_new_seen_version: empty_string(),
             build_tier: default_build_tier(),
             build_region: default_build_region(),
+            ui_language: default_ui_language(),
         }
     }
 }
@@ -503,6 +520,7 @@ pub struct SettingsPatch {
     pub whats_new_seen_version: Option<String>,
     pub build_tier: Option<String>,
     pub build_region: Option<String>,
+    pub ui_language: Option<String>,
 }
 
 impl SettingsPatch {
@@ -599,6 +617,11 @@ impl SettingsPatch {
                 .build_region
                 .clone()
                 .unwrap_or_else(|| base.build_region.clone()),
+            ui_language: self
+                .ui_language
+                .clone()
+                .map(normalize_ui_language)
+                .unwrap_or_else(|| base.ui_language.clone()),
         }
     }
 }
@@ -920,6 +943,7 @@ mod tests {
     fn build_panel_settings_default_to_emerald_plus_global() {
         assert_eq!(Settings::default().build_tier, "emerald_plus");
         assert_eq!(Settings::default().build_region, "global");
+        assert_eq!(Settings::default().ui_language, "auto");
     }
 
     #[test]
@@ -1299,6 +1323,38 @@ mod tests {
         let s = state.settings.lock().unwrap();
         assert_eq!(s.build_tier, "diamond_plus");
         assert_eq!(s.build_region, "na");
+    }
+
+    #[tokio::test]
+    async fn posting_ui_language_persists_it() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"ui_language":"pt_BR"}"#))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.settings.lock().unwrap().ui_language, "pt_BR");
+    }
+
+    #[test]
+    fn ui_language_falls_back_to_auto_when_malformed() {
+        let base = Settings::default();
+        for bad in ["", "pt-BR<script>", "a_very_long_language_code", "../etc"] {
+            let patch = SettingsPatch {
+                ui_language: Some(bad.to_string()),
+                ..Default::default()
+            };
+            assert_eq!(patch.apply_to(&base).ui_language, "auto", "{bad:?} must not be stored");
+        }
+        let keep = SettingsPatch::default().apply_to(&Settings {
+            ui_language: "en_US".into(),
+            ..Settings::default()
+        });
+        assert_eq!(keep.ui_language, "en_US", "an unmentioned field must not be reset");
     }
 
     #[tokio::test]

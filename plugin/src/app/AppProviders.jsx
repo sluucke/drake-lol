@@ -2,11 +2,15 @@ import { MotionConfig } from 'motion/react';
 import { NOOP_SFX, SfxContext } from './hooks/useSfx.js';
 import { PortalTargetContext } from './hooks/usePortalTarget.js';
 import { I18nProvider } from './i18n/I18nProvider.jsx';
+import { AVAILABLE_LOCALES } from './i18n/locales/index.js';
+import { pickLocale } from './i18n/runtime.js';
 import { StoreContext, useDrake } from './store/StoreContext.jsx';
 import { LegacyActionsContext, NOOP_ACTIONS } from './shell/LegacyActions.jsx';
 
 function LocaleBridge({ children }) {
-  const locale = useDrake((state) => state.session.locale);
+  const locale = useDrake((state) =>
+    pickLocale(state.settings.values?.ui_language, state.session.locale, AVAILABLE_LOCALES),
+  );
   return <I18nProvider locale={locale}>{children}</I18nProvider>;
 }
 

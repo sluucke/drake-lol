@@ -18,6 +18,11 @@ export function resolveLocale(raw, available) {
   return available.find((locale) => languageOf(locale) === lang) || DEFAULT_LOCALE;
 }
 
+export function pickLocale(preference, clientLocale, available) {
+  if (preference && preference !== 'auto' && available.includes(preference)) return preference;
+  return clientLocale || DEFAULT_LOCALE;
+}
+
 function lookup(dict, key) {
   const value = key.split('.').reduce((node, part) => (node && typeof node === 'object' ? node[part] : undefined), dict);
   return typeof value === 'string' ? value : undefined;

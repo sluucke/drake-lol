@@ -4,3 +4,5 @@ import pt_BR from './pt_BR.json';
 export const DICTS = { en_US, pt_BR };
 
 export const AVAILABLE_LOCALES = Object.keys(DICTS);
+
+export const LOCALE_NAMES = { en_US: 'English', pt_BR: 'Português (Brasil)' };

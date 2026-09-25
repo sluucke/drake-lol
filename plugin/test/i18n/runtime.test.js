@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { DEFAULT_LOCALE, createTranslator, resolveLocale, toLanguageTag } from '../../src/app/i18n/runtime.js';
+import { DEFAULT_LOCALE, createTranslator, resolveLocale, toLanguageTag, pickLocale } from '../../src/app/i18n/runtime.js';
 
 const DICTS = {
   en_US: {
@@ -83,5 +83,23 @@ describe('createTranslator', () => {
   it('uses en_US for locales without a dictionary', () => {
     const t = createTranslator('ko_KR', DICTS, { warn: vi.fn() });
     expect(t('common.close')).toBe('Close');
+  });
+});
+
+describe('pickLocale', () => {
+  const available = ['en_US', 'pt_BR'];
+
+  it('follows the client locale when the preference is auto or missing', () => {
+    expect(pickLocale('auto', 'pt_BR', available)).toBe('pt_BR');
+    expect(pickLocale(undefined, 'pt_BR', available)).toBe('pt_BR');
+  });
+
+  it('lets a supported preference override the client locale', () => {
+    expect(pickLocale('en_US', 'pt_BR', available)).toBe('en_US');
+    expect(pickLocale('pt_BR', 'en_US', available)).toBe('pt_BR');
+  });
+
+  it('ignores a preference that is not shipped', () => {
+    expect(pickLocale('ko_KR', 'pt_BR', available)).toBe('pt_BR');
   });
 });
