@@ -33,12 +33,22 @@ impl OverlayUiState {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct FontFile {
+    pub family: String,
+    pub weight: String,
+    pub style: String,
+    pub mime: String,
+    pub bytes: Vec<u8>,
+}
+
 #[derive(Debug, Default)]
 pub struct OverlayBridge {
     pub ui: OverlayUiState,
     pub actions: VecDeque<String>,
     pub views: VecDeque<String>,
     pub effective_overlay: bool,
+    pub fonts: Vec<FontFile>,
     pub dirty: AtomicBool,
 }
 
