@@ -1,3 +1,4 @@
+import { gameDataUrl } from './assetUrl.js';
 const TAG = '[Drake]';
 
 export const RUNES_PAGES_ROUTE = '/lol-perks/v1/pages';
@@ -274,7 +275,7 @@ export function perkStyleName(styleId) {
 export function perkStyleIconUrl(styleId) {
   const sid = Number(styleId);
   const dynamic = perkStyles.get(sid)?.iconPath;
-  return dynamic || STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`;
+  return gameDataUrl(dynamic || STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`);
 }
 
 export function perkRelativePath(perkId) {
@@ -290,12 +291,12 @@ export function perkCdnUrl(perkId) {
 export function perkIconUrl(perkId) {
   const id = Number(perkId);
   const dynamic = perks.get(id)?.iconPath;
-  if (dynamic) return dynamic;
+  if (dynamic) return gameDataUrl(dynamic);
   const path = PERK_PATHS[id];
   if (path) {
-    return `/lol-game-data/assets/v1/${path}`;
+    return gameDataUrl(`/lol-game-data/assets/v1/${path}`);
   }
-  return `/lol-game-data/assets/v1/perk-images/${id}.png`;
+  return gameDataUrl(`/lol-game-data/assets/v1/perk-images/${id}.png`);
 }
 
 export function perkName(perkId) {

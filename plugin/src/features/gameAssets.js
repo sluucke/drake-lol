@@ -1,3 +1,4 @@
+import { gameDataUrl } from './assetUrl.js';
 const TAG = '[Drake]';
 
 export const ITEMS_ROUTE = '/lol-game-data/assets/v1/items.json';
@@ -61,8 +62,8 @@ function iconFor(map, id, fallbackRoute) {
   const num = Number(id);
   if (!Number.isInteger(num) || num <= 0) return '';
   const entry = map.get(num);
-  if (entry?.iconPath) return entry.iconPath;
-  return `${fallbackRoute}/${num}.png`;
+  if (entry?.iconPath) return gameDataUrl(entry.iconPath);
+  return gameDataUrl(`${fallbackRoute}/${num}.png`);
 }
 
 function nameFor(map, id, prefix) {
