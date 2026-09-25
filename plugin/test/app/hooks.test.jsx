@@ -4,6 +4,7 @@ import { useSfx } from '../../src/app/hooks/useSfx.js';
 import { usePortalTarget } from '../../src/app/hooks/usePortalTarget.js';
 import { useReducedMotion } from '../../src/app/hooks/useReducedMotion.js';
 import { AppProviders } from '../../src/app/AppProviders.jsx';
+import { App } from '../../src/app/App.jsx';
 import { Layer } from '../../src/app/ui/Layer.jsx';
 
 afterEach(() => {
@@ -79,8 +80,7 @@ describe('useReducedMotion', () => {
 });
 
 describe('App', () => {
-  it('renders the app marker inside providers', async () => {
-    const { App } = await import('../../src/app/App.jsx');
+  it('renders the app marker inside providers', () => {
     render(<App sfx={{ play: vi.fn() }} portalTarget={null} />);
     expect(document.querySelector('[data-drake-app]')).not.toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
