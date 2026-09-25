@@ -16,6 +16,7 @@ pub struct OverlayUiState {
     pub panel_open: bool,
     pub modal_open: bool,
     pub dragging: bool,
+    pub show_hint: bool,
     pub ready_check: bool,
     pub dodge: bool,
     pub bounds: Option<ClientBounds>,
@@ -167,6 +168,8 @@ fn league_related_foreground(_league_hwnd: isize, _overlay_hwnd: Option<isize>) 
 pub const FAB_SIZE: (i32, i32) = (52, 52);
 pub const CANCEL_SIZE: (i32, i32) = (120, 48);
 pub const DODGE_SIZE: (i32, i32) = (96, 32);
+pub const HINT_SIZE: (i32, i32) = (200, 56);
+pub const HINT_GAP: i32 = 8;
 pub const REL_SCALE: u32 = 10_000;
 const MARGIN: i32 = 14;
 const CANCEL_BOTTOM: i32 = 48;
@@ -238,6 +241,14 @@ pub fn chrome_bounds(client: &ClientBounds, ui: &OverlayUiState) -> ClientBounds
         right = right.max(pos.0 + size.0);
         bottom = bottom.max(pos.1 + size.1);
     };
+
+    if ui.show_hint {
+        let hint_x = (fab.0 + FAB_SIZE.0 - HINT_SIZE.0)
+            .clamp(client.x, client.x + (client.width as i32 - HINT_SIZE.0).max(0));
+        let hint_y = (fab.1 - HINT_GAP - HINT_SIZE.1)
+            .clamp(client.y, client.y + (client.height as i32 - HINT_SIZE.1).max(0));
+        include((hint_x, hint_y), HINT_SIZE);
+    }
 
     if ui.ready_check {
         let cx = client.x + client.width as i32 / 2;
@@ -766,6 +777,22 @@ mod tests {
             ..OverlayUiState::default()
         };
         assert_eq!(chrome_bounds(&client_1280(), &ui), client_1280());
+    }
+
+    #[test]
+    fn chrome_makes_room_for_the_first_time_hint() {
+        let idle = chrome_bounds(&client_1280(), &OverlayUiState::default());
+        let ui = OverlayUiState {
+            show_hint: true,
+            ..OverlayUiState::default()
+        };
+        let b = chrome_bounds(&client_1280(), &ui);
+        let fab_x = 100 + 1280 - 14 - FAB_SIZE.0;
+        let fab_y = 50 + 720 - 14 - FAB_SIZE.1;
+        assert_eq!(b.x, fab_x + FAB_SIZE.0 - HINT_SIZE.0);
+        assert_eq!(b.y, fab_y - HINT_GAP - HINT_SIZE.1);
+        assert_eq!(b.x + b.width as i32, idle.x + idle.width as i32);
+        assert_eq!(b.y + b.height as i32, idle.y + idle.height as i32);
     }
 
     #[test]

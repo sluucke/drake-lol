@@ -452,6 +452,7 @@ pub fn run() {
                             bridge.ui.bounds = Some(lw.bounds.clone());
                         }
                         bridge.ui.positions = settings.overlay_positions.clone();
+                        bridge.ui.show_hint = !settings.overlay_hint_seen;
                         bridge.effective_overlay = overlay_mode;
                     }
                     let ui = overlay_state.overlay.lock().unwrap().ui.clone();

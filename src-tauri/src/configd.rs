@@ -103,6 +103,8 @@ pub struct Settings {
     pub ui_language: String,
     #[serde(default)]
     pub overlay_positions: crate::overlay::OverlayPositions,
+    #[serde(default = "off")]
+    pub overlay_hint_seen: bool,
     #[serde(default = "default_streaming_mode")]
     pub streaming_mode: String,
 }
@@ -282,6 +284,7 @@ impl Default for Settings {
             build_region: default_build_region(),
             ui_language: default_ui_language(),
             overlay_positions: crate::overlay::OverlayPositions::default(),
+            overlay_hint_seen: off(),
             streaming_mode: default_streaming_mode(),
         }
     }
@@ -547,6 +550,7 @@ pub struct SettingsPatch {
     pub build_region: Option<String>,
     pub ui_language: Option<String>,
     pub overlay_positions: Option<crate::overlay::OverlayPositions>,
+    pub overlay_hint_seen: Option<bool>,
     pub streaming_mode: Option<String>,
 }
 
@@ -654,6 +658,7 @@ impl SettingsPatch {
                 .clone()
                 .map(crate::overlay::normalize_positions)
                 .unwrap_or_else(|| base.overlay_positions.clone()),
+            overlay_hint_seen: self.overlay_hint_seen.unwrap_or(base.overlay_hint_seen),
             streaming_mode: crate::streaming::normalize_streaming_mode(
                 &self
                     .streaming_mode
@@ -994,6 +999,7 @@ async fn overlay_snapshot(
         (bridge.ui.clone(), bridge.drain_views(), bridge.effective_overlay)
     };
     ui.positions = settings.overlay_positions.clone();
+    ui.show_hint = !settings.overlay_hint_seen;
     let chrome = ui
         .bounds
         .as_ref()
@@ -1531,6 +1537,20 @@ mod tests {
             .header("content-type", "application/json")
             .body(Body::from(body))
             .unwrap()
+    }
+
+    #[tokio::test]
+    async fn overlay_hint_is_remembered_once_seen() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+        assert!(!state.settings.lock().unwrap().overlay_hint_seen);
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"overlay_hint_seen":true}"#))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert!(state.settings.lock().unwrap().overlay_hint_seen);
     }
 
     #[tokio::test]
