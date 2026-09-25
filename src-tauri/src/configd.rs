@@ -977,6 +977,8 @@ struct OverlaySnapshot {
     dodge: bool,
     client: Option<crate::overlay::ClientBounds>,
     chrome: Option<crate::overlay::ClientBounds>,
+    views: Vec<String>,
+    effective: bool,
 }
 
 async fn overlay_snapshot(
@@ -987,7 +989,10 @@ async fn overlay_snapshot(
         return Err(StatusCode::UNAUTHORIZED);
     }
     let settings = state.settings.lock().unwrap().clone();
-    let mut ui = state.overlay.lock().unwrap().ui.clone();
+    let (mut ui, views, effective) = {
+        let mut bridge = state.overlay.lock().unwrap();
+        (bridge.ui.clone(), bridge.drain_views(), bridge.effective_overlay)
+    };
     ui.positions = settings.overlay_positions.clone();
     let chrome = ui
         .bounds
@@ -1001,6 +1006,8 @@ async fn overlay_snapshot(
         dodge: ui.dodge,
         client: ui.bounds,
         chrome,
+        views,
+        effective,
     }))
 }
 
@@ -1008,6 +1015,7 @@ async fn overlay_snapshot(
 struct OverlayUiBody {
     token: String,
     panel_open: Option<bool>,
+    modal_open: Option<bool>,
     dragging: Option<bool>,
 }
 
@@ -1022,6 +1030,9 @@ async fn overlay_ui(
         let mut bridge = state.overlay.lock().unwrap();
         if let Some(open) = body.panel_open {
             bridge.ui.panel_open = open;
+        }
+        if let Some(open) = body.modal_open {
+            bridge.ui.modal_open = open;
         }
         if let Some(dragging) = body.dragging {
             bridge.ui.dragging = dragging;
@@ -1061,6 +1072,7 @@ struct OverlayPluginBody {
     dodge: Option<bool>,
     bounds: Option<ClientBounds>,
     toggle_panel: Option<bool>,
+    open_view: Option<String>,
 }
 
 async fn overlay_plugin(
@@ -1085,6 +1097,9 @@ async fn overlay_plugin(
     if body.toggle_panel == Some(true) {
         bridge.ui.panel_open = !bridge.ui.panel_open;
         bridge.mark_dirty();
+    }
+    if let Some(view) = body.open_view.as_deref() {
+        bridge.push_view(view);
     }
     bridge.mark_dirty();
     StatusCode::NO_CONTENT
@@ -1541,6 +1556,58 @@ mod tests {
             .unwrap();
         assert_eq!(res.status(), StatusCode::NO_CONTENT);
         assert_eq!(state.settings.lock().unwrap().overlay_positions, crate::overlay::OverlayPositions::default());
+    }
+
+    fn json_post(uri: &str, body: String) -> Request<Body> {
+        Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn plugin_view_requests_reach_the_overlay_once() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        for view in ["scouting", "bogus", "build"] {
+            let res = router(state.clone())
+                .oneshot(json_post("/overlay/plugin", format!(r#"{{"token":"{token}","open_view":"{view}"}}"#)))
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        }
+        state.overlay.lock().unwrap().effective_overlay = true;
+
+        let res = router(state.clone())
+            .oneshot(json_post("/overlay/snapshot", format!(r#"{{"token":"{token}"}}"#)))
+            .await
+            .unwrap();
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let snap: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(snap["views"], serde_json::json!(["scouting", "build"]));
+        assert_eq!(snap["effective"], serde_json::json!(true));
+
+        let res = router(state.clone())
+            .oneshot(json_post("/overlay/snapshot", format!(r#"{{"token":"{token}"}}"#)))
+            .await
+            .unwrap();
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let snap: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(snap["views"], serde_json::json!([]));
+    }
+
+    #[tokio::test]
+    async fn overlay_ui_tracks_the_open_modal() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let res = router(state.clone())
+            .oneshot(json_post("/overlay/ui", format!(r#"{{"token":"{token}","modal_open":true}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert!(state.overlay.lock().unwrap().ui.modal_open);
     }
 
     #[tokio::test]

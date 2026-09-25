@@ -14,6 +14,7 @@ pub struct ClientBounds {
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct OverlayUiState {
     pub panel_open: bool,
+    pub modal_open: bool,
     pub dragging: bool,
     pub ready_check: bool,
     pub dodge: bool,
@@ -21,10 +22,22 @@ pub struct OverlayUiState {
     pub positions: OverlayPositions,
 }
 
+impl OverlayUiState {
+    pub fn interactive(&self) -> bool {
+        self.panel_open || self.modal_open
+    }
+
+    pub fn expanded(&self) -> bool {
+        self.interactive() || self.dragging
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct OverlayBridge {
     pub ui: OverlayUiState,
     pub actions: VecDeque<String>,
+    pub views: VecDeque<String>,
+    pub effective_overlay: bool,
     pub dirty: AtomicBool,
 }
 
@@ -38,6 +51,18 @@ impl OverlayBridge {
 
     pub fn drain_actions(&mut self) -> Vec<String> {
         self.actions.drain(..).collect()
+    }
+
+    pub fn push_view(&mut self, view: &str) -> bool {
+        if !matches!(view, "scouting" | "build") || self.views.len() >= 8 {
+            return false;
+        }
+        self.views.push_back(view.to_string());
+        true
+    }
+
+    pub fn drain_views(&mut self) -> Vec<String> {
+        self.views.drain(..).collect()
     }
 
     pub fn mark_dirty(&self) {
@@ -191,7 +216,7 @@ pub fn place_piece(
 }
 
 pub fn chrome_bounds(client: &ClientBounds, ui: &OverlayUiState) -> ClientBounds {
-    if ui.panel_open || ui.dragging {
+    if ui.expanded() {
         return client.clone();
     }
 
@@ -578,12 +603,13 @@ pub fn sync_window(
     };
 
     let chrome = chrome_bounds(&league.bounds, ui);
-    let panel_closed = was_panel_open && !ui.panel_open;
-    let panel_opened = !was_panel_open && ui.panel_open;
+    let interactive = ui.interactive();
+    let panel_closed = was_panel_open && !interactive;
+    let panel_opened = !was_panel_open && interactive;
     let need_show = !cache.show;
-    let need_panel_style = cache.panel_open != ui.panel_open || need_show || panel_closed || panel_opened;
+    let need_panel_style = cache.panel_open != interactive || need_show || panel_closed || panel_opened;
 
-    if ui.panel_open && cache.panel_open && cache.show && !need_show {
+    if interactive && cache.panel_open && cache.show && !need_show {
         cache.panel_open = true;
         return;
     }
@@ -605,7 +631,7 @@ pub fn sync_window(
         if let Ok(hwnd) = win.hwnd() {
             let h = hwnd.0 as isize;
             clear_owner(h);
-            set_no_activate(h, !ui.panel_open);
+            set_no_activate(h, !interactive);
             let _ = exclude_from_capture(h);
         }
         let _ = win.set_always_on_top(true);
@@ -617,7 +643,7 @@ pub fn sync_window(
         cache.show = true;
     }
 
-    cache.panel_open = ui.panel_open;
+    cache.panel_open = interactive;
 
     if panel_closed {
         if let Ok(hwnd) = win.hwnd() {
@@ -728,6 +754,15 @@ mod tests {
     fn chrome_fills_client_while_dragging() {
         let ui = OverlayUiState {
             dragging: true,
+            ..OverlayUiState::default()
+        };
+        assert_eq!(chrome_bounds(&client_1280(), &ui), client_1280());
+    }
+
+    #[test]
+    fn chrome_fills_client_while_a_modal_is_open() {
+        let ui = OverlayUiState {
+            modal_open: true,
             ..OverlayUiState::default()
         };
         assert_eq!(chrome_bounds(&client_1280(), &ui), client_1280());

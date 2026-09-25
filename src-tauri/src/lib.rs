@@ -452,6 +452,7 @@ pub fn run() {
                             bridge.ui.bounds = Some(lw.bounds.clone());
                         }
                         bridge.ui.positions = settings.overlay_positions.clone();
+                        bridge.effective_overlay = overlay_mode;
                     }
                     let ui = overlay_state.overlay.lock().unwrap().ui.clone();
                     if overlay_mode {
@@ -479,7 +480,7 @@ pub fn run() {
                         sync_cache = overlay::OverlaySyncCache::default();
                         focus_gate = overlay::FocusGate::default();
                     }
-                    was_panel_open = ui.panel_open;
+                    was_panel_open = ui.interactive();
                     let wait_ms = if dirty || overlay_mode { 50 } else { 250 };
                     tokio::time::sleep(std::time::Duration::from_millis(wait_ms)).await;
                 }
