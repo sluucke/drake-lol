@@ -141,5 +141,16 @@ describe('SettingsScreen', () => {
     fireEvent.click(within(portalTarget).getByRole('option', { name: 'Auto (when a streaming app is open)' }));
     expect(actions.setSettings).toHaveBeenCalledWith({ streaming_mode: 'auto' });
   });
+
+  it('resets the overlay button positions', () => {
+    const { actions } = setup({ settings: { overlay_positions: { fab: { x: 1, y: 2 }, dodge: null } } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset overlay button positions' }));
+    expect(actions.setSettings).toHaveBeenCalledWith({ overlay_positions: { fab: null, dodge: null } });
+  });
+
+  it('disables the reset while nothing was moved', () => {
+    setup();
+    expect(screen.getByRole('button', { name: 'Reset overlay button positions' }).disabled).toBe(true);
+  });
 });
 

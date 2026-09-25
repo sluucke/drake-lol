@@ -101,6 +101,9 @@ async function boot() {
 
   Object.assign(ui.actions, {
     togglePanel: () => ui.toggle(),
+    setOverlayDragging: (dragging) => {
+      void post('/overlay/ui', { dragging: !!dragging }).catch(() => {});
+    },
     cancelQueue: async () => {
       store.getState().patchChampSelect({ cancelable: false });
       await post('/overlay/action', { action: 'cancel' }).catch(() => {});

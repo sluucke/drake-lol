@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { DRAKE_ICON } from '../../../ui/assets.js';
 import { useStreaming } from '../../hooks/useStreaming.js';
@@ -6,9 +7,10 @@ import { useLegacyActions } from '../../shell/LegacyActions.jsx';
 import { useDrake } from '../../store/StoreContext.jsx';
 import { Layer } from '../../ui/Layer.jsx';
 import { DURATION, EASE_OUT } from '../../ui/motion.js';
-import { OVERLAY_SIZES, overlayChromeLayout } from './overlayLayout.js';
+import { OVERLAY_SIZES, clampToClient, overlayPieces, toRelative } from './overlayLayout.js';
 
 const DODGE_LABELS = { idle: 'dodgeButton', busy: 'dodging', done: 'dodged', failed: 'dodgeFailed' };
+const DRAG_THRESHOLD = 4;
 
 const FADE = {
   initial: { opacity: 0, scale: 0.92 },
@@ -17,8 +19,100 @@ const FADE = {
   transition: { duration: DURATION.base, ease: EASE_OUT },
 };
 
-function place(position, size) {
-  return { left: `${position.left}px`, top: `${position.top}px`, width: `${size.width}px`, height: `${size.height}px` };
+function screenScale() {
+  return window.devicePixelRatio || 1;
+}
+
+function windowOrigin() {
+  const scale = screenScale();
+  return { x: Math.round((window.screenX || 0) * scale), y: Math.round((window.screenY || 0) * scale) };
+}
+
+function place(point, size) {
+  const scale = screenScale();
+  const origin = windowOrigin();
+  return {
+    left: `${Math.round((point.x - origin.x) / scale)}px`,
+    top: `${Math.round((point.y - origin.y) / scale)}px`,
+    width: `${Math.round(size.width / scale)}px`,
+    height: `${Math.round(size.height / scale)}px`,
+  };
+}
+
+function useDrag({ client, at, size, onTap, onDrop }) {
+  const actions = useLegacyActions();
+  const drag = useRef(null);
+  const [dragAt, setDragAt] = useState(null);
+
+  function finish(event, cancelled) {
+    const current = drag.current;
+    if (!current) return;
+    drag.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    setDragAt(null);
+    const release = () => actions.setOverlayDragging?.(false);
+    if (!cancelled && current.moved) {
+      Promise.resolve(onDrop(toRelative(client, current.last, size))).finally(release);
+      return;
+    }
+    release();
+    if (!cancelled) onTap();
+  }
+
+  return {
+    at: dragAt || at,
+    dragging: !!dragAt,
+    handlers: {
+      onPointerDown(event) {
+        if (event.button !== 0 || !client) return;
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        const scale = screenScale();
+        drag.current = {
+          start: { x: event.screenX * scale, y: event.screenY * scale },
+          from: at,
+          last: at,
+          moved: false,
+        };
+        actions.setOverlayDragging?.(true);
+      },
+      onPointerMove(event) {
+        const current = drag.current;
+        if (!current) return;
+        const scale = screenScale();
+        const dx = event.screenX * scale - current.start.x;
+        const dy = event.screenY * scale - current.start.y;
+        if (!current.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        current.moved = true;
+        current.last = clampToClient(client, { x: current.from.x + dx, y: current.from.y + dy }, size);
+        setDragAt(current.last);
+      },
+      onPointerUp(event) {
+        finish(event, false);
+      },
+      onPointerCancel(event) {
+        finish(event, true);
+      },
+      onClick(event) {
+        if (event.detail === 0) onTap();
+      },
+    },
+  };
+}
+
+function DraggableButton({ client, at, size, onTap, onDrop, className, style, children, ...rest }) {
+  const drag = useDrag({ client, at, size, onTap, onDrop });
+  return (
+    <motion.button
+      type="button"
+      className={[className, drag.dragging && 'is-dragging'].filter(Boolean).join(' ')}
+      style={{ ...place(drag.at, size), ...style }}
+      {...drag.handlers}
+      {...rest}
+      {...FADE}
+    >
+      {children}
+    </motion.button>
+  );
 }
 
 export function OverlayChrome() {
@@ -29,33 +123,41 @@ export function OverlayChrome() {
   const geometry = useDrake((s) => s.session.overlayGeometry);
   const champSelect = useDrake((s) => s.champSelect);
   const dodgeEnabled = useDrake((s) => s.settings.values?.queue_dodge_in_client !== false);
+  const positions = useDrake((s) => s.settings.values?.overlay_positions);
   if (streaming.host !== 'overlay') return null;
-  const layout = overlayChromeLayout(geometry?.client, geometry?.chrome);
-  const visible = !panelOpen && !!layout;
+  const client = geometry?.client || null;
+  const pieces = overlayPieces(client, positions);
+  const visible = !panelOpen && !!pieces;
+
+  const save = (kind) => (rel) =>
+    actions.setSettings({
+      overlay_positions: { fab: positions?.fab || null, dodge: positions?.dodge || null, [kind]: rel },
+    });
 
   return (
     <Layer>
       <AnimatePresence>
         {visible ? (
-          <motion.button
+          <DraggableButton
             key="fab"
-            type="button"
             className="drk-overlay-fab"
-            style={place(layout.fab, OVERLAY_SIZES.fab)}
+            client={client}
+            at={pieces.fab}
+            size={OVERLAY_SIZES.fab}
+            onTap={() => actions.togglePanel()}
+            onDrop={save('fab')}
             aria-label={t('overlays.socialToggle.open')}
             title="Drake (Ctrl+D)"
-            onClick={() => actions.togglePanel()}
-            {...FADE}
           >
-            <img src={DRAKE_ICON} alt="" />
-          </motion.button>
+            <img src={DRAKE_ICON} alt="" draggable={false} />
+          </DraggableButton>
         ) : null}
         {visible && champSelect.cancelable ? (
           <motion.button
             key="cancel"
             type="button"
             className="drk-overlay-dock drk-overlay-dock--danger"
-            style={place(layout.cancel, OVERLAY_SIZES.cancel)}
+            style={place(pieces.cancel, OVERLAY_SIZES.cancel)}
             onClick={() => void actions.cancelQueue()}
             {...FADE}
           >
@@ -63,17 +165,18 @@ export function OverlayChrome() {
           </motion.button>
         ) : null}
         {visible && champSelect.active && dodgeEnabled ? (
-          <motion.button
+          <DraggableButton
             key="dodge"
-            type="button"
-            className="drk-overlay-dock drk-overlay-dock--danger"
-            style={place(layout.dodge, OVERLAY_SIZES.dodge)}
+            className="drk-overlay-dock drk-overlay-dock--danger drk-overlay-dock--compact"
+            client={client}
+            at={pieces.dodge}
+            size={OVERLAY_SIZES.dodge}
             disabled={champSelect.dodge === 'busy'}
-            onClick={() => void actions.dodge()}
-            {...FADE}
+            onTap={() => void actions.dodge()}
+            onDrop={save('dodge')}
           >
             {t(`screens.queue.${DODGE_LABELS[champSelect.dodge] || DODGE_LABELS.idle}`)}
-          </motion.button>
+          </DraggableButton>
         ) : null}
       </AnimatePresence>
     </Layer>

@@ -154,7 +154,9 @@
       "streamingOff": "Off",
       "streamingOn": "On",
       "streamingAuto": "Auto (when a streaming app is open)",
-      "streamingHelp": "Moves Drake into a separate window that OBS, Streamlabs and Discord cannot capture, so your stream never shows it. Team reveal stays off while that window is in use."
+      "streamingHelp": "Moves Drake into a separate window that OBS, Streamlabs and Discord cannot capture, so your stream never shows it. Team reveal stays off while that window is in use.",
+      "streamingDragHelp": "In the overlay, drag the Drake and Dodge buttons to wherever you like.",
+      "resetOverlayPositions": "Reset overlay button positions"
     },
     "autoPick": {
       "title": "Auto Pick",

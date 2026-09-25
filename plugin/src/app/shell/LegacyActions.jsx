@@ -39,6 +39,7 @@ export const NOOP_ACTIONS = {
   applyBuildItems: async () => {},
   cancelQueue: async () => {},
   togglePanel() {},
+  setOverlayDragging() {},
 };
 
 export const LegacyActionsContext = createContext(NOOP_ACTIONS);

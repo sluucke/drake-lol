@@ -65,6 +65,7 @@ function StreamingCard() {
   const { values, trayDown, save } = useSettings();
   const current = STREAMING_MODES.some((m) => m.value === values.streaming_mode) ? values.streaming_mode : 'off';
   const options = STREAMING_MODES.map((m) => ({ value: m.value, label: t(`screens.settings.${m.key}`) }));
+  const moved = !!(values.overlay_positions?.fab || values.overlay_positions?.dodge);
   return (
     <Card>
       <div className="drk-field__row">
@@ -78,6 +79,16 @@ function StreamingCard() {
         />
       </div>
       <Help>{t('screens.settings.streamingHelp')}</Help>
+      <Help>{t('screens.settings.streamingDragHelp')}</Help>
+      <div className="drk-actions">
+        <Button
+          variant="secondary"
+          disabled={trayDown || !moved}
+          onClick={() => save({ overlay_positions: { fab: null, dodge: null } })}
+        >
+          {t('screens.settings.resetOverlayPositions')}
+        </Button>
+      </div>
     </Card>
   );
 }

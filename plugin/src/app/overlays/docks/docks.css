@@ -64,6 +64,24 @@
   box-shadow: 0 0 8px 0 #c33c3c50;
 }
 
+.drk-overlay-dock--compact {
+  padding: 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.drk-overlay-fab,
+.drk-overlay-dock {
+  touch-action: none;
+  user-select: none;
+}
+
+.drk-overlay-fab.is-dragging,
+.drk-overlay-dock.is-dragging {
+  cursor: grabbing;
+  filter: brightness(1.15);
+}
+
 .drk-overlay-dock:disabled {
   opacity: 0.7;
   cursor: default;
