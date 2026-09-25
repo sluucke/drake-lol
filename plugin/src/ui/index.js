@@ -34,7 +34,7 @@ import { inChampSelect } from './dodgeDock.js';
 import { subscribe } from '../subscribe.js';
 import { buildTeamRevealSnapshot } from '../features/teamRevealStats.js';
 import { makeTeamRevealDom } from './teamRevealDom.js';
-import { effectiveFrom, overlayChromePolicy } from '../features/streaming.js';
+import { appliedEffective, createTrayHealth, effectiveFrom, overlayChromePolicy } from '../features/streaming.js';
 import { clientBoundsFromWindow, postOverlay } from '../features/overlayBridge.js';
 import { makeBuildPanel } from './buildPanel.js';
 import { makeProxyFetch } from '../features/proxyFetch.js';
@@ -85,9 +85,11 @@ export function startUI({
   let updateUi = { phase: 'idle' };
   let trayDown = false;
   let streamingToolRunning = !!cfg.streaming_tool_running;
-  let streamingEffective = overlayHost
+  let desiredEffective = overlayHost
     ? 'overlay'
     : cfg.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning);
+  let streamingEffective = desiredEffective;
+  const trayHealth = createTrayHealth();
   let openMode = overlayHost
     ? 'default'
     : decideOpenMode({
@@ -284,10 +286,14 @@ export function startUI({
     syncStore();
   }
 
-  function setStreamingEffective(next) {
+  function refreshStreamingEffective() {
+    if (overlayHost) return;
+    const next = appliedEffective(desiredEffective, trayHealth.reachable());
     if (next === streamingEffective) return;
+    const failedOpen = desiredEffective === 'overlay' && next === 'in-client';
     streamingEffective = next;
     applyStreamingPolicy();
+    if (failedOpen) say('Streaming overlay is unavailable, so Drake is back in the client.', false);
   }
 
   function applyStreamingPolicy() {
@@ -306,13 +312,15 @@ export function startUI({
   }
 
   async function pushOverlayPluginState() {
-    if (overlayHost || streamingEffective !== 'overlay') return;
+    if (overlayHost || desiredEffective !== 'overlay') return;
     const { champSelect } = store.getState();
-    await postOverlay(cfg.port, cfg.token, '/overlay/plugin', {
+    const result = await postOverlay(cfg.port, cfg.token, '/overlay/plugin', {
       ready_check: !inGameIdle && !!champSelect.cancelable,
       dodge: !inGameIdle && !!champSelect.active && settings.queue_dodge_in_client !== false,
       bounds: clientBoundsFromWindow(window),
     }).catch(() => null);
+    trayHealth.record(result !== null);
+    refreshStreamingEffective();
   }
 
   async function drainOverlayActions() {
@@ -339,9 +347,9 @@ export function startUI({
         syncStore();
       }
     }
-    setStreamingEffective(
-      next.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning),
-    );
+    desiredEffective =
+      next.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning);
+    refreshStreamingEffective();
   }
 
   function setIdle(next) {
@@ -663,7 +671,8 @@ export function startUI({
         teamRevealDom.setEnabled(revealAllowed());
       }
       if (keys.includes('streaming_mode') && !overlayHost) {
-        setStreamingEffective(effectiveFrom(settings.streaming_mode, streamingToolRunning));
+        desiredEffective = effectiveFrom(settings.streaming_mode, streamingToolRunning);
+        refreshStreamingEffective();
       }
     }
 

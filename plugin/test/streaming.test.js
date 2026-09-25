@@ -3,6 +3,8 @@ import {
   normalizeStreamingMode,
   effectiveFrom,
   overlayChromePolicy,
+  appliedEffective,
+  createTrayHealth,
 } from '../src/features/streaming.js';
 
 describe('normalizeStreamingMode', () => {
@@ -36,5 +38,27 @@ describe('overlayChromePolicy', () => {
       showInClientChrome: true,
       forceRevealOff: false,
     });
+  });
+});
+
+describe('appliedEffective', () => {
+  it('fails open to the client when the tray stops answering', () => {
+    expect(appliedEffective('overlay', true)).toBe('overlay');
+    expect(appliedEffective('overlay', false)).toBe('in-client');
+    expect(appliedEffective('in-client', false)).toBe('in-client');
+  });
+});
+
+describe('createTrayHealth', () => {
+  it('turns unreachable after consecutive failures and recovers on success', () => {
+    const health = createTrayHealth({ threshold: 3 });
+    expect(health.reachable()).toBe(true);
+    health.record(false);
+    health.record(false);
+    expect(health.reachable()).toBe(true);
+    health.record(false);
+    expect(health.reachable()).toBe(false);
+    health.record(true);
+    expect(health.reachable()).toBe(true);
   });
 });

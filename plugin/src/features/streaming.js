@@ -18,3 +18,20 @@ export function overlayChromePolicy(effective) {
     forceRevealOff: overlay,
   };
 }
+
+export function appliedEffective(desired, trayReachable) {
+  if (desired === 'overlay' && !trayReachable) return 'in-client';
+  return desired === 'overlay' ? 'overlay' : 'in-client';
+}
+
+export function createTrayHealth({ threshold = 3 } = {}) {
+  let failures = 0;
+  return {
+    record(ok) {
+      failures = ok ? 0 : failures + 1;
+    },
+    reachable() {
+      return failures < threshold;
+    },
+  };
+}
