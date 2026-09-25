@@ -429,6 +429,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let mut was_panel_open = false;
                 let mut sync_cache = overlay::OverlaySyncCache::default();
+                let mut focus_gate = overlay::FocusGate::default();
                 loop {
                     if overlay_shutdown.load(Ordering::SeqCst) {
                         break;
@@ -454,12 +455,11 @@ pub fn run() {
                             .get_webview_window(overlay::WINDOW_LABEL)
                             .and_then(|w| w.hwnd().ok())
                             .map(|h| h.0 as isize);
-                        let want = overlay::should_show_overlay(
-                            true,
+                        let focused = focus_gate.update(overlay::league_or_overlay_focused(
                             league.as_ref(),
                             overlay_hwnd,
-                            ui.panel_open,
-                        );
+                        ));
+                        let want = overlay::should_show_with_focus(true, league.as_ref(), focused);
                         overlay::sync_window(
                             &overlay_app,
                             want,
@@ -473,6 +473,7 @@ pub fn run() {
                     } else {
                         overlay::hide_quiet(&overlay_app);
                         sync_cache = overlay::OverlaySyncCache::default();
+                        focus_gate = overlay::FocusGate::default();
                     }
                     was_panel_open = ui.panel_open;
                     let wait_ms = if dirty || overlay_mode { 50 } else { 250 };

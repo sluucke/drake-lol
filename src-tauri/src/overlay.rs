@@ -60,11 +60,28 @@ pub struct LeagueWindow {
     pub visible: bool,
 }
 
-pub fn should_show_overlay(
+pub const FOCUS_GRACE_TICKS: u32 = 4;
+
+#[derive(Debug, Default)]
+pub struct FocusGate {
+    misses: u32,
+}
+
+impl FocusGate {
+    pub fn update(&mut self, focused: bool) -> bool {
+        if focused {
+            self.misses = 0;
+            return true;
+        }
+        self.misses = self.misses.saturating_add(1);
+        self.misses < FOCUS_GRACE_TICKS
+    }
+}
+
+pub fn should_show_with_focus(
     effective_overlay: bool,
     client: Option<&LeagueWindow>,
-    overlay_hwnd: Option<isize>,
-    panel_open: bool,
+    focused: bool,
 ) -> bool {
     if !effective_overlay {
         return false;
@@ -75,10 +92,13 @@ pub fn should_show_overlay(
     if client.minimized || !client.visible {
         return false;
     }
-    if panel_open {
-        return true;
-    }
-    league_related_foreground(client.hwnd, overlay_hwnd)
+    focused
+}
+
+pub fn league_or_overlay_focused(client: Option<&LeagueWindow>, overlay_hwnd: Option<isize>) -> bool {
+    client
+        .map(|c| league_related_foreground(c.hwnd, overlay_hwnd))
+        .unwrap_or(false)
 }
 
 #[cfg(windows)]
@@ -101,7 +121,7 @@ fn league_related_foreground(league_hwnd: isize, overlay_hwnd: Option<isize>) ->
     }
     unsafe {
         let root = GetAncestor(fg, GA_ROOT);
-        if !root.is_null() && root as isize == league_hwnd {
+        if !root.is_null() && (root as isize == league_hwnd || overlay_hwnd == Some(root as isize)) {
             return true;
         }
         let mut fg_pid = 0u32;
@@ -577,14 +597,14 @@ mod tests {
 
     #[test]
     fn hide_when_no_client_or_minimized() {
-        assert!(!should_show_overlay(true, None, None, false));
+        assert!(!should_show_with_focus(true, None, true));
         let minimized = LeagueWindow {
             hwnd: 1,
             bounds: ClientBounds::default(),
             minimized: true,
             visible: true,
         };
-        assert!(!should_show_overlay(true, Some(&minimized), None, false));
+        assert!(!should_show_with_focus(true, Some(&minimized), true));
     }
 
     #[test]
@@ -628,13 +648,26 @@ mod tests {
     }
 
     #[test]
-    fn panel_open_keeps_overlay_without_focus_check() {
+    fn open_panel_still_hides_when_another_app_is_in_front() {
         let client = LeagueWindow {
             hwnd: 1,
             bounds: ClientBounds::default(),
             minimized: false,
             visible: true,
         };
-        assert!(should_show_overlay(true, Some(&client), None, true));
+        assert!(!should_show_with_focus(true, Some(&client), false));
+        assert!(should_show_with_focus(true, Some(&client), true));
+        assert!(!should_show_with_focus(false, Some(&client), true));
+    }
+
+    #[test]
+    fn focus_gate_ignores_brief_focus_gaps() {
+        let mut gate = FocusGate::default();
+        assert!(gate.update(true));
+        for _ in 0..FOCUS_GRACE_TICKS - 1 {
+            assert!(gate.update(false), "a short gap keeps the overlay");
+        }
+        assert!(!gate.update(false), "a sustained loss of focus hides it");
+        assert!(gate.update(true), "focus back shows it at once");
     }
 }
