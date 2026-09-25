@@ -204,7 +204,7 @@ export function OverlayChrome() {
         {visible && champSelect.active && dodgeEnabled ? (
           <DraggableButton
             key="dodge"
-            className="drk-overlay-dock drk-overlay-dock--danger drk-overlay-dock--compact"
+            className="drk-overlay-dock drk-hextech-btn drk-hextech-btn--danger drk-hextech-btn--compact"
             client={client}
             at={pieces.dodge}
             size={OVERLAY_SIZES.dodge}

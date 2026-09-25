@@ -24,7 +24,7 @@
   --border: #463714;
   --border-strong: #785a28;
   --focus: #0acbe6;
-  --font-heading: var(--font-display, 'Beaufort for LOL'), serif;
+  --font-heading: var(--font-display, 'Beaufort for LOL'), 'Constantia', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
   --font-text: var(--font-body, 'Spiegel'), 'Segoe UI', system-ui, sans-serif;
   --text-xs: 11px;
   --text-sm: 12px;

@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
+import { SFX } from '../../../ui/sfx.js';
 import { useDockStyle } from '../../hooks/useDockStyle.js';
+import { useSfx } from '../../hooks/useSfx.js';
 import { useInClientChromeHidden } from '../../hooks/useStreaming.js';
 import { useT } from '../../i18n/I18nProvider.jsx';
 import { useLegacyActions } from '../../shell/LegacyActions.jsx';
@@ -19,13 +21,23 @@ const RISE = {
 
 function DodgeDock({ dodge, onDodge }) {
   const t = useT();
+  const sfx = useSfx();
   const style = useDockStyle(dodge !== 'busy');
   return (
     <div className="drk-dock drk-dock--dodge" style={style}>
       <motion.div {...RISE}>
-        <Button variant="danger" disabled={dodge === 'busy'} onClick={onDodge}>
+        <button
+          type="button"
+          className="drk-hextech-btn drk-hextech-btn--danger"
+          disabled={dodge === 'busy'}
+          onMouseEnter={() => sfx.play(SFX.hover)}
+          onClick={() => {
+            sfx.play(SFX.secondary);
+            onDodge();
+          }}
+        >
           {t(`screens.queue.${DODGE_LABELS[dodge] || DODGE_LABELS.idle}`)}
-        </Button>
+        </button>
       </motion.div>
     </div>
   );
