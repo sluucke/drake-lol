@@ -101,6 +101,8 @@ pub struct Settings {
     pub build_region: String,
     #[serde(default = "default_ui_language")]
     pub ui_language: String,
+    #[serde(default)]
+    pub overlay_positions: crate::overlay::OverlayPositions,
     #[serde(default = "default_streaming_mode")]
     pub streaming_mode: String,
 }
@@ -279,6 +281,7 @@ impl Default for Settings {
             build_tier: default_build_tier(),
             build_region: default_build_region(),
             ui_language: default_ui_language(),
+            overlay_positions: crate::overlay::OverlayPositions::default(),
             streaming_mode: default_streaming_mode(),
         }
     }
@@ -543,6 +546,7 @@ pub struct SettingsPatch {
     pub build_tier: Option<String>,
     pub build_region: Option<String>,
     pub ui_language: Option<String>,
+    pub overlay_positions: Option<crate::overlay::OverlayPositions>,
     pub streaming_mode: Option<String>,
 }
 
@@ -645,6 +649,11 @@ impl SettingsPatch {
                 .clone()
                 .map(normalize_ui_language)
                 .unwrap_or_else(|| base.ui_language.clone()),
+            overlay_positions: self
+                .overlay_positions
+                .clone()
+                .map(crate::overlay::normalize_positions)
+                .unwrap_or_else(|| base.overlay_positions.clone()),
             streaming_mode: crate::streaming::normalize_streaming_mode(
                 &self
                     .streaming_mode
@@ -978,7 +987,8 @@ async fn overlay_snapshot(
         return Err(StatusCode::UNAUTHORIZED);
     }
     let settings = state.settings.lock().unwrap().clone();
-    let ui = state.overlay.lock().unwrap().ui.clone();
+    let mut ui = state.overlay.lock().unwrap().ui.clone();
+    ui.positions = settings.overlay_positions.clone();
     let chrome = ui
         .bounds
         .as_ref()
@@ -997,7 +1007,8 @@ async fn overlay_snapshot(
 #[derive(Deserialize)]
 struct OverlayUiBody {
     token: String,
-    panel_open: bool,
+    panel_open: Option<bool>,
+    dragging: Option<bool>,
 }
 
 async fn overlay_ui(
@@ -1009,7 +1020,12 @@ async fn overlay_ui(
     }
     {
         let mut bridge = state.overlay.lock().unwrap();
-        bridge.ui.panel_open = body.panel_open;
+        if let Some(open) = body.panel_open {
+            bridge.ui.panel_open = open;
+        }
+        if let Some(dragging) = body.dragging {
+            bridge.ui.dragging = dragging;
+        }
         bridge.mark_dirty();
     }
     StatusCode::NO_CONTENT
@@ -1500,6 +1516,53 @@ mod tests {
             .header("content-type", "application/json")
             .body(Body::from(body))
             .unwrap()
+    }
+
+    #[tokio::test]
+    async fn overlay_positions_persist_and_reset() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+        assert_eq!(state.settings.lock().unwrap().overlay_positions, crate::overlay::OverlayPositions::default());
+
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"overlay_positions":{"fab":{"x":2500,"y":90000},"dodge":null}}"#))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(
+            state.settings.lock().unwrap().overlay_positions.fab,
+            Some(crate::overlay::RelPos { x: 2500, y: 10000 })
+        );
+
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"overlay_positions":{"fab":null,"dodge":null}}"#))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.settings.lock().unwrap().overlay_positions, crate::overlay::OverlayPositions::default());
+    }
+
+    #[tokio::test]
+    async fn overlay_ui_tracks_dragging() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let req = |body: String| {
+            Request::builder()
+                .method("POST")
+                .uri("/overlay/ui")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap()
+        };
+        let res = router(state.clone())
+            .oneshot(req(format!(r#"{{"token":"{token}","dragging":true}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        let ui = state.overlay.lock().unwrap().ui.clone();
+        assert!(ui.dragging);
+        assert!(!ui.panel_open, "an omitted panel_open keeps its value");
     }
 
     #[tokio::test]

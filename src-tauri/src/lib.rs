@@ -446,8 +446,12 @@ pub fn run() {
                     );
                     let dirty = overlay_state.overlay.lock().unwrap().take_dirty();
                     let league = overlay::find_league_window();
-                    if let Some(ref lw) = league {
-                        overlay_state.overlay.lock().unwrap().ui.bounds = Some(lw.bounds.clone());
+                    {
+                        let mut bridge = overlay_state.overlay.lock().unwrap();
+                        if let Some(ref lw) = league {
+                            bridge.ui.bounds = Some(lw.bounds.clone());
+                        }
+                        bridge.ui.positions = settings.overlay_positions.clone();
                     }
                     let ui = overlay_state.overlay.lock().unwrap().ui.clone();
                     if overlay_mode {

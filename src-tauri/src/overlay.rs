@@ -14,9 +14,11 @@ pub struct ClientBounds {
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct OverlayUiState {
     pub panel_open: bool,
+    pub dragging: bool,
     pub ready_check: bool,
     pub dodge: bool,
     pub bounds: Option<ClientBounds>,
+    pub positions: OverlayPositions,
 }
 
 #[derive(Debug, Default)]
@@ -137,49 +139,104 @@ fn league_related_foreground(_league_hwnd: isize, _overlay_hwnd: Option<isize>) 
     false
 }
 
+pub const FAB_SIZE: (i32, i32) = (52, 52);
+pub const CANCEL_SIZE: (i32, i32) = (120, 48);
+pub const DODGE_SIZE: (i32, i32) = (96, 32);
+pub const REL_SCALE: u32 = 10_000;
+const MARGIN: i32 = 14;
+const CANCEL_BOTTOM: i32 = 48;
+const DODGE_RIGHT: i32 = 72;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RelPos {
+    pub x: u32,
+    pub y: u32,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct OverlayPositions {
+    #[serde(default)]
+    pub fab: Option<RelPos>,
+    #[serde(default)]
+    pub dodge: Option<RelPos>,
+}
+
+pub fn normalize_positions(positions: OverlayPositions) -> OverlayPositions {
+    let clamp = |rel: Option<RelPos>| {
+        rel.map(|r| RelPos {
+            x: r.x.min(REL_SCALE),
+            y: r.y.min(REL_SCALE),
+        })
+    };
+    OverlayPositions {
+        fab: clamp(positions.fab),
+        dodge: clamp(positions.dodge),
+    }
+}
+
+pub fn place_piece(
+    client: &ClientBounds,
+    rel: Option<RelPos>,
+    default: (i32, i32),
+    size: (i32, i32),
+) -> (i32, i32) {
+    let Some(rel) = rel else {
+        return default;
+    };
+    let max_x = client.x + (client.width as i32 - size.0).max(0);
+    let max_y = client.y + (client.height as i32 - size.1).max(0);
+    let x = client.x + (client.width as i64 * rel.x as i64 / REL_SCALE as i64) as i32;
+    let y = client.y + (client.height as i64 * rel.y as i64 / REL_SCALE as i64) as i32;
+    (x.clamp(client.x, max_x), y.clamp(client.y, max_y))
+}
+
 pub fn chrome_bounds(client: &ClientBounds, ui: &OverlayUiState) -> ClientBounds {
-    if ui.panel_open {
+    if ui.panel_open || ui.dragging {
         return client.clone();
     }
 
-    let fab_w = 52i32;
-    let fab_h = 52i32;
-    let margin = 14i32;
-    let mut left = client.x + client.width as i32 - margin - fab_w;
-    let mut top = client.y + client.height as i32 - margin - fab_h;
-    let mut right = left + fab_w;
-    let mut bottom = top + fab_h;
+    let right_edge = client.x + client.width as i32;
+    let bottom_edge = client.y + client.height as i32;
+    let fab = place_piece(
+        client,
+        ui.positions.fab,
+        (right_edge - MARGIN - FAB_SIZE.0, bottom_edge - MARGIN - FAB_SIZE.1),
+        FAB_SIZE,
+    );
+    let mut left = fab.0;
+    let mut top = fab.1;
+    let mut right = fab.0 + FAB_SIZE.0;
+    let mut bottom = fab.1 + FAB_SIZE.1;
+    let mut include = |pos: (i32, i32), size: (i32, i32)| {
+        left = left.min(pos.0);
+        top = top.min(pos.1);
+        right = right.max(pos.0 + size.0);
+        bottom = bottom.max(pos.1 + size.1);
+    };
 
     if ui.ready_check {
-        let dock_w = 120i32;
-        let dock_h = 48i32;
         let cx = client.x + client.width as i32 / 2;
-        let dock_left = cx - dock_w / 2;
-        let dock_top = client.y + client.height as i32 - 48 - dock_h;
-        left = left.min(dock_left);
-        top = top.min(dock_top);
-        right = right.max(dock_left + dock_w);
-        bottom = bottom.max(dock_top + dock_h);
+        include(
+            (cx - CANCEL_SIZE.0 / 2, bottom_edge - CANCEL_BOTTOM - CANCEL_SIZE.1),
+            CANCEL_SIZE,
+        );
     }
 
     if ui.dodge {
-        let dock_w = 110i32;
-        let dock_h = 48i32;
-        let dock_left = client.x + client.width as i32 - 72 - dock_w;
-        let dock_top = client.y + client.height as i32 - margin - dock_h;
-        left = left.min(dock_left);
-        top = top.min(dock_top);
-        right = right.max(dock_left + dock_w);
-        bottom = bottom.max(dock_top + dock_h);
+        let dodge = place_piece(
+            client,
+            ui.positions.dodge,
+            (right_edge - DODGE_RIGHT - DODGE_SIZE.0, bottom_edge - MARGIN - DODGE_SIZE.1),
+            DODGE_SIZE,
+        );
+        include(dodge, DODGE_SIZE);
     }
 
-    let width = (right - left).max(1) as u32;
-    let height = (bottom - top).max(1) as u32;
     ClientBounds {
         x: left,
         y: top,
-        width,
-        height,
+        width: (right - left).max(1) as u32,
+        height: (bottom - top).max(1) as u32,
     }
 }
 
@@ -636,6 +693,69 @@ mod tests {
             ..OverlayUiState::default()
         };
         assert_eq!(chrome_bounds(&client, &ui).width, 800);
+    }
+
+    fn client_1280() -> ClientBounds {
+        ClientBounds {
+            x: 100,
+            y: 50,
+            width: 1280,
+            height: 720,
+        }
+    }
+
+    #[test]
+    fn chrome_follows_a_custom_button_position() {
+        let ui = OverlayUiState {
+            positions: OverlayPositions {
+                fab: Some(RelPos { x: 5000, y: 5000 }),
+                dodge: None,
+            },
+            ..OverlayUiState::default()
+        };
+        let b = chrome_bounds(&client_1280(), &ui);
+        assert_eq!((b.x, b.y, b.width, b.height), (740, 410, FAB_SIZE.0 as u32, FAB_SIZE.1 as u32));
+    }
+
+    #[test]
+    fn custom_positions_stay_inside_the_client() {
+        let client = client_1280();
+        let (x, y) = place_piece(&client, Some(RelPos { x: 10000, y: 10000 }), (0, 0), FAB_SIZE);
+        assert_eq!((x, y), (100 + 1280 - FAB_SIZE.0, 50 + 720 - FAB_SIZE.1));
+    }
+
+    #[test]
+    fn chrome_fills_client_while_dragging() {
+        let ui = OverlayUiState {
+            dragging: true,
+            ..OverlayUiState::default()
+        };
+        assert_eq!(chrome_bounds(&client_1280(), &ui), client_1280());
+    }
+
+    #[test]
+    fn dodge_dock_is_compact() {
+        assert_eq!(DODGE_SIZE, (96, 32));
+        let ui = OverlayUiState {
+            dodge: true,
+            positions: OverlayPositions {
+                fab: None,
+                dodge: Some(RelPos { x: 0, y: 0 }),
+            },
+            ..OverlayUiState::default()
+        };
+        let b = chrome_bounds(&client_1280(), &ui);
+        assert_eq!((b.x, b.y), (100, 50));
+    }
+
+    #[test]
+    fn relative_positions_are_clamped() {
+        let p = normalize_positions(OverlayPositions {
+            fab: Some(RelPos { x: 20000, y: 3 }),
+            dodge: None,
+        });
+        assert_eq!(p.fab, Some(RelPos { x: 10000, y: 3 }));
+        assert_eq!(p.dodge, None);
     }
 
     #[test]
