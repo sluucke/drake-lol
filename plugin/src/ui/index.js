@@ -36,6 +36,7 @@ import { buildTeamRevealSnapshot } from '../features/teamRevealStats.js';
 import { makeTeamRevealDom } from './teamRevealDom.js';
 import { appliedEffective, createTrayHealth, effectiveFrom, overlayChromePolicy } from '../features/streaming.js';
 import { clientBoundsFromWindow, postOverlay } from '../features/overlayBridge.js';
+import { harvestClientFonts } from '../features/clientFonts.js';
 import { makeBuildPanel } from './buildPanel.js';
 import { makeProxyFetch } from '../features/proxyFetch.js';
 import { makeSummonerIdLoader } from '../features/summonerId.js';
@@ -44,6 +45,8 @@ import { createDrakeStore } from '../app/store/createDrakeStore.js';
 import { loadLocale } from '../app/i18n/loadLocale.js';
 
 const TAG = '[Drake]';
+const MAX_FONT_ATTEMPTS = 3;
+const FONT_RETRY_MS = 15000;
 
 function readLocalCell(session) {
   const cellId = Number(session?.localPlayerCellId ?? -1);
@@ -92,6 +95,10 @@ export function startUI({
   let streamingEffective = desiredEffective;
   const trayHealth = createTrayHealth();
   let panelApi = null;
+  let fontsShared = false;
+  let fontsSharing = false;
+  let fontAttempts = 0;
+  let nextFontAttemptAt = 0;
   let openMode = overlayHost
     ? 'default'
     : decideOpenMode({
@@ -331,6 +338,29 @@ export function startUI({
     }).catch(() => null);
     trayHealth.record(result !== null);
     refreshStreamingEffective();
+  }
+
+  async function shareFontsWithOverlay() {
+    if (overlayHost || fontsShared || fontsSharing || desiredEffective !== 'overlay') return;
+    if (fontAttempts >= MAX_FONT_ATTEMPTS || Date.now() < nextFontAttemptAt) return;
+    fontsSharing = true;
+    fontAttempts += 1;
+    nextFontAttemptAt = Date.now() + FONT_RETRY_MS;
+    try {
+      const fonts = await harvestClientFonts(document);
+      if (!fonts.length) {
+        fontsShared = true;
+        console.log(TAG, 'no League fonts found to share with the overlay');
+        return;
+      }
+      const result = await postOverlay(cfg.port, cfg.token, '/overlay/fonts', { fonts }).catch(() => null);
+      if (result !== null) {
+        fontsShared = true;
+        console.log(TAG, 'shared', fonts.length, 'League fonts with the overlay');
+      }
+    } finally {
+      fontsSharing = false;
+    }
   }
 
   async function drainOverlayActions() {
@@ -866,6 +896,7 @@ export function startUI({
         void pollStreaming().catch(() => {});
         void pushOverlayPluginState();
         void drainOverlayActions();
+        void shareFontsWithOverlay();
       }, 750);
     }
   }
