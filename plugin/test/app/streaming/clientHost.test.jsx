@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, waitFor } from '@testing-library/react';
 import { SOCIAL_BAR_SELECTOR } from '../../../src/ui/socialToggle.js';
+import { clearIntervalsAfterEach } from './intervals.js';
 
 function fakeLcu() {
   const reply = async () => null;
@@ -36,6 +37,8 @@ async function boot(cfgExtra) {
   const ui = startUI({ cfg, lcu: fakeLcu(), reloadConfig: async () => ({ ...cfg }) });
   return { ui, posts };
 }
+
+clearIntervalsAfterEach();
 
 describe('client host', () => {
   it('opens the panel from the social bar button when streaming is off', async () => {

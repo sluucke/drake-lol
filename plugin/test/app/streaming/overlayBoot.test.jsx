@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, waitFor } from '@testing-library/react';
+import { clearIntervalsAfterEach } from './intervals.js';
 
 function fakeTray(settings = { queue_dodge_in_client: true }) {
   const state = { panel_open: false, modal_open: false, views: [], posts: [] };
@@ -33,6 +34,8 @@ function fakeTray(settings = { queue_dodge_in_client: true }) {
 afterEach(() => {
   vi.restoreAllMocks();
 });
+
+clearIntervalsAfterEach();
 
 describe('overlay boot', () => {
   it('mounts the app and opens the panel from Ctrl+D', async () => {
