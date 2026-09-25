@@ -1,59 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeBuildPanel, CACHE_TTL_MS } from '../src/ui/buildPanel.js';
 
-function makeNode() {
-  const node = {
-    className: '',
-    hidden: true,
-    innerHTML: '',
-    dataset: {},
-    style: { display: '' },
-    children: [],
-    listeners: {},
-    appendChild(child) {
-      this.children.push(child);
-      child.parentNode = this;
-      return child;
-    },
-    querySelector() {
-      return null;
-    },
-    addEventListener(type, handler) {
-      (this.listeners[type] ||= []).push(handler);
-    },
-    removeEventListener() {},
-    emit(type, event) {
-      for (const handler of this.listeners[type] || []) handler(event);
-    },
-  };
-  return node;
-}
-
-function makeRoot() {
-  const root = makeNode();
-  root.ownerDocument = { createElement: () => makeNode() };
-  return root;
-}
-
-function clickEvent(dataset) {
-  const target = {
-    dataset,
-    closest: (sel) => {
-      const key = sel.replace(/^\[|\]$/g, '').replace(/=.*$/, '');
-      const prop = key.replace(/^data-/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-      return dataset[prop] !== undefined ? target : null;
-    },
-    matches: () => false,
-  };
-  return { target, stopPropagation: vi.fn(), preventDefault: vi.fn() };
-}
-
 const SESSION = { championId: 157, position: 'MIDDLE', mode: 'ranked' };
 
 function makeDeps(overrides = {}) {
   return {
-    doc: { createElement: () => makeNode() },
-    overlayRoot: makeRoot(),
     lcu: { get: vi.fn(), put: vi.fn(), patch: vi.fn() },
     fetchFn: vi.fn(),
     getChampName: (id) => (id === 157 ? 'Yasuo' : `Champion ${id}`),
@@ -142,8 +93,7 @@ describe('makeBuildPanel', () => {
     panel.open();
     await flush();
 
-    const overlay = deps.overlayRoot.children[0];
-    overlay.emit('change', { target: { dataset: { buildTier: '' }, value: 'challenger', matches: () => true, closest: () => null } });
+    panel.setTier('challenger');
     await flush();
 
     expect(deps.fetchChampionBuildImpl).toHaveBeenLastCalledWith(
@@ -151,36 +101,6 @@ describe('makeBuildPanel', () => {
       expect.anything()
     );
     expect(deps.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ build_tier: 'challenger' }));
-  });
-
-  it('resolves tier changes when the event target is a nested dropdown option', async () => {
-    const deps = makeDeps();
-    const panel = makeBuildPanel(deps);
-    panel.setSession(SESSION);
-    panel.open();
-    await flush();
-
-    const dropdown = {
-      dataset: { buildTier: '' },
-      value: 'diamond_plus',
-      matches: (sel) => sel === '[data-build-tier]',
-      closest: (sel) => (sel === '[data-build-tier]' ? dropdown : null),
-    };
-    const option = {
-      value: '',
-      matches: () => false,
-      closest: (sel) => (sel === '[data-build-tier]' ? dropdown : null),
-      dataset: {},
-    };
-    const overlay = deps.overlayRoot.children[0];
-    overlay.emit('change', { target: option, composedPath: () => [option, dropdown] });
-    await flush();
-
-    expect(deps.fetchChampionBuildImpl).toHaveBeenLastCalledWith(
-      expect.objectContaining({ tier: 'diamond_plus' }),
-      expect.anything()
-    );
-    expect(panel.getState().tier).toBe('diamond_plus');
   });
 
   it('re-reads settings on open so a save made after construction reaches the panel', async () => {
@@ -210,8 +130,7 @@ describe('makeBuildPanel', () => {
     panel.open();
     await flush();
 
-    const overlay = deps.overlayRoot.children[0];
-    overlay.emit('change', { target: { dataset: { buildTier: '' }, value: 'challenger', matches: () => true, closest: () => null } });
+    panel.setTier('challenger');
     await flush();
 
     // getSettings() still reflects the pre-change value (save is async /
@@ -233,8 +152,7 @@ describe('makeBuildPanel', () => {
     panel.open();
     await flush();
 
-    const overlay = deps.overlayRoot.children[0];
-    expect(overlay.innerHTML).toContain('data-build-retry');
+    expect(panel.getSnapshot().error).toBeTruthy();
   });
 
   it('applies the selected rune page', async () => {
@@ -244,8 +162,7 @@ describe('makeBuildPanel', () => {
     panel.open();
     await flush();
 
-    const overlay = deps.overlayRoot.children[0];
-    overlay.emit('click', clickEvent({ buildApplyRunes: '0' }));
+    panel.applyRunes(0);
     await flush();
 
     expect(deps.applyRunePageImpl).toHaveBeenCalledWith(
@@ -261,7 +178,7 @@ describe('makeBuildPanel', () => {
     panel.open();
     await flush();
 
-    deps.overlayRoot.children[0].emit('click', clickEvent({ buildApplySpells: '0' }));
+    panel.applySpells(0);
     await flush();
 
     expect(deps.applySummonerSpellsImpl).toHaveBeenCalledWith(deps.lcu, { spell1Id: 4, spell2Id: 14 });
@@ -274,30 +191,17 @@ describe('makeBuildPanel', () => {
     panel.open();
     await flush();
 
-    const overlay = deps.overlayRoot.children[0];
-    overlay.emit('click', clickEvent({ buildPlayer: 'Hide on bush#KR1', buildPlayerRegion: 'kr' }));
+    panel.viewPlayer('Hide on bush#KR1', 'kr');
     await flush();
     expect(deps.fetchPlayerBuildImpl).toHaveBeenCalledWith(
       expect.objectContaining({ riotId: 'Hide on bush#KR1', championId: 157 }),
       expect.anything()
     );
-    expect(overlay.innerHTML).toContain('data-build-clear-player');
+    expect(panel.getSnapshot().viewingPlayer).toBeTruthy();
 
-    overlay.emit('click', clickEvent({ buildClearPlayer: '' }));
+    panel.clearPlayer();
     await flush();
-    expect(overlay.innerHTML).not.toContain('data-build-clear-player');
-  });
-
-  it('closes on the close button and on escape', async () => {
-    const deps = makeDeps();
-    const panel = makeBuildPanel(deps);
-    panel.setSession(SESSION);
-    panel.open();
-    await flush();
-    expect(panel.isOpen()).toBe(true);
-
-    deps.overlayRoot.children[0].emit('click', clickEvent({ buildClose: '' }));
-    expect(panel.isOpen()).toBe(false);
+    expect(panel.getSnapshot().viewingPlayer).toBeFalsy();
   });
 
   it('clears state when the champion changes', async () => {
@@ -330,20 +234,17 @@ describe('makeBuildPanel', () => {
     panel.open();
     await flush();
 
-    const overlay = deps.overlayRoot.children[0];
-    overlay.emit('click', clickEvent({ buildPlayer: 'Hide on bush#KR1', buildPlayerRegion: 'kr' }));
+    panel.viewPlayer('Hide on bush#KR1', 'kr');
     await flush();
 
-    // Clear the selection before the in-flight player-build fetch resolves.
-    overlay.emit('click', clickEvent({ buildClearPlayer: '' }));
+    panel.clearPlayer();
     await flush();
-    expect(overlay.innerHTML).not.toContain('data-build-clear-player');
+    expect(panel.getSnapshot().viewingPlayer).toBeFalsy();
 
     resolvePlayerBuild({ ok: true, data: { runePages: [], items: [9999] } });
     await flush();
 
-    // The stale response must not resurrect the "viewing player" state.
-    expect(overlay.innerHTML).not.toContain('data-build-clear-player');
+    expect(panel.getSnapshot().viewingPlayer).toBeFalsy();
   });
 
   it('keeps top players scoped to the champion when the build is restored from cache', async () => {
@@ -366,9 +267,9 @@ describe('makeBuildPanel', () => {
     panel.setSession(SESSION);
     await flush();
 
-    const overlay = deps.overlayRoot.children[0];
-    expect(overlay.innerHTML).toContain('YasuoPlayer#KR1');
-    expect(overlay.innerHTML).not.toContain('AhriPlayer#KR1');
+    const names = panel.getSnapshot().topPlayers.players.map((p) => p.name);
+    expect(names).toContain('YasuoPlayer#KR1');
+    expect(names).not.toContain('AhriPlayer#KR1');
   });
 });
 
@@ -384,7 +285,7 @@ describe('makeBuildPanel late champion names', () => {
     return { deps, arrive: () => champs.push({ id: 157, name: 'Yasuo' }) };
   }
 
-  it('renders the real champion name once the list arrives after setSession', async () => {
+  it('resolves the real champion name once the list arrives after setSession', async () => {
     const { deps, arrive } = makeLateNameDeps();
     const panel = makeBuildPanel(deps);
 
@@ -392,17 +293,13 @@ describe('makeBuildPanel late champion names', () => {
     panel.open();
     await flush();
 
-    const overlay = deps.overlayRoot.children[0];
-    expect(overlay.innerHTML).toContain('Champion');
-    expect(overlay.innerHTML).not.toContain('Yasuo');
+    expect(panel.getSnapshot().championName).not.toBe('Yasuo');
 
-    // The names land, and champ select re-feeds the identical session.
     arrive();
     panel.setSession(SESSION);
     await flush();
 
-    expect(overlay.innerHTML).toContain('Yasuo');
-    expect(overlay.innerHTML).not.toContain('>Champion<');
+    expect(panel.getSnapshot().championName).toBe('Yasuo');
   });
 
   it('re-queries the leaderboard with the real name after it arrives', async () => {

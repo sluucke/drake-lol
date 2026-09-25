@@ -17728,20 +17728,6 @@
 
   // src/ui/drakeSelect.js
   var TAG = "[Drake]";
-  function renderDrakeSelectHtml(id3, options, selectedValue, { disabled = false, extraAttrs = {} } = {}) {
-    const selected = options.find((o) => String(o.value) === String(selectedValue)) || options[0] || { value: "", label: "" };
-    const attrs = Object.entries(extraAttrs).map(([key, val]) => val === true ? ` ${key}` : val == null || val === false ? "" : ` ${key}="${escapeHtml(String(val))}"`).join("");
-    const optionsHtml = options.map(
-      (o) => `<div class="drake-select-option${String(o.value) === String(selected.value) ? " is-selected" : ""}" data-value="${escapeHtml(o.value)}" role="option">${escapeHtml(o.label)}</div>`
-    ).join("");
-    return `<div class="drake-select select-field" id="${escapeHtml(id3)}" data-value="${escapeHtml(selected.value)}" tabindex="0" role="listbox"${disabled ? ' aria-disabled="true"' : ""}${attrs}>
-    <div class="drake-select-current">${escapeHtml(selected.label)}</div>
-    <div class="drake-select-list">${optionsHtml}</div>
-  </div>`;
-  }
-  function escapeHtml(value) {
-    return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  }
   function closeAllDrakeSelects(root, exceptEl = null) {
     if (!root?.querySelectorAll) return;
     for (const select of root.querySelectorAll(".drake-select.is-open")) {
@@ -19819,404 +19805,10 @@
     }
   }
 
-  // src/ui/buildPanelRender.js
-  var SPINNER = `<svg class="build-spinner" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="26" stroke-dashoffset="8"/></svg>`;
-  function esc(value) {
-    return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  }
-  function pct(value) {
-    if (value === null || value === void 0 || Number.isNaN(Number(value))) return "\u2014";
-    const num = Number(value);
-    return `${Number.isInteger(num) ? num : Math.round(num * 10) / 10}%`;
-  }
-  function wrClass(winRate2) {
-    if (winRate2 === null || winRate2 === void 0 || Number.isNaN(Number(winRate2))) return "build-wr";
-    const num = Number(winRate2);
-    if (num >= 50) return "build-wr is-positive";
-    return "build-wr is-negative";
-  }
-  function formatGames(count) {
-    if (!count && count !== 0) return "";
-    const num = Number(count);
-    if (!Number.isFinite(num) || num <= 0) return "";
-    return ` (${num.toLocaleString()})`;
-  }
-  function tierToRankIconKey(tierKey) {
-    const raw = String(tierKey || "").trim().toLowerCase();
-    if (raw.includes("challenger")) return "CHALLENGER";
-    if (raw.includes("grandmaster")) return "GRANDMASTER";
-    if (raw.includes("master")) return "MASTER";
-    if (raw.includes("diamond")) return "DIAMOND";
-    if (raw.includes("emerald")) return "EMERALD";
-    if (raw.includes("platinum")) return "PLATINUM";
-    if (raw.includes("gold")) return "GOLD";
-    if (raw.includes("silver")) return "SILVER";
-    if (raw.includes("bronze")) return "BRONZE";
-    if (raw.includes("iron")) return "IRON";
-    return "UNRANKED";
-  }
-  function statusLabel(status, idle, done) {
-    if (status === "applying") return "Applying\u2026";
-    if (status === "applied") return done;
-    if (status === "failed") return "Failed \u2014 retry";
-    return idle;
-  }
-  function itemIcon(id3, isHextech = false) {
-    return `<span class="build-item ${isHextech ? "hextech-item" : ""}" title="${esc(itemName(id3))}"><img class="build-item-icon ${isHextech ? "hextech-icon" : ""}" src="${esc(itemIconUrl(id3))}" alt="${esc(itemName(id3))}"></span>`;
-  }
-  function renderPanelHeader(state) {
-    const selectedTier = OPGG_TIERS.find((tier) => tier.value === state.tier) || OPGG_TIERS[0];
-    const selectedRegion = OPGG_REGIONS.find((region) => region.value === state.region) || OPGG_REGIONS[0];
-    const tierSelectHtml = renderDrakeSelectHtml(
-      "build-tier",
-      OPGG_TIERS,
-      selectedTier.value,
-      { extraAttrs: { "data-build-tier": true } }
-    );
-    const regionSelectHtml = renderDrakeSelectHtml(
-      "build-region",
-      OPGG_REGIONS,
-      selectedRegion.value,
-      { extraAttrs: { "data-build-region": true } }
-    );
-    const selectedTierIcon = RANK_ICONS[tierToRankIconKey(selectedTier.value)] || RANK_ICONS.UNRANKED;
-    const stats = state.build?.stats;
-    const statsHtml = stats ? `<div class="build-stats">
-        <span class="build-stat"><b class="${wrClass(stats.winRate)}">${pct(stats.winRate)}</b> Win</span>
-        <span class="build-stat"><b>${pct(stats.pickRate)}</b> Pick</span>
-        <span class="build-stat"><b>${pct(stats.banRate)}</b> Ban</span>
-        <span class="build-stat"><b>${esc(stats.kda ?? "\u2014")}</b> KDA</span>
-        <span class="build-stat"><b>${esc(stats.play?.toLocaleString?.() || stats.play || 0)}</b> Games</span>
-      </div>` : "";
-    const role = state.position ? `<span class="build-role">${roleIconUrl(state.position) ? `<img class="build-role-icon" src="${esc(roleIconUrl(state.position))}" alt="">` : ""}<span>${esc(roleLabel(state.position) || state.position)}</span></span>` : "";
-    return `<header class="build-header">
-    <div class="build-identity">
-      ${state.championId ? `<img class="build-champ-icon" src="${esc(iconUrl(state.championId))}" alt="${esc(state.championName)}">` : ""}
-      <div class="build-identity-meta">
-        <div class="build-champ-name">${esc(state.championName || "Champion")}</div>
-        <div class="build-identity-sub">${role}<span class="build-mode-tag">${state.mode === "aram" ? "ARAM" : "Ranked"}</span>${state.patch ? `<span class="build-patch">Patch ${esc(state.patch)}</span>` : ""}</div>
-      </div>
-    </div>
-    <div class="build-filters">
-      <div class="build-filter"><span>Rank</span>
-        <div class="build-select-wrap">
-          <img class="build-filter-rank-icon" src="${selectedTierIcon}" alt="">
-          ${tierSelectHtml}
-        </div>
-      </div>
-      <div class="build-filter"><span>Region</span>
-        ${regionSelectHtml}
-      </div>
-    </div>
-    ${statsHtml}
-    <button class="build-close" type="button" data-build-close aria-label="Close">\xD7</button>
-  </header>`;
-  }
-  function itemPhaseRow(label, entry) {
-    if (!entry) return "";
-    return `<div class="build-item-phase">
-    <span class="build-item-phase-label">${esc(label)}</span>
-    <div class="build-icons">${entry.ids.map((id3) => itemIcon(id3)).join('<span class="build-arrow">\u203A</span>')}</div>
-    <span class="build-row-stats">
-      <span class="${wrClass(entry.winRate)}">${pct(entry.winRate)} WR</span>
-      <span class="build-pr">${pct(entry.pickRate)}${formatGames(entry.play)}</span>
-    </span>
-  </div>`;
-  }
-  function coreItemRows(core) {
-    return core.map(
-      (entry, index) => `<div class="build-row ${index === 0 ? "hextech-highlight" : ""}">
-        <div class="build-row-lead">
-          <span class="build-row-num ${index === 0 ? "hextech-badge" : ""}">${index + 1}.</span>
-          <div class="build-icons">${entry.ids.map((id3, itemIdx) => itemIcon(id3, index === 0 && itemIdx === 0)).join('<span class="build-arrow">\u203A</span>')}</div>
-        </div>
-        <div class="build-row-stats">
-          <span class="${wrClass(entry.winRate)}">${pct(entry.winRate)} WR</span>
-          <span class="build-pr">${pct(entry.pickRate)}${formatGames(entry.play)}</span>
-          <span class="build-bar"><i style="width:${Math.min(100, Number(entry.pickRate) || 0)}%"></i></span>
-        </div>
-      </div>`
-    ).join("");
-  }
-  function situationalItemsRow(last) {
-    if (!last.length) return "";
-    const cells = last.map(
-      (entry) => `<div class="build-trend-cell">
-        <span class="build-trend-rate">${pct(entry.pickRate)}</span>
-        ${entry.ids.slice(0, 1).map((id3) => itemIcon(id3)).join("")}
-      </div>`
-    ).join("");
-    return `<div class="build-item-phase build-item-phase-situational">
-    <span class="build-item-phase-label">Situational</span>
-    <div class="build-trend">${cells}</div>
-  </div>`;
-  }
-  function renderItemsCard(state) {
-    const items2 = state.build?.items || {};
-    const core = items2.core || [];
-    const applying = state.itemSetStatus === "applying";
-    const body = [
-      itemPhaseRow("Starter", items2.starter?.[0]),
-      itemPhaseRow("Boots", items2.boots?.[0]),
-      core.length ? `<div class="build-item-phase-label build-item-phase-label-core">Core</div>${coreItemRows(core)}` : "",
-      situationalItemsRow(items2.last || [])
-    ].filter(Boolean).join("");
-    return `<section class="build-card build-items-card">
-    <div class="build-card-title">
-      <span>Items</span>
-      <button class="build-action" type="button" data-build-apply-items${applying ? " disabled" : ""}>${esc(
-      statusLabel(state.itemSetStatus, "Create Item Set", "Applied")
-    )}</button>
-    </div>
-    ${body || '<div class="build-empty">No item data</div>'}
-  </section>`;
-  }
-  function renderRunesCard(state) {
-    const pages = state.build?.runePages || [];
-    if (!pages.length) {
-      return `<section class="build-card build-runes-card">
-      <div class="build-card-title"><span>Runes</span></div>
-      <div class="build-empty">No rune data</div>
-    </section>`;
-    }
-    const applying = state.runeStatus === "applying";
-    const rows = pages.map((page, index) => {
-      const shards = page.selectedPerkIds.filter((id3) => id3 >= 5e3 && id3 < 6e3);
-      const perks2 = page.selectedPerkIds.filter((id3) => id3 < 5e3 || id3 >= 6e3);
-      const keystone = perks2[0];
-      const primaryMinors = perks2.slice(1, 4);
-      const secondaryMinors = perks2.slice(4);
-      const primaryMinorIcons = primaryMinors.map(
-        (id3) => `<img class="build-perk-icon" src="${esc(perkIconUrl(id3))}" alt="${esc(perkName(id3))}" title="${esc(perkName(id3))}">`
-      ).join("");
-      const secondaryMinorIcons = secondaryMinors.map(
-        (id3) => `<img class="build-perk-icon" src="${esc(perkIconUrl(id3))}" alt="${esc(perkName(id3))}" title="${esc(perkName(id3))}">`
-      ).join("");
-      const shardIcons = shards.map(
-        (id3) => `<img class="build-shard-icon" src="${esc(perkIconUrl(id3))}" alt="${esc(perkName(id3))}" title="${esc(perkName(id3))}">`
-      ).join("");
-      return `<div class="build-row build-rune-row">
-        <div class="build-rune-top-line">
-          <div class="build-row-lead">
-            <span class="build-row-num">${index + 1}.</span>
-            <div class="build-rune-strip">
-              <div class="build-rune-tree-group">
-                <img class="build-style-icon" src="${esc(perkStyleIconUrl(page.primaryStyleId))}" alt="${esc(perkStyleName(page.primaryStyleId))}" title="${esc(perkStyleName(page.primaryStyleId))}">
-                <img class="build-keystone-icon" src="${esc(perkIconUrl(keystone))}" alt="${esc(perkName(keystone))}" title="${esc(perkName(keystone))}">
-                ${primaryMinorIcons}
-              </div>
-              <span class="build-rune-divider"></span>
-              <div class="build-rune-tree-group">
-                <img class="build-style-icon secondary" src="${esc(perkStyleIconUrl(page.subStyleId))}" alt="${esc(perkStyleName(page.subStyleId))}" title="${esc(perkStyleName(page.subStyleId))}">
-                ${secondaryMinorIcons}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="build-rune-bottom-line">
-          <div class="build-rune-shards-group">
-            ${shardIcons}
-          </div>
-          <div class="build-row-stats">
-            <span class="${wrClass(page.winRate)}">${pct(page.winRate)} WR</span>
-            <span class="build-pr">${pct(page.pickRate)}${formatGames(page.play)}</span>
-            <button class="build-action" type="button" data-build-apply-runes="${index}"${applying ? " disabled" : ""}>${esc(
-        statusLabel(state.runeStatus, "Apply", "Applied")
-      )}</button>
-          </div>
-        </div>
-      </div>`;
-    }).join("");
-    return `<section class="build-card build-runes-card">
-    <div class="build-card-title"><span>Runes</span></div>
-    ${rows}
-  </section>`;
-  }
-  function renderSpellsCard(state) {
-    const spells2 = state.build?.spells || [];
-    const applying = state.spellStatus === "applying";
-    const rows = spells2.map(
-      (entry, index) => `<div class="build-row">
-        <div class="build-row-lead">
-          <span class="build-row-num">${index + 1}.</span>
-          <div class="build-icons">${entry.ids.map(
-        (id3) => `<img class="build-spell-icon" src="${esc(spellIconUrl(id3))}" alt="${esc(spellName(id3))}" title="${esc(spellName(id3))}">`
-      ).join("")}</div>
-        </div>
-        <div class="build-row-stats">
-          <span class="${wrClass(entry.winRate)}">${pct(entry.winRate)} WR</span>
-          <span class="build-pr">${pct(entry.pickRate)}${formatGames(entry.play)}</span>
-          <button class="build-action" type="button" data-build-apply-spells="${index}"${applying ? " disabled" : ""}>${esc(
-        statusLabel(state.spellStatus, "Apply", "Applied")
-      )}</button>
-        </div>
-      </div>`
-    ).join("");
-    return `<section class="build-card build-spells-card">
-    <div class="build-card-title"><span>Summoner Spells</span></div>
-    ${rows || '<div class="build-empty">No spell data</div>'}
-  </section>`;
-  }
-  function renderSkillOrder(state) {
-    const skills = state.build?.skills;
-    if (!skills?.order?.length && !skills?.masteries?.length) return "";
-    const order = skills.order || [];
-    const keys = ["Q", "W", "E", "R"];
-    const totalSteps = 15;
-    const rows = keys.map((key) => {
-      const cells = [];
-      for (let level = 1; level <= totalSteps; level++) {
-        const stepSkill = order[level - 1];
-        const isActive = stepSkill === key;
-        cells.push(
-          `<td class="build-skill-grid-cell ${isActive ? "is-active" : ""}">${isActive ? level : ""}</td>`
-        );
-      }
-      return `<tr>
-        <th class="build-skill-key-th"><span class="build-skill-key-badge">${key}</span></th>
-        ${cells.join("")}
-      </tr>`;
-    }).join("");
-    const statsNote = skills.winRate != null || skills.play ? `<div class="build-skill-stats-note">
-        ${skills.winRate != null ? `<span class="${wrClass(skills.winRate)}"><b>${pct(skills.winRate)}</b> Win Rate</span>` : ""}
-        ${skills.play ? `<span class="build-skill-games"><b>${skills.play.toLocaleString()}</b> Games</span>` : ""}
-      </div>` : "";
-    return `<section class="build-card build-skills-card">
-    <div class="build-card-title"><span>Skill Order</span></div>
-    <div class="build-skill-table-wrap">
-      <table class="build-skill-table">
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-    ${statsNote}
-  </section>`;
-  }
-  function counterList(entries, getChampName, className) {
-    if (!entries.length) return `<div class="build-empty">No data</div>`;
-    return entries.map(
-      (entry) => `<div class="build-counter ${className}">
-        <img class="build-counter-icon" src="${esc(iconUrl(entry.championId))}" alt="">
-        <span class="build-counter-name">${esc(getChampName(entry.championId))}</span>
-        <span class="${wrClass(entry.winRate)}">${pct(entry.winRate)}</span>
-        <span class="build-counter-play">${esc(entry.play?.toLocaleString?.() || entry.play)}</span>
-      </div>`
-    ).join("");
-  }
-  function renderCounters(state) {
-    if (state.mode === "aram") return "";
-    const counters = state.build?.counters;
-    if (!counters) return "";
-    const getChampName = state.getChampName || ((id3) => `Champion ${id3}`);
-    return `<section class="build-card build-counters-card">
-    <div class="build-card-title"><span>Matchups</span></div>
-    <div class="build-counters">
-      <div class="build-counter-col">
-        <div class="build-counter-head is-strong">Strong Against</div>
-        ${counterList(counters.strong || [], getChampName, "is-strong")}
-      </div>
-      <div class="build-counter-col">
-        <div class="build-counter-head is-weak">Weak Against</div>
-        ${counterList(counters.weak || [], getChampName, "is-weak")}
-      </div>
-    </div>
-  </section>`;
-  }
-  function renderTopPlayers(state) {
-    const top = state.topPlayers || { loading: false, ok: false, players: [], reason: "" };
-    let body;
-    if (top.loading) {
-      body = `<div class="build-loading">${SPINNER} <span>Loading players\u2026</span></div>`;
-    } else if (!top.ok || !top.players?.length) {
-      body = `<div class="build-empty">${esc(top.reason || "Unavailable")}</div>`;
-    } else {
-      const rows = top.players.map((player) => {
-        const rankKey = tierToRankIconKey(player.tier);
-        const iconSrc = RANK_ICONS[rankKey] || RANK_ICONS.UNRANKED;
-        const games = player.played?.toLocaleString?.() || player.played || "\u2014";
-        return `<button class="build-toplist-row" type="button" data-build-player="${esc(player.name)}" data-build-player-region="${esc(player.region || "kr")}" title="${esc(player.tier || "")} \xB7 ${esc(games)} games">
-          <span class="build-toplist-rank">#${esc(player.ranking ?? "\u2014")}</span>
-          <img class="build-toplist-tier-icon" src="${iconSrc}" alt="">
-          <span class="build-toplist-name">${esc(player.name || "Unknown")}</span>
-          <span class="${wrClass(player.winRate)}">${player.winRate != null ? pct(player.winRate) : "\u2014"}</span>
-        </button>`;
-      }).join("");
-      body = `<div class="build-toplist">${rows}</div>`;
-    }
-    return `<section class="build-card build-players-card">
-    <div class="build-card-title"><span>Top Players (OP.GG)</span></div>
-    ${body}
-  </section>`;
-  }
-  function renderBuildPanel(state) {
-    const viewingToast = state.viewingPlayer ? `<div class="build-viewing-toast" data-build-viewing-toast>
-        <span class="build-viewing-toast-icon">\u{1F441}</span>
-        <span class="build-viewing-toast-text">Viewing player build: <b>${esc(state.viewingPlayer)}</b></span>
-        <button class="build-viewing-toast-close" type="button" data-build-clear-player title="Restore default build">\u2715 Restore core build</button>
-      </div>` : "";
-    if (!state.championId) {
-      return `<div class="build-panel">
-      ${renderPanelHeader(state)}
-      ${viewingToast}
-      <div class="build-placeholder">Pick a champion to see build recommendations</div>
-    </div>`;
-    }
-    if (state.loading) {
-      return `<div class="build-panel">
-      ${renderPanelHeader(state)}
-      ${viewingToast}
-      <div class="build-placeholder">${SPINNER} <span>Loading build data\u2026</span></div>
-    </div>`;
-    }
-    if (state.error) {
-      return `<div class="build-panel">
-      ${renderPanelHeader(state)}
-      ${viewingToast}
-      <div class="build-placeholder is-error">
-        <span>${esc(state.error)}</span>
-        <button class="build-action" type="button" data-build-retry>Retry</button>
-      </div>
-    </div>`;
-    }
-    if (!state.build?.hasData) {
-      const tierLabel = OPGG_TIERS.find((t) => t.value === state.tier)?.label || state.tier;
-      return `<div class="build-panel">
-      ${renderPanelHeader(state)}
-      ${viewingToast}
-      <div class="build-placeholder">
-        <span>No data for ${esc(tierLabel)}</span>
-        <button class="build-action" type="button" data-build-tier-all>See All Ranks</button>
-      </div>
-    </div>`;
-    }
-    return `<div class="build-panel">
-    ${renderPanelHeader(state)}
-    ${viewingToast}
-    <div class="build-body">
-      <aside class="build-sidebar">
-        ${renderTopPlayers(state)}
-        ${renderCounters(state)}
-      </aside>
-      <div class="build-main">
-        <div class="build-main-col">
-          ${renderRunesCard(state)}
-          ${renderItemsCard(state)}
-        </div>
-        <div class="build-main-col">
-          ${renderSkillOrder(state)}
-          ${renderSpellsCard(state)}
-        </div>
-      </div>
-    </div>
-  </div>`;
-  }
-
   // src/ui/buildPanel.js
   var TAG7 = "[Drake]";
   var CACHE_TTL_MS = 10 * 60 * 1e3;
   function makeBuildPanel({
-    headless = false,
-    doc,
-    overlayRoot,
     lcu: lcu2,
     fetchFn = globalThis.fetch,
     getChampName = () => "",
@@ -20237,7 +19829,6 @@
     const settings = getSettings() || {};
     let open = false;
     let enabled = true;
-    let overlay = null;
     let generation = 0;
     let hasOpenedOnce = false;
     const listeners = /* @__PURE__ */ new Set();
@@ -20281,20 +19872,6 @@
     function cacheKey() {
       return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}`;
     }
-    function ensureOverlay() {
-      if (headless) return null;
-      if (overlay) return overlay;
-      const owner = overlayRoot?.ownerDocument || doc;
-      const node = owner?.createElement?.("div");
-      if (!node) return null;
-      node.className = "build-overlay";
-      node.hidden = true;
-      if (node.style) node.style.display = "none";
-      overlayRoot?.appendChild?.(node);
-      overlay = node;
-      wireEvents(node);
-      return node;
-    }
     function refreshChampionName() {
       if (!state.championId || state.championName) return false;
       const name = getChampName(state.championId) || "";
@@ -20304,17 +19881,6 @@
     }
     function paint() {
       refreshChampionName();
-      const node = ensureOverlay();
-      if (node) {
-        node.hidden = !open;
-        if (node.style) node.style.display = open ? "flex" : "none";
-        if (open) {
-          node.innerHTML = renderBuildPanel(state);
-          wireDrakeSelects(node, ({ dropdown, value }) => {
-            applyDropdownSelect(dropdown, value);
-          });
-        }
-      }
       notify();
     }
     function setTier(value) {
@@ -20330,20 +19896,6 @@
       void saveSettings({ build_region: state.region });
       void loadBuild();
       notify();
-    }
-    function applyDropdownSelect(dropdown, value) {
-      if (!dropdown || !value) return false;
-      const isTier = dropdown.matches?.("[data-build-tier]") || dropdown.dataset?.buildTier !== void 0;
-      const isRegion = dropdown.matches?.("[data-build-region]") || dropdown.dataset?.buildRegion !== void 0;
-      if (isTier) {
-        setTier(value);
-        return true;
-      }
-      if (isRegion) {
-        setRegion(value);
-        return true;
-      }
-      return false;
     }
     function clearPlayer() {
       generation += 1;
@@ -20504,85 +20056,6 @@
       }
       paint();
     }
-    function readChangeValue(event, target) {
-      return target?.value ?? event?.detail?.value ?? "";
-    }
-    function handleChange(event) {
-      const target = event?.target;
-      const path = typeof event?.composedPath === "function" ? event.composedPath() : [];
-      const tierEl = target?.closest?.("[data-build-tier]") || path.find?.((node) => node?.matches?.("[data-build-tier]") || node?.dataset?.buildTier !== void 0) || (target?.matches?.("[data-build-tier]") || target?.dataset?.buildTier !== void 0 ? target : null);
-      if (tierEl) {
-        const next = readChangeValue(event, tierEl) || readChangeValue(event, target);
-        return applyDropdownSelect(tierEl, next);
-      }
-      const regionEl = target?.closest?.("[data-build-region]") || path.find?.((node) => node?.matches?.("[data-build-region]") || node?.dataset?.buildRegion !== void 0) || (target?.matches?.("[data-build-region]") || target?.dataset?.buildRegion !== void 0 ? target : null);
-      if (regionEl) {
-        const next = readChangeValue(event, regionEl) || readChangeValue(event, target);
-        return applyDropdownSelect(regionEl, next);
-      }
-      return false;
-    }
-    function handleClick(event) {
-      const target = event?.target;
-      const hit = (attr) => target?.closest?.(`[${attr}]`);
-      if (hit("data-build-close")) {
-        event?.stopPropagation?.();
-        close();
-        return true;
-      }
-      if (hit("data-build-retry")) {
-        event?.stopPropagation?.();
-        void loadBuild({ force: true });
-        return true;
-      }
-      if (hit("data-build-tier-all")) {
-        event?.stopPropagation?.();
-        setTier("all");
-        return true;
-      }
-      if (hit("data-build-clear-player")) {
-        event?.stopPropagation?.();
-        clearPlayer();
-        return true;
-      }
-      const playerBtn = hit("data-build-player");
-      if (playerBtn) {
-        event?.stopPropagation?.();
-        void handlePlayerBuild(
-          playerBtn.dataset.buildPlayer,
-          playerBtn.dataset.buildPlayerRegion || "kr"
-        );
-        return true;
-      }
-      const runeBtn = hit("data-build-apply-runes");
-      if (runeBtn) {
-        event?.stopPropagation?.();
-        void applyRunes(runeBtn.dataset.buildApplyRunes);
-        return true;
-      }
-      const spellBtn = hit("data-build-apply-spells");
-      if (spellBtn) {
-        event?.stopPropagation?.();
-        void applySpells(spellBtn.dataset.buildApplySpells);
-        return true;
-      }
-      if (hit("data-build-apply-items")) {
-        event?.stopPropagation?.();
-        void applyItems();
-        return true;
-      }
-      return false;
-    }
-    function wireEvents(node) {
-      if (!node?.addEventListener || node.dataset?.drakeBuildWired === "1") return;
-      if (node.dataset) node.dataset.drakeBuildWired = "1";
-      node.addEventListener("change", (event) => {
-        handleChange(event);
-      });
-      node.addEventListener("click", (event) => {
-        handleClick(event);
-      });
-    }
     function setSession(session) {
       const championId = Number(session?.championId) || 0;
       const position = session?.position || "";
@@ -20596,7 +20069,7 @@
             }
           } else {
             notify();
-            if (headless && state.build && !state.topPlayers.ok && !state.topPlayers.loading) {
+            if (state.build && !state.topPlayers.ok && !state.topPlayers.loading) {
               void loadTopPlayers(generation, cacheKey());
             }
           }
@@ -20635,10 +20108,6 @@
     function getStateSig() {
       return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}|${state.loading}|${state.error}|${state.patch}|${Boolean(state.build)}|${state.runeStatus}|${state.itemSetStatus}|${state.spellStatus}|${state.viewingPlayer}|${state.topPlayers.loading}|${state.topPlayers.players.length}`;
     }
-    function renderHtml() {
-      refreshChampionName();
-      return renderBuildPanel(state);
-    }
     return {
       open: openPanel,
       close,
@@ -20652,10 +20121,6 @@
       loadBuild,
       getState: () => state,
       getStateSig,
-      renderHtml,
-      handleChange,
-      handleClick,
-      applyDropdownSelect,
       setTier,
       setRegion,
       retry: () => loadBuild({ force: true }),
@@ -31359,7 +30824,7 @@
     id: id3
   }) {
     const sfx = useSfx();
-    const pct3 = max === min ? 0 : (value - min) / (max - min) * 100;
+    const pct2 = max === min ? 0 : (value - min) / (max - min) * 100;
     return /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: ["drk-slider", disabled && "is-disabled"].filter(Boolean).join(" "), children: [
       /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
         "input",
@@ -31373,7 +30838,7 @@
           value,
           disabled,
           "aria-label": ariaLabel,
-          style: { "--drk-slider-fill": `${pct3}%` },
+          style: { "--drk-slider-fill": `${pct2}%` },
           onChange: (event) => onChange?.(Number(event.target.value)),
           onPointerUp: (event) => {
             if (disabled) return;
@@ -33223,7 +32688,7 @@
 
   // src/app/overlays/build/format.jsx
   var import_jsx_runtime45 = __toESM(require_jsx_runtime(), 1);
-  function pct2(value) {
+  function pct(value) {
     if (value == null || Number.isNaN(Number(value))) return "\u2014";
     const num = Number(value);
     return Number.isInteger(num) ? `${num}%` : `${Math.round(num * 10) / 10}%`;
@@ -33246,7 +32711,7 @@
   }
   function WinRate({ value, suffix = "" }) {
     const tone = wrTone(value);
-    return /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("span", { className: ["drk-build-wr", tone && `is-${tone}`].filter(Boolean).join(" "), children: `${pct2(value)}${suffix}` });
+    return /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("span", { className: ["drk-build-wr", tone && `is-${tone}`].filter(Boolean).join(" "), children: `${pct(value)}${suffix}` });
   }
 
   // src/app/overlays/build/BuildHeader.jsx
@@ -33302,12 +32767,12 @@
           t("overlays.build.stats.win")
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("b", { children: pct2(stats.pickRate) }),
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("b", { children: pct(stats.pickRate) }),
           " ",
           t("overlays.build.stats.pick")
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("b", { children: pct2(stats.banRate) }),
+          /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("b", { children: pct(stats.banRate) }),
           " ",
           t("overlays.build.stats.ban")
         ] }),
@@ -33335,7 +32800,7 @@
   function PickRate({ entry }) {
     const format = useFormat();
     const games = Number(entry?.play) > 0 ? ` (${format.number(entry.play)})` : "";
-    return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-pr", children: `${pct2(entry?.pickRate)}${games}` });
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-pr", children: `${pct(entry?.pickRate)}${games}` });
   }
   function ItemIcons({ ids, hextechFirst = false }) {
     return /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "drk-build-icons", children: ids.map((id3, index) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("span", { className: "drk-build-icons__slot", children: [
@@ -33428,7 +32893,7 @@
           items2.last?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-phase", children: [
             /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "drk-build-phase__label", children: t("overlays.build.phases.situational") }),
             /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "drk-build-trend", children: items2.last.map((entry, index) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "drk-build-trend__cell", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: pct2(entry.pickRate) }),
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: pct(entry.pickRate) }),
               /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("img", { className: "drk-build-icon", src: itemIconUrl(entry.ids[0]), alt: itemName(entry.ids[0]), title: itemName(entry.ids[0]) })
             ] }, index)) })
           ] })
@@ -34474,9 +33939,6 @@ button.bug-report-button[data-drake-toggle]:disabled {
         fetchImpl: fetch
       });
       buildPanel = makeBuildPanel({
-        headless: true,
-        doc: document,
-        overlayRoot: shadow,
         lcu: lcu2,
         fetchFn: proxyFetch,
         getChampName: (id3) => teamRevealChamps.find((c) => c.id === id3)?.name || "",

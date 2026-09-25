@@ -47,7 +47,6 @@ function setup(extra = {}) {
     doc: {},
     overlayRoot,
     lcu: {},
-    headless: true,
     getChampName: (id) => names[id] || '',
     getSettings: () => ({}),
     saveSettings,
@@ -64,7 +63,7 @@ async function flush() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-describe('headless build panel', () => {
+describe('build panel api', () => {
   it('never builds DOM and notifies on session changes', () => {
     const { panel, overlayRoot, updates } = setup();
     panel.setSession({ championId: 157, position: 'MIDDLE', mode: 'ranked' });

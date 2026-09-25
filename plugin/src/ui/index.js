@@ -364,9 +364,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     });
 
     buildPanel = makeBuildPanel({
-      headless: true,
-      doc: document,
-      overlayRoot: shadow,
       lcu,
       fetchFn: proxyFetch,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',

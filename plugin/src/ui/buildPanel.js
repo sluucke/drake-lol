@@ -4,16 +4,11 @@ import { fetchChampionLeaderboard, fetchPlayerBuild } from '../features/topPlaye
 import { loadGameAssets } from '../features/gameAssets.js';
 import { applyRunePage, loadRuneAssets } from '../features/runes.js';
 import { buildItemSet, applyItemSet, applySummonerSpells } from '../features/itemSets.js';
-import { renderBuildPanel } from './buildPanelRender.js';
-import { wireDrakeSelects } from './drakeSelect.js';
 
 const TAG = '[Drake]';
 export const CACHE_TTL_MS = 10 * 60 * 1000;
 
 export function makeBuildPanel({
-  headless = false,
-  doc,
-  overlayRoot,
   lcu,
   fetchFn = globalThis.fetch,
   getChampName = () => '',
@@ -35,7 +30,6 @@ export function makeBuildPanel({
 
   let open = false;
   let enabled = true;
-  let overlay = null;
   let generation = 0;
   let hasOpenedOnce = false;
   const listeners = new Set();
@@ -85,21 +79,6 @@ export function makeBuildPanel({
     return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}`;
   }
 
-  function ensureOverlay() {
-    if (headless) return null;
-    if (overlay) return overlay;
-    const owner = overlayRoot?.ownerDocument || doc;
-    const node = owner?.createElement?.('div');
-    if (!node) return null;
-    node.className = 'build-overlay';
-    node.hidden = true;
-    if (node.style) node.style.display = 'none';
-    overlayRoot?.appendChild?.(node);
-    overlay = node;
-    wireEvents(node);
-    return node;
-  }
-
   // The champion list can arrive after the session does (it loads lazily and is
   // shared with team reveal). An empty name must never stick: re-resolve it
   // wherever it is about to be used.
@@ -113,17 +92,6 @@ export function makeBuildPanel({
 
   function paint() {
     refreshChampionName();
-    const node = ensureOverlay();
-    if (node) {
-      node.hidden = !open;
-      if (node.style) node.style.display = open ? 'flex' : 'none';
-      if (open) {
-        node.innerHTML = renderBuildPanel(state);
-        wireDrakeSelects(node, ({ dropdown, value }) => {
-          applyDropdownSelect(dropdown, value);
-        });
-      }
-    }
     notify();
   }
 
@@ -141,23 +109,6 @@ export function makeBuildPanel({
     void saveSettings({ build_region: state.region });
     void loadBuild();
     notify();
-  }
-
-  function applyDropdownSelect(dropdown, value) {
-    if (!dropdown || !value) return false;
-    const isTier =
-      dropdown.matches?.('[data-build-tier]') || dropdown.dataset?.buildTier !== undefined;
-    const isRegion =
-      dropdown.matches?.('[data-build-region]') || dropdown.dataset?.buildRegion !== undefined;
-    if (isTier) {
-      setTier(value);
-      return true;
-    }
-    if (isRegion) {
-      setRegion(value);
-      return true;
-    }
-    return false;
   }
 
   function clearPlayer() {
@@ -345,103 +296,6 @@ export function makeBuildPanel({
     paint();
   }
 
-  function readChangeValue(event, target) {
-    return target?.value ?? event?.detail?.value ?? '';
-  }
-
-  function handleChange(event) {
-    const target = event?.target;
-    const path = typeof event?.composedPath === 'function' ? event.composedPath() : [];
-    const tierEl =
-      target?.closest?.('[data-build-tier]') ||
-      path.find?.((node) => node?.matches?.('[data-build-tier]') || node?.dataset?.buildTier !== undefined) ||
-      (target?.matches?.('[data-build-tier]') || target?.dataset?.buildTier !== undefined ? target : null);
-    if (tierEl) {
-      const next = readChangeValue(event, tierEl) || readChangeValue(event, target);
-      return applyDropdownSelect(tierEl, next);
-    }
-    const regionEl =
-      target?.closest?.('[data-build-region]') ||
-      path.find?.((node) => node?.matches?.('[data-build-region]') || node?.dataset?.buildRegion !== undefined) ||
-      (target?.matches?.('[data-build-region]') || target?.dataset?.buildRegion !== undefined ? target : null);
-    if (regionEl) {
-      const next = readChangeValue(event, regionEl) || readChangeValue(event, target);
-      return applyDropdownSelect(regionEl, next);
-    }
-    return false;
-  }
-
-  function handleClick(event) {
-    const target = event?.target;
-    const hit = (attr) => target?.closest?.(`[${attr}]`);
-
-    if (hit('data-build-close')) {
-      event?.stopPropagation?.();
-      close();
-      return true;
-    }
-    if (hit('data-build-retry')) {
-      event?.stopPropagation?.();
-      void loadBuild({ force: true });
-      return true;
-    }
-    if (hit('data-build-tier-all')) {
-      event?.stopPropagation?.();
-      setTier('all');
-      return true;
-    }
-    if (hit('data-build-clear-player')) {
-      event?.stopPropagation?.();
-      clearPlayer();
-      return true;
-    }
-
-    const playerBtn = hit('data-build-player');
-    if (playerBtn) {
-      event?.stopPropagation?.();
-      void handlePlayerBuild(
-        playerBtn.dataset.buildPlayer,
-        playerBtn.dataset.buildPlayerRegion || 'kr'
-      );
-      return true;
-    }
-
-    const runeBtn = hit('data-build-apply-runes');
-    if (runeBtn) {
-      event?.stopPropagation?.();
-      void applyRunes(runeBtn.dataset.buildApplyRunes);
-      return true;
-    }
-
-    const spellBtn = hit('data-build-apply-spells');
-    if (spellBtn) {
-      event?.stopPropagation?.();
-      void applySpells(spellBtn.dataset.buildApplySpells);
-      return true;
-    }
-
-    if (hit('data-build-apply-items')) {
-      event?.stopPropagation?.();
-      void applyItems();
-      return true;
-    }
-
-    return false;
-  }
-
-  function wireEvents(node) {
-    if (!node?.addEventListener || node.dataset?.drakeBuildWired === '1') return;
-    if (node.dataset) node.dataset.drakeBuildWired = '1';
-
-    node.addEventListener('change', (event) => {
-      handleChange(event);
-    });
-
-    node.addEventListener('click', (event) => {
-      handleClick(event);
-    });
-  }
-
   function setSession(session) {
     const championId = Number(session?.championId) || 0;
     const position = session?.position || '';
@@ -456,7 +310,7 @@ export function makeBuildPanel({
           }
         } else {
           notify();
-          if (headless && state.build && !state.topPlayers.ok && !state.topPlayers.loading) {
+          if (state.build && !state.topPlayers.ok && !state.topPlayers.loading) {
             void loadTopPlayers(generation, cacheKey());
           }
         }
@@ -502,11 +356,6 @@ export function makeBuildPanel({
     return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}|${state.loading}|${state.error}|${state.patch}|${Boolean(state.build)}|${state.runeStatus}|${state.itemSetStatus}|${state.spellStatus}|${state.viewingPlayer}|${state.topPlayers.loading}|${state.topPlayers.players.length}`;
   }
 
-  function renderHtml() {
-    refreshChampionName();
-    return renderBuildPanel(state);
-  }
-
   return {
     open: openPanel,
     close,
@@ -520,10 +369,6 @@ export function makeBuildPanel({
     loadBuild,
     getState: () => state,
     getStateSig,
-    renderHtml,
-    handleChange,
-    handleClick,
-    applyDropdownSelect,
     setTier,
     setRegion,
     retry: () => loadBuild({ force: true }),
