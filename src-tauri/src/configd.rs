@@ -1062,7 +1062,9 @@ async fn overlay_plugin(
         bridge.ui.dodge = v;
     }
     if let Some(b) = body.bounds {
-        bridge.ui.bounds = Some(b);
+        if bridge.ui.bounds.is_none() {
+            bridge.ui.bounds = Some(b);
+        }
     }
     if body.toggle_panel == Some(true) {
         bridge.ui.panel_open = !bridge.ui.panel_open;
@@ -1498,6 +1500,31 @@ mod tests {
             .header("content-type", "application/json")
             .body(Body::from(body))
             .unwrap()
+    }
+
+    #[tokio::test]
+    async fn plugin_bounds_do_not_override_the_detected_league_window() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let post = |x: i32| {
+            Request::builder()
+                .method("POST")
+                .uri("/overlay/plugin")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(
+                    r#"{{"token":"{token}","bounds":{{"x":{x},"y":0,"width":1024,"height":576}}}}"#
+                )))
+                .unwrap()
+        };
+
+        let res = router(state.clone()).oneshot(post(5)).await.unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.overlay.lock().unwrap().ui.bounds.as_ref().unwrap().x, 5, "plugin bounds are the fallback");
+
+        state.overlay.lock().unwrap().ui.bounds = Some(crate::overlay::ClientBounds { x: 100, y: 50, width: 1280, height: 720 });
+        let res = router(state.clone()).oneshot(post(7)).await.unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.overlay.lock().unwrap().ui.bounds.as_ref().unwrap().x, 100, "detected bounds win");
     }
 
     #[tokio::test]

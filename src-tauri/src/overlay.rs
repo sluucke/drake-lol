@@ -337,17 +337,7 @@ pub fn find_league_window() -> Option<LeagueWindow> {
         EnumWindows(Some(enum_proc), &mut state as *mut _ as LPARAM);
     }
     let (hwnd, _) = state.best?;
-    let mut rect = RECT {
-        left: 0,
-        top: 0,
-        right: 0,
-        bottom: 0,
-    };
-    unsafe {
-        if GetWindowRect(hwnd as HWND, &mut rect) == 0 {
-            return None;
-        }
-    }
+    let rect = visible_window_rect(hwnd as HWND)?;
     let width = (rect.right - rect.left).max(0) as u32;
     let height = (rect.bottom - rect.top).max(0) as u32;
     Some(LeagueWindow {
@@ -361,6 +351,35 @@ pub fn find_league_window() -> Option<LeagueWindow> {
         minimized: unsafe { IsIconic(hwnd as HWND) != 0 },
         visible: unsafe { IsWindowVisible(hwnd as HWND) != 0 },
     })
+}
+
+#[cfg(windows)]
+fn visible_window_rect(hwnd: windows_sys::Win32::Foundation::HWND) -> Option<windows_sys::Win32::Foundation::RECT> {
+    use windows_sys::Win32::Foundation::RECT;
+    use windows_sys::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetWindowRect;
+
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    let frame = unsafe {
+        DwmGetWindowAttribute(
+            hwnd,
+            DWMWA_EXTENDED_FRAME_BOUNDS as u32,
+            &mut rect as *mut RECT as *mut core::ffi::c_void,
+            std::mem::size_of::<RECT>() as u32,
+        )
+    };
+    if frame == 0 && rect.right > rect.left && rect.bottom > rect.top {
+        return Some(rect);
+    }
+    if unsafe { GetWindowRect(hwnd, &mut rect) } == 0 {
+        return None;
+    }
+    Some(rect)
 }
 
 #[cfg(not(windows))]
@@ -418,9 +437,16 @@ pub fn ensure_window(app: &tauri::AppHandle, port: u16, token: &str) {
         .skip_taskbar(true)
         .resizable(false)
         .visible(false)
-        .focused(false);
-    if let Err(e) = builder.build() {
-        eprintln!("[Drake] overlay window: {e}");
+        .focused(false)
+        .shadow(false);
+    match builder.build() {
+        Ok(_win) => {
+            #[cfg(debug_assertions)]
+            if std::env::var_os("DRAKE_OVERLAY_DEVTOOLS").is_some() {
+                _win.open_devtools();
+            }
+        }
+        Err(e) => eprintln!("[Drake] overlay window: {e}"),
     }
 }
 
