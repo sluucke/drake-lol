@@ -90,6 +90,7 @@ export function startUI({
     : cfg.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning);
   let streamingEffective = desiredEffective;
   const trayHealth = createTrayHealth();
+  let panelApi = null;
   let openMode = overlayHost
     ? 'default'
     : decideOpenMode({
@@ -299,9 +300,10 @@ export function startUI({
   function applyStreamingPolicy() {
     syncStore();
     if (overlayHost) return;
-    const hostEl = ui.host?.();
+    const panel = panelApi || ui;
+    const hostEl = panel.host?.();
     const allowed = inClientChromeAllowed();
-    if (!allowed) ui.close();
+    if (!allowed) panel.close();
     if (hostEl) {
       hostEl.style.visibility = allowed ? '' : 'hidden';
       if (allowed) hostEl.removeAttribute('data-drake-overlay-mode');
@@ -451,6 +453,7 @@ export function startUI({
   }
 
   function wire(shadow, api) {
+    panelApi = api;
     shadowRoot = shadow;
     startApp(shadow, { sfx, store, actions: legacyActions });
 
