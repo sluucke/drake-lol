@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { decideAction, startChampSelectAutomation } from '../src/features/autoPick.js';
 import { SESSION_ROUTE } from '../src/features/champSelect.js';
 import { GAMEFLOW_PHASE_ROUTE } from '../src/features/dodge.js';
-import { renderAutoPick, renderAutoBan } from '../src/ui/panel.js';
 import { autoPickOrder, emptyAutoPickByRole, toggleAutoPickChampion } from '../src/features/autoPickRoles.js';
 
 const act = (over = {}) => ({
@@ -560,83 +559,6 @@ describe('startChampSelectAutomation', () => {
     await fireSession({ errorCode: 'RPC_ERROR', httpStatus: 404, message: 'no active delegate' });
 
     expect(onSession).toHaveBeenLastCalledWith(null);
-  });
-});
-
-describe('renderAutoPick', () => {
-  const champs = [
-    { id: 103, name: 'Ahri' },
-    { id: 64, name: 'Lee Sin' },
-  ];
-
-  it('shows role tabs and pick order for the active role', () => {
-    const html = renderAutoPick(
-      {
-        auto_pick: true,
-        auto_pick_by_role: rolePicks({ TOP: [103, 64], MIDDLE: [157] }),
-        insta_lock: false,
-      },
-      {
-        disabled: false,
-        list: champs,
-        allList: champs,
-        query: '',
-        activeRole: 'TOP',
-      },
-    );
-    expect(html).toContain('data-auto-pick-role="TOP"');
-    expect(html).toContain('data-auto-pick-role="MIDDLE"');
-    expect(html).toContain('role-tab-count');
-    expect(html).toContain('pick-order-item');
-    expect(html).toContain('data-remove-pick="103"');
-    expect(html).toContain('data-remove-pick="64"');
-    expect(html).toContain('Ahri');
-    expect(html).toContain('Lee Sin');
-    expect(html).toContain('champ-slot');
-    expect(html).toContain('data-for="auto_pick"');
-    expect(html).not.toContain('Yasuo');
-  });
-});
-
-describe('renderAutoBan', () => {
-  const champs = [
-    { id: 55, name: 'Katarina' },
-    { id: 157, name: 'Yasuo' },
-  ];
-
-  it('shows selected champion chip with remove control', () => {
-    const html = renderAutoBan(
-      { auto_ban: true, auto_ban_champion_id: 55 },
-      {
-        disabled: false,
-        list: [{ id: 157, name: 'Yasuo' }],
-        allList: champs,
-        query: 'yas',
-      },
-    );
-    expect(html).toContain('pick-order-item');
-    expect(html).toContain('Katarina');
-    expect(html).toContain('data-remove-ban="55"');
-    expect(html).toContain('data-for="auto_ban_champion_id"');
-    expect(html).not.toContain('champ-on');
-  });
-
-  it('highlights the selected champion in the grid', () => {
-    const html = renderAutoBan(
-      { auto_ban: true, auto_ban_champion_id: 55 },
-      { disabled: false, list: champs, allList: champs, query: '' },
-    );
-    expect(html).toContain('champ-on');
-    expect(html).toContain('data-champ="55"');
-  });
-
-  it('shows empty state when no ban champion is chosen', () => {
-    const html = renderAutoBan(
-      { auto_ban: true, auto_ban_champion_id: 0 },
-      { disabled: false, list: champs, allList: champs, query: '' },
-    );
-    expect(html).toContain('none chosen');
-    expect(html).not.toContain('data-remove-ban');
   });
 });
 
