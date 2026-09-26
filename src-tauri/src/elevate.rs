@@ -56,6 +56,7 @@ pub enum ActivationOutcome {
     Wrote,
     /// Somebody else's value was in the slot. Left exactly as it was.
     Declined,
+    Released,
 }
 
 /// Claims the injection slot, but *only* when it is free or already ours.
@@ -106,10 +107,72 @@ impl SlotClaimer for ScheduledTaskClaimer {
     }
 }
 
-/// Runs elevated, from the scheduled task only. Writes the fixed value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SlotIntent {
+    Claim,
+    Release,
+}
+
+const RELEASE_INTENT: &str = "release";
+const CLAIM_INTENT: &str = "claim";
+
+pub fn read_intent(path: &Path) -> SlotIntent {
+    use std::io::Read;
+    let mut text = String::new();
+    let read = std::fs::File::open(path).and_then(|f| f.take(64).read_to_string(&mut text));
+    match read {
+        Ok(_) if text.trim() == RELEASE_INTENT => SlotIntent::Release,
+        _ => SlotIntent::Claim,
+    }
+}
+
+pub fn write_intent(path: &Path, intent: SlotIntent) -> std::io::Result<()> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let text = match intent {
+        SlotIntent::Claim => CLAIM_INTENT,
+        SlotIntent::Release => RELEASE_INTENT,
+    };
+    std::fs::write(path, text)
+}
+
+pub fn release(
+    registry: &impl crate::slot::RegistryAccess,
+    our_core: &Path,
+) -> Result<ActivationOutcome, crate::slot::SlotError> {
+    use crate::slot::SlotState;
+    let raw = registry.read_debugger()?;
+    match crate::slot::classify(raw.as_deref(), our_core) {
+        SlotState::Ours => {
+            registry.delete_debugger()?;
+            Ok(ActivationOutcome::Released)
+        }
+        SlotState::Absent => Ok(ActivationOutcome::Released),
+        SlotState::Foreign { .. } | SlotState::Unparsable { .. } => Ok(ActivationOutcome::Declined),
+    }
+}
+
+pub fn sync_slot(
+    registry: &impl crate::slot::RegistryAccess,
+    our_core: &Path,
+    intent: SlotIntent,
+) -> Result<ActivationOutcome, crate::slot::SlotError> {
+    match intent {
+        SlotIntent::Claim => activate(registry, our_core),
+        SlotIntent::Release => release(registry, our_core),
+    }
+}
+
+/// Runs elevated, from the scheduled task only. Claims or releases the slot
+/// according to the intent the tray left in the state dir.
 pub fn perform_activation() -> Result<(), Box<dyn std::error::Error>> {
     use crate::{paths, slot};
-    activate(&slot::WindowsRegistry, &paths::our_core_dll())?;
+    sync_slot(
+        &slot::WindowsRegistry,
+        &paths::our_core_dll(),
+        read_intent(&paths::slot_intent_file()),
+    )?;
     Ok(())
 }
 
@@ -365,4 +428,46 @@ mod tests {
         uninstall(&registry, &ours(), &tmp.path().join("gone")).unwrap();
     }
 
+    #[test]
+    fn release_removes_only_our_value() {
+        let registry = FakeRegistry::holding(&crate::slot::debugger_value(&ours()));
+        assert_eq!(release(&registry, &ours()).unwrap(), ActivationOutcome::Released);
+        assert!(registry.deleted.get());
+        assert!(registry.writes.borrow().is_empty());
+    }
+
+    #[test]
+    fn release_leaves_a_foreign_loader_alone() {
+        let registry = FakeRegistry::holding(r#"rundll32 "C:\Other\Pengu Loader\core.dll", #6000"#);
+        assert_eq!(release(&registry, &ours()).unwrap(), ActivationOutcome::Declined);
+        assert!(!registry.deleted.get());
+    }
+
+    #[test]
+    fn release_of_an_empty_slot_is_a_no_op() {
+        let registry = FakeRegistry::empty();
+        assert_eq!(release(&registry, &ours()).unwrap(), ActivationOutcome::Released);
+        assert!(!registry.deleted.get());
+    }
+
+    #[test]
+    fn sync_follows_the_intent() {
+        let registry = FakeRegistry::empty();
+        assert_eq!(sync_slot(&registry, &ours(), SlotIntent::Claim).unwrap(), ActivationOutcome::Wrote);
+        assert_eq!(sync_slot(&registry, &ours(), SlotIntent::Release).unwrap(), ActivationOutcome::Released);
+        assert_eq!(registry.read_debugger().unwrap(), None);
+    }
+
+    #[test]
+    fn intent_round_trips_and_defaults_to_claim() {
+        let tmp = tempfile::tempdir().unwrap();
+        let file = tmp.path().join("state").join("slot-intent");
+        assert_eq!(read_intent(&file), SlotIntent::Claim);
+        write_intent(&file, SlotIntent::Release).unwrap();
+        assert_eq!(read_intent(&file), SlotIntent::Release);
+        write_intent(&file, SlotIntent::Claim).unwrap();
+        assert_eq!(read_intent(&file), SlotIntent::Claim);
+        std::fs::write(&file, "garbage").unwrap();
+        assert_eq!(read_intent(&file), SlotIntent::Claim);
+    }
 }

@@ -131,6 +131,47 @@ async fn try_prompt_manual_update(
     }
 }
 
+const RELEASE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+const RELEASE_POLL: std::time::Duration = std::time::Duration::from_millis(250);
+
+async fn release_injection() {
+    use slot::RegistryAccess;
+    let registry = slot::WindowsRegistry;
+    let core = paths::our_core_dll();
+    if let Err(e) = elevate::write_intent(&paths::slot_intent_file(), elevate::SlotIntent::Release) {
+        eprintln!("[Drake] could not record the slot intent: {e}");
+    }
+    let raw = registry.read_debugger().ok().flatten();
+    if matches!(
+        slot::classify(raw.as_deref(), &core),
+        slot::SlotState::Ours | slot::SlotState::Absent
+    ) {
+        match elevate::run_task() {
+            Ok(()) => {
+                let deadline = std::time::Instant::now() + RELEASE_TIMEOUT;
+                while std::time::Instant::now() < deadline {
+                    tokio::time::sleep(RELEASE_POLL).await;
+                    let now = registry.read_debugger().ok().flatten();
+                    if slot::classify(now.as_deref(), &core) != slot::SlotState::Ours {
+                        break;
+                    }
+                }
+            }
+            Err(e) => eprintln!("[Drake] could not release the injection slot: {e}"),
+        }
+    }
+    let loader = raw
+        .as_deref()
+        .and_then(slot::parse_core_path)
+        .and_then(|c| c.parent().map(Path::to_path_buf))
+        .unwrap_or_else(paths::our_loader_dir);
+    if let Err(e) = std::fs::remove_dir_all(deploy::plugin_dir(&loader)) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            eprintln!("[Drake] could not remove the plugin on quit: {e}");
+        }
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
@@ -216,19 +257,19 @@ pub fn run() {
             let menu_note = update_note.clone();
             let shutting_down = Arc::new(AtomicBool::new(false));
             let menu_shutdown = shutting_down.clone();
+            let tick_guard = Arc::new(Mutex::new(()));
+            let menu_tick_guard = tick_guard.clone();
+            if let Err(e) = elevate::write_intent(&paths::slot_intent_file(), elevate::SlotIntent::Claim) {
+                eprintln!("[Drake] could not record the slot intent: {e}");
+            }
             app.on_menu_event(move |_app, event| {
                 if event.id() == "quit" {
                     if menu_shutdown.swap(true, Ordering::SeqCst) {
                         return;
                     }
+                    drop(menu_tick_guard.lock());
                     tauri::async_runtime::spawn(async move {
-                        if let Err(e) = elevate::uninstall(
-                            &slot::WindowsRegistry,
-                            &paths::our_core_dll(),
-                            &paths::data_dir(),
-                        ) {
-                            eprintln!("[Drake] could not deactivate injection on quit: {e}");
-                        }
+                        release_injection().await;
                         if let Err(e) = lcu::restart_ux().await {
                             eprintln!("[Drake] could not reload the client on quit: {e}");
                         }
@@ -297,6 +338,7 @@ pub fn run() {
             let loop_state = state.clone();
             let loop_note = update_note.clone();
             let loop_shutdown = shutting_down.clone();
+            let loop_tick_guard = tick_guard.clone();
             tauri::async_runtime::spawn(async move {
                 let started = std::time::Instant::now();
                 let mut auto_reload_fired = false;
@@ -349,14 +391,20 @@ pub fn run() {
                     // reads config.json from disk directly -- the check-in
                     // POST is a separate, failure-tolerant path whose only
                     // consumer is this tray's own status display.
-                    let mode = supervisor::tick(
-                        &slot::WindowsRegistry,
-                        &elevate::ScheduledTaskClaimer,
-                        &paths::our_core_dll(),
-                        &paths::our_loader_dir(),
-                        INDEX_JS,
-                        &cfg,
-                    );
+                    let mode = {
+                        let _tick = loop_tick_guard.lock().unwrap_or_else(|e| e.into_inner());
+                        if loop_shutdown.load(Ordering::SeqCst) {
+                            break;
+                        }
+                        supervisor::tick(
+                            &slot::WindowsRegistry,
+                            &elevate::ScheduledTaskClaimer,
+                            &paths::our_core_dll(),
+                            &paths::our_loader_dir(),
+                            INDEX_JS,
+                            &cfg,
+                        )
+                    };
                     let mode_text = match &mode {
                         supervisor::Mode::OwnLoader => strings::MODE_OWN_LOADER.to_string(),
                         supervisor::Mode::Guest { host } => format!("{} {host}", strings::MODE_GUEST),
