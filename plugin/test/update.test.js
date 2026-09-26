@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 import { makeUpdater } from '../src/features/update.js';
-import { renderSettings } from '../src/ui/panel.js';
 
 describe('makeUpdater', () => {
   it('posts to /update/check with the token', async () => {
@@ -47,33 +46,5 @@ describe('makeUpdater', () => {
     expect(result.ok).toBe(true);
     expect(result.installing).toBe(true);
     expect(fetchImpl.mock.calls[0][0]).toBe('http://127.0.0.1:48151/update/apply');
-  });
-});
-
-describe('renderSettings updates', () => {
-  it('shows install now when an update is available', () => {
-    const html = renderSettings(
-      { auto_update: true },
-      {
-        disabled: false,
-        version: '0.1.0',
-        update: { phase: 'available', version: 'v0.2.0' },
-      },
-    );
-    expect(html).toContain('Check for updates');
-    expect(html).toContain('v0.2.0 is available');
-    expect(html).toContain('id="install-update"');
-  });
-
-  it('shows up to date after a successful check', () => {
-    const html = renderSettings(
-      { auto_update: true },
-      {
-        disabled: false,
-        version: '0.1.0',
-        update: { phase: 'current' },
-      },
-    );
-    expect(html).toContain('Drake is up to date');
   });
 });

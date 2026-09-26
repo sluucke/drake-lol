@@ -28,7 +28,10 @@ Open the overlay with **Ctrl + D**, or click the duck button in the **bottom-rig
 | 💬 | Status | Custom status message and availability |
 | 🏅 | Profile | Rank crest, banner skins, Riot ID tools |
 | 👥 | Friends | Friends list tools |
-| ⚙️ | Settings | Start with Windows, auto reload, auto updates |
+| 🎥 | Streaming mode | Moves Drake into a window OBS / Streamlabs / Discord cannot capture (On, Off or Auto) |
+| ⚙️ | Settings | Start with Windows, auto reload, auto updates, language |
+
+The overlay is built with React and follows the League client language: English and Brazilian Portuguese are fully translated, and other languages fall back to English.
 
 The tray is the source of truth for settings. The overlay reads and writes them through the tray, so they survive a client restart. With automatic updates on, Drake checks GitHub for a newer release, downloads the installer, and runs it. Windows will ask for permission because the app lives in Program Files.
 
@@ -108,6 +111,8 @@ npm test
 npm run build
 ```
 
+`npm test` runs Vitest (React components under jsdom). `npm run build` bundles and minifies the overlay into `plugin/dist/index.js`.
+
 ```bash
 cargo test --manifest-path src-tauri/Cargo.toml
 cargo build --release --manifest-path src-tauri/Cargo.toml
@@ -119,7 +124,7 @@ The tray binary is `src-tauri/target/release/drake.exe`. If League is already op
 
 ## Layout
 
-* `plugin/` in-client overlay (JavaScript) and its tests
+* `plugin/` in-client overlay (React) and its tests
 * `src-tauri/` tray app, installer, and injection
 * `vendor/pengu-loader/` pinned loader core shipped with the installer
 

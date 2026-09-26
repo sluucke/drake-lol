@@ -16,6 +16,8 @@ pub fn our_core_dll() -> PathBuf { our_loader_dir().join("core.dll") }
 pub fn state_dir() -> PathBuf { data_dir().join("state") }
 pub fn settings_file() -> PathBuf { state_dir().join("settings.json") }
 pub fn update_attempt_file() -> PathBuf { state_dir().join("update-attempt.json") }
+pub fn slot_intent_file() -> PathBuf { state_dir().join("slot-intent") }
+pub fn install_id_file() -> PathBuf { state_dir().join("install-id") }
 
 #[cfg(test)]
 mod tests {
@@ -45,6 +47,11 @@ mod tests {
     #[test]
     fn the_update_attempt_record_is_written_where_the_unelevated_tray_can_write() {
         assert_eq!(update_attempt_file().parent().unwrap(), state_dir());
+    }
+
+    #[test]
+    fn the_slot_intent_is_written_where_the_unelevated_tray_can_write() {
+        assert_eq!(slot_intent_file().parent().unwrap(), state_dir());
     }
 
     #[test]

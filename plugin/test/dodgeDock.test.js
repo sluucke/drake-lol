@@ -8,6 +8,7 @@ import {
   ROSE_BUTTON_SELECTOR,
   CHAMP_SELECT_BUTTONS,
   DOCK_GAP_PX,
+  dockStyle,
 } from '../src/ui/dodgeDock.js';
 
 function el({ rect = { left: 0, top: 0, width: 0, height: 0 }, className = '', matchesRose = false } = {}) {
@@ -142,5 +143,26 @@ describe('watchAnchor', () => {
     stop();
     expect(win.removeEventListener).toHaveBeenCalled();
     expect(win.clearInterval).toHaveBeenCalled();
+  });
+});
+
+describe('dockStyle', () => {
+  it('falls back to the bottom-right corner without an anchor', () => {
+    expect(dockStyle(null, { innerHeight: 800 })).toEqual({
+      left: 'auto',
+      right: '20px',
+      bottom: '70px',
+      transform: 'none',
+    });
+  });
+
+  it('centers above the anchor', () => {
+    const anchor = el({ rect: { left: 100, top: 600, width: 40, height: 40 } });
+    expect(dockStyle(anchor, { innerHeight: 800 })).toEqual({
+      left: '120px',
+      right: 'auto',
+      bottom: `${200 + DOCK_GAP_PX}px`,
+      transform: 'translateX(-50%)',
+    });
   });
 });

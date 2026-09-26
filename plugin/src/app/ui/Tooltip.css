@@ -1,0 +1,17 @@
+.drk-tooltip__anchor {
+  display: inline-flex;
+}
+
+.drk-tooltip {
+  max-width: 260px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--text-strong);
+  background: var(--surface-glass);
+  border: 1px solid var(--gold-4);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+  pointer-events: none;
+  white-space: normal;
+}

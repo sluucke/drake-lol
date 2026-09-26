@@ -1,3 +1,4 @@
+import { gameDataUrl } from './assetUrl.js';
 
 
 
@@ -9,7 +10,7 @@
 export const SUMMARY_ROUTE = '/lol-game-data/assets/v1/champion-summary.json';
 
 export function iconUrl(championId) {
-  return `/lol-game-data/assets/v1/champion-icons/${championId}.png`;
+  return gameDataUrl(`/lol-game-data/assets/v1/champion-icons/${championId}.png`);
 }
 
 

@@ -1,0 +1,26 @@
+@font-face { font-family: 'Drake Display'; font-weight: 400; font-display: block; src: url('/overlay/fonts/cinzel-400.woff2') format('woff2'); }
+@font-face { font-family: 'Drake Display'; font-weight: 600; font-display: block; src: url('/overlay/fonts/cinzel-600.woff2') format('woff2'); }
+@font-face { font-family: 'Drake Display'; font-weight: 700 900; font-display: block; src: url('/overlay/fonts/cinzel-700.woff2') format('woff2'); }
+@font-face { font-family: 'Drake Body'; font-weight: 400; font-display: block; src: url('/overlay/fonts/source-sans-3-400.woff2') format('woff2'); }
+@font-face { font-family: 'Drake Body'; font-weight: 600; font-display: block; src: url('/overlay/fonts/source-sans-3-600.woff2') format('woff2'); }
+@font-face { font-family: 'Drake Body'; font-weight: 700 900; font-display: block; src: url('/overlay/fonts/source-sans-3-700.woff2') format('woff2'); }
+
+:root {
+  --font-display: 'Drake Display', 'Constantia', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --font-body: 'Drake Body', 'Segoe UI', Tahoma, sans-serif;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+}
+
+.root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}

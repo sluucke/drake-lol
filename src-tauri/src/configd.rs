@@ -1,5 +1,10 @@
-use axum::http::Method;
-use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
+use axum::http::{header, HeaderValue, Method, StatusCode};
+use axum::response::{Html, IntoResponse, Response};
+use axum::{
+    extract::{Query, State},
+    routing::{get, post},
+    Json, Router,
+};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -7,6 +12,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tower_http::cors::CorsLayer;
+
+use crate::overlay::{ClientBounds, OverlayBridge};
 
 pub const CHECKIN_TOLERANCE: Duration = Duration::from_secs(20);
 
@@ -58,6 +65,8 @@ pub struct Settings {
     pub auto_ban_champion_id: u32,
     #[serde(default = "on")]
     pub auto_update: bool,
+    #[serde(default = "on")]
+    pub analytics_enabled: bool,
     #[serde(default = "off")]
     pub queue_team_reveal_in_client: bool,
     #[serde(default = "on")]
@@ -92,6 +101,14 @@ pub struct Settings {
     pub build_tier: String,
     #[serde(default = "default_build_region")]
     pub build_region: String,
+    #[serde(default = "default_ui_language")]
+    pub ui_language: String,
+    #[serde(default)]
+    pub overlay_positions: crate::overlay::OverlayPositions,
+    #[serde(default = "off")]
+    pub overlay_hint_seen: bool,
+    #[serde(default = "default_streaming_mode")]
+    pub streaming_mode: String,
 }
 
 fn no_champion() -> u32 {
@@ -146,6 +163,10 @@ fn empty_string() -> String {
     String::new()
 }
 
+fn default_streaming_mode() -> String {
+    "off".into()
+}
+
 fn normalize_presence_availability(value: String) -> String {
     match value.as_str() {
         "chat" | "offline" | "mobile" | "dnd" => value,
@@ -187,6 +208,20 @@ fn default_build_tier() -> String {
 
 fn default_build_region() -> String {
     "global".into()
+}
+
+fn default_ui_language() -> String {
+    "auto".into()
+}
+
+fn normalize_ui_language(value: String) -> String {
+    let valid = (2..=12).contains(&value.len())
+        && value.chars().all(|c| c.is_ascii_alphabetic() || c == '_');
+    if valid {
+        value
+    } else {
+        default_ui_language()
+    }
 }
 
 fn normalize_team_reveal_sample_size(value: u32) -> u32 {
@@ -232,6 +267,7 @@ impl Default for Settings {
             auto_ban: off(),
             auto_ban_champion_id: no_champion(),
             auto_update: on(),
+            analytics_enabled: on(),
             queue_team_reveal_in_client: off(),
             queue_dodge_in_client: on(),
             queue_show_map_side: on(),
@@ -249,15 +285,21 @@ impl Default for Settings {
             whats_new_seen_version: empty_string(),
             build_tier: default_build_tier(),
             build_region: default_build_region(),
+            ui_language: default_ui_language(),
+            overlay_positions: crate::overlay::OverlayPositions::default(),
+            overlay_hint_seen: off(),
+            streaming_mode: default_streaming_mode(),
         }
     }
 }
 
 pub fn load_from(path: &Path) -> Settings {
-    std::fs::read_to_string(path)
+    let mut s: Settings = std::fs::read_to_string(path)
         .ok()
         .and_then(|raw| serde_json::from_str(&raw).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    s.streaming_mode = crate::streaming::normalize_streaming_mode(&s.streaming_mode);
+    s
 }
 
 pub fn load() -> Settings {
@@ -309,6 +351,8 @@ pub struct PluginConfig {
     pub port: u16,
     pub version: String,
     pub settings: Settings,
+    pub streaming_effective: String,
+    pub streaming_tool_running: bool,
 }
 
 pub fn write_plugin_config(plugin_dir: &Path, cfg: &PluginConfig) -> Result<(), ConfigError> {
@@ -349,11 +393,13 @@ type Persist = Box<dyn Fn(&Settings) -> Result<(), ConfigError> + Send + Sync>;
 pub struct ConfigdState {
     pub token: String,
     pub port: u16,
+    pub version: String,
     pub settings: Mutex<Settings>,
     pub http_client: reqwest::Client,
     last_checkin: Mutex<Option<(String, Instant, Option<String>)>>,
     persist: Mutex<Persist>,
     update_busy: Mutex<bool>,
+    pub overlay: Mutex<OverlayBridge>,
 }
 
 impl ConfigdState {
@@ -371,12 +417,12 @@ impl ConfigdState {
     }
 
     pub fn new(port: u16, current_version: &str) -> Self {
-        Self::new_with_settings(port, load_migrating(current_version))
+        Self::new_with_settings(port, load_migrating(current_version), current_version)
     }
 
     /// Seam for tests: builds state from a given `Settings` instead of reading
     /// `%PROGRAMDATA%\Drake\settings.json` from disk.
-    pub fn new_with_settings(port: u16, settings: Settings) -> Self {
+    pub fn new_with_settings(port: u16, settings: Settings, current_version: &str) -> Self {
         let http_client = reqwest::Client::builder()
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
             .timeout(std::time::Duration::from_secs(10))
@@ -386,11 +432,13 @@ impl ConfigdState {
         Self {
             token: generate_token(),
             port,
+            version: current_version.to_string(),
             settings: Mutex::new(settings),
             http_client,
             last_checkin: Mutex::new(None),
             persist: Mutex::new(Box::new(save)),
             update_busy: Mutex::new(false),
+            overlay: Mutex::new(OverlayBridge::default()),
         }
     }
 
@@ -486,6 +534,7 @@ pub struct SettingsPatch {
     pub auto_ban: Option<bool>,
     pub auto_ban_champion_id: Option<u32>,
     pub auto_update: Option<bool>,
+    pub analytics_enabled: Option<bool>,
     pub queue_team_reveal_in_client: Option<bool>,
     pub queue_dodge_in_client: Option<bool>,
     pub queue_show_map_side: Option<bool>,
@@ -503,6 +552,10 @@ pub struct SettingsPatch {
     pub whats_new_seen_version: Option<String>,
     pub build_tier: Option<String>,
     pub build_region: Option<String>,
+    pub ui_language: Option<String>,
+    pub overlay_positions: Option<crate::overlay::OverlayPositions>,
+    pub overlay_hint_seen: Option<bool>,
+    pub streaming_mode: Option<String>,
 }
 
 impl SettingsPatch {
@@ -537,6 +590,7 @@ impl SettingsPatch {
                 .auto_ban_champion_id
                 .unwrap_or(base.auto_ban_champion_id),
             auto_update: self.auto_update.unwrap_or(base.auto_update),
+            analytics_enabled: self.analytics_enabled.unwrap_or(base.analytics_enabled),
             queue_team_reveal_in_client: self
                 .queue_team_reveal_in_client
                 .unwrap_or(base.queue_team_reveal_in_client),
@@ -599,6 +653,23 @@ impl SettingsPatch {
                 .build_region
                 .clone()
                 .unwrap_or_else(|| base.build_region.clone()),
+            ui_language: self
+                .ui_language
+                .clone()
+                .map(normalize_ui_language)
+                .unwrap_or_else(|| base.ui_language.clone()),
+            overlay_positions: self
+                .overlay_positions
+                .clone()
+                .map(crate::overlay::normalize_positions)
+                .unwrap_or_else(|| base.overlay_positions.clone()),
+            overlay_hint_seen: self.overlay_hint_seen.unwrap_or(base.overlay_hint_seen),
+            streaming_mode: crate::streaming::normalize_streaming_mode(
+                &self
+                    .streaming_mode
+                    .clone()
+                    .unwrap_or_else(|| base.streaming_mode.clone()),
+            ),
         }
     }
 }
@@ -854,27 +925,337 @@ async fn proxy_request(
 }
 
 fn router(state: Arc<ConfigdState>) -> Router {
-    // The client page that calls /checkin is served from a different origin
-    // (https://plugins/... via the loader's own scheme), so the browser
-    // enforces CORS on the response. Measured from inside the real client:
-    // without permissive CORS headers, fetch() reaches this server but the
-    // browser blocks the response and the check-in silently fails.
-    // This does not weaken security: the listener is 127.0.0.1-only and the
-    // shared token still gates the endpoint. CORS only controls which pages
-    // may read the response, not who may reach the socket.
     let cors = CorsLayer::new()
         .allow_origin(tower_http::cors::Any)
-        .allow_methods([Method::POST])
+        .allow_methods([Method::GET, Method::POST])
         .allow_headers([axum::http::header::CONTENT_TYPE]);
+    let overlay_pages = Router::new()
+        .route(
+            "/overlay",
+            get(|| async { Html(include_str!("../overlay/index.html")) }),
+        )
+        .route(
+            "/overlay/",
+            get(|| async { Html(include_str!("../overlay/index.html")) }),
+        )
+        .route(
+            "/overlay/app.css",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, HeaderValue::from_static("text/css; charset=utf-8"))],
+                    include_str!("../overlay/app.css"),
+                )
+            }),
+        )
+        .route(
+            "/overlay/drake.js",
+            get(|| async {
+                (
+                    [(
+                        header::CONTENT_TYPE,
+                        HeaderValue::from_static("application/javascript; charset=utf-8"),
+                    )],
+                    include_str!("../../plugin/dist/overlay.js"),
+                )
+            }),
+        )
+        .route("/overlay/fonts/{name}", get(overlay_font));
     Router::new()
+        .merge(overlay_pages)
         .route("/checkin", post(checkin))
         .route("/settings", post(put_settings))
         .route("/open-url", post(open_url))
         .route("/proxy", post(proxy_request))
         .route("/update/check", post(check_update))
         .route("/update/apply", post(apply_update))
+        .route("/overlay/snapshot", post(overlay_snapshot))
+        .route("/overlay/ui", post(overlay_ui))
+        .route("/overlay/action", post(overlay_action))
+        .route("/overlay/plugin", post(overlay_plugin))
+        .route("/overlay/drain", post(overlay_drain))
+        .route("/overlay/lcu", post(overlay_lcu))
+        .route("/overlay/asset", get(overlay_asset))
         .layer(cors)
         .with_state(state)
+}
+
+#[derive(Serialize)]
+struct OverlaySnapshot {
+    version: String,
+    settings: Settings,
+    panel_open: bool,
+    ready_check: bool,
+    dodge: bool,
+    client: Option<crate::overlay::ClientBounds>,
+    chrome: Option<crate::overlay::ClientBounds>,
+    views: Vec<String>,
+    effective: bool,
+}
+
+async fn overlay_snapshot(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<TokenBody>,
+) -> Result<Json<OverlaySnapshot>, StatusCode> {
+    if body.token != state.token {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let settings = state.settings.lock().unwrap().clone();
+    let (mut ui, views, effective) = {
+        let mut bridge = state.overlay.lock().unwrap();
+        (bridge.ui.clone(), bridge.drain_views(), bridge.effective_overlay)
+    };
+    ui.positions = settings.overlay_positions.clone();
+    ui.show_hint = !settings.overlay_hint_seen;
+    let chrome = ui
+        .bounds
+        .as_ref()
+        .map(|client| crate::overlay::chrome_bounds(client, &ui));
+    Ok(Json(OverlaySnapshot {
+        version: state.version.clone(),
+        settings,
+        panel_open: ui.panel_open,
+        ready_check: ui.ready_check,
+        dodge: ui.dodge,
+        client: ui.bounds,
+        chrome,
+        views,
+        effective,
+    }))
+}
+
+#[derive(Deserialize)]
+struct OverlayUiBody {
+    token: String,
+    panel_open: Option<bool>,
+    modal_open: Option<bool>,
+    dragging: Option<bool>,
+}
+
+async fn overlay_ui(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<OverlayUiBody>,
+) -> StatusCode {
+    if body.token != state.token {
+        return StatusCode::UNAUTHORIZED;
+    }
+    {
+        let mut bridge = state.overlay.lock().unwrap();
+        if let Some(open) = body.panel_open {
+            bridge.ui.panel_open = open;
+        }
+        if let Some(open) = body.modal_open {
+            bridge.ui.modal_open = open;
+        }
+        if let Some(dragging) = body.dragging {
+            bridge.ui.dragging = dragging;
+        }
+        bridge.mark_dirty();
+    }
+    StatusCode::NO_CONTENT
+}
+
+#[derive(Deserialize)]
+struct OverlayActionBody {
+    token: String,
+    action: String,
+}
+
+async fn overlay_action(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<OverlayActionBody>,
+) -> StatusCode {
+    if body.token != state.token {
+        return StatusCode::UNAUTHORIZED;
+    }
+    let action = body.action.trim().to_ascii_lowercase();
+    match action.as_str() {
+        "cancel" | "dodge" | "toggle_panel" => {
+            state.overlay.lock().unwrap().push_action(action);
+            StatusCode::NO_CONTENT
+        }
+        _ => StatusCode::BAD_REQUEST,
+    }
+}
+
+#[derive(Deserialize)]
+struct OverlayPluginBody {
+    token: String,
+    ready_check: Option<bool>,
+    dodge: Option<bool>,
+    bounds: Option<ClientBounds>,
+    toggle_panel: Option<bool>,
+    open_view: Option<String>,
+}
+
+async fn overlay_plugin(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<OverlayPluginBody>,
+) -> StatusCode {
+    if body.token != state.token {
+        return StatusCode::UNAUTHORIZED;
+    }
+    let mut bridge = state.overlay.lock().unwrap();
+    if let Some(v) = body.ready_check {
+        bridge.ui.ready_check = v;
+    }
+    if let Some(v) = body.dodge {
+        bridge.ui.dodge = v;
+    }
+    if let Some(b) = body.bounds {
+        if bridge.ui.bounds.is_none() {
+            bridge.ui.bounds = Some(b);
+        }
+    }
+    if body.toggle_panel == Some(true) {
+        bridge.ui.panel_open = !bridge.ui.panel_open;
+        bridge.mark_dirty();
+    }
+    if let Some(view) = body.open_view.as_deref() {
+        bridge.push_view(view);
+    }
+    bridge.mark_dirty();
+    StatusCode::NO_CONTENT
+}
+
+#[derive(Serialize)]
+struct OverlayDrainResponse {
+    actions: Vec<String>,
+    panel_open: bool,
+}
+
+async fn overlay_drain(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<TokenBody>,
+) -> Result<Json<OverlayDrainResponse>, StatusCode> {
+    if body.token != state.token {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let mut bridge = state.overlay.lock().unwrap();
+    let actions = bridge.drain_actions();
+    let panel_open = bridge.ui.panel_open;
+    Ok(Json(OverlayDrainResponse {
+        actions,
+        panel_open,
+    }))
+}
+
+fn lcu_route_allowed(route: &str) -> bool {
+    let path = route.split('?').next().unwrap_or(route);
+    path.starts_with("/lol-")
+        || path.starts_with("/lol-game-data/")
+        || path.starts_with("/riotclient/")
+        || path.starts_with("/chat/")
+        || path.starts_with("/riot-messaging-service/")
+        || path.starts_with("/product-session/")
+        || path.starts_with("/entitlements/")
+        || path.starts_with("/lol/")
+}
+
+#[derive(Deserialize)]
+struct OverlayLcuBody {
+    token: String,
+    method: String,
+    route: String,
+    body: Option<serde_json::Value>,
+}
+
+#[derive(Serialize)]
+struct OverlayLcuResponse {
+    ok: bool,
+    status: u16,
+    body: serde_json::Value,
+}
+
+async fn overlay_lcu(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<OverlayLcuBody>,
+) -> Result<Json<OverlayLcuResponse>, StatusCode> {
+    if body.token != state.token {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    if !lcu_route_allowed(&body.route) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    match crate::lcu::request(&body.method, &body.route, body.body).await {
+        Ok((status, value)) => Ok(Json(OverlayLcuResponse {
+            ok: (200..300).contains(&status),
+            status,
+            body: value,
+        })),
+        Err(crate::lcu::LcuError::NotRunning) => Ok(Json(OverlayLcuResponse {
+            ok: false,
+            status: 503,
+            body: serde_json::json!({ "error": "client not running" }),
+        })),
+        Err(e) => {
+            eprintln!("[Drake] overlay lcu: {e}");
+            Ok(Json(OverlayLcuResponse {
+                ok: false,
+                status: 502,
+                body: serde_json::json!({ "error": e.to_string() }),
+            }))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct OverlayAssetQuery {
+    token: String,
+    path: String,
+}
+
+const OVERLAY_FONTS: &[(&str, &[u8])] = &[
+    ("cinzel-400.woff2", include_bytes!("../overlay/fonts/cinzel-400.woff2")),
+    ("cinzel-600.woff2", include_bytes!("../overlay/fonts/cinzel-600.woff2")),
+    ("cinzel-700.woff2", include_bytes!("../overlay/fonts/cinzel-700.woff2")),
+    ("source-sans-3-400.woff2", include_bytes!("../overlay/fonts/source-sans-3-400.woff2")),
+    ("source-sans-3-600.woff2", include_bytes!("../overlay/fonts/source-sans-3-600.woff2")),
+    ("source-sans-3-700.woff2", include_bytes!("../overlay/fonts/source-sans-3-700.woff2")),
+];
+
+async fn overlay_font(axum::extract::Path(name): axum::extract::Path<String>) -> Response {
+    match OVERLAY_FONTS.iter().find(|(file, _)| *file == name) {
+        Some((_, bytes)) => (
+            [
+                (header::CONTENT_TYPE, HeaderValue::from_static("font/woff2")),
+                (header::CACHE_CONTROL, HeaderValue::from_static("max-age=31536000, immutable")),
+            ],
+            *bytes,
+        )
+            .into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+async fn overlay_asset(
+    State(state): State<Arc<ConfigdState>>,
+    Query(query): Query<OverlayAssetQuery>,
+) -> Response {
+    use axum::body::Body;
+    use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE};
+
+    if query.token != state.token {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    if !lcu_route_allowed(&query.path) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    match crate::lcu::request_raw("GET", &query.path, None).await {
+        Ok((status, bytes, ctype)) => {
+            let mut res = Response::new(Body::from(bytes));
+            *res.status_mut() =
+                StatusCode::from_u16(status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+            if let Ok(v) = HeaderValue::from_str(&ctype) {
+                res.headers_mut().insert(CONTENT_TYPE, v);
+            }
+            res.headers_mut().insert(
+                CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=86400"),
+            );
+            res
+        }
+        Err(_) => StatusCode::BAD_GATEWAY.into_response(),
+    }
 }
 
 pub async fn serve(state: Arc<ConfigdState>) -> Result<(), ConfigError> {
@@ -920,6 +1301,7 @@ mod tests {
     fn build_panel_settings_default_to_emerald_plus_global() {
         assert_eq!(Settings::default().build_tier, "emerald_plus");
         assert_eq!(Settings::default().build_region, "global");
+        assert_eq!(Settings::default().ui_language, "auto");
     }
 
     #[test]
@@ -927,6 +1309,25 @@ mod tests {
         let s = Settings::default();
         assert_eq!(s.onboarding_done, false);
         assert_eq!(s.whats_new_seen_version, "");
+    }
+
+    #[test]
+    fn settings_include_streaming_mode_default() {
+        assert_eq!(Settings::default().streaming_mode, "off");
+    }
+
+    #[test]
+    fn streaming_mode_patch_normalizes_values() {
+        let patch = SettingsPatch {
+            streaming_mode: Some("AUTO".into()),
+            ..Default::default()
+        };
+        assert_eq!(patch.apply_to(&Settings::default()).streaming_mode, "auto");
+        let bad = SettingsPatch {
+            streaming_mode: Some("nope".into()),
+            ..Default::default()
+        };
+        assert_eq!(bad.apply_to(&Settings::default()).streaming_mode, "off");
     }
 
     #[test]
@@ -1000,6 +1401,7 @@ mod tests {
         assert_eq!(Settings::default().run_at_startup, true);
         assert_eq!(Settings::default().auto_reload_on_open, false);
         assert_eq!(Settings::default().auto_update, true);
+        assert_eq!(Settings::default().analytics_enabled, true);
     }
 
     #[test]
@@ -1050,6 +1452,8 @@ mod tests {
             port: 48151,
             version: "0.1.0".into(),
             settings: Settings { auto_accept: true, ..Default::default() },
+            streaming_effective: "in-client".into(),
+            streaming_tool_running: false,
         };
         write_plugin_config(tmp.path(), &cfg).unwrap();
         let raw = std::fs::read_to_string(tmp.path().join("config.json")).unwrap();
@@ -1069,6 +1473,8 @@ mod tests {
             port: 48151,
             version: "0.1.0".into(),
             settings: Settings::default(),
+            streaming_effective: "in-client".into(),
+            streaming_tool_running: false,
         };
         write_plugin_config(tmp.path(), &cfg).unwrap();
 
@@ -1096,7 +1502,7 @@ mod tests {
 
     #[test]
     fn effective_state_is_not_injected_once_the_checkin_window_lapses() {
-        let st = ConfigdState::new_with_settings(48151, Settings::default());
+        let st = ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0");
         st.record_checkin_for_test("Drake", Some("build-a"));
         assert!(matches!(st.effective(true, "build-a"), EffectiveState::Injected { .. }));
         st.expire_checkin_for_test();
@@ -1105,14 +1511,14 @@ mod tests {
 
     #[test]
     fn effective_state_is_stale_when_the_plugin_build_does_not_match() {
-        let st = ConfigdState::new_with_settings(48151, Settings::default());
+        let st = ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0");
         st.record_checkin_for_test("Drake", Some("old-build"));
         assert!(matches!(st.effective(true, "new-build"), EffectiveState::Stale { .. }));
     }
 
     #[test]
     fn effective_state_is_unknown_when_the_client_is_closed() {
-        let st = ConfigdState::new_with_settings(48151, Settings::default());
+        let st = ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0");
         assert!(matches!(st.effective(false, "build-a"), EffectiveState::Unknown));
     }
 
@@ -1151,6 +1557,22 @@ mod tests {
         assert!(!is_openable("https://evil.com/?x=https://porofessor.gg/"));
     }
 
+    #[tokio::test]
+    async fn overlay_fonts_are_served_from_the_binary() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let get = |uri: &str| Request::builder().uri(uri).body(Body::empty()).unwrap();
+        let res = router(state.clone())
+            .oneshot(get("/overlay/fonts/cinzel-700.woff2"))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()[header::CONTENT_TYPE], "font/woff2");
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(&body[..4], b"wOF2");
+        let res = router(state).oneshot(get("/overlay/fonts/..%2Fapp.css")).await.unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
+
     // --- POST /settings: the UI's only write path ---
 
     fn settings_request(token: &str, body_settings: &str) -> Request<Body> {
@@ -1164,8 +1586,146 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn overlay_hint_is_remembered_once_seen() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+        assert!(!state.settings.lock().unwrap().overlay_hint_seen);
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"overlay_hint_seen":true}"#))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert!(state.settings.lock().unwrap().overlay_hint_seen);
+    }
+
+    #[tokio::test]
+    async fn overlay_positions_persist_and_reset() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+        assert_eq!(state.settings.lock().unwrap().overlay_positions, crate::overlay::OverlayPositions::default());
+
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"overlay_positions":{"fab":{"x":2500,"y":90000},"dodge":null}}"#))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(
+            state.settings.lock().unwrap().overlay_positions.fab,
+            Some(crate::overlay::RelPos { x: 2500, y: 10000 })
+        );
+
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"overlay_positions":{"fab":null,"dodge":null}}"#))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.settings.lock().unwrap().overlay_positions, crate::overlay::OverlayPositions::default());
+    }
+
+    fn json_post(uri: &str, body: String) -> Request<Body> {
+        Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header("content-type", "application/json")
+            .body(Body::from(body))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn plugin_view_requests_reach_the_overlay_once() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        for view in ["scouting", "bogus", "build"] {
+            let res = router(state.clone())
+                .oneshot(json_post("/overlay/plugin", format!(r#"{{"token":"{token}","open_view":"{view}"}}"#)))
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        }
+        state.overlay.lock().unwrap().effective_overlay = true;
+
+        let res = router(state.clone())
+            .oneshot(json_post("/overlay/snapshot", format!(r#"{{"token":"{token}"}}"#)))
+            .await
+            .unwrap();
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let snap: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(snap["views"], serde_json::json!(["scouting", "build"]));
+        assert_eq!(snap["effective"], serde_json::json!(true));
+
+        let res = router(state.clone())
+            .oneshot(json_post("/overlay/snapshot", format!(r#"{{"token":"{token}"}}"#)))
+            .await
+            .unwrap();
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let snap: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(snap["views"], serde_json::json!([]));
+    }
+
+    #[tokio::test]
+    async fn overlay_ui_tracks_the_open_modal() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let res = router(state.clone())
+            .oneshot(json_post("/overlay/ui", format!(r#"{{"token":"{token}","modal_open":true}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert!(state.overlay.lock().unwrap().ui.modal_open);
+    }
+
+    #[tokio::test]
+    async fn overlay_ui_tracks_dragging() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let req = |body: String| {
+            Request::builder()
+                .method("POST")
+                .uri("/overlay/ui")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap()
+        };
+        let res = router(state.clone())
+            .oneshot(req(format!(r#"{{"token":"{token}","dragging":true}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        let ui = state.overlay.lock().unwrap().ui.clone();
+        assert!(ui.dragging);
+        assert!(!ui.panel_open, "an omitted panel_open keeps its value");
+    }
+
+    #[tokio::test]
+    async fn plugin_bounds_do_not_override_the_detected_league_window() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let post = |x: i32| {
+            Request::builder()
+                .method("POST")
+                .uri("/overlay/plugin")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(
+                    r#"{{"token":"{token}","bounds":{{"x":{x},"y":0,"width":1024,"height":576}}}}"#
+                )))
+                .unwrap()
+        };
+
+        let res = router(state.clone()).oneshot(post(5)).await.unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.overlay.lock().unwrap().ui.bounds.as_ref().unwrap().x, 5, "plugin bounds are the fallback");
+
+        state.overlay.lock().unwrap().ui.bounds = Some(crate::overlay::ClientBounds { x: 100, y: 50, width: 1280, height: 720 });
+        let res = router(state.clone()).oneshot(post(7)).await.unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.overlay.lock().unwrap().ui.bounds.as_ref().unwrap().x, 100, "detected bounds win");
+    }
+
+    #[tokio::test]
     async fn posting_settings_applies_and_persists_them() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let saved: Arc<Mutex<Vec<Settings>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = saved.clone();
         state.set_persist(move |s| {
@@ -1187,7 +1747,7 @@ mod tests {
 
     #[tokio::test]
     async fn posting_settings_with_a_bad_token_changes_nothing() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let saved: Arc<Mutex<Vec<Settings>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = saved.clone();
         state.set_persist(move |s| {
@@ -1217,7 +1777,7 @@ mod tests {
 
     #[tokio::test]
     async fn update_check_with_a_bad_token_is_rejected() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
 
         let res = router(state)
             .oneshot(token_request("/update/check", "not-the-token"))
@@ -1231,7 +1791,7 @@ mod tests {
     async fn settings_that_cannot_be_persisted_are_not_applied_in_memory() {
         // Otherwise the UI would show a setting that silently vanishes on the
         // next tray restart -- worse than reporting the failure.
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         state.set_persist(|_| {
             Err(ConfigError::Write {
                 path: PathBuf::from("nope"),
@@ -1260,6 +1820,7 @@ mod tests {
         let state = Arc::new(ConfigdState::new_with_settings(
             48151,
             Settings { run_at_startup: false, ..Settings::default() },
+            "0.0.0",
         ));
         state.set_persist(|_| Ok(()));
         let token = state.token.clone();
@@ -1283,7 +1844,7 @@ mod tests {
 
     #[tokio::test]
     async fn posting_build_panel_settings_persists_them() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         state.set_persist(|_| Ok(()));
         let token = state.token.clone();
 
@@ -1302,8 +1863,40 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn posting_ui_language_persists_it() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        state.set_persist(|_| Ok(()));
+        let token = state.token.clone();
+
+        let res = router(state.clone())
+            .oneshot(settings_request(&token, r#"{"ui_language":"pt_BR"}"#))
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.settings.lock().unwrap().ui_language, "pt_BR");
+    }
+
+    #[test]
+    fn ui_language_falls_back_to_auto_when_malformed() {
+        let base = Settings::default();
+        for bad in ["", "pt-BR<script>", "a_very_long_language_code", "../etc"] {
+            let patch = SettingsPatch {
+                ui_language: Some(bad.to_string()),
+                ..Default::default()
+            };
+            assert_eq!(patch.apply_to(&base).ui_language, "auto", "{bad:?} must not be stored");
+        }
+        let keep = SettingsPatch::default().apply_to(&Settings {
+            ui_language: "en_US".into(),
+            ..Settings::default()
+        });
+        assert_eq!(keep.ui_language, "en_US", "an unmentioned field must not be reset");
+    }
+
+    #[tokio::test]
     async fn posting_queue_settings_persists_them() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         state.set_persist(|_| Ok(()));
         let token = state.token.clone();
 
@@ -1324,7 +1917,7 @@ mod tests {
 
     #[tokio::test]
     async fn posting_queue_team_reveal_setting_persists_it() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         state.set_persist(|_| Ok(()));
         let token = state.token.clone();
 
@@ -1343,7 +1936,7 @@ mod tests {
 
     #[tokio::test]
     async fn checkin_with_correct_token_returns_no_content_and_records_it() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let token = state.token.clone();
         let app = router(state.clone());
 
@@ -1362,7 +1955,7 @@ mod tests {
 
     #[tokio::test]
     async fn checkin_with_a_matching_plugin_build_is_injected() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let token = state.token.clone();
         let app = router(state.clone());
 
@@ -1381,7 +1974,7 @@ mod tests {
 
     #[tokio::test]
     async fn checkin_with_a_stale_plugin_build_is_not_treated_as_current() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let token = state.token.clone();
         let app = router(state.clone());
 
@@ -1400,7 +1993,7 @@ mod tests {
 
     #[tokio::test]
     async fn checkin_with_wrong_token_returns_unauthorized_and_does_not_record_it() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let app = router(state.clone());
 
         let body = r#"{"token":"not-the-token","host":"Drake"}"#;
@@ -1418,7 +2011,7 @@ mod tests {
 
     #[tokio::test]
     async fn checkin_response_carries_permissive_cors_header() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let token = state.token.clone();
         let app = router(state.clone());
 
@@ -1437,7 +2030,7 @@ mod tests {
 
     #[tokio::test]
     async fn checkin_preflight_is_answered_with_matching_allow_headers() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let app = router(state);
 
         let req = Request::builder()
@@ -1477,7 +2070,7 @@ mod tests {
         let blocker = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = blocker.local_addr().unwrap().port();
 
-        let state = Arc::new(ConfigdState::new_with_settings(port, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(port, Settings::default(), "0.0.0"));
         let err = serve(state).await.unwrap_err();
 
         let message = err.to_string();
@@ -1522,7 +2115,7 @@ mod tests {
 
     #[tokio::test]
     async fn proxy_request_checks_token_and_rejects_unauthorized() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let app = router(state);
 
         let body = r#"{"token":"wrong-token","url":"https://mcp-api.op.gg/mcp"}"#;
@@ -1538,7 +2131,7 @@ mod tests {
 
     #[tokio::test]
     async fn proxy_request_rejects_forbidden_host() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default()));
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
         let token = state.token.clone();
         let app = router(state);
 

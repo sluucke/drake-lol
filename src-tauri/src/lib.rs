@@ -1,12 +1,15 @@
+pub mod analytics;
 pub mod browser;
 pub mod configd;
 pub mod deploy;
 pub mod elevate;
 pub mod lcu;
+pub mod overlay;
 pub mod paths;
 pub mod single_instance;
 pub mod slot;
 pub mod startup;
+pub mod streaming;
 pub mod strings;
 pub mod supervisor;
 pub mod update;
@@ -17,6 +20,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
+use tauri::Manager;
 
 const CONFIGD_PORT: u16 = 48151;
 const INDEX_JS: &str = include_str!("../../plugin/dist/index.js");
@@ -128,6 +132,49 @@ async fn try_prompt_manual_update(
     }
 }
 
+const ANALYTICS_FIRST_DELAY: std::time::Duration = std::time::Duration::from_secs(20);
+const ANALYTICS_RETRY: std::time::Duration = std::time::Duration::from_secs(5 * 60);
+const RELEASE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+const RELEASE_POLL: std::time::Duration = std::time::Duration::from_millis(250);
+
+async fn release_injection() {
+    use slot::RegistryAccess;
+    let registry = slot::WindowsRegistry;
+    let core = paths::our_core_dll();
+    if let Err(e) = elevate::write_intent(&paths::slot_intent_file(), elevate::SlotIntent::Release) {
+        eprintln!("[Drake] could not record the slot intent: {e}");
+    }
+    let raw = registry.read_debugger().ok().flatten();
+    if matches!(
+        slot::classify(raw.as_deref(), &core),
+        slot::SlotState::Ours | slot::SlotState::Absent
+    ) {
+        match elevate::run_task() {
+            Ok(()) => {
+                let deadline = std::time::Instant::now() + RELEASE_TIMEOUT;
+                while std::time::Instant::now() < deadline {
+                    tokio::time::sleep(RELEASE_POLL).await;
+                    let now = registry.read_debugger().ok().flatten();
+                    if slot::classify(now.as_deref(), &core) != slot::SlotState::Ours {
+                        break;
+                    }
+                }
+            }
+            Err(e) => eprintln!("[Drake] could not release the injection slot: {e}"),
+        }
+    }
+    let loader = raw
+        .as_deref()
+        .and_then(slot::parse_core_path)
+        .and_then(|c| c.parent().map(Path::to_path_buf))
+        .unwrap_or_else(paths::our_loader_dir);
+    if let Err(e) = std::fs::remove_dir_all(deploy::plugin_dir(&loader)) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            eprintln!("[Drake] could not remove the plugin on quit: {e}");
+        }
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
@@ -136,6 +183,10 @@ pub fn run() {
             let install_error = check_vendored_loader(app.handle()).err();
 
             let state = Arc::new(configd::ConfigdState::new(CONFIGD_PORT, env!("CARGO_PKG_VERSION")));
+            let tracker = Arc::new(analytics::Tracker::new(
+                analytics::load_or_create_install_id(&paths::install_id_file()),
+                env!("CARGO_PKG_VERSION"),
+            ));
 
             let version_label = MenuItem::with_id(
                 app,
@@ -213,19 +264,25 @@ pub fn run() {
             let menu_note = update_note.clone();
             let shutting_down = Arc::new(AtomicBool::new(false));
             let menu_shutdown = shutting_down.clone();
+            let tick_guard = Arc::new(Mutex::new(()));
+            let menu_tick_guard = tick_guard.clone();
+            let menu_tracker = tracker.clone();
+            if let Err(e) = elevate::write_intent(&paths::slot_intent_file(), elevate::SlotIntent::Claim) {
+                eprintln!("[Drake] could not record the slot intent: {e}");
+            }
             app.on_menu_event(move |_app, event| {
                 if event.id() == "quit" {
                     if menu_shutdown.swap(true, Ordering::SeqCst) {
                         return;
                     }
+                    drop(menu_tick_guard.lock());
+                    let tracker = menu_tracker.clone();
+                    let send_close = menu_state.settings.lock().unwrap().analytics_enabled;
                     tauri::async_runtime::spawn(async move {
-                        if let Err(e) = elevate::uninstall(
-                            &slot::WindowsRegistry,
-                            &paths::our_core_dll(),
-                            &paths::data_dir(),
-                        ) {
-                            eprintln!("[Drake] could not deactivate injection on quit: {e}");
+                        if send_close && tracker.started() {
+                            tracker.send(analytics::Event::Close, analytics::CLOSE_TIMEOUT).await;
                         }
+                        release_injection().await;
                         if let Err(e) = lcu::restart_ux().await {
                             eprintln!("[Drake] could not reload the client on quit: {e}");
                         }
@@ -294,6 +351,8 @@ pub fn run() {
             let loop_state = state.clone();
             let loop_note = update_note.clone();
             let loop_shutdown = shutting_down.clone();
+            let loop_tick_guard = tick_guard.clone();
+            let loop_tracker = tracker.clone();
             tauri::async_runtime::spawn(async move {
                 let started = std::time::Instant::now();
                 let mut auto_reload_fired = false;
@@ -313,11 +372,18 @@ pub fn run() {
                     let _ = auto_reload_item.set_checked(settings.auto_reload_on_open);
                     let _ = auto_update_item.set_checked(settings.auto_update);
 
+                    let tool_running = streaming::scan_streaming_tools();
+                    let streaming_effective = streaming::resolve_effective_mode(
+                        &settings.streaming_mode,
+                        tool_running,
+                    );
                     let cfg = configd::PluginConfig {
                         token: loop_state.token.clone(),
                         port: loop_state.port,
                         version: env!("CARGO_PKG_VERSION").to_string(),
                         settings: settings.clone(),
+                        streaming_effective: streaming::effective_label(streaming_effective).into(),
+                        streaming_tool_running: tool_running,
                     };
 
                     // Reconciled here rather than in the click handler so the
@@ -339,13 +405,23 @@ pub fn run() {
                     // reads config.json from disk directly -- the check-in
                     // POST is a separate, failure-tolerant path whose only
                     // consumer is this tray's own status display.
-                    let mode = supervisor::tick(
-                        &slot::WindowsRegistry,
-                        &elevate::ScheduledTaskClaimer,
-                        &paths::our_core_dll(),
-                        &paths::our_loader_dir(),
-                        INDEX_JS,
-                        &cfg,
+                    let mode = {
+                        let _tick = loop_tick_guard.lock().unwrap_or_else(|e| e.into_inner());
+                        if loop_shutdown.load(Ordering::SeqCst) {
+                            break;
+                        }
+                        supervisor::tick(
+                            &slot::WindowsRegistry,
+                            &elevate::ScheduledTaskClaimer,
+                            &paths::our_core_dll(),
+                            &paths::our_loader_dir(),
+                            INDEX_JS,
+                            &cfg,
+                        )
+                    };
+                    loop_tracker.set_mode(
+                        analytics::mode_label(&mode),
+                        streaming::effective_label(streaming_effective),
                     );
                     let mode_text = match &mode {
                         supervisor::Mode::OwnLoader => strings::MODE_OWN_LOADER.to_string(),
@@ -410,6 +486,99 @@ pub fn run() {
                     }
 
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                }
+            });
+
+            let overlay_state = state.clone();
+            let overlay_app = app.handle().clone();
+            let overlay_shutdown = shutting_down.clone();
+            tauri::async_runtime::spawn(async move {
+                let mut was_panel_open = false;
+                let mut sync_cache = overlay::OverlaySyncCache::default();
+                let mut focus_gate = overlay::FocusGate::default();
+                loop {
+                    if overlay_shutdown.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let settings = overlay_state.settings.lock().unwrap().clone();
+                    let tool_running = streaming::scan_streaming_tools();
+                    let streaming_effective = streaming::resolve_effective_mode(
+                        &settings.streaming_mode,
+                        tool_running,
+                    );
+                    let overlay_mode = matches!(
+                        streaming_effective,
+                        streaming::EffectiveStreaming::Overlay
+                    );
+                    let dirty = overlay_state.overlay.lock().unwrap().take_dirty();
+                    let league = overlay::find_league_window();
+                    {
+                        let mut bridge = overlay_state.overlay.lock().unwrap();
+                        if let Some(ref lw) = league {
+                            bridge.ui.bounds = Some(lw.bounds.clone());
+                        }
+                        bridge.ui.positions = settings.overlay_positions.clone();
+                        bridge.ui.show_hint = !settings.overlay_hint_seen;
+                        bridge.effective_overlay = overlay_mode;
+                    }
+                    let ui = overlay_state.overlay.lock().unwrap().ui.clone();
+                    if overlay_mode {
+                        let overlay_hwnd = overlay_app
+                            .get_webview_window(overlay::WINDOW_LABEL)
+                            .and_then(|w| w.hwnd().ok())
+                            .map(|h| h.0 as isize);
+                        let focused = focus_gate.update(overlay::league_or_overlay_focused(
+                            league.as_ref(),
+                            overlay_hwnd,
+                        ));
+                        let want = overlay::should_show_with_focus(true, league.as_ref(), focused);
+                        overlay::sync_window(
+                            &overlay_app,
+                            want,
+                            overlay_state.port,
+                            &overlay_state.token,
+                            league.as_ref(),
+                            &ui,
+                            was_panel_open,
+                            &mut sync_cache,
+                        );
+                    } else {
+                        overlay::hide_quiet(&overlay_app);
+                        sync_cache = overlay::OverlaySyncCache::default();
+                        focus_gate = overlay::FocusGate::default();
+                    }
+                    was_panel_open = ui.interactive();
+                    let wait_ms = if dirty || overlay_mode { 50 } else { 250 };
+                    tokio::time::sleep(std::time::Duration::from_millis(wait_ms)).await;
+                }
+            });
+
+            let analytics_state = state.clone();
+            let analytics_shutdown = shutting_down.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(ANALYTICS_FIRST_DELAY).await;
+                loop {
+                    if analytics_shutdown.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let enabled = analytics_state.settings.lock().unwrap().analytics_enabled;
+                    let next = if enabled {
+                        tracker.refresh_region().await;
+                        let event = if tracker.started() {
+                            analytics::Event::Heartbeat
+                        } else {
+                            analytics::Event::Startup
+                        };
+                        let sent = tracker.send(event, analytics::SEND_TIMEOUT).await;
+                        if sent || tracker.started() {
+                            analytics::HEARTBEAT_INTERVAL
+                        } else {
+                            ANALYTICS_RETRY
+                        }
+                    } else {
+                        ANALYTICS_RETRY
+                    };
+                    tokio::time::sleep(next).await;
                 }
             });
 

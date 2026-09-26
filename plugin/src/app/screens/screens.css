@@ -1,0 +1,123 @@
+.drk-screen {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  pointer-events: auto;
+}
+
+.drk-screen__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.drk-screen__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.drk-screen__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-1);
+}
+
+.drk-screen__sub {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.drk-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+.drk-field.is-off {
+  opacity: 0.55;
+}
+
+.drk-field__label {
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.drk-field__row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.drk-help {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.drk-help.is-warn {
+  color: var(--warn);
+}
+
+.drk-help.is-info {
+  color: var(--hex-1);
+}
+
+.drk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.drk-actions__spacer {
+  flex: 1;
+}
+
+.drk-status-box {
+  width: 100%;
+  min-height: 120px;
+  padding: var(--space-3);
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: var(--text-md);
+  line-height: 1.35;
+  color: var(--text-strong);
+  background: var(--surface-0);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+  pointer-events: auto;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.drk-status-box:focus {
+  outline: none;
+  border-color: var(--hex-3);
+  box-shadow: var(--glow-hex);
+}
+
+.drk-status-count {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.drk-version {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  color: var(--gold-2);
+}

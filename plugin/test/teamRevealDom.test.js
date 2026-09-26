@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { makeTeamRevealDom, STATUS_READY_MS } from '../src/ui/teamRevealDom.js';
 
 function makeRow(cellId, text) {
@@ -10,74 +10,9 @@ function makeRow(cellId, text) {
   };
 }
 
-function makeOverlayRoot() {
-  const children = [];
-  function createNode() {
-    const node = {
-      className: '',
-      hidden: true,
-      innerHTML: '',
-      textContent: '',
-      type: '',
-      parentNode: null,
-      dataset: {},
-      style: { display: '' },
-      children: [],
-      listeners: {},
-      appendChild(child) {
-        this.children.push(child);
-        child.parentNode = this;
-        return child;
-      },
-      querySelector(sel) {
-        const cls = String(sel).replace(/^\./, '');
-        const attr = String(sel).match(/\[([^=]+)="([^"]+)"\]/);
-        const stack = [...this.children];
-        while (stack.length) {
-          const current = stack.shift();
-          if (sel.startsWith('.') && current.className === cls) return current;
-          if (attr && current.dataset?.[attr[1].replace(/^data-/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase())] === attr[2]) {
-            return current;
-          }
-          if (Array.isArray(current.children)) stack.push(...current.children);
-        }
-        return null;
-      },
-      addEventListener(type, fn) {
-        this.listeners[type] = this.listeners[type] || [];
-        this.listeners[type].push(fn);
-      },
-      dispatch(type, event) {
-        for (const fn of this.listeners[type] || []) fn(event);
-      },
-      remove() {
-        if (!this.parentNode) return;
-        this.parentNode.children = this.parentNode.children.filter((c) => c !== this);
-        this.parentNode = null;
-      },
-    };
-    return node;
-  }
-  return {
-    children,
-    appendChild(node) {
-      children.push(node);
-      node.parentNode = this;
-    },
-    querySelector(sel) {
-      const cls = String(sel).replace(/^\./, '');
-      const stack = [...children];
-      while (stack.length) {
-        const current = stack.shift();
-        if (sel.startsWith('.') && current.className === cls) return current;
-        if (Array.isArray(current.children)) stack.push(...current.children);
-      }
-      return null;
-    },
-    ownerDocument: {
-      createElement: () => createNode(),
-    },
-  };
+function viewSpy() {
+  const views = [];
+  return { publishView: (view) => views.push(view), last: () => views.at(-1), views };
 }
 
 describe('teamRevealDom', () => {
@@ -91,9 +26,8 @@ describe('teamRevealDom', () => {
       { cellId: 1, riotId: 'RealOne#TAG', wins: 8, losses: 2, winRate: 80 },
       { cellId: 2, riotId: 'RealTwo#TAG', wins: 4, losses: 6, winRate: 40 },
     ]);
-    const overlayRoot = makeOverlayRoot();
 
-    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot });
     ctl.setEnabled(true);
     await ctl.handleSession({ myTeam: [{ cellId: 1 }, { cellId: 2 }] });
 
@@ -121,7 +55,6 @@ describe('teamRevealDom', () => {
       doc,
       subscribe,
       loadSnapshot,
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -133,126 +66,6 @@ describe('teamRevealDom', () => {
     await ctl.handleSession({ myTeam: [{ cellId: 2 }, { cellId: 1 }] });
     expect(rows[0]._label.textContent).toContain('RealTwo#TAG');
     expect(rows[1]._label.textContent).toContain('RealOne#TAG');
-  });
-
-  it('does not rewrite overlay html on unchanged session updates', async () => {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    const snapshot = [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50, sharedGames: [] }];
-    const loadSnapshot = vi.fn(async () => snapshot);
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, overlayRoot });
-
-    ctl.setEnabled(true);
-    const session = {
-      myTeam: [{ cellId: 0, puuid: 'x', gameName: 'RealOne', tagLine: 'TAG' }],
-      localPlayerCellId: 0,
-    };
-    await ctl.handleSession(session);
-    ctl.toggleCards();
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    const firstHtml = overlay.innerHTML;
-
-    await ctl.handleSession(session);
-    await ctl.handleSession(session);
-
-    expect(loadSnapshot).toHaveBeenCalledTimes(1);
-    expect(overlay.innerHTML).toBe(firstHtml);
-  });
-
-  it('shows you tag without shared games', async () => {
-    const rows = [makeRow(0, 'MaskedMe'), makeRow(1, 'MaskedMate')];
-    const doc = { querySelectorAll: () => rows };
-    const loadSnapshot = vi.fn(async () => [
-      {
-        cellId: 0,
-        riotId: 'Me#TAG',
-        isLocalPlayer: true,
-        wins: 1,
-        losses: 0,
-        winRate: 100,
-        kda: 2,
-        last12hWins: 1,
-        last12hLosses: 0,
-        soloRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
-        flexRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
-        sharedGames: [],
-      },
-      {
-        cellId: 1,
-        riotId: 'Mate#TAG',
-        isLocalPlayer: false,
-        wins: 2,
-        losses: 1,
-        winRate: 67,
-        kda: 3,
-        last12hWins: 0,
-        last12hLosses: 1,
-        soloRank: { tier: 'GOLD', division: 'II', lp: 67, wins: 45, losses: 32, winRate: 58, hasRank: true },
-        flexRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
-        sharedGames: [{ championId: 99, win: false }],
-      },
-    ]);
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot,
-      overlayRoot,
-      getChampName: (id) => ({ 99: 'Lux' }[id] || ''),
-    });
-
-    ctl.setEnabled(true);
-    await ctl.handleSession({ myTeam: [{ cellId: 0 }, { cellId: 1 }], localPlayerCellId: 0 });
-    ctl.toggleCards();
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.innerHTML).toContain('Me#TAG');
-    expect(overlay.innerHTML).toContain('(You)');
-    expect(overlay.innerHTML).toContain('is-you');
-    expect(overlay.innerHTML).not.toContain('Played together');
-    expect(overlay.innerHTML).not.toContain('107W');
-    expect(overlay.innerHTML).toContain('Gold II');
-  });
-
-  it('renders last games with champion and KDA', async () => {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    const loadSnapshot = vi.fn(async () => [
-      {
-        cellId: 0,
-        riotId: 'RealOne#TAG',
-        wins: 1,
-        losses: 1,
-        winRate: 50,
-        matchesUsed: 2,
-        recentGames: [
-          { championId: 11, win: true, kills: 8, deaths: 2, assists: 4 },
-          { championId: 22, win: false, kills: 1, deaths: 6, assists: 3 },
-        ],
-        soloRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
-        flexRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
-      },
-    ]);
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot,
-      overlayRoot,
-      getChampName: (id) => ({ 11: 'Yi', 22: 'Ashe' }[id] || ''),
-    });
-
-    ctl.setEnabled(true);
-    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-    ctl.toggleCards();
-    const html = overlayRoot.querySelector('.team-reveal-overlay').innerHTML;
-    expect(html).toContain('Last 5');
-    expect(html).toContain('Yi');
-    expect(html).toContain('8/2/4');
-    expect(html).toContain('Ashe');
-    expect(html).toContain('1/6/3');
-    expect(html).toContain('is-win');
-    expect(html).toContain('is-loss');
   });
 
   it('uses recent match W/L on names instead of ranked-stats 0L', async () => {
@@ -274,22 +87,20 @@ describe('teamRevealDom', () => {
         flexRank: { tier: 'GOLD', division: 'II', lp: 10, wins: 20, losses: 0, winRate: 100, hasRank: true },
       },
     ]);
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, overlayRoot });
+    const spy = viewSpy();
+    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, publishView: spy.publishView });
 
     ctl.setEnabled(true);
     await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
     expect(rows[0]._label.textContent).toBe('RealOne#TAG (8W/2L · 80%)');
 
     ctl.toggleCards();
-    const html = overlayRoot.querySelector('.team-reveal-overlay').innerHTML;
-    expect(html).toContain('8W');
-    expect(html).toContain('2L');
-    expect(html).not.toContain('107W');
-    expect(html).not.toContain('team-reveal-rank-wl');
+    const row = spy.last().rows[0];
+    expect(row.wins).toBe(8);
+    expect(row.losses).toBe(2);
   });
 
-  it('toggles cards overlay and force closes when disabled', async () => {
+  it('toggles cards and keeps the open state across session updates', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = {
       querySelectorAll: () => rows,
@@ -297,8 +108,8 @@ describe('teamRevealDom', () => {
     const loadSnapshot = vi.fn(async () => [
       { cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 },
     ]);
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, overlayRoot });
+    const spy = viewSpy();
+    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, publishView: spy.publishView });
 
     ctl.setEnabled(true);
     const session = {
@@ -307,37 +118,23 @@ describe('teamRevealDom', () => {
     };
     await ctl.handleSession(session);
     ctl.toggleCards();
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.hidden).toBe(false);
+    expect(ctl.isOpen()).toBe(true);
+    expect(spy.last().open).toBe(true);
 
     await ctl.handleSession(session);
     await ctl.handleSession(session);
-    expect(overlay.hidden).toBe(false);
+    expect(ctl.isOpen()).toBe(true);
 
     ctl.toggleCards();
-    expect(overlay.hidden).toBe(true);
+    expect(ctl.isOpen()).toBe(false);
+    expect(spy.last().open).toBe(false);
 
     await ctl.handleSession(session);
-    expect(overlay.hidden).toBe(true);
-  });
+    expect(ctl.isOpen()).toBe(false);
 
-  it('closes cards when backdrop is clicked', async () => {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    const loadSnapshot = vi.fn(async () => [
-      { cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 1, winRate: 50 },
-    ]);
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, overlayRoot });
-
-    ctl.setEnabled(true);
-    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
     ctl.toggleCards();
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.hidden).toBe(false);
-
-    overlay.dispatch('click', { target: overlay });
-    expect(overlay.hidden).toBe(true);
+    ctl.setEnabled(false);
+    expect(ctl.isOpen()).toBe(false);
   });
 
   it('keeps the reveal when the phase momentarily cannot be read', async () => {
@@ -354,7 +151,7 @@ describe('teamRevealDom', () => {
       phase = fn;
       return () => {};
     });
-    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot });
     const session = {
       myTeam: [{ cellId: 0, puuid: 'x', gameName: 'RealOne', tagLine: 'TAG' }],
       localPlayerCellId: 0,
@@ -381,7 +178,7 @@ describe('teamRevealDom', () => {
       phase = fn;
       return () => {};
     });
-    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot });
     const session = {
       myTeam: [{ cellId: 0, puuid: 'x', gameName: 'RealOne', tagLine: 'TAG' }],
       localPlayerCellId: 0,
@@ -410,7 +207,7 @@ describe('teamRevealDom', () => {
       phase = fn;
       return () => {};
     });
-    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot });
 
     ctl.setEnabled(true);
     await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
@@ -437,7 +234,7 @@ describe('teamRevealDom', () => {
       phase = fn;
       return () => {};
     });
-    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot });
 
     ctl.setEnabled(true);
     await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
@@ -462,7 +259,7 @@ describe('teamRevealDom', () => {
       phase = fn;
       return () => {};
     });
-    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot });
 
     ctl.setEnabled(true);
     await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
@@ -489,7 +286,7 @@ describe('teamRevealDom', () => {
       phase = fn;
       return () => {};
     });
-    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot });
 
     ctl.setEnabled(true);
     await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
@@ -530,7 +327,7 @@ describe('teamRevealDom', () => {
       phase = fn;
       return () => {};
     });
-    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot, overlayRoot: makeOverlayRoot() });
+    const ctl = makeTeamRevealDom({ doc, subscribe, loadSnapshot });
 
     ctl.setEnabled(true);
     await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
@@ -552,7 +349,6 @@ describe('teamRevealDom', () => {
       doc: { querySelectorAll: () => [] },
       subscribe,
       loadSnapshot: async () => [],
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -582,7 +378,6 @@ describe('teamRevealDom', () => {
         { cellId: 1, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
         { cellId: 2, riotId: 'RealTwo#TAG', wins: 0, losses: 1, winRate: 0 },
       ],
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -613,7 +408,6 @@ describe('teamRevealDom', () => {
         { cellId: 1, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
         { cellId: 2, riotId: 'RealTwo#TAG', wins: 0, losses: 1, winRate: 0 },
       ],
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -642,7 +436,6 @@ describe('teamRevealDom', () => {
         { cellId: 1, riotId: 'Missing#TAG', wins: 5, losses: 5, winRate: 50 },
         { cellId: 2, riotId: 'RealTwo#TAG', wins: 0, losses: 1, winRate: 0 },
       ],
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -657,12 +450,10 @@ describe('teamRevealDom', () => {
       querySelectorAll: () => rows,
     };
     const loadSnapshot = vi.fn(async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }]);
-    const overlayRoot = makeOverlayRoot();
     const ctl = makeTeamRevealDom({
       doc,
       subscribe: () => () => {},
       loadSnapshot,
-      overlayRoot,
     });
     const session = {
       myTeam: [{ cellId: 0, puuid: 'x', gameName: 'RealOne', tagLine: 'TAG' }],
@@ -686,8 +477,8 @@ describe('teamRevealDom', () => {
           pending.push(resolve);
         }),
     );
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, overlayRoot });
+    const spy = viewSpy();
+    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, publishView: spy.publishView });
     const session = {
       myTeam: [{ cellId: 0, puuid: 'x', gameName: 'RealOne', tagLine: 'TAG' }],
       localPlayerCellId: 0,
@@ -696,8 +487,7 @@ describe('teamRevealDom', () => {
 
     ctl.setEnabled(true);
     const first = ctl.handleSession(session);
-    const status = overlayRoot.querySelector('.team-reveal-status');
-    expect(status.querySelector('.team-reveal-status-text').textContent).toBe('Revealing lobby');
+    expect(spy.last().statusPhase).toBe('loading');
 
     void ctl.handleSession({ ...session, timer: { phase: 'BAN_PICK', timeLeft: 50 } });
     void ctl.handleSession({ ...session, myTeam: [{ ...session.myTeam[0], gameName: 'RealOne' }] });
@@ -708,9 +498,8 @@ describe('teamRevealDom', () => {
     await ctl.handleSession(session);
 
     expect(loadSnapshot).toHaveBeenCalledTimes(1);
-    expect(status.querySelector('.team-reveal-status-text').textContent).toBe(
-      'Session revealed · Blue Side · Press Ctrl+Shift+D to view it.',
-    );
+    expect(spy.last().statusPhase).toBe('ready');
+    expect(spy.last().side).toEqual({ side: 'BLUE', color: 'blue' });
     expect(rows[0]._label.textContent).toBe('RealOne#TAG (8W/2L · 80%)');
   });
 
@@ -733,12 +522,10 @@ describe('teamRevealDom', () => {
         finish = resolve;
       });
     });
-    const overlayRoot = makeOverlayRoot();
     const ctl = makeTeamRevealDom({
       doc,
       subscribe: () => () => {},
       loadSnapshot,
-      overlayRoot,
     });
 
     ctl.setEnabled(true);
@@ -748,64 +535,6 @@ describe('teamRevealDom', () => {
     finish([{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100, matchesUsed: 1 }]);
     await pending;
     expect(rows[0]._label.textContent).toBe('RealOne#TAG (1W/0L · 100%)');
-  });
-
-  it('shows match skeletons on open cards while match history is still loading', async () => {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    let finish;
-    const loadSnapshot = vi.fn((_session, hooks) => {
-      hooks?.onProgress?.([
-        {
-          cellId: 0,
-          riotId: 'RealOne#TAG',
-          matchesPending: true,
-          soloRank: { tier: 'GOLD', division: 'II', lp: 40, hasRank: true },
-          flexRank: { hasRank: false },
-        },
-      ]);
-      return new Promise((resolve) => {
-        finish = resolve;
-      });
-    });
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot,
-      overlayRoot,
-    });
-
-    ctl.setEnabled(true);
-    const pending = ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-    ctl.toggleCards();
-
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.innerHTML).toContain('team-reveal-skel');
-    expect(overlay.innerHTML).toContain('RealOne#TAG');
-    expect(overlay.innerHTML).not.toContain('wl-win');
-    expect(overlay.innerHTML).not.toContain('team-reveal-recent-empty');
-
-    finish([
-      {
-        cellId: 0,
-        riotId: 'RealOne#TAG',
-        matchesPending: false,
-        wins: 8,
-        losses: 2,
-        winRate: 80,
-        matchesUsed: 10,
-        kda: 3.1,
-        recentGames: [{ championId: 1, win: true, kills: 5, deaths: 1, assists: 3 }],
-        soloRank: { tier: 'GOLD', division: 'II', lp: 40, hasRank: true },
-        flexRank: { hasRank: false },
-      },
-    ]);
-    await pending;
-
-    expect(overlay.innerHTML).not.toContain('team-reveal-skel');
-    expect(overlay.innerHTML).toContain('8W');
-    expect(overlay.innerHTML).toContain('2L');
   });
 
   it('adds wl below name after load when label uses innerHTML', async () => {
@@ -823,7 +552,6 @@ describe('teamRevealDom', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot,
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -839,7 +567,7 @@ describe('teamRevealDom', () => {
     expect(label.innerHTML).toContain('2L');
   });
 
-  it('shows revealing status then a view button after snapshot loads', async () => {
+  it('publishes the loading then ready status around the snapshot load', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
     let finish;
@@ -849,45 +577,39 @@ describe('teamRevealDom', () => {
           finish = resolve;
         }),
     );
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, overlayRoot });
+    const spy = viewSpy();
+    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, publishView: spy.publishView });
 
     ctl.setEnabled(true);
     const pending = ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-    const status = overlayRoot.querySelector('.team-reveal-status');
-    expect(status.hidden).toBe(false);
-    expect(status.querySelector('.team-reveal-status-text').textContent).toBe('Revealing lobby');
-    expect(status.querySelector('.team-reveal-status-spinner').hidden).toBe(false);
-    expect(status.querySelector('.team-reveal-status-open').hidden).toBe(true);
+    expect(spy.last().statusPhase).toBe('loading');
+    const loadingSeq = spy.last().statusSeq;
 
     finish([{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }]);
     await pending;
 
-    expect(status.querySelector('.team-reveal-status-text').textContent).toBe(
-      'Session revealed · Blue Side · Press Ctrl+Shift+D to view it.',
-    );
-    expect(status.querySelector('.team-reveal-status-spinner').hidden).toBe(true);
-    expect(status.querySelector('.team-reveal-status-open').hidden).toBe(false);
+    expect(spy.last().statusPhase).toBe('ready');
+    expect(spy.last().statusSeq).toBeGreaterThan(loadingSeq);
+    expect(spy.last().side).toEqual({ side: 'BLUE', color: 'blue' });
   });
 
   it('hides the revealed status when champ select ends', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
+    const spy = viewSpy();
     const ctl = makeTeamRevealDom({
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
+      publishView: spy.publishView,
     });
 
     ctl.setEnabled(true);
     await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-    const status = overlayRoot.querySelector('.team-reveal-status');
-    expect(status.hidden).toBe(false);
+    expect(spy.last().statusPhase).toBe('ready');
 
     await ctl.handleSession(null);
-    expect(status.hidden).toBe(true);
+    expect(spy.last().statusPhase).toBe('hidden');
     expect(rows[0]._label.textContent).toBe('MaskedOne');
   });
 
@@ -901,8 +623,8 @@ describe('teamRevealDom', () => {
           finish = resolve;
         }),
     );
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, overlayRoot });
+    const spy = viewSpy();
+    const ctl = makeTeamRevealDom({ doc, subscribe: () => () => {}, loadSnapshot, publishView: spy.publishView });
 
     ctl.setEnabled(true);
     const pending = ctl.handleSession({ myTeam: [{ cellId: 0 }] });
@@ -910,8 +632,7 @@ describe('teamRevealDom', () => {
     finish([{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }]);
     await pending;
 
-    const status = overlayRoot.querySelector('.team-reveal-status');
-    expect(status.hidden).toBe(true);
+    expect(spy.last().statusPhase).toBe('hidden');
     expect(rows[0]._label.textContent).toBe('MaskedOne');
   });
 
@@ -923,121 +644,20 @@ describe('teamRevealDom', () => {
       handlers.set(route, handler);
       return () => {};
     });
-    const overlayRoot = makeOverlayRoot();
+    const spy = viewSpy();
     const ctl = makeTeamRevealDom({
       doc,
       subscribe,
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
+      publishView: spy.publishView,
     });
 
     ctl.setEnabled(true);
     await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-    const status = overlayRoot.querySelector('.team-reveal-status');
-    expect(status.hidden).toBe(false);
+    expect(spy.last().statusPhase).toBe('ready');
 
     handlers.get('/lol-gameflow/v1/gameflow-phase')('Lobby');
-    expect(status.hidden).toBe(true);
-  });
-
-  it('opens from the status button and closes from the modal close button', async () => {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 1, winRate: 50 }],
-      overlayRoot,
-    });
-
-    ctl.setEnabled(true);
-    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-    overlayRoot.querySelector('.team-reveal-status-open').dispatch('click', {
-      stopPropagation() {},
-      preventDefault() {},
-    });
-
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.hidden).toBe(false);
-    expect(overlay.innerHTML).toContain('data-team-reveal-close');
-
-    const closeTarget = {
-      closest(sel) {
-        return String(sel).includes('team-reveal-close') ? closeTarget : null;
-      },
-    };
-    overlay.dispatch('click', { target: closeTarget, stopPropagation() {} });
-    expect(overlay.hidden).toBe(true);
-  });
-
-  it('renders picked champion games and wr on cards', async () => {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    const loadSnapshot = vi.fn(async () => [
-      {
-        cellId: 0,
-        riotId: 'RealOne#TAG',
-        wins: 1,
-        losses: 0,
-        winRate: 100,
-        pickedChampionId: 11,
-        pickedGames: 12,
-        pickedWins: 7,
-        pickedLosses: 5,
-        pickedWinRate: 58,
-        soloRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
-        flexRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
-      },
-    ]);
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot,
-      overlayRoot,
-      getChampName: (id) => ({ 11: 'Yi' }[id] || ''),
-    });
-
-    ctl.setEnabled(true);
-    await ctl.handleSession({ myTeam: [{ cellId: 0, championId: 11 }] });
-    ctl.toggleCards();
-    const html = overlayRoot.querySelector('.team-reveal-overlay').innerHTML;
-    expect(html).toContain('Picked');
-    expect(html).toContain('Yi');
-    expect(html).toContain('12g · 58%');
-  });
-
-  it('renders role icon on card from assignedPosition', async () => {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    const loadSnapshot = vi.fn(async () => [
-      {
-        cellId: 0,
-        riotId: 'RealOne#TAG',
-        assignedPosition: 'JUNGLE',
-        wins: 1,
-        losses: 0,
-        winRate: 100,
-        soloRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
-        flexRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
-      },
-    ]);
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot,
-      overlayRoot,
-    });
-
-    ctl.setEnabled(true);
-    await ctl.handleSession({ myTeam: [{ cellId: 0, assignedPosition: 'JUNGLE' }] });
-    ctl.toggleCards();
-
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.innerHTML).toContain('team-reveal-role-icon');
-    expect(overlay.innerHTML).toContain('data:image/svg+xml,');
+    expect(spy.last().statusPhase).toBe('hidden');
   });
 
   it('updates card role when lane changes without reloading snapshot', async () => {
@@ -1055,12 +675,12 @@ describe('teamRevealDom', () => {
         flexRank: { tier: '', division: '', lp: 0, wins: 0, losses: 0, winRate: 0, hasRank: false },
       },
     ]);
-    const overlayRoot = makeOverlayRoot();
+    const spy = viewSpy();
     const ctl = makeTeamRevealDom({
       doc,
       subscribe: () => () => {},
       loadSnapshot,
-      overlayRoot,
+      publishView: spy.publishView,
     });
     const session = {
       myTeam: [{ cellId: 0, puuid: 'x', gameName: 'RealOne', tagLine: 'TAG', assignedPosition: 'TOP' }],
@@ -1069,11 +689,11 @@ describe('teamRevealDom', () => {
     ctl.setEnabled(true);
     await ctl.handleSession(session);
     ctl.toggleCards();
-    expect(overlayRoot.querySelector('.team-reveal-overlay').innerHTML).toContain('data:image/svg+xml,');
+    expect(spy.last().rows[0].assignedPosition).toBe('TOP');
 
     await ctl.handleSession({ ...session, myTeam: [{ ...session.myTeam[0], assignedPosition: 'MIDDLE' }] });
     expect(loadSnapshot).toHaveBeenCalledTimes(1);
-    expect(overlayRoot.querySelector('.team-reveal-overlay').innerHTML).toContain('data:image/svg+xml,');
+    expect(spy.last().rows[0].assignedPosition).toBe('MIDDLE');
   });
 
   it('moves revealed names with players when they swap cellIds', async () => {
@@ -1107,7 +727,6 @@ describe('teamRevealDom', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot,
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -1167,7 +786,6 @@ describe('teamRevealDom', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot,
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -1206,7 +824,6 @@ describe('teamRevealDom', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot,
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -1233,7 +850,6 @@ describe('teamRevealDom', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot,
-      overlayRoot: makeOverlayRoot(),
     });
 
     ctl.setEnabled(true);
@@ -1256,79 +872,6 @@ describe('teamRevealDom', () => {
 });
 
 describe('revealed status auto dismiss', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  async function readyCtl(extra = {}) {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
-      setTimeoutImpl: setTimeout,
-      clearTimeoutImpl: clearTimeout,
-      ...extra,
-    });
-    ctl.setEnabled(true);
-    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-    return { ctl, overlayRoot };
-  }
-
-  it('shows a bottom progress bar after the snapshot loads', async () => {
-    vi.useFakeTimers();
-    const { overlayRoot } = await readyCtl();
-    const status = overlayRoot.querySelector('.team-reveal-status');
-    const bar = status.querySelector('.team-reveal-status-bar');
-    expect(bar).toBeTruthy();
-    expect(bar.hidden).toBe(false);
-  });
-
-  it('keeps the bar hidden while revealing', async () => {
-    vi.useFakeTimers();
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    let finish;
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot: () =>
-        new Promise((resolve) => {
-          finish = resolve;
-        }),
-      overlayRoot,
-      setTimeoutImpl: setTimeout,
-      clearTimeoutImpl: clearTimeout,
-    });
-
-    ctl.setEnabled(true);
-    const pending = ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-    const bar = overlayRoot.querySelector('.team-reveal-status').querySelector('.team-reveal-status-bar');
-    expect(bar.hidden).toBe(true);
-
-    finish([{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }]);
-    await pending;
-    expect(bar.hidden).toBe(false);
-  });
-
-  it('hides the toast when the progress reaches zero', async () => {
-    vi.useFakeTimers();
-    const { overlayRoot } = await readyCtl({ statusReadyMs: 4000 });
-    const status = overlayRoot.querySelector('.team-reveal-status');
-    expect(status.hidden).toBe(false);
-
-    await vi.advanceTimersByTimeAsync(3999);
-    expect(status.hidden).toBe(false);
-
-    await vi.advanceTimersByTimeAsync(1);
-    expect(status.hidden).toBe(true);
-    expect(status.querySelector('.team-reveal-status-bar').hidden).toBe(true);
-  });
-
   it('uses an eight-second default dismiss', () => {
     expect(STATUS_READY_MS).toBe(8000);
   });
@@ -1446,7 +989,6 @@ describe('revealed status auto dismiss', () => {
         { cellId: 1, riotId: 'xyz#br1', wins: 1, losses: 0, winRate: 100 },
         { cellId: 2, riotId: 'bob#na1', wins: 0, losses: 1, winRate: 0 },
       ],
-      overlayRoot: makeOverlayRoot(),
       MutationObserverImpl: null,
     });
 
@@ -1466,15 +1008,15 @@ describe('revealed status auto dismiss', () => {
 });
 
 describe('teamRevealDom map side display', () => {
-  it('renders blue side badge in tabs header when enabled', async () => {
+  it('publishes the blue side when enabled', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
+    const spy = viewSpy();
     const ctl = makeTeamRevealDom({
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
+      publishView: spy.publishView,
       getShowMapSide: () => true,
     });
 
@@ -1482,20 +1024,18 @@ describe('teamRevealDom map side display', () => {
     await ctl.handleSession({ myTeam: [{ cellId: 0, team: 100 }] });
     ctl.toggleCards();
 
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.innerHTML).toContain('drake-map-side is-blue');
-    expect(overlay.innerHTML).toContain('Blue Side');
+    expect(spy.last().side).toEqual({ side: 'BLUE', color: 'blue' });
   });
 
-  it('renders red side badge in tabs header when on red side', async () => {
+  it('publishes the red side when on red side', async () => {
     const rows = [makeRow(5, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
+    const spy = viewSpy();
     const ctl = makeTeamRevealDom({
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 5, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
+      publishView: spy.publishView,
       getShowMapSide: () => true,
     });
 
@@ -1503,20 +1043,18 @@ describe('teamRevealDom map side display', () => {
     await ctl.handleSession({ myTeam: [{ cellId: 5, team: 200 }] });
     ctl.toggleCards();
 
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.innerHTML).toContain('drake-map-side is-red');
-    expect(overlay.innerHTML).toContain('Red Side');
+    expect(spy.last().side).toEqual({ side: 'RED', color: 'red' });
   });
 
-  it('omits map side badge when getShowMapSide is false', async () => {
+  it('omits the map side when getShowMapSide is false', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
+    const spy = viewSpy();
     const ctl = makeTeamRevealDom({
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
+      publishView: spy.publishView,
       getShowMapSide: () => false,
     });
 
@@ -1524,59 +1062,16 @@ describe('teamRevealDom map side display', () => {
     await ctl.handleSession({ myTeam: [{ cellId: 0, team: 1 }] });
     ctl.toggleCards();
 
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.innerHTML).not.toContain('drake-map-side');
-    expect(overlay.innerHTML).not.toContain('Blue Side');
+    expect(spy.last().side).toEqual(null);
   });
 
-  it('omits side text in status toast when getShowMapSide is false', async () => {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
-      getShowMapSide: () => false,
-    });
-
-    ctl.setEnabled(true);
-    await ctl.handleSession({ myTeam: [{ cellId: 0, team: 1 }] });
-
-    const status = overlayRoot.querySelector('.team-reveal-status');
-    expect(status.querySelector('.team-reveal-status-text').textContent).toBe(
-      'Session revealed. Press Ctrl+Shift+D to view it.',
-    );
-  });
 });
 
 describe('teamRevealDom mute all', () => {
-  it('renders mute all button in overlay header', async () => {
+  it('mutes teammates and publishes the muted state', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
-    const ctl = makeTeamRevealDom({
-      doc,
-      subscribe: () => () => {},
-      loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
-    });
-
-    ctl.setEnabled(true);
-    await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-    ctl.toggleCards();
-
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    expect(overlay.innerHTML).toContain('team-reveal-mute-btn');
-    expect(overlay.innerHTML).toContain('data-team-reveal-mute="1"');
-    expect(overlay.innerHTML).toContain('Mute All');
-  });
-
-  it('triggers muteTeammates when mute all button is clicked and shows feedback', async () => {
-    const rows = [makeRow(0, 'MaskedOne')];
-    const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
+    const spy = viewSpy();
     const mockLcu = { get: vi.fn(), post: vi.fn() };
     const muteTeammatesImpl = vi.fn().mockResolvedValue({ mutedCount: 2, totalTeammates: 2, success: true });
 
@@ -1584,7 +1079,7 @@ describe('teamRevealDom mute all', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
+      publishView: spy.publishView,
       lcu: mockLcu,
       muteTeammatesImpl,
     });
@@ -1594,25 +1089,18 @@ describe('teamRevealDom mute all', () => {
     await ctl.handleSession(session);
     ctl.toggleCards();
 
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    const muteBtn = {
-      dataset: { teamRevealMute: '1' },
-      closest(sel) {
-        return sel.includes('data-team-reveal-mute') ? this : null;
-      },
-    };
-
-    await overlay.dispatch('click', { target: muteBtn, stopPropagation() {} });
+    const muting = ctl.muteAll();
+    expect(spy.last().muteStatus).toBe('muting');
+    await muting;
 
     expect(muteTeammatesImpl).toHaveBeenCalledWith(mockLcu, session);
-    expect(overlay.innerHTML).toContain('✓ Muted');
-    expect(overlay.innerHTML).toContain('is-muted');
+    expect(spy.last().muteStatus).toBe('muted');
   });
 
-  it('shows failure state when muteTeammates fails', async () => {
+  it('publishes the failed state when muteTeammates fails', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
+    const spy = viewSpy();
     const mockLcu = { get: vi.fn(), post: vi.fn() };
     const muteTeammatesImpl = vi.fn().mockResolvedValue({ mutedCount: 0, totalTeammates: 2, success: false });
 
@@ -1620,7 +1108,7 @@ describe('teamRevealDom mute all', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
+      publishView: spy.publishView,
       lcu: mockLcu,
       muteTeammatesImpl,
     });
@@ -1630,23 +1118,17 @@ describe('teamRevealDom mute all', () => {
     await ctl.handleSession(session);
     ctl.toggleCards();
 
-    const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-    const muteBtn = {
-      dataset: { teamRevealMute: '1' },
-      closest(sel) {
-        return sel.includes('data-team-reveal-mute') ? this : null;
-      },
-    };
+    const muting = ctl.muteAll();
+    expect(spy.last().muteStatus).toBe('muting');
+    await muting;
 
-    await overlay.dispatch('click', { target: muteBtn, stopPropagation() {} });
-
-    expect(overlay.innerHTML).toContain('Mute Failed');
+    expect(muteTeammatesImpl).toHaveBeenCalledWith(mockLcu, session);
+    expect(spy.last().muteStatus).toBe('failed');
   });
 
   it('automatically triggers muteTeammates once per session when getAutoMute returns true', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
     const mockLcu = { get: vi.fn(), post: vi.fn() };
     const muteTeammatesImpl = vi.fn().mockResolvedValue({ mutedCount: 2, totalTeammates: 2, success: true });
 
@@ -1654,7 +1136,6 @@ describe('teamRevealDom mute all', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
       lcu: mockLcu,
       getAutoMute: () => true,
       muteTeammatesImpl,
@@ -1679,7 +1160,6 @@ describe('teamRevealDom mute all', () => {
   it('does not trigger muteTeammates automatically when getAutoMute is false', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
     const mockLcu = { get: vi.fn(), post: vi.fn() };
     const muteTeammatesImpl = vi.fn().mockResolvedValue({ mutedCount: 0, totalTeammates: 0, success: true });
 
@@ -1687,7 +1167,6 @@ describe('teamRevealDom mute all', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
       lcu: mockLcu,
       getAutoMute: () => false,
       muteTeammatesImpl,
@@ -1703,7 +1182,6 @@ describe('teamRevealDom auto message', () => {
   it('triggers sendChampSelectMessage once when auto message is configured', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
     const mockLcu = { get: vi.fn(), post: vi.fn() };
     const sendChampSelectMessageImpl = vi.fn().mockResolvedValue({ success: true, conversationId: 'c1' });
 
@@ -1711,7 +1189,6 @@ describe('teamRevealDom auto message', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
       lcu: mockLcu,
       getAutoMessage: () => 'gl hf team',
       sendChampSelectMessageImpl,
@@ -1732,7 +1209,6 @@ describe('teamRevealDom auto message', () => {
   it('does not re-send message repeatedly on intermediate session updates', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
     const mockLcu = { get: vi.fn(), post: vi.fn() };
     const sendChampSelectMessageImpl = vi.fn().mockResolvedValue({ success: true, conversationId: 'c1' });
 
@@ -1740,7 +1216,6 @@ describe('teamRevealDom auto message', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
       lcu: mockLcu,
       getAutoMessage: () => 'pref mid please',
       sendChampSelectMessageImpl,
@@ -1763,7 +1238,6 @@ describe('teamRevealDom auto message', () => {
   it('skips sending when getAutoMessage is empty or whitespace only', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
     const mockLcu = { get: vi.fn(), post: vi.fn() };
     const sendChampSelectMessageImpl = vi.fn();
 
@@ -1771,7 +1245,6 @@ describe('teamRevealDom auto message', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
       lcu: mockLcu,
       getAutoMessage: () => '   ',
       sendChampSelectMessageImpl,
@@ -1785,7 +1258,6 @@ describe('teamRevealDom auto message', () => {
   it('resets lobby tracking when leaving champ select so message is sent on next game', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const overlayRoot = makeOverlayRoot();
     const mockLcu = { get: vi.fn(), post: vi.fn() };
     const sendChampSelectMessageImpl = vi.fn().mockResolvedValue({ success: true, conversationId: 'c1' });
 
@@ -1793,7 +1265,6 @@ describe('teamRevealDom auto message', () => {
       doc,
       subscribe: () => () => {},
       loadSnapshot: async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 }],
-      overlayRoot,
       lcu: mockLcu,
       getAutoMessage: () => 'hello all',
       sendChampSelectMessageImpl,
@@ -1812,100 +1283,52 @@ describe('teamRevealDom auto message', () => {
   });
 
   describe('unified tabbed modal and build panel integration', () => {
-    it('renders tabs for Team Scouting and Build', async () => {
+    it('switches to the build tab and loads the build', async () => {
       const rows = [makeRow(0, 'MaskedOne')];
       const doc = { querySelectorAll: () => rows };
-      const overlayRoot = makeOverlayRoot();
       const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
-
       const mockBuildPanel = {
         loadBuild: vi.fn(),
         getStateSig: () => 'sig1',
-        renderHtml: () => '<div class="mock-build-content">Build Content</div>',
-        handleChange: vi.fn(),
-        handleClick: vi.fn(),
         onUpdate: vi.fn(),
       };
+      const spy = viewSpy();
 
       const ctl = makeTeamRevealDom({
         doc,
         subscribe: () => () => {},
         loadSnapshot,
-        overlayRoot,
+        publishView: spy.publishView,
         buildPanel: mockBuildPanel,
       });
 
       ctl.setEnabled(true);
       await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
       ctl.toggleCards();
-
-      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-      expect(overlay.hidden).toBe(false);
-      expect(overlay.innerHTML).toContain('data-team-reveal-tab="scouting"');
-      expect(overlay.innerHTML).toContain('data-team-reveal-tab="build"');
-      expect(overlay.innerHTML).toContain('RealOne#TAG');
-    });
-
-    it('switches to build tab on click and calls loadBuild', async () => {
-      const rows = [makeRow(0, 'MaskedOne')];
-      const doc = { querySelectorAll: () => rows };
-      const overlayRoot = makeOverlayRoot();
-      const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
-
-      const mockBuildPanel = {
-        loadBuild: vi.fn(),
-        getStateSig: () => 'sig1',
-        renderHtml: () => '<div class="mock-build-content">Build Content</div>',
-        handleChange: vi.fn(),
-        handleClick: vi.fn(),
-        onUpdate: vi.fn(),
-      };
-
-      const ctl = makeTeamRevealDom({
-        doc,
-        subscribe: () => () => {},
-        loadSnapshot,
-        overlayRoot,
-        buildPanel: mockBuildPanel,
-      });
-
-      ctl.setEnabled(true);
-      await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-      ctl.toggleCards();
-
-      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-      const buildTabBtn = {
-        dataset: { teamRevealTab: 'build' },
-        closest: (sel) => (sel.includes('team-reveal-tab') ? buildTabBtn : null),
-      };
-
-      overlay.dispatch('click', { target: buildTabBtn, stopPropagation: vi.fn() });
+      ctl.setActiveTab('build');
 
       expect(ctl.getActiveTab()).toBe('build');
       expect(mockBuildPanel.loadBuild).toHaveBeenCalled();
-      expect(overlay.innerHTML).toContain('mock-build-content');
+      expect(spy.last().activeTab).toBe('build');
+      expect(spy.last().buildSig).toBe('sig1');
     });
 
     it('opens directly to build tab with toggleCards("build")', async () => {
       const rows = [makeRow(0, 'MaskedOne')];
       const doc = { querySelectorAll: () => rows };
-      const overlayRoot = makeOverlayRoot();
       const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
-
       const mockBuildPanel = {
         loadBuild: vi.fn(),
         getStateSig: () => 'sig1',
-        renderHtml: () => '<div class="mock-build-content">Build Tab Opened</div>',
-        handleChange: vi.fn(),
-        handleClick: vi.fn(),
         onUpdate: vi.fn(),
       };
+      const spy = viewSpy();
 
       const ctl = makeTeamRevealDom({
         doc,
         subscribe: () => () => {},
         loadSnapshot,
-        overlayRoot,
+        publishView: spy.publishView,
         buildPanel: mockBuildPanel,
       });
 
@@ -1915,85 +1338,9 @@ describe('teamRevealDom auto message', () => {
 
       expect(ctl.isOpen()).toBe(true);
       expect(ctl.getActiveTab()).toBe('build');
-      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-      expect(overlay.innerHTML).toContain('Build Tab Opened');
+      expect(mockBuildPanel.loadBuild).toHaveBeenCalled();
+      expect(spy.last()).toMatchObject({ open: true, activeTab: 'build' });
     });
 
-    it('forwards change and click events to buildPanel', async () => {
-      const rows = [makeRow(0, 'MaskedOne')];
-      const doc = { querySelectorAll: () => rows };
-      const overlayRoot = makeOverlayRoot();
-      const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
-
-      const mockBuildPanel = {
-        loadBuild: vi.fn(),
-        getStateSig: () => 'sig1',
-        renderHtml: () => '<div class="mock-build-content">Build Content</div>',
-        handleChange: vi.fn(),
-        handleClick: vi.fn().mockReturnValue(true),
-        onUpdate: vi.fn(),
-      };
-
-      const ctl = makeTeamRevealDom({
-        doc,
-        subscribe: () => () => {},
-        loadSnapshot,
-        overlayRoot,
-        buildPanel: mockBuildPanel,
-      });
-
-      ctl.setEnabled(true);
-      await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-      ctl.toggleCards('build');
-
-      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-      const mockEvent = {
-        target: {
-          dataset: { buildTier: 'challenger' },
-          closest: () => null,
-        },
-      };
-
-      overlay.dispatch('change', mockEvent);
-      expect(mockBuildPanel.handleChange).toHaveBeenCalledWith(mockEvent);
-
-      overlay.dispatch('click', mockEvent);
-      expect(mockBuildPanel.handleClick).toHaveBeenCalledWith(mockEvent);
-    });
-
-    it('closes modal when backdrop overlay is clicked in build tab', async () => {
-      const rows = [makeRow(0, 'MaskedOne')];
-      const doc = { querySelectorAll: () => rows };
-      const overlayRoot = makeOverlayRoot();
-      const loadSnapshot = async () => [{ cellId: 0, riotId: 'RealOne#TAG', wins: 5, losses: 5, winRate: 50 }];
-
-      const mockBuildPanel = {
-        loadBuild: vi.fn(),
-        getStateSig: () => 'sig1',
-        renderHtml: () => '<div class="mock-build-content">Build Content</div>',
-        handleChange: vi.fn(),
-        handleClick: vi.fn().mockReturnValue(false),
-        onUpdate: vi.fn(),
-      };
-
-      const ctl = makeTeamRevealDom({
-        doc,
-        subscribe: () => () => {},
-        loadSnapshot,
-        overlayRoot,
-        buildPanel: mockBuildPanel,
-      });
-
-      ctl.setEnabled(true);
-      await ctl.handleSession({ myTeam: [{ cellId: 0 }] });
-      ctl.toggleCards('build');
-
-      const overlay = overlayRoot.querySelector('.team-reveal-overlay');
-      expect(overlay.hidden).toBe(false);
-
-      overlay.dispatch('click', { target: overlay });
-      expect(overlay.hidden).toBe(true);
-      expect(ctl.isOpen()).toBe(false);
-    });
   });
 });

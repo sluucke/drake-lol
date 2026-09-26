@@ -137,3 +137,23 @@ export function watchSocialToggle(doc, win, cb) {
   injectSocialToggleStyles(doc);
   return watchAnchor(doc, win, cb);
 }
+
+export const TOGGLE_HOST_ATTR = 'data-drake-toggle-host';
+
+export function ensureToggleHost(bar) {
+  if (!bar?.querySelector) return null;
+  const owner = bar.ownerDocument;
+  let host = bar.querySelector(`[${TOGGLE_HOST_ATTR}]`);
+  if (!host) {
+    host = owner.createElement('span');
+    host.setAttribute(TOGGLE_HOST_ATTR, '');
+    host.style.display = 'contents';
+  }
+  const bug = bar.querySelector(BUG_BTN_SELECTOR);
+  if (bug) {
+    if (bug.nextSibling !== host) bar.insertBefore(host, bug.nextSibling);
+  } else if (host.parentNode !== bar) {
+    bar.appendChild(host);
+  }
+  return host;
+}

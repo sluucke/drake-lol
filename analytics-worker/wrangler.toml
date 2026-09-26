@@ -1,0 +1,13 @@
+name = "drake"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+preview_urls = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "drake-analytics"
+database_id = "a41f1f33-1e94-49d8-95c3-bbbaebb05ba8"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["17 4 * * *"]

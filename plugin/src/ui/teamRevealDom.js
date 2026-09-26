@@ -2,27 +2,21 @@ import { GAMEFLOW_PHASE_ROUTE } from '../features/dodge.js';
 import { readGameflowPhase } from '../features/inGameIdle.js';
 import {
   formatWl,
-  formatWlPair,
   readAssignedPosition,
   readLobbyKey,
   remapSnapshotToSession,
   refreshPickedChampionOnRows,
 } from '../features/teamRevealStats.js';
-import { iconUrl } from '../features/champions.js';
-import { roleIconUrl, roleLabel } from './roleIcons.js';
-import { RANK_ICONS } from './assets.js';
 import { collectRevealChatPairs, makeTeamRevealChat } from './teamRevealChat.js';
-import { readMapSide, formatMapSideBadge } from '../features/mapSide.js';
+import { readMapSide } from '../features/mapSide.js';
 import { muteTeammates } from '../features/muteAll.js';
 import { sendChampSelectMessage } from '../features/champSelectChat.js';
-import { wireDrakeSelects, isDrakeSelectTarget } from './drakeSelect.js';
 
 const ORIGINAL_NAME_KEY = 'drakeTeamRevealOriginal';
 const APPLIED_KEY = 'drakeTeamRevealApplied';
 const ORIGINAL_HTML_KEY = 'drakeTeamRevealOriginalHtml';
 const ORIGINAL_STYLE_KEY = 'drakeTeamRevealOriginalStyle';
 const ROOT_KEY = 'drakeRevealRoot';
-const SPINNER_SVG = `<svg class="team-reveal-spinner-svg" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="26" stroke-dashoffset="8"/></svg>`;
 
 export const STATUS_READY_MS = 8000;
 
@@ -58,23 +52,6 @@ function isLiveRevealSession(session) {
   return Boolean(session && Array.isArray(session.myTeam) && session.myTeam.length);
 }
 
-function formatRankLabel(rank) {
-  if (!rank?.hasRank) return 'Unranked';
-  const tier = String(rank.tier || '').trim();
-  if (!tier || tier === 'NONE') return 'Unranked';
-  const label = tier.charAt(0) + tier.slice(1).toLowerCase();
-  const apex = tier === 'MASTER' || tier === 'GRANDMASTER' || tier === 'CHALLENGER';
-  const division = apex ? '' : ` ${rank.division || ''}`.trimEnd();
-  const lp = rank.lp ? ` · ${rank.lp} LP` : '';
-  return `${label}${division}${lp}`;
-}
-
-function rankIconSrc(tier) {
-  const key = String(tier || '').trim().toUpperCase();
-  if (!key || key === 'NONE') return RANK_ICONS.UNRANKED;
-  return RANK_ICONS[key] || RANK_ICONS.UNRANKED;
-}
-
 function formatWlHtml(wins, losses, winRate) {
   const w = wins ?? 0;
   const l = losses ?? 0;
@@ -83,216 +60,10 @@ function formatWlHtml(wins, losses, winRate) {
   return `<span class="wl-win">${w}W</span>/<span class="wl-loss">${l}L</span> · ${rate}%`;
 }
 
-function renderSkel(kind = 'text') {
-  return `<span class="team-reveal-skel team-reveal-skel-${kind}" aria-hidden="true"></span>`;
-}
-
-function renderRecentGamesSkeleton() {
-  return `<div class="team-reveal-recent-games is-loading" aria-busy="true">${Array.from(
-    { length: 5 },
-    () => renderSkel('game'),
-  ).join('')}</div>`;
-}
-
 function formatRowName(_maskedName, snapshot) {
   if (!hasMatchWl(snapshot)) return snapshot.riotId || '';
   const wl = readRowWl(snapshot);
   return `${snapshot.riotId} (${formatWl(wl.wins, wl.losses, wl.winRate)})`;
-}
-
-function formatCardRow(label, value) {
-  return `<div class="team-reveal-card-row"><span class="team-reveal-card-label">${label}</span><span class="team-reveal-card-value">${value}</span></div>`;
-}
-
-function renderRoleIcon(position) {
-  const src = roleIconUrl(position);
-  if (!src) return '';
-  const label = roleLabel(position);
-  return `<img class="team-reveal-role-icon" src="${src}" alt="" title="${label}">`;
-}
-
-function renderRankBlock(label, rank) {
-  const icon = rankIconSrc(rank?.tier);
-  const rankText = formatRankLabel(rank);
-  return `<div class="team-reveal-rank-block">
-    <div class="team-reveal-rank-head">
-      <img class="team-reveal-rank-icon" src="${icon}" alt="">
-      <div class="team-reveal-rank-meta">
-        <span class="team-reveal-rank-queue">${label}</span>
-        <span class="team-reveal-rank-tier">${rankText}</span>
-      </div>
-    </div>
-  </div>`;
-}
-
-function renderPickedChampion(row, getChampName) {
-  const id = Number(row?.pickedChampionId) || 0;
-  if (!id) return '';
-  const name = getChampName(id) || 'Unknown';
-  const games = Number(row?.pickedGames) || 0;
-  const wr = Number(row?.pickedWinRate) || 0;
-  const detail = games ? `${games}g · ${wr}%` : 'no games';
-  return formatCardRow(
-    'Picked',
-    `<span class="team-reveal-champ"><img class="team-reveal-champ-icon" src="${iconUrl(id)}" alt=""><span>${name} · ${detail}</span></span>`,
-  );
-}
-
-function renderSeasonMain(row, getChampName) {
-  if (row?.matchesPending) return renderSkel('text');
-  const id = Number(row?.seasonMostPlayedChampionId) || 0;
-  if (!id) return '—';
-  const name = getChampName(id) || 'Unknown';
-  const count = row.seasonMostPlayedCount ? ` · ${row.seasonMostPlayedCount}g` : '';
-  const wl = row.seasonMostPlayedCount
-    ? ` · ${formatWlPair(row.seasonMostPlayedWins, row.seasonMostPlayedLosses)} · ${row.seasonMostPlayedWinRate}%`
-    : '';
-  return `<span class="team-reveal-champ">
-    <img class="team-reveal-champ-icon" src="${iconUrl(id)}" alt="">
-    <span>${name}${count}${wl}</span>
-  </span>`;
-}
-
-function cardsContentSig(snapshot) {
-  return JSON.stringify(
-    snapshot.map((row) => ({
-      cellId: row.cellId,
-      riotId: row.riotId,
-      assignedPosition: row.assignedPosition,
-      isLocalPlayer: row.isLocalPlayer,
-      wins: row.wins,
-      losses: row.losses,
-      kda: row.kda,
-      soloRank: row.soloRank,
-      flexRank: row.flexRank,
-      seasonMostPlayedChampionId: row.seasonMostPlayedChampionId,
-      seasonMostPlayedCount: row.seasonMostPlayedCount,
-      seasonMostPlayedWinRate: row.seasonMostPlayedWinRate,
-      pickedChampionId: row.pickedChampionId,
-      pickedGames: row.pickedGames,
-      pickedWinRate: row.pickedWinRate,
-      recentGames: row.recentGames,
-      matchesPending: Boolean(row.matchesPending),
-    })),
-  );
-}
-
-function renderRecentGames(row, getChampName) {
-  if (row?.matchesPending) return renderRecentGamesSkeleton();
-  const games = Array.isArray(row?.recentGames) ? row.recentGames : [];
-  if (!games.length) return '<span class="team-reveal-recent-empty">—</span>';
-  return `<div class="team-reveal-recent-games">${games
-    .map((game) => {
-      const id = Number(game?.championId) || 0;
-      const name = getChampName(id) || 'Unknown';
-      const result = game.win ? 'is-win' : 'is-loss';
-      const kda = `${game.kills ?? 0}/${game.deaths ?? 0}/${game.assists ?? 0}`;
-      return `<div class="team-reveal-recent-game ${result}" title="${name} ${kda}">
-        <img class="team-reveal-champ-icon" src="${iconUrl(id)}" alt="${name}">
-        <span class="team-reveal-recent-kda">${kda}</span>
-      </div>`;
-    })
-    .join('')}</div>`;
-}
-
-function renderOverlayShell({
-  snapshot,
-  currentSession,
-  getChampName,
-  muteStatus = 'idle',
-  showMapSide = true,
-  activeTab = 'scouting',
-  buildHtml = '',
-}) {
-  const sideInfo = showMapSide ? readMapSide(currentSession) : null;
-  const sideBadge = sideInfo?.label ? formatMapSideBadge(sideInfo) : '';
-  let muteText = 'Mute All';
-  let muteClass = 'team-reveal-mute-btn';
-  if (muteStatus === 'muting') {
-    muteText = 'Muting…';
-  } else if (muteStatus === 'muted') {
-    muteText = '✓ Muted';
-    muteClass += ' is-muted';
-  } else if (muteStatus === 'failed') {
-    muteText = 'Mute Failed';
-  }
-  const cards = snapshot
-    .map((row) => {
-      const riotId = row.riotId || 'Unknown';
-      const youTag = row.isLocalPlayer ? ' <span class="team-reveal-you">(You)</span>' : '';
-      const pending = Boolean(row.matchesPending);
-      const recentWl = pending ? renderSkel('text') : formatWlHtml(row.wins, row.losses, row.winRate);
-      const kda = pending ? renderSkel('text') : (row.kda ?? '—');
-      const last12h = pending
-        ? renderSkel('text')
-        : formatWlPair(row.last12hWins, row.last12hLosses);
-      const recentNote = !pending && row.matchesUsed ? ` · last ${row.matchesUsed} games` : '';
-      const cardClass = row.isLocalPlayer ? 'team-reveal-card is-you' : 'team-reveal-card';
-      const roleIcon = renderRoleIcon(row.assignedPosition);
-      return `<section class="${cardClass}${pending ? ' is-loading-matches' : ''}">
-        <div class="team-reveal-card-head">
-          <div class="team-reveal-card-title-row">
-            ${roleIcon}
-            <div class="team-reveal-card-title">${riotId}${youTag}</div>
-          </div>
-        </div>
-        <div class="team-reveal-ranks">
-          ${renderRankBlock('Solo/Duo', row.soloRank)}
-          ${renderRankBlock('Flex', row.flexRank)}
-        </div>
-        <div class="team-reveal-card-section">
-          ${formatCardRow(`Recent W/L${recentNote}`, recentWl)}
-          ${formatCardRow('Recent KDA', kda)}
-          ${formatCardRow('Last 12h', last12h)}
-          ${renderPickedChampion(row, getChampName)}
-          ${formatCardRow('Season Main', renderSeasonMain(row, getChampName))}
-          ${formatCardRow('Last 5', renderRecentGames(row, getChampName))}
-        </div>
-      </section>`;
-    })
-    .join('');
-
-  const scoutingContent = snapshot.length
-    ? `<div class="team-reveal-panel">${cards}</div>`
-    : `<div class="team-reveal-empty-card">No team scouting data available</div>`;
-
-  return `<div class="team-reveal-shell" data-team-reveal-panel="1">
-    <div class="team-reveal-header">
-      <div class="team-reveal-tabs">
-        <button class="team-reveal-tab ${activeTab === 'scouting' ? 'is-active' : ''}" type="button" data-team-reveal-tab="scouting" role="tab" aria-selected="${activeTab === 'scouting'}">Team Scouting</button>
-        <button class="team-reveal-tab ${activeTab === 'build' ? 'is-active' : ''}" type="button" data-team-reveal-tab="build" role="tab" aria-selected="${activeTab === 'build'}">Build</button>
-      </div>
-      ${activeTab === 'scouting' ? `
-        <div class="team-reveal-head-meta">
-          ${sideBadge}
-          <button class="${muteClass}" type="button" data-team-reveal-mute="1" ${muteStatus === 'muting' ? 'disabled' : ''}>${muteText}</button>
-        </div>
-      ` : ''}
-      <button class="team-reveal-close" type="button" data-team-reveal-close="1" aria-label="Close">×</button>
-    </div>
-    <div class="team-reveal-content">
-      ${activeTab === 'scouting' ? scoutingContent : buildHtml}
-    </div>
-  </div>`;
-}
-
-function overlayRenderSig({
-  snapshot,
-  currentSession,
-  muteStatus = 'idle',
-  showMapSide = true,
-  activeTab = 'scouting',
-  buildSig = '',
-}) {
-  const sideInfo = showMapSide ? readMapSide(currentSession) : null;
-  return JSON.stringify({
-    activeTab,
-    cards: cardsContentSig(snapshot),
-    muteStatus,
-    side: sideInfo?.side || '',
-    showMapSide: Boolean(showMapSide),
-    buildSig,
-  });
 }
 
 function readLabelNodes(doc) {
@@ -389,11 +160,21 @@ function applyLabel(label, info) {
   label.dataset[LABEL_SIG_KEY] = sig;
 }
 
+export function withChampionNames(row, getChampName) {
+  const { historyGames, ...rest } = row || {};
+  const name = (id) => (id ? getChampName(Number(id)) || '' : '');
+  return {
+    ...rest,
+    pickedChampionName: name(rest.pickedChampionId),
+    seasonMostPlayedChampionName: name(rest.seasonMostPlayedChampionId),
+    recentGames: (rest.recentGames || []).map((game) => ({ ...game, championName: name(game.championId) })),
+  };
+}
+
 export function makeTeamRevealDom({
   doc,
   subscribe,
   loadSnapshot,
-  overlayRoot,
   lcu,
   buildPanel,
   muteTeammatesImpl = muteTeammates,
@@ -403,31 +184,21 @@ export function makeTeamRevealDom({
   getShowMapSide = () => true,
   getAutoMute = () => false,
   getAutoMessage = () => '',
-  setTimeoutImpl = setTimeout,
-  clearTimeoutImpl = clearTimeout,
-  statusReadyMs = STATUS_READY_MS,
   onRevealTiming,
   MutationObserverImpl,
+  publishView = () => {},
 }) {
   const chat = makeTeamRevealChat({ doc, MutationObserverImpl });
   let enabled = false;
   let stopSession = null;
   let snapshot = [];
   let currentSession = null;
-  let overlay = null;
-  let statusNode = null;
-  let statusSpinner = null;
-  let statusText = null;
-  let statusOpenBtn = null;
-  let statusBar = null;
-  let readyDismissTimer = null;
   let open = false;
   let activeTab = 'scouting';
   let boundLabels = new Map();
   let lastSessionSig = '';
   let lastLobbyKey = '';
   let lastTeam = [];
-  let lastCardsRenderSig = '';
   let statusPhase = 'hidden';
   let lastPhase = '';
   let pendingScrub = false;
@@ -437,6 +208,22 @@ export function makeTeamRevealDom({
   let muteStatus = 'idle';
   let autoMutedLobbyKey = '';
   let lastAutoMessageLobbyKey = '';
+  let statusSeq = 0;
+
+  function publish() {
+    const sideInfo = getShowMapSide() ? readMapSide(currentSession) : null;
+    publishView({
+      enabled,
+      open,
+      activeTab,
+      statusPhase,
+      statusSeq,
+      muteStatus,
+      side: sideInfo?.label ? { side: sideInfo.side, color: sideInfo.color } : null,
+      rows: snapshot.map((row) => withChampionNames(row, getChampName)),
+      buildSig: buildPanel?.getStateSig ? buildPanel.getStateSig() : '',
+    });
+  }
 
   function stopRevealLoad() {
     loadGen += 1;
@@ -456,7 +243,6 @@ export function makeTeamRevealDom({
     lastSessionSig = '';
     lastLobbyKey = '';
     lastTeam = [];
-    lastCardsRenderSig = '';
     muteStatus = 'idle';
     autoMutedLobbyKey = '';
     lastAutoMessageLobbyKey = '';
@@ -503,7 +289,6 @@ export function makeTeamRevealDom({
     const { rows, changed } = refreshPickedChampionOnRows(snapshot, session, getRecentPool());
     if (!changed) return false;
     snapshot = rows;
-    lastCardsRenderSig = '';
     if (open) renderVisibility();
     return true;
   }
@@ -523,7 +308,6 @@ export function makeTeamRevealDom({
         },
       ]),
     );
-    let changed = false;
     snapshot = snapshot.map((row) => {
       const cellId = Number(row.cellId);
       const next = byCell.get(cellId);
@@ -542,7 +326,6 @@ export function makeTeamRevealDom({
       ) {
         return row;
       }
-      changed = true;
       return {
         ...row,
         assignedPosition,
@@ -552,7 +335,6 @@ export function makeTeamRevealDom({
         obfuscatedPuuid,
       };
     });
-    if (changed) lastCardsRenderSig = '';
     return true;
   }
 
@@ -562,7 +344,6 @@ export function makeTeamRevealDom({
     if (!ok) return false;
     if (!changed) return true;
     snapshot = rows;
-    lastCardsRenderSig = '';
     restoreRows();
     applyRows(snapshot);
     if (open) renderVisibility();
@@ -607,30 +388,9 @@ export function makeTeamRevealDom({
     return JSON.stringify(teamFingerprint(session));
   }
 
-  function ensureOverlay() {
-    if (overlay) return overlay;
-    const existing = overlayRoot?.querySelector?.('.team-reveal-overlay');
-    if (existing) {
-      overlay = existing;
-      wireOverlayEvents(overlay);
-      return overlay;
-    }
-    const owner = overlayRoot?.ownerDocument || doc;
-    const node = owner?.createElement?.('div');
-    if (!node) return null;
-    node.className = 'team-reveal-overlay';
-    node.hidden = true;
-    if (node.style) node.style.display = 'none';
-    overlayRoot?.appendChild?.(node);
-    overlay = node;
-    wireOverlayEvents(overlay);
-    return overlay;
-  }
-
   async function handleMuteAll() {
     if (muteStatus === 'muting' || !currentSession || !lcu) return;
     muteStatus = 'muting';
-    lastCardsRenderSig = '';
     renderVisibility();
     try {
       const res = await muteTeammatesImpl(lcu, currentSession);
@@ -638,7 +398,6 @@ export function makeTeamRevealDom({
     } catch {
       muteStatus = 'failed';
     }
-    lastCardsRenderSig = '';
     if (open) renderVisibility();
   }
 
@@ -650,230 +409,14 @@ export function makeTeamRevealDom({
     });
   }
 
-  function wireOverlayEvents(node) {
-    if (!node?.addEventListener || node.dataset?.drakeRevealWired === '1') return;
-    if (node.dataset) node.dataset.drakeRevealWired = '1';
-
-    node.addEventListener('change', (event) => {
-      if (buildPanel && typeof buildPanel.handleChange === 'function') {
-        buildPanel.handleChange(event);
-      }
-    });
-
-    node.addEventListener('click', async (event) => {
-      const target = event.target;
-
-      const tabBtn = target?.closest?.('[data-team-reveal-tab]');
-      if (tabBtn) {
-        event.stopPropagation?.();
-        const tab = tabBtn.dataset.teamRevealTab;
-        if (tab && tab !== activeTab) {
-          setActiveTab(tab);
-        }
-        return;
-      }
-
-      if (
-        target?.closest?.('[data-team-reveal-close="1"]') ||
-        target?.dataset?.teamRevealClose === '1' ||
-        target?.closest?.('[data-build-close]')
-      ) {
-        event.stopPropagation?.();
-        closeCards();
-        return;
-      }
-
-      const muteBtn =
-        target?.closest?.('[data-team-reveal-mute="1"]') ||
-        (target?.dataset?.teamRevealMute === '1' ? target : null);
-      if (muteBtn) {
-        event.stopPropagation?.();
-        await handleMuteAll();
-        return;
-      }
-
-      if (buildPanel && typeof buildPanel.handleClick === 'function') {
-        const handled = buildPanel.handleClick(event);
-        if (handled) return;
-      }
-
-      if (isDrakeSelectTarget(target)) return;
-
-      if (target === node) {
-        closeCards();
-        return;
-      }
-      if (target?.closest && !target.closest('[data-team-reveal-panel="1"]')) {
-        closeCards();
-      }
-    });
-  }
-
-  function ensureStatusBar(node, owner) {
-    if (statusBar) return statusBar;
-    statusBar = node.querySelector?.('.team-reveal-status-bar');
-    if (statusBar) return statusBar;
-    if (!owner?.createElement) return null;
-    const bar = owner.createElement('div');
-    bar.className = 'team-reveal-status-bar';
-    bar.hidden = true;
-    if (bar.style) bar.style.display = 'none';
-    node.appendChild(bar);
-    statusBar = bar;
-    return statusBar;
-  }
-
-  function stopReadyDismiss() {
-    if (readyDismissTimer != null) {
-      clearTimeoutImpl(readyDismissTimer);
-      readyDismissTimer = null;
-    }
-    if (statusBar) {
-      statusBar.hidden = true;
-      if (statusBar.style) {
-        statusBar.style.display = 'none';
-        statusBar.style.animation = 'none';
-      }
-    }
-  }
-
-  function startReadyDismiss() {
-    stopReadyDismiss();
-    const bar = statusBar || ensureStatusBar(statusNode, overlayRoot?.ownerDocument || doc);
-    if (!bar) return;
-    bar.hidden = false;
-    if (bar.style) {
-      bar.style.display = 'block';
-      bar.style.animation = 'none';
-      void bar.offsetWidth;
-      bar.style.animation = `team-reveal-status-shrink ${statusReadyMs}ms linear forwards`;
-    }
-    readyDismissTimer = setTimeoutImpl(() => {
-      readyDismissTimer = null;
-      setStatus('hidden');
-    }, statusReadyMs);
-  }
-
-  function ensureStatus() {
-    if (statusNode) return statusNode;
-    const existing = overlayRoot?.querySelector?.('.team-reveal-status');
-    if (existing) {
-      statusNode = existing;
-      statusSpinner = existing.querySelector?.('.team-reveal-status-spinner');
-      statusText = existing.querySelector?.('.team-reveal-status-text');
-      statusOpenBtn = existing.querySelector?.('.team-reveal-status-open');
-      wireStatusOpen(statusOpenBtn);
-      ensureStatusBar(existing, overlayRoot?.ownerDocument || doc);
-      return statusNode;
-    }
-    const owner = overlayRoot?.ownerDocument || doc;
-    const node = owner?.createElement?.('div');
-    if (!node) return null;
-    node.className = 'team-reveal-status';
-    node.hidden = true;
-    if (node.style) node.style.display = 'none';
-
-    const spinner = owner.createElement('span');
-    spinner.className = 'team-reveal-status-spinner';
-    spinner.innerHTML = SPINNER_SVG;
-    spinner.hidden = true;
-
-    const text = owner.createElement('span');
-    text.className = 'team-reveal-status-text';
-
-    const openBtn = owner.createElement('button');
-    openBtn.className = 'team-reveal-status-open';
-    openBtn.type = 'button';
-    openBtn.textContent = 'View';
-    openBtn.hidden = true;
-    wireStatusOpen(openBtn);
-
-    node.appendChild(spinner);
-    node.appendChild(text);
-    node.appendChild(openBtn);
-    overlayRoot?.appendChild?.(node);
-    statusNode = node;
-    statusSpinner = spinner;
-    statusText = text;
-    statusOpenBtn = openBtn;
-    ensureStatusBar(node, owner);
-    return statusNode;
-  }
-
-  function wireStatusOpen(btn) {
-    if (!btn?.addEventListener || btn.dataset?.drakeRevealWired === '1') return;
-    if (btn.dataset) btn.dataset.drakeRevealWired = '1';
-    btn.addEventListener('click', (event) => {
-      event.stopPropagation?.();
-      event.preventDefault?.();
-      openCards();
-    });
-  }
-
   function setStatus(phase) {
     statusPhase = phase;
-    const node = ensureStatus();
-    if (!node) return;
-    const visible = enabled && (phase === 'loading' || phase === 'ready') && !open;
-    node.hidden = !visible;
-    if (node.style) node.style.display = visible ? 'flex' : 'none';
-    const loading = phase === 'loading';
-    if (statusSpinner) {
-      statusSpinner.hidden = !loading || !visible;
-      if (statusSpinner.style) statusSpinner.style.display = loading && visible ? 'inline-flex' : 'none';
-    }
-    if (statusOpenBtn) {
-      statusOpenBtn.hidden = loading || !visible;
-      if (statusOpenBtn.style) statusOpenBtn.style.display = !loading && visible ? 'inline-flex' : 'none';
-    }
-    if (statusText) {
-      const sideInfo = getShowMapSide() ? readMapSide(currentSession) : null;
-      const readyMsg = sideInfo?.label
-        ? `Session revealed · ${sideInfo.label} · Press Ctrl+Shift+D to view it.`
-        : 'Session revealed. Press Ctrl+Shift+D to view it.';
-      statusText.textContent = loading ? 'Revealing lobby' : readyMsg;
-    }
-    if (visible && phase === 'ready') startReadyDismiss();
-    else stopReadyDismiss();
+    statusSeq += 1;
+    publish();
   }
 
   function renderVisibility() {
-    if (!overlay) return;
-    if (open) {
-      const showMapSide = getShowMapSide();
-      const buildSig = buildPanel?.getStateSig ? buildPanel.getStateSig() : '';
-      const sig = overlayRenderSig({
-        snapshot,
-        currentSession,
-        muteStatus,
-        showMapSide,
-        activeTab,
-        buildSig,
-      });
-      if (sig !== lastCardsRenderSig) {
-        const buildHtml = buildPanel?.renderHtml ? buildPanel.renderHtml() : '';
-        overlay.innerHTML = renderOverlayShell({
-          snapshot,
-          currentSession,
-          getChampName: (id) => getChampName(Number(id)),
-          muteStatus,
-          showMapSide,
-          activeTab,
-          buildHtml,
-        });
-        lastCardsRenderSig = sig;
-        wireDrakeSelects(overlay, ({ dropdown, value }) => {
-          buildPanel?.applyDropdownSelect?.(dropdown, value);
-        });
-      }
-      overlay.hidden = false;
-      if (overlay.style) overlay.style.display = 'flex';
-    } else {
-      overlay.hidden = true;
-      if (overlay.style) overlay.style.display = 'none';
-      open = false;
-      lastCardsRenderSig = '';
-    }
+    publish();
   }
 
   function restoreRows() {
@@ -991,7 +534,6 @@ export function makeTeamRevealDom({
         .then((res) => {
           if (res?.success) {
             muteStatus = 'muted';
-            lastCardsRenderSig = '';
             if (open) renderVisibility();
           }
         })
@@ -1098,13 +640,11 @@ export function makeTeamRevealDom({
     if (activeTab === 'build' && buildPanel?.loadBuild) {
       void buildPanel.loadBuild();
     }
-    lastCardsRenderSig = '';
     renderVisibility();
   }
 
   function openCards(tab) {
     if (!enabled) return;
-    ensureOverlay();
     if (tab) activeTab = tab;
     open = true;
     if (activeTab === 'build' && buildPanel?.loadBuild) {
@@ -1136,15 +676,6 @@ export function makeTeamRevealDom({
 
   function teardown() {
     setEnabled(false);
-    if (overlay?.remove) overlay.remove();
-    if (statusNode?.remove) statusNode.remove();
-    overlay = null;
-    statusNode = null;
-    statusSpinner = null;
-    statusText = null;
-    statusOpenBtn = null;
-    stopReadyDismiss();
-    statusBar = null;
   }
 
   return {
@@ -1156,6 +687,7 @@ export function makeTeamRevealDom({
     isOpen: () => open,
     getActiveTab: () => activeTab,
     setActiveTab,
+    muteAll: handleMuteAll,
     teardown,
   };
 }

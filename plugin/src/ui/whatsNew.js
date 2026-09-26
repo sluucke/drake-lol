@@ -1,5 +1,34 @@
 export const WHATS_NEW = [
   {
+    version: '0.4.0',
+    items: [
+      {
+        title: 'A brand-new Drake',
+        body: 'Every screen was rebuilt with a refined hextech look, smoother animations and clearer layouts — the panel, Team Scouting, the Build tab, the champ select docks and the social bar button.',
+        screen: 'auto-accept',
+      },
+      {
+        title: 'Drake speaks your language',
+        body: 'Drake follows the League client language by default, and you can pick another one in Settings. English and Brazilian Portuguese are fully translated; other languages fall back to English for now.',
+        screen: 'settings',
+      },
+      {
+        title: 'Streaming mode',
+        body: 'Turn it on (or leave it on Auto) in Settings and Drake moves into its own window that OBS, Streamlabs and Discord cannot capture — you still see everything, your stream sees nothing. Team reveal stays off while it is active.',
+        screen: 'settings',
+      },
+      {
+        title: 'Quitting Drake really turns it off',
+        body: 'Quit in the tray now removes Drake from the League client and reloads it clean, so nothing keeps loading after Drake is closed. Open Drake again and it switches itself back on.',
+      },
+      {
+        title: 'Anonymous usage stats',
+        body: 'Drake now counts how many people use it: an anonymous install ID, the Drake version and your League server region. No summoner name, account or match data. You can turn it off under Settings → Updates.',
+        screen: 'settings',
+      },
+    ],
+  },
+  {
     version: '0.3.25',
     items: [
       {

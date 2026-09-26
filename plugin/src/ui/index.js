@@ -1,26 +1,5 @@
 import { mountUI } from './mount.js';
-import {
-  renderShell,
-  renderAutoAccept,
-  renderSettings,
-  renderStatus,
-  renderQueue,
-  renderAutoPick,
-  renderAutoBan,
-  renderProfile,
-  renderFriends,
-  renderSkinCells,
-  skinWindow,
-  describeStatus,
-  formatDelay,
-  formatHostLabel,
-  toggleAutoPickChampion,
-  renderWelcome,
-  renderWhatsNew,
-  renderTourCard,
-  SCREENS,
-  CREDITS,
-} from './panel.js';
+import { SCREENS, formatHostLabel } from '../app/shell/shellData.js';
 import {
   decideOpenMode,
   markOnboardingPatch,
@@ -31,13 +10,12 @@ import {
   withOnboardLock,
   runWhatsNewDismiss,
 } from './onboarding.js';
-import { WHATS_NEW, pickWhatsNew } from './whatsNew.js';
 import { makeStatus } from '../features/status.js';
 import { makeReveal } from '../features/reveal.js';
 import { makeDodge } from '../features/dodge.js';
 import { makeRestartUx } from '../features/restartUx.js';
 import { makeOpener } from '../features/openUrl.js';
-import { loadChampions, searchChampions } from '../features/champions.js';
+import { loadChampions } from '../features/champions.js';
 import { makePresence, readLol, CHAT_ME, QUEUES } from '../features/presence.js';
 import { makeChallenges } from '../features/challenges.js';
 import {
@@ -46,26 +24,24 @@ import {
   readProfileRank,
 } from '../features/profileRank.js';
 import { makeRiotId, loadFriends, removeAllFriends } from '../features/profile.js';
-import { loadSkins, searchSkins, makeBackground } from '../features/skins.js';
-import { autoSize, markManual } from './autoSize.js';
-import { makeSfx, sfxFor } from './sfx.js';
+import { loadSkins, makeBackground } from '../features/skins.js';
+import { makeSfx } from './sfx.js';
 import { makeSettingsClient } from './settingsClient.js';
 import { makeUpdater } from '../features/update.js';
 import { loadConfig } from '../config.js';
 import { canCancel, cancelQueue } from '../autoAccept.js';
-import { findAnchor, inChampSelect, layoutDock, watchAnchor } from './dodgeDock.js';
-import { mountSocialToggle, syncSocialToggle, watchSocialToggle } from './socialToggle.js';
+import { inChampSelect } from './dodgeDock.js';
 import { subscribe } from '../subscribe.js';
-import {
-  buildTeamRevealSnapshot,
-  estimateRevealDurationMs,
-  recommendFetchConcurrency,
-} from '../features/teamRevealStats.js';
+import { buildTeamRevealSnapshot } from '../features/teamRevealStats.js';
 import { makeTeamRevealDom } from './teamRevealDom.js';
+import { appliedEffective, createTrayHealth, effectiveFrom, overlayChromePolicy } from '../features/streaming.js';
+import { clientBoundsFromWindow, postOverlay } from '../features/overlayBridge.js';
 import { makeBuildPanel } from './buildPanel.js';
 import { makeProxyFetch } from '../features/proxyFetch.js';
 import { makeSummonerIdLoader } from '../features/summonerId.js';
-import { wireDrakeSelects } from './drakeSelect.js';
+import { startApp } from '../app/main.jsx';
+import { createDrakeStore } from '../app/store/createDrakeStore.js';
+import { loadLocale } from '../app/i18n/loadLocale.js';
 
 const TAG = '[Drake]';
 
@@ -91,38 +67,49 @@ function isAramSession(session) {
 
 
 
-export const MAX_DELAY_MS = 8000;
 
 
 
-
-
-
-
-export function startUI({ cfg, onSettingsChanged, lcu }) {
+export function startUI({
+  cfg,
+  onSettingsChanged,
+  lcu,
+  host = 'client',
+  mountParent = null,
+  reloadConfig = loadConfig,
+  onPanelChange,
+  subscribeImpl = subscribe,
+}) {
+  const overlayHost = host === 'overlay';
   let settings = { ...cfg.settings };
   let appVersion = cfg.version || '0.0.0';
   let updateUi = { phase: 'idle' };
   let trayDown = false;
-  let openMode = decideOpenMode({
-    onboardingDone: !!settings.onboarding_done,
-    seenVersion: settings.whats_new_seen_version || '',
-    currentVersion: appVersion,
-  });
+  let streamingToolRunning = !!cfg.streaming_tool_running;
+  let desiredEffective = overlayHost
+    ? 'overlay'
+    : cfg.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning);
+  let streamingEffective = desiredEffective;
+  const trayHealth = createTrayHealth();
+  let panelApi = null;
+  let openMode = overlayHost
+    ? 'default'
+    : decideOpenMode({
+        onboardingDone: !!settings.onboarding_done,
+        seenVersion: settings.whats_new_seen_version || '',
+        currentVersion: appVersion,
+      });
   const opened = applyOpenMode(openMode);
   let screen = opened.screen;
-  let overlay = opened.overlay;
+  let overlay = overlayHost ? '' : opened.overlay;
   let tourIndex = -1;
   let pendingOnboard = null;
   const onboardLock = { busy: false };
   let shadowRoot = null;
-  let stopDodgeReposition = null;
-  let stopSocialToggle = null;
   let dodgeBusy = false;
   let champSelectActive = false;
   let champSelectSession = null;
   let statusText = '';
-  let provider = 'porofessor';
   let champions = [];
   let teamRevealChamps = [];
   let teamRevealChampsLoading = null;
@@ -132,13 +119,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let teamRevealLastLoadMs = 0;
   let teamRevealLastConcurrency = 1;
   let inGameIdle = false;
-  let autoPickRole = 'TOP';
   
-  const queries = {
-    auto_pick_champion_id: '',
-    auto_ban_champion_id: '',
-    skins: '',
-  };
   const status = makeStatus({ lcu });
   let dodgeStatus = (detail) => console.log(TAG, 'dodge', detail);
   let say = (text, good) => console.log(TAG, text, good ? 'ok' : 'err');
@@ -155,7 +136,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   let profileTab = 'rank';
   let skins = [];
   let backgroundId = 0;
-  let skinFrame = 0;
   const background = makeBackground({ lcu });
   const sfx = makeSfx();
   
@@ -177,33 +157,105 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   const client = makeSettingsClient({
     port: cfg.port,
     token: cfg.token,
-    reloadConfig: loadConfig,
+    reloadConfig,
   });
   const updater = makeUpdater({
     port: cfg.port,
     token: cfg.token,
-    reloadConfig: loadConfig,
+    reloadConfig,
   });
+
+  const legacyActions = {
+    navigate: () => {},
+    close: () => ui.close(),
+    openUrl: (url) => openCreditUrl(url),
+    togglePanel: () => ui.toggle(),
+    cancelQueue: async () => {
+      store.getState().patchChampSelect({ cancelable: false });
+      try {
+        await cancelQueue(lcu);
+      } catch {
+        console.log(TAG, 'could not cancel the queue');
+      }
+    },
+  };
+
+  const store = createDrakeStore({ settings, appVersion, settingsClient: client });
+  if (__DRAKE_DEV__) window.__drakeStore = store;
+  void loadLocale(lcu).then((locale) => store.getState().setLocale(locale));
+
+  function syncStore() {
+    store.getState().syncLegacy({
+      settings,
+      trayDown,
+      screen,
+      overlay,
+      tourIndex,
+      updateUi,
+      statusText,
+      appVersion,
+      idle: inGameIdle,
+      revealTiming: { lastMs: teamRevealLastLoadMs, lastConcurrency: teamRevealLastConcurrency },
+      champions,
+      profileTab,
+      profileRank: {
+        tier: pickedTier || lol.rankedLeagueTier || '',
+        division: steps['rank-div'],
+        queue: steps['rank-queue'],
+        crystal: steps.crystal,
+      },
+      skins,
+      backgroundId,
+      friends,
+      streaming: { host, effective: streamingEffective },
+    });
+  }
+
+  function inClientChromeAllowed() {
+    if (overlayHost) return true;
+    return overlayChromePolicy(streamingEffective).showInClientChrome;
+  }
+
+  function revealAllowed() {
+    if (overlayHost) return !!settings.queue_team_reveal_in_client;
+    if (overlayChromePolicy(streamingEffective).forceRevealOff) return false;
+    return !!settings.queue_team_reveal_in_client;
+  }
 
   const ui = mountUI({
     doc: document,
     win: window,
-    render: renderShell,
     isIdle: () => inGameIdle,
+    mountParent: mountParent || undefined,
+    hostId: overlayHost ? 'drake-overlay-ui-host' : undefined,
+    onToggleIntent: () => {
+      if (inClientChromeAllowed()) return true;
+      void postOverlay(cfg.port, cfg.token, '/overlay/plugin', { toggle_panel: true }).catch(() => null);
+      return false;
+    },
     onOpenChange: (open) => {
+      store.getState().setPanelOpen(open);
+      if (onPanelChange) onPanelChange(open);
       if (!shadowRoot) return;
-      shadowRoot.getElementById('scrim').style.display = open ? 'grid' : 'none';
-      syncSocialToggle(document, open);
       if (!open) closeCredits();
     },
     onTeamRevealCardsToggle: () => {
-      if (teamRevealDom) teamRevealDom.toggleCards('scouting');
+      if (!inClientChromeAllowed()) {
+        forwardView('scouting');
+        return;
+      }
+      if (teamRevealDom && revealAllowed()) teamRevealDom.toggleCards('scouting');
     },
     onBuildPanelToggle: () => {
+      if (!inClientChromeAllowed()) {
+        forwardView('build');
+        return;
+      }
       if (teamRevealDom) teamRevealDom.toggleCards('build');
       else if (buildPanel) buildPanel.toggle();
     },
     onEscape: () => {
+      if (store.getState().ui.escapeLayers > 0) return true;
       if (teamRevealDom && teamRevealDom.isOpen()) {
         teamRevealDom.closeCards();
         return true;
@@ -212,25 +264,13 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         buildPanel.close();
         return true;
       }
-      if (!shadowRoot) return false;
-      const modal = shadowRoot.getElementById('credits-modal');
-      if (!modal || modal.hidden) return false;
-      closeCredits();
-      return true;
+      return false;
     },
     onMount: wire,
   });
 
   function closeCredits() {
-    if (!shadowRoot) return;
-    const modal = shadowRoot.getElementById('credits-modal');
-    if (modal) modal.hidden = true;
-  }
-
-  function openCredits() {
-    if (!shadowRoot) return;
-    const modal = shadowRoot.getElementById('credits-modal');
-    if (modal) modal.hidden = false;
+    store.getState().setCreditsOpen(false);
   }
 
   function openCreditUrl(url) {
@@ -244,93 +284,110 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   
   
   function setReadyCheck(payload) {
-    if (inGameIdle || !shadowRoot) return;
-    shadowRoot.getElementById('cancel-dock').hidden = !canCancel(payload);
+    if (inGameIdle) return;
+    store.getState().patchChampSelect({ cancelable: canCancel(payload) });
   }
 
-  function resetDodgeUi({ keepLabel = false } = {}) {
-    dodgeBusy = false;
-    if (!shadowRoot) return;
-    for (const id of ['dodge-champ-select', 'dodge']) {
-      const el = shadowRoot.getElementById(id);
-      if (!el) continue;
-      el.disabled = false;
-      if (!keepLabel) el.textContent = 'Dodge';
+  function replaceSettings(next) {
+    settings = { ...settings, ...next };
+    syncRankUiFromSettings();
+    if (onSettingsChanged) onSettingsChanged(settings);
+    syncStore();
+  }
+
+  function refreshStreamingEffective() {
+    if (overlayHost) return;
+    const next = appliedEffective(desiredEffective, trayHealth.reachable());
+    if (next === streamingEffective) return;
+    const failedOpen = desiredEffective === 'overlay' && next === 'in-client';
+    streamingEffective = next;
+    applyStreamingPolicy();
+    if (failedOpen) say('Streaming overlay is unavailable, so Drake is back in the client.', false);
+  }
+
+  function applyStreamingPolicy() {
+    syncStore();
+    if (overlayHost) return;
+    const panel = panelApi || ui;
+    const hostEl = panel.host?.();
+    const allowed = inClientChromeAllowed();
+    if (!allowed) panel.close();
+    if (hostEl) {
+      hostEl.style.visibility = allowed ? '' : 'hidden';
+      if (allowed) hostEl.removeAttribute('data-drake-overlay-mode');
+      else hostEl.setAttribute('data-drake-overlay-mode', '1');
     }
+    if (teamRevealDom) teamRevealDom.setEnabled(!inGameIdle && revealAllowed());
+    void pushOverlayPluginState();
   }
 
-  function startDodgeReposition() {
-    if (!shadowRoot || !champSelectActive || settings.queue_dodge_in_client === false) return;
-    const dock = shadowRoot.getElementById('dodge-dock');
-    const reposition = () => {
-      if (dodgeBusy) return;
-      layoutDock(dock, findAnchor(document), window);
-    };
-    reposition();
-    stopDodgeReposition = watchAnchor(document, window, reposition);
+  async function pushOverlayPluginState() {
+    if (overlayHost || desiredEffective !== 'overlay') return;
+    const { champSelect } = store.getState();
+    const result = await postOverlay(cfg.port, cfg.token, '/overlay/plugin', {
+      ready_check: !inGameIdle && !!champSelect.cancelable,
+      dodge: !inGameIdle && !!champSelect.active && settings.queue_dodge_in_client !== false,
+      bounds: clientBoundsFromWindow(window),
+    }).catch(() => null);
+    trayHealth.record(result !== null);
+    refreshStreamingEffective();
   }
 
-  function syncDodgeDockVisibility() {
-    if (!shadowRoot) return;
-    const dock = shadowRoot.getElementById('dodge-dock');
-    if (!dock) return;
-    const show = champSelectActive && settings.queue_dodge_in_client !== false;
-    dock.hidden = !show;
-    if (stopDodgeReposition) {
-      stopDodgeReposition();
-      stopDodgeReposition = null;
+  async function drainOverlayActions() {
+    if (overlayHost || streamingEffective !== 'overlay') return;
+    const res = await postOverlay(cfg.port, cfg.token, '/overlay/drain', {}).catch(() => null);
+    const actions = res?.actions || [];
+    for (const action of actions) {
+      if (action === 'cancel') await legacyActions.cancelQueue();
+      else if (action === 'dodge') await runDodge();
     }
-    if (show) startDodgeReposition();
+    if (actions.length) await pushOverlayPluginState();
   }
 
-  function startSocialWatch(api) {
-    const panel = api || ui;
-    if (stopSocialToggle || !shadowRoot || !panel) return;
-    stopSocialToggle = watchSocialToggle(document, window, () => {
-      mountSocialToggle(document, {
-        onToggle: () => panel.toggle(),
-        isOpen: () => panel.isOpen(),
-      });
-    });
-    mountSocialToggle(document, {
-      onToggle: () => panel.toggle(),
-      isOpen: () => panel.isOpen(),
-    });
+  async function pollStreaming() {
+    const next = await reloadConfig();
+    if (!next) return;
+    streamingToolRunning = !!next.streaming_tool_running;
+    if (streamingEffective === 'overlay' && next.settings) {
+      const merged = { ...settings, ...next.settings };
+      if (JSON.stringify(merged) !== JSON.stringify(settings)) {
+        settings = merged;
+        syncRankUiFromSettings();
+        if (onSettingsChanged) onSettingsChanged(settings);
+        syncStore();
+      }
+    }
+    desiredEffective =
+      next.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning);
+    refreshStreamingEffective();
   }
 
-  function stopSocialWatch() {
-    if (!stopSocialToggle) return;
-    stopSocialToggle();
-    stopSocialToggle = null;
+  function forwardView(view) {
+    void postOverlay(cfg.port, cfg.token, '/overlay/plugin', { open_view: view }).catch(() => null);
+  }
+
+  function toggleView(view) {
+    if (!teamRevealDom || !revealAllowed()) return;
+    teamRevealDom.toggleCards(view === 'build' ? 'build' : 'scouting');
   }
 
   function setIdle(next) {
     if (next === inGameIdle) return;
     inGameIdle = next;
+    syncStore();
     if (inGameIdle) {
       ui.close();
-      stopSocialWatch();
-      if (stopDodgeReposition) {
-        stopDodgeReposition();
-        stopDodgeReposition = null;
-      }
       champSelectActive = false;
       champSelectSession = null;
+      store.getState().resetChampSelect();
       if (teamRevealDom) {
         void teamRevealDom.handleSession(null);
         teamRevealDom.setEnabled(false);
       }
       feedBuildPanel(null);
-      if (shadowRoot) {
-        const dodge = shadowRoot.getElementById('dodge-dock');
-        if (dodge) dodge.hidden = true;
-        const cancel = shadowRoot.getElementById('cancel-dock');
-        if (cancel) cancel.hidden = true;
-      }
       return;
     }
-    startSocialWatch();
-    if (teamRevealDom) teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+    if (teamRevealDom) teamRevealDom.setEnabled(revealAllowed());
   }
 
   // Champion names are shared with team reveal, but the build panel must not
@@ -382,39 +439,21 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
   function setChampSelect(session) {
     if (inGameIdle) return;
     champSelectSession = session;
-    if (!shadowRoot) return;
-    const dock = shadowRoot.getElementById('dodge-dock');
     champSelectActive = inChampSelect(session);
+    store.getState().patchChampSelect({ active: champSelectActive });
+    if (!shadowRoot) return;
     if (teamRevealDom) void teamRevealDom.handleSession(session);
     feedBuildPanel(session);
-    const showDodge = champSelectActive && settings.queue_dodge_in_client !== false;
-    dock.hidden = !showDodge;
-    if (stopDodgeReposition) {
-      stopDodgeReposition();
-      stopDodgeReposition = null;
-    }
-    if (!champSelectActive) {
-      resetDodgeUi();
-      return;
-    }
-    resetDodgeUi();
-    if (showDodge) startDodgeReposition();
   }
 
-  async function runDodge(btn) {
-    if (!btn || dodgeBusy || btn.disabled) {
-      console.log(TAG, 'dodge ignored', { btn: btn?.id, dodgeBusy, disabled: btn?.disabled });
-      return;
+  async function runDodge() {
+    if (dodgeBusy) {
+      console.log(TAG, 'dodge ignored', { dodgeBusy });
+      return { ok: false, busy: true, reason: '' };
     }
     dodgeBusy = true;
-    btn.disabled = true;
-    btn.textContent = 'Dodging…';
+    store.getState().patchChampSelect({ dodge: 'busy' });
     say('Dodging…', true);
-    console.log(TAG, 'dodge click', btn.id);
-    if (stopDodgeReposition) {
-      stopDodgeReposition();
-      stopDodgeReposition = null;
-    }
     try {
       const result = await dodger.dodge();
       console.log(TAG, 'dodge result', result);
@@ -422,22 +461,21 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         ? `Dodged champ select${result.detail ? ` (${result.detail})` : ''}`
         : result.reason;
       say(msg, result.ok);
-      btn.textContent = result.ok ? 'Dodged!' : 'Failed';
+      store.getState().patchChampSelect({ dodge: result.ok ? 'done' : 'failed' });
+      return result;
     } finally {
-      resetDodgeUi({ keepLabel: true });
-      if (champSelectActive && settings.queue_dodge_in_client !== false) startDodgeReposition();
-      window.setTimeout(() => resetDodgeUi(), 2500);
+      dodgeBusy = false;
+      window.setTimeout(() => store.getState().patchChampSelect({ dodge: 'idle' }), 2500);
     }
   }
 
   function wire(shadow, api) {
+    panelApi = api;
     shadowRoot = shadow;
-    const content = shadow.getElementById('content');
-    const statusEl = shadow.getElementById('status');
+    startApp(shadow, { sfx, store, actions: legacyActions });
 
     function sayUi(text, good) {
-      statusEl.textContent = text;
-      statusEl.className = good ? 'status-good' : 'status-bad';
+      store.getState().setStatusLine({ text, tone: good ? 'good' : 'bad' });
     }
 
     say = sayUi;
@@ -446,12 +484,11 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       console.log(TAG, 'dodge', detail);
     };
 
-    shadow.getElementById('scrim').style.display = 'none';
-
-    startSocialWatch(api);
-    shadow.getElementById('host-label').textContent = formatHostLabel({
-      appVersion,
-      loaderVersion: typeof Pengu !== 'undefined' && Pengu.version ? Pengu.version : '',
+    store.getState().setSession({
+      hostLabel: formatHostLabel({
+        appVersion,
+        loaderVersion: typeof Pengu !== 'undefined' && Pengu.version ? Pengu.version : '',
+      }),
     });
     const proxyFetch = makeProxyFetch({
       port: cfg.port,
@@ -460,8 +497,6 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     });
 
     buildPanel = makeBuildPanel({
-      doc: document,
-      overlayRoot: shadow,
       lcu,
       fetchFn: proxyFetch,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
@@ -471,10 +506,12 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
     });
     void summonerIdLoader.load();
 
+    buildPanel.onUpdate(() => store.getState().setBuild(buildPanel.getSnapshot()));
+    store.getState().setBuild(buildPanel.getSnapshot());
     teamRevealDom = makeTeamRevealDom({
+      publishView: (view) => store.getState().setTeamReveal(view),
       doc: document,
-      subscribe,
-      overlayRoot: shadow,
+      subscribe: subscribeImpl,
       lcu,
       buildPanel,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
@@ -502,162 +539,14 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
         });
       },
     });
-    teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
+    teamRevealDom.setEnabled(revealAllowed());
 
     if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
     feedBuildPanel(champSelectSession);
 
-    function paintOnboard() {
-      const layer = shadow.getElementById('onboard-layer');
-      if (!layer) return;
-      for (const item of shadow.querySelectorAll('[data-tour-active]')) {
-        item.removeAttribute('data-tour-active');
-      }
-      if (overlay === 'welcome') {
-        layer.innerHTML = renderWelcome();
-        layer.hidden = false;
-        return;
-      }
-      if (overlay === 'tour') {
-        const step = TOUR_STEPS[tourIndex];
-        if (!step) {
-          overlay = '';
-          layer.innerHTML = '';
-          layer.hidden = true;
-          return;
-        }
-        layer.innerHTML = renderTourCard(step, {
-          index: tourIndex + 1,
-          total: TOUR_STEPS.length,
-        });
-        layer.hidden = false;
-        const navItem = shadow.querySelector(`[data-screen="${step.screen}"]`);
-        if (navItem) navItem.setAttribute('data-tour-active', 'true');
-        return;
-      }
-      layer.innerHTML = '';
-      layer.hidden = true;
-    }
-
     function paint() {
-      if (screen === 'settings') {
-        content.innerHTML = renderSettings(settings, {
-          disabled: trayDown,
-          version: appVersion,
-          update: updateUi,
-        });
-      } else if (screen === 'auto-pick') {
-        content.innerHTML = renderAutoPick(settings, {
-          disabled: trayDown,
-          list: searchChampions(champions, queries.auto_pick_champion_id),
-          allList: champions,
-          query: queries.auto_pick_champion_id,
-          activeRole: autoPickRole,
-        });
-      } else if (screen === 'auto-ban') {
-        content.innerHTML = renderAutoBan(settings, {
-          disabled: trayDown,
-          list: searchChampions(champions, queries.auto_ban_champion_id),
-          allList: champions,
-          query: queries.auto_ban_champion_id,
-        });
-      } else if (screen === 'profile') {
-        content.innerHTML = renderProfile({
-          tab: profileTab,
-          lol: { ...lol, rankedLeagueTier: pickedTier || lol.rankedLeagueTier,
-                 rankedLeagueDivision: steps['rank-div'],
-                 rankedLeagueQueue: steps['rank-queue'],
-                 challengeCrystalLevel: steps.crystal },
-          skins: searchSkins(skins, queries.skins),
-          skinQuery: queries.skins,
-          backgroundId,
-          skinScroll: 0,
-        });
-      } else if (screen === 'friends') {
-        content.innerHTML = renderFriends(friends);
-      } else if (screen === 'queue') {
-        const concurrency = Number(settings.queue_team_reveal_fetch_concurrency) || 1;
-        const recommended = recommendFetchConcurrency({
-          lastMs: teamRevealLastLoadMs,
-          lastConcurrency: teamRevealLastConcurrency || concurrency,
-        });
-        const estimateMs = estimateRevealDurationMs({
-          concurrency,
-          lastMs: teamRevealLastLoadMs,
-          lastConcurrency: teamRevealLastConcurrency || concurrency,
-        });
-        content.innerHTML = renderQueue({
-          provider,
-          settings,
-          disabled: trayDown,
-          revealTiming: teamRevealLastLoadMs
-            ? { lastMs: teamRevealLastLoadMs, recommended, estimateMs }
-            : null,
-        });
-      } else if (screen === 'status') {
-        content.innerHTML = renderStatus(statusText, settings);
-        updateCount();
-      } else if (screen === 'whats-new') {
-        content.innerHTML = renderWhatsNew(pickWhatsNew(WHATS_NEW, appVersion), {
-          version: appVersion,
-        });
-      } else {
-        content.innerHTML = renderAutoAccept(settings, {
-          disabled: trayDown,
-          maxDelayMs: MAX_DELAY_MS,
-        });
-      }
-      statusEl.textContent = trayDown ? 'Drake tray is not running' : 'Connected to the tray';
-      statusEl.className = trayDown ? 'status-bad' : 'status-good';
-      for (const item of shadow.querySelectorAll('[data-screen]')) {
-        item.setAttribute('aria-selected', String(item.dataset.screen === screen));
-      }
-      wireDrakeSelects(content, ({ dropdown, value }) => {
-        applyPanelDropdown(dropdown, value);
-      });
-      paintOnboard();
-    }
-
-    function applyPanelDropdown(dropdown, value) {
-      const id = dropdown?.id;
-      if (!id || value === '' || value == null) return;
-
-      if (id in steps) {
-        steps[id] = value;
-        return;
-      }
-
-      if (id === 'presence-availability') {
-        const previous = settings.presence_availability || '';
-        settings = { ...settings, presence_availability: value };
-        paint();
-        commit({ presence_availability: value }, () => {
-          settings = { ...settings, presence_availability: previous };
-          paint();
-        });
-        return;
-      }
-
-      const revealSelect = {
-        'team-reveal-sample-size': 'queue_team_reveal_sample_size',
-        'team-reveal-recent-pool': 'queue_team_reveal_recent_pool',
-        'team-reveal-last5-pool': 'queue_team_reveal_last5_pool',
-        'team-reveal-fetch-concurrency': 'queue_team_reveal_fetch_concurrency',
-      }[id];
-      if (!revealSelect) return;
-
-      const previous = settings[revealSelect];
-      const next =
-        revealSelect === 'queue_team_reveal_sample_size' ||
-        revealSelect === 'queue_team_reveal_fetch_concurrency'
-          ? Number(value)
-          : value;
-      settings = { ...settings, [revealSelect]: next };
-      paint();
-      commit({ [revealSelect]: next }, () => {
-        settings = { ...settings, [revealSelect]: previous };
-        paint();
-      });
+      syncStore();
+      store.getState().setStatusLine(null);
     }
 
     function applyUpdateStatus(body) {
@@ -697,8 +586,7 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       revert();
       trayDown = result.reason.includes('not running');
       paint();
-      statusEl.textContent = result.reason;
-      statusEl.className = 'status-bad';
+      store.getState().setStatusLine({ text: result.reason, tone: 'bad' });
       console.log(TAG, 'could not save -', result.reason);
       return { ok: false, reason: result.reason };
     }
@@ -793,522 +681,194 @@ export function startUI({ cfg, onSettingsChanged, lcu }) {
       });
     }
 
-    
-    const BOX = { min: 120, max: Math.round(window.innerHeight * 0.46) };
-    
-    const GRIP = 16;
+    legacyActions.navigate = async (id) => {
+      await goToScreen(id);
+      paint();
+    };
 
-    function updateCount() {
-      const el = shadow.getElementById('status-count');
-      if (el) el.textContent = describeStatus(statusText);
-      autoSize(shadow.getElementById('status-text'), BOX);
+    function applySettingSideEffects(keys) {
+      if (keys.includes('queue_team_reveal_in_client') && teamRevealDom) {
+        teamRevealDom.setEnabled(revealAllowed());
+      }
+      if (keys.includes('streaming_mode') && !overlayHost) {
+        desiredEffective = effectiveFrom(settings.streaming_mode, streamingToolRunning);
+        refreshStreamingEffective();
+      }
     }
 
-    shadow.querySelector('.nav').addEventListener('click', async (e) => {
-      const item = e.target.closest('[data-screen]');
-      if (!item) return;
-      await goToScreen(item.dataset.screen);
+    function applySettingsPatch(patch) {
+      const keys = Object.keys(patch);
+      const previous = Object.fromEntries(keys.map((key) => [key, settings[key]]));
+      settings = { ...settings, ...patch };
+      applySettingSideEffects(keys);
       paint();
-    });
-
-    shadow.getElementById('onboard-layer').addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-onboard]');
-      if (!btn || onboardLock.busy) return;
-      void handleOnboard(btn.dataset.onboard);
-    });
-
-    content.addEventListener('input', (e) => {
-      if (e.target.id !== 'status-text') return;
-      statusText = e.target.value;
-      updateCount();
-    });
-
-    
-    
-    
-    content.addEventListener('mousedown', (e) => {
-      const box = e.target;
-      if (box.id !== 'status-text') return;
-      const inGrip =
-        e.offsetX > box.clientWidth - GRIP && e.offsetY > box.clientHeight - GRIP;
-      if (inGrip) markManual(box);
-    });
-
-    
-    
-    
-    
-    
-    
-    
-    function updateSkinGrid() {
-      const viewport = shadow.getElementById('skin-viewport');
-      const gridEl = shadow.getElementById('skin-grid');
-      if (!viewport || !gridEl) return;
-
-      const list = searchSkins(skins, queries.skins);
-      const win = skinWindow(list.length, viewport.scrollTop);
-      gridEl.style.transform = `translateY(${win.offsetY}px)`;
-      gridEl.innerHTML = renderSkinCells(list, backgroundId, win);
+      return commit(patch, () => {
+        settings = { ...settings, ...previous };
+        applySettingSideEffects(keys);
+      });
     }
 
-    content.addEventListener(
-      'scroll',
-      (e) => {
-        if (e.target.id !== 'skin-viewport') return;
-        
-        
-        
-        if (skinFrame) return;
-        skinFrame = requestAnimationFrame(() => {
-          skinFrame = 0;
-          updateSkinGrid();
-        });
-      },
-      true,
-    );
-
-    content.addEventListener('change', (e) => {
-      
-      
-      if (e.target.id in steps) {
-        steps[e.target.id] = e.target.value;
+    async function revealLobby(providerId) {
+      let region = '';
+      try {
+        region = (await lcu.get('/riotclient/region-locale')).region || '';
+      } catch {
       }
-    });
+      const reveal = makeReveal({
+        lcu,
+        region,
+        open: (url) =>
+          opener.open(url).then((r) => {
+            if (!r.ok) say(r.reason, false);
+          }),
+      });
+      return reveal.reveal(providerId);
+    }
 
-    
-    
-    content.addEventListener('input', (e) => {
-      const key = e.target.dataset && e.target.dataset.search;
-      if (!key) return;
-      queries[key] = e.target.value;
-      paint();
-      const again = shadow.querySelector(`[data-search="${key}"]`);
-      if (again) {
-        again.focus();
-        again.setSelectionRange(again.value.length, again.value.length);
-      }
-    });
-
-    content.addEventListener('click', async (e) => {
-      const jump = e.target.closest('[data-whats-new-screen]');
-      if (jump) {
-        await withOnboardLock(onboardLock, () => dismissWhatsNew(jump.dataset.whatsNewScreen));
-        return;
-      }
-      if (e.target.closest('[data-onboard="dismiss-whats-new"]')) {
-        await withOnboardLock(onboardLock, () => dismissWhatsNew());
-        return;
-      }
-
-      const applyPickToggle = (id) => {
-        const previous = settings.auto_pick_by_role;
-        settings = toggleAutoPickChampion(settings, autoPickRole, id);
+    async function installUpdate() {
+      const result = await updater.apply();
+      if (!result.ok) {
+        trayDown = result.reason.includes('not running');
+        updateUi = { phase: 'error', message: result.reason };
         paint();
-        commit(
-          {
-            auto_pick_by_role: settings.auto_pick_by_role,
-          },
-          () => {
-            settings = { ...settings, auto_pick_by_role: previous };
-          },
-        );
+      }
+      return result;
+    }
+
+    Object.assign(legacyActions, {
+      setSettings: applySettingsPatch,
+      saveStatus: (text) => status.write(text),
+      revealLobby,
+      dodge: () => runDodge(),
+      checkUpdates: () => runUpdateCheck(),
+      installUpdate,
+      restartClient: () => restarter.restart(),
+    });
+
+    async function saveRankFromState() {
+      const tier = pickedTier || lol.rankedLeagueTier || 'GOLD';
+      const patch = profileRankPatch({
+        tier,
+        division: steps['rank-div'],
+        queue: steps['rank-queue'],
+        crystal: steps.crystal,
+      });
+      const previous = {
+        profile_rank_tier: settings.profile_rank_tier,
+        profile_rank_division: settings.profile_rank_division,
+        profile_rank_queue: settings.profile_rank_queue,
+        profile_rank_crystal: settings.profile_rank_crystal,
       };
+      settings = { ...settings, ...patch };
+      const saved = await commit(patch, () => {
+        settings = { ...settings, ...previous };
+      });
+      if (!saved.ok) return saved;
+      return applyProfileRank(presence, readProfileRank(settings));
+    }
 
-      const roleTab = e.target.closest('[data-auto-pick-role]');
-      if (roleTab) {
-        autoPickRole = roleTab.dataset.autoPickRole || 'TOP';
-        paint();
-        return;
+    async function clearRankState() {
+      const patch = profileRankPatch({
+        tier: '',
+        division: 'I',
+        queue: QUEUES[0].id,
+        crystal: 'IRON',
+      });
+      const previous = {
+        profile_rank_tier: settings.profile_rank_tier,
+        profile_rank_division: settings.profile_rank_division,
+        profile_rank_queue: settings.profile_rank_queue,
+        profile_rank_crystal: settings.profile_rank_crystal,
+      };
+      settings = { ...settings, ...patch };
+      pickedTier = '';
+      steps['rank-div'] = 'I';
+      steps['rank-queue'] = QUEUES[0].id;
+      steps.crystal = 'IRON';
+      const saved = await commit(patch, () => {
+        settings = { ...settings, ...previous };
+      });
+      if (!saved.ok) return saved;
+      return presence.clearRank();
+    }
+
+    async function runProfileAction(action) {
+      const result = await action();
+      try {
+        lol = readLol(await lcu.get(CHAT_ME));
+      } catch {
       }
+      paint();
+      return result;
+    }
 
-      const removePick = e.target.closest('[data-remove-pick]');
-      if (removePick) {
-        applyPickToggle(Number(removePick.dataset.removePick));
-        return;
-      }
+    async function selectProfileTab(tab) {
+      profileTab = tab;
+      if (profileTab === 'banner' && skins.length === 0) skins = await loadSkins(lcu);
+      paint();
+    }
 
-      const removeBan = e.target.closest('[data-remove-ban]');
-      if (removeBan) {
-        const previous = settings.auto_ban_champion_id;
-        settings = { ...settings, auto_ban_champion_id: 0 };
-        paint();
-        commit({ auto_ban_champion_id: 0 }, () => {
-          settings = { ...settings, auto_ban_champion_id: previous };
-        });
-        return;
-      }
-
-      const champ = e.target.closest('[data-champ]');
-      if (champ) {
-        const key = champ.dataset.for;
-        const id = Number(champ.dataset.champ);
-
-        if (key === 'auto_pick') {
-          applyPickToggle(id);
-          return;
-        }
-
-        const previous = settings[key];
-        settings = { ...settings, [key]: previous === id ? 0 : id };
-        paint();
-        commit({ [key]: settings[key] }, () => {
-          settings = { ...settings, [key]: previous };
-        });
-        return;
-      }
-
-      const pill = e.target.closest('[data-provider]');
-      if (pill) {
-        provider = pill.dataset.provider;
-        paint();
-        return;
-      }
-
-      if (e.target.id === 'reveal') {
-        const btn = e.target;
-        btn.disabled = true;
-        
-        
-        
-        let region = '';
-        try {
-          region = (await lcu.get('/riotclient/region-locale')).region || '';
-        } catch {
-        }
-        const reveal = makeReveal({
-          lcu,
-          region,
-          open: (url) =>
-            opener.open(url).then((r) => {
-              if (!r.ok) say(r.reason, false);
-            }),
-        });
-        const result = await reveal.reveal(provider);
-        btn.disabled = false;
-        say(result.ok ? `Looking up ${result.count} summoners` : result.reason, result.ok);
-        return;
-      }
-
-      const dodgeBtn = e.target.closest('#dodge');
-      if (dodgeBtn) {
-        e.stopPropagation();
-        void runDodge(dodgeBtn);
-        return;
-      }
-
-      if (e.target.id === 'restart-client') {
-        const btn = e.target;
-        btn.disabled = true;
-        const result = await restarter.restart();
-        
-        btn.disabled = false;
-        say(result.ok ? 'Restarting the client…' : result.reason, result.ok);
-        return;
-      }
-
-      if (e.target.id === 'check-updates') {
-        await runUpdateCheck();
-        return;
-      }
-
-      if (e.target.id === 'install-update') {
-        const btn = e.target;
-        btn.disabled = true;
-        say('Downloading and installing the update…', true);
-        const result = await updater.apply();
-        if (result.ok && result.installing) {
-          say('Installing update…', true);
-          return;
-        }
-        btn.disabled = false;
-        if (!result.ok) {
-          trayDown = result.reason.includes('not running');
-          updateUi = { phase: 'error', message: result.reason };
-          paint();
-        }
-        say(result.ok ? 'Drake is already up to date' : result.reason, result.ok);
-        return;
-      }
-
-      
-      const ptab = e.target.closest('[data-ptab]');
-      if (ptab) {
-        profileTab = ptab.dataset.ptab;
-        if (profileTab === 'banner' && skins.length === 0) skins = await loadSkins(lcu);
-        paint();
-        return;
-      }
-
-      const tierTile = e.target.closest('[data-tier]');
-      if (tierTile) {
-        pickedTier = tierTile.dataset.tier;
-        paint();
-        return;
-      }
-
-      const skinTile = e.target.closest('[data-skin]');
-      if (skinTile) {
-        const id = Number(skinTile.dataset.skin);
+    Object.assign(legacyActions, {
+      selectProfileTab,
+      applyProfileRank: (draft) => {
+        pickedTier = draft.tier;
+        steps['rank-div'] = draft.division;
+        steps['rank-queue'] = draft.queue;
+        steps.crystal = draft.crystal;
+        return runProfileAction(saveRankFromState);
+      },
+      resetProfileRank: () => runProfileAction(clearRankState),
+      removeBadges: () => runProfileAction(() => challenges.removeBadges()),
+      cloneBadge: () => runProfileAction(() => challenges.cloneFirstBadge()),
+      saveRiotId: (raw) => runProfileAction(() => riotId.save(raw)),
+      setBackground: (id) => {
         backgroundId = id;
         paint();
-        const result = await background.set(id);
-        say(result.ok ? 'Profile background set' : result.reason, result.ok);
-        return;
-      }
-
-      if (e.target.id === 'friends-remove-all') {
-        const btn = e.target;
-        
-        
-        if (btn.dataset.armed !== '1') {
-          btn.dataset.armed = '1';
-          btn.textContent = `Remove all ${friends.length}? Click again`;
-          return;
-        }
-        btn.disabled = true;
+        return background.set(id);
+      },
+      removeAllFriends: async () => {
         const result = await removeAllFriends({ lcu, friends });
         friends = await loadFriends(lcu);
         paint();
-        say(
-          result.failed
-            ? `Removed ${result.removed}, ${result.failed} failed`
-            : `Removed ${result.removed} friends`,
-          !result.failed,
-        );
-        return;
-      }
-
-      const profileAction = {
-        'rank-save': async () => {
-          const tier = pickedTier || lol.rankedLeagueTier || 'GOLD';
-          const patch = profileRankPatch({
-            tier,
-            division: steps['rank-div'],
-            queue: steps['rank-queue'],
-            crystal: steps.crystal,
-          });
-          const previous = {
-            profile_rank_tier: settings.profile_rank_tier,
-            profile_rank_division: settings.profile_rank_division,
-            profile_rank_queue: settings.profile_rank_queue,
-            profile_rank_crystal: settings.profile_rank_crystal,
-          };
-          settings = { ...settings, ...patch };
-          const saved = await commit(patch, () => {
-            settings = { ...settings, ...previous };
-          });
-          if (!saved.ok) return saved;
-          return applyProfileRank(presence, readProfileRank(settings));
-        },
-        'rank-clear': async () => {
-          const patch = profileRankPatch({
-            tier: '',
-            division: 'I',
-            queue: QUEUES[0].id,
-            crystal: 'IRON',
-          });
-          const previous = {
-            profile_rank_tier: settings.profile_rank_tier,
-            profile_rank_division: settings.profile_rank_division,
-            profile_rank_queue: settings.profile_rank_queue,
-            profile_rank_crystal: settings.profile_rank_crystal,
-          };
-          settings = { ...settings, ...patch };
-          pickedTier = '';
-          steps['rank-div'] = 'I';
-          steps['rank-queue'] = QUEUES[0].id;
-          steps.crystal = 'IRON';
-          const saved = await commit(patch, () => {
-            settings = { ...settings, ...previous };
-          });
-          if (!saved.ok) return saved;
-          return presence.clearRank();
-        },
-        'badges-remove': () => challenges.removeBadges(),
-        'badges-clone': () => challenges.cloneFirstBadge(),
-        'riot-id-save': () =>
-          riotId.save(
-            `${shadow.getElementById('riot-name').value}#${shadow.getElementById('riot-tag').value}`,
-          ),
-      }[e.target.id];
-
-      if (profileAction) {
-        const btn = e.target;
-        const actionId = btn.id;
-        btn.disabled = true;
-        const result = await profileAction();
-        try {
-          lol = readLol(await lcu.get(CHAT_ME));
-        } catch {
-        }
-        paint();
-        const okCopy = {
-          'badges-remove': 'Badges removed',
-          'badges-clone': 'Cloned first badge to all 3',
-        }[actionId] || 'Applied';
-        say(result.ok ? okCopy : result.reason, result.ok);
-        return;
-      }
-
-      if (e.target.id === 'status-clear') {
-        statusText = '';
-        paint();
-        return;
-      }
-      if (e.target.id !== 'status-save') return;
-
-      const btn = e.target;
-      btn.disabled = true;
-      const result = await status.write(statusText);
-      btn.disabled = false;
-      say(
-        result.ok
-          ? `Status saved · ${describeStatus(statusText)}`
-          : `Could not save: ${result.reason}`,
-        result.ok,
-      );
-    });
-
-    content.addEventListener('click', (e) => {
-      const row = e.target.closest('[data-setting]');
-      if (!row || row.disabled || row.tagName === 'INPUT' || row.tagName === 'TEXTAREA') return;
-      const key = row.dataset.setting;
-      const previous = settings[key];
-      settings = { ...settings, [key]: !previous };
-      if (key === 'queue_team_reveal_in_client' && teamRevealDom) {
-        teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
-      }
-      if (key === 'queue_dodge_in_client') {
-        syncDodgeDockVisibility();
-      }
-      paint();
-      commit({ [key]: settings[key] }, () => {
-        settings = { ...settings, [key]: previous };
-        if (key === 'queue_team_reveal_in_client' && teamRevealDom) {
-          teamRevealDom.setEnabled(!!settings.queue_team_reveal_in_client);
-        }
-        if (key === 'queue_dodge_in_client') {
-          syncDodgeDockVisibility();
-        }
-      });
-    });
-
-    content.addEventListener('input', (e) => {
-      if (e.target.id === 'queue_auto_message') {
-        settings = { ...settings, queue_auto_message: e.target.value };
-        return;
-      }
-      if (e.target.id !== 'delay') return;
-      shadow.getElementById('delay-value').textContent = formatDelay(Number(e.target.value));
-    });
-
-    content.addEventListener('change', (e) => {
-      if (e.target.id === 'queue_auto_message') {
-        const previous = settings.queue_auto_message || '';
-        const value = e.target.value;
-        settings = { ...settings, queue_auto_message: value };
-        commit({ queue_auto_message: value }, () => {
-          settings = { ...settings, queue_auto_message: previous };
-        });
-        return;
-      }
-      if (e.target.id === 'delay') {
-        const previous = settings.auto_accept_delay_ms;
-        settings = { ...settings, auto_accept_delay_ms: Number(e.target.value) };
-        commit({ auto_accept_delay_ms: settings.auto_accept_delay_ms }, () => {
-          settings = { ...settings, auto_accept_delay_ms: previous };
-        });
-        return;
-      }
-      if (e.target.id === 'presence-availability') {
-        applyPanelDropdown(e.target, e.target.value);
-        return;
-      }
-      applyPanelDropdown(e.target, e.target.value);
-    });
-
-    shadow.getElementById('cancel-queue').addEventListener('click', async () => {
-      const dock = shadow.getElementById('cancel-dock');
-      dock.hidden = true;
-      try {
-        await cancelQueue(lcu);
-      } catch {
-        console.log(TAG, 'could not cancel the queue');
-      }
-    });
-
-    shadow.getElementById('dodge-champ-select').addEventListener('click', (e) => {
-      e.stopPropagation();
-      void runDodge(e.currentTarget);
-    });
-
-    
-    
-    
-    const INTERACTIVE = '.navitem, .pill, .hextech-btn, .check-row, .champ, .skin, .rank, .close, .credit-link, .select-field, .slider, [data-onboard], [data-whats-new-screen]';
-
-    shadow.addEventListener(
-      'mouseover',
-      (e) => {
-        const el = e.target.closest(INTERACTIVE);
-        
-        
-        if (!el || el.disabled) return;
-        if (e.relatedTarget && el.contains(e.relatedTarget)) return;
-        const hover = sfxFor(el).hover;
-        if (hover) sfx.play(hover);
+        return result;
       },
-      true,
-    );
-
-    shadow.addEventListener(
-      'click',
-      (e) => {
-        const el = e.target.closest(INTERACTIVE);
-        if (!el || el.disabled) return;
-        
-        
-        if (el.classList.contains('slider')) return;
-        sfx.play(sfxFor(el).click);
-      },
-      true,
-    );
-
-    shadow.addEventListener(
-      'input',
-      (e) => {
-        const el = e.target.closest('.slider');
-        if (!el || el.disabled) return;
-        sfx.play(sfxFor(el).click);
-      },
-      true,
-    );
-
-    shadow.getElementById('close').addEventListener('click', () => api.close());
-    shadow.getElementById('credits-open').addEventListener('click', () => openCredits());
-    shadow.getElementById('credits-close').addEventListener('click', () => closeCredits());
-    shadow.getElementById('credits-modal').addEventListener('click', (e) => {
-      if (e.target.closest('[data-credits-dismiss]')) {
-        closeCredits();
-        return;
-      }
-      const link = e.target.closest('[data-credit-href]');
-      if (link) {
-        openCreditUrl(link.getAttribute('data-credit-href'));
-        return;
-      }
-      if (e.target.closest('[data-credit-open-repo]')) {
-        openCreditUrl(CREDITS.repoUrl);
-      }
     });
 
-    shadow.getElementById('scrim').addEventListener('click', (e) => {
-      if (e.target.id === 'scrim') api.close();
+    Object.assign(legacyActions, {
+      onboard: (action) => handleOnboard(action),
+      dismissWhatsNew: (target) => withOnboardLock(onboardLock, () => dismissWhatsNew(target)),
+    });
+
+    Object.assign(legacyActions, {
+      openScouting: () => teamRevealDom?.openCards(),
+      closeScouting: () => teamRevealDom?.closeCards(),
+      setScoutingTab: (tab) => teamRevealDom?.setActiveTab(tab),
+      muteScouting: () => teamRevealDom?.muteAll(),
+    });
+
+    Object.assign(legacyActions, {
+      loadBuild: () => buildPanel?.loadBuild(),
+      setBuildTier: (value) => buildPanel?.setTier(value),
+      setBuildRegion: (value) => buildPanel?.setRegion(value),
+      retryBuild: () => buildPanel?.retry(),
+      showAllRanks: () => buildPanel?.showAllRanks(),
+      viewPlayerBuild: (riotId, region) => buildPanel?.viewPlayer(riotId, region),
+      clearPlayerBuild: () => buildPanel?.clearPlayer(),
+      applyBuildRunes: (index) => buildPanel?.applyRunes(index),
+      applyBuildSpells: (index) => buildPanel?.applySpells(index),
+      applyBuildItems: () => buildPanel?.applyItems(),
     });
 
     paint();
+    applyStreamingPolicy();
+    if (!overlayHost) {
+      window.setInterval(() => {
+        void pollStreaming().catch(() => {});
+        void pushOverlayPluginState();
+        void drainOverlayActions();
+      }, 750);
+    }
   }
 
-  return { ...ui, setReadyCheck, setChampSelect, setIdle };
+  return { ...ui, setReadyCheck, setChampSelect, setIdle, replaceSettings, toggleView, store, actions: legacyActions };
 }

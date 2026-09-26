@@ -1,3 +1,4 @@
+import { gameDataUrl } from './assetUrl.js';
 
 
 
@@ -22,7 +23,7 @@ export function normaliseSkins(raw) {
   if (!raw || typeof raw !== 'object') return [];
   return Object.values(raw)
     .filter((s) => s && s.id && s.name && s.tilePath)
-    .map((s) => ({ id: s.id, name: s.name, tile: s.tilePath }))
+    .map((s) => ({ id: s.id, name: s.name, tile: gameDataUrl(s.tilePath) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

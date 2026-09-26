@@ -1,0 +1,52 @@
+.drk-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: linear-gradient(180deg, rgba(30, 35, 40, 0.72), rgba(1, 10, 19, 0.88));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+
+.drk-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-4), transparent);
+}
+
+.drk-card--glow {
+  border-color: var(--gold-4);
+  box-shadow: var(--shadow-1), var(--glow-gold);
+}
+
+.drk-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.drk-card__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-1);
+}
+
+.drk-card__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.drk-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}

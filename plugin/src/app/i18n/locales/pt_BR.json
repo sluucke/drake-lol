@@ -1,0 +1,579 @@
+{
+  "common": {
+    "close": "Fechar",
+    "loading": "Carregando…",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "retry": "Tentar novamente",
+    "on": "Ligado",
+    "off": "Desligado",
+    "remove": "Remover"
+  },
+  "time": {
+    "seconds": {
+      "one": "{count} segundo",
+      "other": "{count} segundos"
+    }
+  },
+  "shell": {
+    "title": "Drake",
+    "hotkeyHint": "Ctrl + D",
+    "close": "Fechar",
+    "creditsButton": "Créditos",
+    "nav": {
+      "auto-accept": "Aceite automático",
+      "auto-pick": "Pick automático",
+      "auto-ban": "Ban automático",
+      "queue": "Fila",
+      "status": "Status",
+      "profile": "Perfil",
+      "friends": "Amigos",
+      "whats-new": "Novidades",
+      "settings": "Configurações"
+    },
+    "footer": {
+      "trayUp": "Conectado ao Drake na bandeja",
+      "trayDown": "O Drake não está rodando na bandeja"
+    },
+    "credits": {
+      "title": "Créditos",
+      "disclaimer": "O Drake é um software open source não oficial. Não é afiliado à Riot Games.",
+      "createdBy": "Criado por",
+      "specialThanks": "Agradecimentos especiais",
+      "inspiredBy": "Inspirado em",
+      "assets": "Recursos",
+      "github": "GitHub"
+    }
+  },
+  "screens": {
+    "autoAccept": {
+      "title": "Aceite automático",
+      "subtitle": "Aceita a verificação de partida assim que ela aparece.",
+      "toggle": "Aceitar partidas automaticamente",
+      "delayLabel": "Aceitar após",
+      "instant": "Na hora",
+      "seconds": "{value}s",
+      "delayHelp": "Uma pequena espera deixa uma janela para recusar manualmente e parece menos mecânica do que aceitar no instante em que o aviso aparece."
+    },
+    "status": {
+      "title": "Mensagem de status",
+      "subtitle": "Sua presença no chat. Quebras de linha funcionam aqui — o campo do próprio cliente é de uma linha só e não as aceita.",
+      "presence": "Presença",
+      "clientDefault": "Padrão do cliente",
+      "availability": {
+        "chat": "Online",
+        "offline": "Offline",
+        "mobile": "Celular",
+        "dnd": "Ocupado"
+      },
+      "presenceHelp": "O Drake reaplica o status escolhido sempre que o cliente o redefine.",
+      "placeholder": "Digite ou cole seu status. ASCII art é bem-vinda.",
+      "count": {
+        "one": "{chars} caracteres · {count} linha",
+        "other": "{chars} caracteres · {count} linhas"
+      },
+      "clear": "Limpar",
+      "save": "Salvar",
+      "saved": "Status salvo · {summary}",
+      "saveFailed": "Não foi possível salvar: {reason}"
+    },
+    "queue": {
+      "title": "Fila",
+      "subtitle": "Ferramentas para a seleção de campeões.",
+      "revealTitle": "Revelar lobby",
+      "revealHelp": "Pesquisa todo o seu time em um site de scouting. Só funciona durante a seleção de campeões, que é quando os nomes existem.",
+      "provider": "Site de scouting",
+      "revealButton": "Revelar lobby",
+      "lookingUp": {
+        "one": "Pesquisando {count} invocador",
+        "other": "Pesquisando {count} invocadores"
+      },
+      "inClient": "Revelar meu time no cliente",
+      "inClientHelp": "Reescreve as linhas dos aliados e habilita os cards com Ctrl+Shift+D durante a seleção de campeões.",
+      "sampleSize": "Tamanho da amostra",
+      "recentPool": "Filas recentes",
+      "last5Pool": "Filas das últimas 5",
+      "concurrency": "Buscas simultâneas",
+      "pool": {
+        "ranked_both": "Solo + Flex",
+        "current_queue": "Fila atual",
+        "any": "Qualquer fila"
+      },
+      "currentQueueWarn": "A fila atual pode ter poucos dados se o jogador raramente joga essa fila.",
+      "concurrencyWarn": "Mais buscas simultâneas pesam mais no cliente e podem atingir limites de requisição.",
+      "estimate": "Cerca de ~{seconds}s para um lobby completo com essa configuração.",
+      "recommend": {
+        "one": "Com base na sua última revelação, sugerimos resolver {count} jogador por vez.",
+        "other": "Com base na sua última revelação, sugerimos resolver {count} jogadores por vez."
+      },
+      "optionsDisabled": "Ative a revelação no cliente para alterar estas opções.",
+      "dodgeTitle": "Dodge",
+      "dodgeHelp": "Sai da seleção de campeões. Aplica a penalidade normal de dodge — o Drake não pede confirmação, então só aperte se tiver certeza.",
+      "dodgeToggle": "Mostrar botão de dodge na seleção de campeões",
+      "dodgeToggleHelp": "Coloca um botão de Dodge sobre o cliente durante a seleção de campeões.",
+      "dodgeButton": "Dodge",
+      "dodging": "Saindo…",
+      "dodged": "Saiu!",
+      "dodgeFailed": "Falhou",
+      "mapSide": "Mostrar o lado do mapa na seleção de campeões",
+      "muteAll": "Silenciar aliados automaticamente na seleção de campeões",
+      "autoMessage": "Enviar mensagem automática ao conectar no chat",
+      "autoMessagePlaceholder": "Mensagem a enviar quando o chat conectar..."
+    },
+    "settings": {
+      "title": "Configurações",
+      "subtitle": "Como o próprio Drake se comporta.",
+      "runAtStartup": "Iniciar o Drake com o Windows",
+      "runAtStartupHelp": "Mantém o cliente injetado antes de abrir, para que este painel esteja sempre disponível.",
+      "autoReload": "Recarregar o cliente quando o Drake iniciar",
+      "autoReloadHelp": "Usado apenas quando o Drake encontra o cliente já aberto sem o Drake carregado.",
+      "autoUpdate": "Instalar atualizações automaticamente",
+      "autoUpdateHelp": "Baixa a versão mais recente do GitHub e executa o instalador. O Windows vai pedir permissão porque o Drake fica em Arquivos de Programas.",
+      "analytics": "Compartilhar estatísticas anônimas de uso",
+      "analyticsHelp": "Envia um ID anônimo da instalação, a versão do Drake, a região do seu servidor do LoL e o início/fim das sessões, para sabermos quantas pessoas usam o Drake. Nenhum nome de invocador, conta ou dado de partida.",
+      "updates": "Atualizações",
+      "version": "v{version}",
+      "checkUpdates": "Procurar atualizações",
+      "checking": "Verificando…",
+      "upToDate": "O Drake está atualizado.",
+      "available": "{version} está disponível.",
+      "install": "Instalar agora",
+      "noInstaller": "{version} está no GitHub, mas ainda não tem instalador para Windows.",
+      "checkFailed": "Não foi possível procurar atualizações.",
+      "downloading": "Baixando e instalando a atualização…",
+      "installing": "Instalando atualização…",
+      "alreadyCurrent": "O Drake já está atualizado",
+      "unlockStatus": "Desbloquear o campo de mensagem de status",
+      "unlockStatusHelp": "Remove o limite de 25 caracteres do cliente na sua mensagem de status e dá mais espaço ao campo. Vale a partir do próximo recarregamento do cliente.",
+      "client": "Cliente",
+      "clientHelp": "Recarrega a interface do cliente do League. Use quando o Drake foi injetado com o cliente já aberto, ou após uma mudança que só vale depois de recarregar.",
+      "restart": "Reiniciar cliente",
+      "restarting": "Reiniciando o cliente…",
+      "language": "Idioma",
+      "languageHelp": "Por padrão o Drake segue o idioma do cliente do League. Escolha um idioma aqui para usá-lo sempre.",
+      "languageAuto": "Idioma do cliente ({language})",
+      "streaming": "Modo streamer",
+      "streamingOff": "Desligado",
+      "streamingOn": "Ligado",
+      "streamingAuto": "Automático (quando um app de stream estiver aberto)",
+      "streamingHelp": "Move o Drake para uma janela separada que o OBS, o Streamlabs e o Discord não conseguem capturar, então ele nunca aparece na sua live. A revelação do time fica desligada enquanto essa janela estiver em uso.",
+      "streamingDragHelp": "No overlay, arraste os botões do Drake e de Dodge para onde preferir.",
+      "resetOverlayPositions": "Restaurar posição dos botões do overlay"
+    },
+    "autoPick": {
+      "title": "Pick automático",
+      "subtitle": "Até 2 campeões por rota. O pick espera sua rota ser definida — Preencher não faz nada.",
+      "toggle": "Escolher um campeão automaticamente",
+      "instaLock": "Travar na hora",
+      "instaLockHelp": "Trava o campeão assim que a escolha abre, em vez de só selecioná-lo. Ninguém pode pegá-lo de você, e você não pode mudar de ideia.",
+      "rolesLabel": "Rotas",
+      "empty": "Clique em até 2 campeões para esta rota — o primeiro é o seu pick, o segundo é o reserva."
+    },
+    "autoBan": {
+      "title": "Ban automático",
+      "subtitle": "Bane um campeão por você quando chegar a sua vez na fase de banimento.",
+      "toggle": "Banir um campeão automaticamente",
+      "toggleHelp": "O ban é sempre confirmado — só selecionar não bane nada.",
+      "champion": "Campeão",
+      "empty": "Clique em um campeão para banir — clique de novo ou em ✕ para limpar."
+    },
+    "profile": {
+      "title": "Perfil",
+      "subtitle": "O que os outros jogadores veem. Nada disso altera sua conta.",
+      "tabs": {
+        "rank": "Elo",
+        "banner": "Banner",
+        "riot-id": "Riot ID"
+      },
+      "tier": "Elo",
+      "division": "Divisão",
+      "queue": "Fila",
+      "crystal": "Cristal",
+      "rankHelp": "Aparece ao lado do seu nome no chat. Seu elo real não muda.",
+      "reset": "Redefinir",
+      "apply": "Aplicar",
+      "applied": "Aplicado",
+      "badgesTitle": "Insígnias de desafio",
+      "badgesHelp": "Os três emblemas do seu perfil. Clonar copia o primeiro para os três espaços.",
+      "removeBadges": "Remover insígnias",
+      "cloneBadge": "Clonar o primeiro para os 3",
+      "badgesRemoved": "Insígnias removidas",
+      "badgeCloned": "Primeira insígnia clonada para os 3",
+      "skinSearch": "Buscar em {count} skins...",
+      "noSkins": "Nenhuma skin encontrada.",
+      "backgroundSet": "Fundo do perfil definido",
+      "riotHelp": "A troca de nome é limitada pela Riot, não pelo Drake. Se recusar, é o tempo de espera deles.",
+      "riotName": "Nome",
+      "riotTag": "TAG",
+      "saveRiotId": "Salvar ID"
+    },
+    "friends": {
+      "title": "Amigos",
+      "empty": "Ninguém na lista, ou o cliente ainda não a compartilhou.",
+      "summary": "{online} online de {total}. As notas são as que você definiu no cliente.",
+      "warning": "Remover todos não pode ser desfeito pelo Drake.",
+      "removeAll": "Remover todos",
+      "confirmTitle": "Remover todos os amigos?",
+      "confirm": {
+        "one": "Isso remove {count} amigo. Não pode ser desfeito pelo Drake.",
+        "other": "Isso remove todos os {count} amigos. Não pode ser desfeito pelo Drake."
+      },
+      "removed": {
+        "one": "{count} amigo removido",
+        "other": "{count} amigos removidos"
+      },
+      "removedPartial": "{removed} removidos, {failed} falharam"
+    },
+    "whatsNew": {
+      "title": "Novidades",
+      "subtitle": "Mudanças na v{version}",
+      "recent": "Mudanças recentes",
+      "empty": "Nenhuma nota para esta versão.",
+      "continue": "Continuar"
+    }
+  },
+  "roles": {
+    "TOP": "Topo",
+    "JUNGLE": "Selva",
+    "MIDDLE": "Meio",
+    "BOTTOM": "Atirador",
+    "UTILITY": "Suporte"
+  },
+  "champions": {
+    "search": "Buscar campeões...",
+    "noMatch": "Nenhum campeão encontrado.",
+    "unavailable": "Lista de campeões indisponível — abra esta tela de novo para tentar outra vez.",
+    "noneChosen": "nenhum escolhido",
+    "selected": {
+      "one": "{count} selecionado",
+      "other": "{count} selecionados"
+    }
+  },
+  "ranks": {
+    "tiers": {
+      "IRON": "Ferro",
+      "BRONZE": "Bronze",
+      "SILVER": "Prata",
+      "GOLD": "Ouro",
+      "PLATINUM": "Platina",
+      "EMERALD": "Esmeralda",
+      "DIAMOND": "Diamante",
+      "MASTER": "Mestre",
+      "GRANDMASTER": "Grão-Mestre",
+      "CHALLENGER": "Desafiante"
+    },
+    "queues": {
+      "RANKED_SOLO_5x5": "Solo/Duo",
+      "RANKED_FLEX_SR": "Flexível",
+      "RANKED_TFT": "TFT"
+    }
+  },
+  "whatsNew": {
+    "v0_4_0": [
+      {
+        "title": "Um Drake totalmente novo",
+        "body": "Todas as telas foram refeitas com um visual hextech refinado, animações mais suaves e layouts mais claros — o painel, o Scouting do time, a aba Build, os botões na seleção de campeões e o botão na barra social."
+      },
+      {
+        "title": "O Drake fala a sua língua",
+        "body": "Por padrão o Drake segue o idioma do cliente do League, e você pode escolher outro nas Configurações. Inglês e português do Brasil estão totalmente traduzidos; os outros idiomas usam inglês por enquanto."
+      },
+      {
+        "title": "Modo streamer",
+        "body": "Ligue (ou deixe no Automático) nas Configurações e o Drake passa para uma janela própria que o OBS, o Streamlabs e o Discord não conseguem capturar — você continua vendo tudo, e a sua live não vê nada. A revelação do time fica desligada enquanto ele estiver ativo."
+      },
+      {
+        "title": "Sair do Drake agora desliga de verdade",
+        "body": "O Sair da bandeja agora remove o Drake do cliente do League e recarrega o cliente limpo, então nada continua carregando depois que o Drake fecha. Ao abrir o Drake de novo, ele se reativa sozinho."
+      },
+      {
+        "title": "Estatísticas anônimas de uso",
+        "body": "O Drake agora conta quantas pessoas o usam: um ID anônimo da instalação, a versão do Drake e a região do seu servidor do League. Nenhum nome de invocador, conta ou dado de partida. Você pode desligar em Configurações → Atualizações."
+      }
+    ],
+    "v0_3_25": [
+      {
+        "title": "Regiões do revelar lobby corrigidas",
+        "body": "O revelar lobby externo (Porofessor / OP.GG) agora mapeia corretamente os ids de plataforma da Riot — por exemplo LA2 → las — e o OP.GG usa a URL atual /lol/multisearch. Relatado por Julio Maggioni."
+      }
+    ],
+    "v0_3_24": [
+      {
+        "title": "Os dropdowns funcionam de verdade agora",
+        "body": "Rank, Região e todos os outros dropdowns do Drake (configurações de Fila, Perfil) respondiam a cliques de forma instável, ou nem respondiam, para alguns usuários — foram trocados por um dropdown controlado pelo Drake, então a opção escolhida sempre fica."
+      },
+      {
+        "title": "Corrigido W/L recente, KDA e Últimas 12h mostrando 0",
+        "body": "Um bug na detecção de fila podia zerar as estatísticas recentes de um aliado no Team Reveal. Corrigido na origem."
+      },
+      {
+        "title": "Painel de Build, redesenhado",
+        "body": "Caso tenha perdido: builds da seleção de campeões vindas do OP.GG — runas, itens por fase, ordem de habilidades, matchups e top players — agora organizadas de forma mais parecida com o que você veria no Mobalytics, com ações de Aplicar em um clique e Criar Conjunto de Itens. Abra com Ctrl+Shift+D."
+      }
+    ],
+    "v0_3_23": [
+      {
+        "title": "Histórico de partidas do team reveal pelo proxy da bandeja",
+        "body": "O scouting da seleção de campeões busca as partidas recentes pelo proxy do Drake na bandeja, então W/L e Últimas 5 carregam de forma confiável junto com nomes e elos."
+      },
+      {
+        "title": "Skeletons ao carregar partidas",
+        "body": "Abrir o Team Scouting enquanto as partidas ainda carregam mostra skeletons em vez de placeholders vazios 0V/0D."
+      }
+    ],
+    "v0_3_22": [
+      {
+        "title": "Painel de build",
+        "body": "Builds da seleção de campeões vindas do OP.GG: runas, itens, ordem de habilidades, feitiços de invocador, matchups e top players — com ações de Aplicar e Criar Conjunto de Itens."
+      },
+      {
+        "title": "Layout de build mais compacto",
+        "body": "Os Feitiços de Invocador ficam abaixo da Ordem de Habilidades, então a coluna da direita fica preenchida e você rola menos para ver o conjunto completo."
+      }
+    ],
+    "v0_3_21": [
+      {
+        "title": "Revelar no chat espera a conexão",
+        "body": "O team reveal continua tentando até o chat da seleção de campeões conectar, e então publica o mapa de nomes e reescreve os autores."
+      }
+    ],
+    "v0_3_20": [
+      {
+        "title": "Revelar nomes no chat da seleção de campeões",
+        "body": "O team reveal publica um mapa de nomes privado no chat e reescreve os autores das mensagens para Riot IDs enquanto você está na seleção de campeões."
+      },
+      {
+        "title": "Créditos",
+        "body": "Um ? ao lado de Fechar abre os créditos do Drake e das ferramentas que o inspiraram."
+      },
+      {
+        "title": "W/L do lobby atualizado a cada fila",
+        "body": "O histórico de partidas é buscado sem cache HTTP, então seu W/L atualiza depois da última partida."
+      },
+      {
+        "title": "Aviso de atualização com a atualização automática desligada",
+        "body": "Ao iniciar, o Drake pergunta se deve instalar uma versão mais nova quando as atualizações automáticas estão desativadas."
+      }
+    ],
+    "v0_3_19": [
+      {
+        "title": "O revelar acompanha as trocas",
+        "body": "O team reveal no cliente remapeia os nomes quando você troca de posição com um aliado, inclusive quando a identidade dele ainda está oculta."
+      },
+      {
+        "title": "Controle para limpar o Ban automático",
+        "body": "O ban selecionado aparece como um chip com ícone e ✕ — não precisa buscar o campeão de novo para desmarcar."
+      },
+      {
+        "title": "Cancelar fila sai da busca",
+        "body": "Cancelar fila recusa a verificação de partida e também sai da busca, para você ficar totalmente fora da fila."
+      }
+    ],
+    "v0_3_18": [
+      {
+        "title": "Pick automático por rota",
+        "body": "Escolha até 2 campeões para Topo, Selva, Meio, Atirador e Suporte. Os picks esperam sua rota ser definida — os picks globais antigos foram apagados."
+      },
+      {
+        "title": "Revelar lobby reinicia entre partidas",
+        "body": "Os nomes dos aliados do último lobby não ficam mais presos quando você entra na fila de novo; a limpeza só reescreve as linhas que ainda mostram nossa revelação."
+      }
+    ],
+    "v0_3_17": [
+      {
+        "title": "Tour de boas-vindas",
+        "body": "A primeira abertura mostra uma breve boas-vindas com um tour opcional pelas telas do Ctrl+D. Pule quando quiser."
+      },
+      {
+        "title": "Novidades",
+        "body": "Depois de uma atualização, o Ctrl+D abre um registro de mudanças. Reabra quando quiser pela barra lateral; os itens levam você à tela correspondente."
+      },
+      {
+        "title": "O revelar acompanha trocas de rota",
+        "body": "O team reveal no cliente remapeia os nomes quando jogadores trocam de posição na seleção de campeões."
+      },
+      {
+        "title": "Controles da fila ranqueada",
+        "body": "Escolha Solo+Flex, a fila atual ou qualquer fila para as partidas recentes, além do tamanho da amostra, fila das últimas 5 e buscas simultâneas."
+      }
+    ],
+    "v0_3_16": [
+      {
+        "title": "WR do pick nos cards",
+        "body": "Os cards de revelação mostram partidas e taxa de vitória com o campeão que o jogador travou."
+      },
+      {
+        "title": "Dodge na seleção de campeões",
+        "body": "Botão de dodge opcional no cliente (ligado por padrão) nas configurações de Fila."
+      }
+    ]
+  },
+  "onboarding": {
+    "welcome": {
+      "copy": "Ferramentas que ficam ao lado do cliente. Um tour rápido mostra as telas que você mais vai usar.",
+      "tour": "Fazer o tour",
+      "skip": "Pular"
+    },
+    "tour": {
+      "progress": "{current} / {total}",
+      "next": "Próximo",
+      "done": "Concluir",
+      "skip": "Pular",
+      "steps": [
+        {
+          "title": "Aceite automático",
+          "body": "Aceita verificações de partida automaticamente, com um atraso opcional para você ainda poder recusar manualmente."
+        },
+        {
+          "title": "Fila",
+          "body": "Ferramentas da seleção de campeões: ajudas de dodge e revelação opcional do time no cliente."
+        },
+        {
+          "title": "Pick e Ban automáticos",
+          "body": "Defina até dois campeões por rota. O pick automático espera sua rota ser definida."
+        },
+        {
+          "title": "Status",
+          "body": "Defina uma mensagem de status longa e trave Online, Offline, Celular ou Ocupado."
+        },
+        {
+          "title": "Configurações",
+          "body": "Inicialização, atualizações e recarregamento do cliente ficam aqui."
+        }
+      ]
+    }
+  },
+  "overlays": {
+    "scouting": {
+      "title": "Scouting do time",
+      "tabs": {
+        "scouting": "Scouting do time",
+        "build": "Build"
+      },
+      "empty": "Nenhum dado de scouting do time disponível",
+      "mute": {
+        "idle": "Silenciar todos",
+        "muting": "Silenciando…",
+        "muted": "✓ Silenciados",
+        "failed": "Falha ao silenciar"
+      },
+      "side": {
+        "BLUE": "Lado azul",
+        "RED": "Lado vermelho"
+      },
+      "you": "(Você)",
+      "unknown": "Desconhecido",
+      "unranked": "Sem elo",
+      "queues": {
+        "solo": "Solo/Duo",
+        "flex": "Flexível"
+      },
+      "lp": "{lp} PDL",
+      "rows": {
+        "recentWl": "V/D recente",
+        "recentWlGames": "V/D recente · últimas {count} partidas",
+        "kda": "KDA recente",
+        "last12h": "Últimas 12h",
+        "picked": "Escolhido",
+        "seasonMain": "Principal da temporada",
+        "last5": "Últimas 5"
+      },
+      "winsShort": "{count}V",
+      "lossesShort": "{count}D",
+      "games": "{count}p",
+      "noGames": "sem partidas",
+      "toast": {
+        "revealing": "Revelando lobby",
+        "revealed": "Sessão revelada. Pressione Ctrl+Shift+D para ver.",
+        "revealedSide": "Sessão revelada · {side} · Pressione Ctrl+Shift+D para ver.",
+        "view": "Ver"
+      }
+    },
+    "build": {
+      "champion": "Campeão",
+      "championFallback": "Campeão {id}",
+      "modes": {
+        "ranked": "Ranqueada",
+        "aram": "ARAM"
+      },
+      "patch": "Patch {patch}",
+      "rank": "Elo",
+      "region": "Região",
+      "globalRegion": "Global",
+      "stats": {
+        "win": "Vitória",
+        "pick": "Escolha",
+        "ban": "Ban",
+        "kda": "KDA",
+        "games": "Partidas"
+      },
+      "tiers": {
+        "all": "Todos os elos",
+        "ibsg": "Ferro–Prata",
+        "gold_plus": "Ouro+",
+        "platinum_plus": "Platina+",
+        "emerald_plus": "Esmeralda+",
+        "diamond_plus": "Diamante+",
+        "master": "Mestre",
+        "grandmaster": "Grão-Mestre",
+        "challenger": "Desafiante"
+      },
+      "viewing": "Vendo a build do jogador:",
+      "restore": "✕ Restaurar build principal",
+      "restoreTitle": "Restaurar build padrão",
+      "pickChampion": "Escolha um campeão para ver recomendações de build",
+      "loading": "Carregando dados da build…",
+      "noData": "Sem dados para {tier}",
+      "seeAllRanks": "Ver todos os elos",
+      "retry": "Tentar novamente",
+      "opggError": "Não foi possível acessar o OP.GG",
+      "cards": {
+        "runes": "Runas",
+        "items": "Itens",
+        "spells": "Feitiços de Invocador",
+        "skills": "Ordem de Habilidades",
+        "matchups": "Matchups",
+        "topPlayers": "Top jogadores (OP.GG)"
+      },
+      "empty": {
+        "runes": "Sem dados de runas",
+        "items": "Sem dados de itens",
+        "spells": "Sem dados de feitiços",
+        "matchups": "Sem dados"
+      },
+      "phases": {
+        "starter": "Inicial",
+        "boots": "Botas",
+        "core": "Principal",
+        "situational": "Situacional"
+      },
+      "actions": {
+        "apply": "Aplicar",
+        "applied": "Aplicado",
+        "applying": "Aplicando…",
+        "failed": "Falhou — tentar de novo",
+        "createItemSet": "Criar conjunto de itens"
+      },
+      "wr": "{value} WR",
+      "winRate": "Taxa de vitória",
+      "games": "Partidas",
+      "strong": "Forte contra",
+      "weak": "Fraco contra",
+      "loadingPlayers": "Carregando jogadores…",
+      "unavailable": "Indisponível",
+      "unknown": "Desconhecido",
+      "playerTitle": "{tier} · {games} partidas"
+    },
+    "docks": {
+      "cancelQueue": "Cancelar fila"
+    },
+    "socialToggle": {
+      "open": "Abrir o Drake",
+      "close": "Fechar o Drake"
+    },
+    "hint": {
+      "text": "Dica: você pode arrastar os botões do Drake e de Dodge para onde quiser.",
+      "dismiss": "Entendi"
+    }
+  }
+}

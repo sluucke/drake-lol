@@ -1,0 +1,71 @@
+.drk-check {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+  pointer-events: auto;
+}
+
+.drk-check__button {
+  display: block;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.drk-check__box {
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: var(--checkbox-sprite) no-repeat 0 0 / 14px 56px;
+}
+
+.drk-check__box[data-checked='true'] {
+  background-position: 0 -28px;
+}
+
+.drk-check:not(.is-disabled):hover .drk-check__box {
+  background-position: 0 -14px;
+}
+
+.drk-check:not(.is-disabled):hover .drk-check__box[data-checked='true'] {
+  background-position: 0 -42px;
+}
+
+.drk-check__button:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.drk-check__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.drk-check:not(.is-disabled):hover .drk-check__label {
+  color: var(--text-strong);
+}
+
+.drk-check__help {
+  grid-column: 2;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted, #5c5b57);
+}
+
+.drk-check.is-disabled {
+  opacity: 0.5;
+}
+
+.drk-check.is-disabled .drk-check__button,
+.drk-check.is-disabled .drk-check__label {
+  cursor: default;
+}

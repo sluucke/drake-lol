@@ -1,0 +1,31 @@
+.drk-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-family: var(--font-text);
+  font-size: var(--text-md);
+  color: var(--text-strong);
+  background: var(--surface-0);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  pointer-events: auto;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.drk-input::placeholder {
+  color: var(--text-muted);
+}
+
+.drk-input:hover:not(:disabled) {
+  border-color: var(--gold-4);
+}
+
+.drk-input:focus {
+  outline: none;
+  border-color: var(--hex-3);
+  box-shadow: var(--glow-hex);
+}
+
+.drk-input:disabled {
+  opacity: 0.45;
+}

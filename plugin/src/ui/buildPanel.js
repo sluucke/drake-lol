@@ -4,15 +4,11 @@ import { fetchChampionLeaderboard, fetchPlayerBuild } from '../features/topPlaye
 import { loadGameAssets } from '../features/gameAssets.js';
 import { applyRunePage, loadRuneAssets } from '../features/runes.js';
 import { buildItemSet, applyItemSet, applySummonerSpells } from '../features/itemSets.js';
-import { renderBuildPanel } from './buildPanelRender.js';
-import { wireDrakeSelects } from './drakeSelect.js';
 
 const TAG = '[Drake]';
 export const CACHE_TTL_MS = 10 * 60 * 1000;
 
 export function makeBuildPanel({
-  doc,
-  overlayRoot,
   lcu,
   fetchFn = globalThis.fetch,
   getChampName = () => '',
@@ -34,7 +30,6 @@ export function makeBuildPanel({
 
   let open = false;
   let enabled = true;
-  let overlay = null;
   let generation = 0;
   let hasOpenedOnce = false;
   const listeners = new Set();
@@ -84,20 +79,6 @@ export function makeBuildPanel({
     return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}`;
   }
 
-  function ensureOverlay() {
-    if (overlay) return overlay;
-    const owner = overlayRoot?.ownerDocument || doc;
-    const node = owner?.createElement?.('div');
-    if (!node) return null;
-    node.className = 'build-overlay';
-    node.hidden = true;
-    if (node.style) node.style.display = 'none';
-    overlayRoot?.appendChild?.(node);
-    overlay = node;
-    wireEvents(node);
-    return node;
-  }
-
   // The champion list can arrive after the session does (it loads lazily and is
   // shared with team reveal). An empty name must never stick: re-resolve it
   // wherever it is about to be used.
@@ -111,43 +92,70 @@ export function makeBuildPanel({
 
   function paint() {
     refreshChampionName();
-    const node = ensureOverlay();
-    if (node) {
-      node.hidden = !open;
-      if (node.style) node.style.display = open ? 'flex' : 'none';
-      if (open) {
-        node.innerHTML = renderBuildPanel(state);
-        wireDrakeSelects(node, ({ dropdown, value }) => {
-          applyDropdownSelect(dropdown, value);
-        });
-      }
-    }
     notify();
   }
 
-  function applyDropdownSelect(dropdown, value) {
-    if (!dropdown || !value) return false;
-    const isTier =
-      dropdown.matches?.('[data-build-tier]') || dropdown.dataset?.buildTier !== undefined;
-    const isRegion =
-      dropdown.matches?.('[data-build-region]') || dropdown.dataset?.buildRegion !== undefined;
-    if (isTier) {
-      if (value === state.tier) return true;
-      state.tier = value;
-      void saveSettings({ build_tier: state.tier });
-      void loadBuild();
-      notify();
-      return true;
-    }
-    if (isRegion) {
-      if (value === state.region) return true;
-      state.region = value;
-      void saveSettings({ build_region: state.region });
-      void loadBuild();
-      notify();
-      return true;
-    }
-    return false;
+  function setTier(value) {
+    if (!value || value === state.tier) return;
+    state.tier = value;
+    void saveSettings({ build_tier: state.tier });
+    void loadBuild();
+    notify();
+  }
+
+  function setRegion(value) {
+    if (!value || value === state.region) return;
+    state.region = value;
+    void saveSettings({ build_region: state.region });
+    void loadBuild();
+    notify();
+  }
+
+  function clearPlayer() {
+    generation += 1;
+    state.viewingPlayer = '';
+    state.build = state.averageBuild;
+    paint();
+  }
+
+  function applyRunes(index) {
+    const page = state.build?.runePages?.[Number(index) || 0];
+    if (!page) return Promise.resolve();
+    return runAction('runeStatus', () =>
+      applyRunePageImpl(lcu, {
+        name: `${state.championName || 'Drake'} Build`,
+        primaryStyleId: page.primaryStyleId,
+        subStyleId: page.subStyleId,
+        selectedPerkIds: page.selectedPerkIds,
+      })
+    );
+  }
+
+  function applySpells(index) {
+    const entry = state.build?.spells?.[Number(index) || 0];
+    if (!entry?.ids?.length) return Promise.resolve();
+    return runAction('spellStatus', () =>
+      applySummonerSpellsImpl(lcu, { spell1Id: entry.ids[0], spell2Id: entry.ids[1] })
+    );
+  }
+
+  function applyItems() {
+    const itemSet = buildItemSet({
+      championId: state.championId,
+      championName: state.championName,
+      build: state.build,
+    });
+    if (!itemSet) return Promise.resolve();
+    return runAction('itemSetStatus', () => applyItemSetImpl(lcu, getSummonerId(), itemSet));
+  }
+
+  function getSnapshot() {
+    const { getChampName: _getChampName, ...rest } = state;
+    const counters = [...(state.build?.counters?.strong || []), ...(state.build?.counters?.weak || [])];
+    const championNames = Object.fromEntries(
+      counters.map((c) => [c.championId, getChampName(Number(c.championId)) || ''])
+    );
+    return { ...rest, topPlayers: { ...state.topPlayers }, championNames };
   }
 
   async function loadBuild({ force = false } = {}) {
@@ -288,138 +296,23 @@ export function makeBuildPanel({
     paint();
   }
 
-  function readChangeValue(event, target) {
-    return target?.value ?? event?.detail?.value ?? '';
-  }
-
-  function handleChange(event) {
-    const target = event?.target;
-    const path = typeof event?.composedPath === 'function' ? event.composedPath() : [];
-    const tierEl =
-      target?.closest?.('[data-build-tier]') ||
-      path.find?.((node) => node?.matches?.('[data-build-tier]') || node?.dataset?.buildTier !== undefined) ||
-      (target?.matches?.('[data-build-tier]') || target?.dataset?.buildTier !== undefined ? target : null);
-    if (tierEl) {
-      const next = readChangeValue(event, tierEl) || readChangeValue(event, target);
-      return applyDropdownSelect(tierEl, next);
-    }
-    const regionEl =
-      target?.closest?.('[data-build-region]') ||
-      path.find?.((node) => node?.matches?.('[data-build-region]') || node?.dataset?.buildRegion !== undefined) ||
-      (target?.matches?.('[data-build-region]') || target?.dataset?.buildRegion !== undefined ? target : null);
-    if (regionEl) {
-      const next = readChangeValue(event, regionEl) || readChangeValue(event, target);
-      return applyDropdownSelect(regionEl, next);
-    }
-    return false;
-  }
-
-  function handleClick(event) {
-    const target = event?.target;
-    const hit = (attr) => target?.closest?.(`[${attr}]`);
-
-    if (hit('data-build-close')) {
-      event?.stopPropagation?.();
-      close();
-      return true;
-    }
-    if (hit('data-build-retry')) {
-      event?.stopPropagation?.();
-      void loadBuild({ force: true });
-      return true;
-    }
-    if (hit('data-build-tier-all')) {
-      event?.stopPropagation?.();
-      state.tier = 'all';
-      void saveSettings({ build_tier: 'all' });
-      void loadBuild();
-      notify();
-      return true;
-    }
-    if (hit('data-build-clear-player')) {
-      event?.stopPropagation?.();
-      generation += 1;
-      state.viewingPlayer = '';
-      state.build = state.averageBuild;
-      paint();
-      return true;
-    }
-
-    const playerBtn = hit('data-build-player');
-    if (playerBtn) {
-      event?.stopPropagation?.();
-      void handlePlayerBuild(
-        playerBtn.dataset.buildPlayer,
-        playerBtn.dataset.buildPlayerRegion || 'kr'
-      );
-      return true;
-    }
-
-    const runeBtn = hit('data-build-apply-runes');
-    if (runeBtn) {
-      event?.stopPropagation?.();
-      const page = state.build?.runePages?.[Number(runeBtn.dataset.buildApplyRunes) || 0];
-      if (!page) return true;
-      void runAction('runeStatus', () =>
-        applyRunePageImpl(lcu, {
-          name: `${state.championName || 'Drake'} Build`,
-          primaryStyleId: page.primaryStyleId,
-          subStyleId: page.subStyleId,
-          selectedPerkIds: page.selectedPerkIds,
-        })
-      );
-      return true;
-    }
-
-    const spellBtn = hit('data-build-apply-spells');
-    if (spellBtn) {
-      event?.stopPropagation?.();
-      const entry = state.build?.spells?.[Number(spellBtn.dataset.buildApplySpells) || 0];
-      if (!entry?.ids?.length) return true;
-      void runAction('spellStatus', () =>
-        applySummonerSpellsImpl(lcu, { spell1Id: entry.ids[0], spell2Id: entry.ids[1] })
-      );
-      return true;
-    }
-
-    if (hit('data-build-apply-items')) {
-      event?.stopPropagation?.();
-      const itemSet = buildItemSet({
-        championId: state.championId,
-        championName: state.championName,
-        build: state.build,
-      });
-      if (!itemSet) return true;
-      void runAction('itemSetStatus', () => applyItemSetImpl(lcu, getSummonerId(), itemSet));
-      return true;
-    }
-
-    return false;
-  }
-
-  function wireEvents(node) {
-    if (!node?.addEventListener || node.dataset?.drakeBuildWired === '1') return;
-    if (node.dataset) node.dataset.drakeBuildWired = '1';
-
-    node.addEventListener('change', (event) => {
-      handleChange(event);
-    });
-
-    node.addEventListener('click', (event) => {
-      handleClick(event);
-    });
-  }
-
   function setSession(session) {
     const championId = Number(session?.championId) || 0;
     const position = session?.position || '';
     const mode = session?.mode === 'aram' ? 'aram' : 'ranked';
 
     if (championId === state.championId && position === state.position && mode === state.mode) {
-      if (refreshChampionName() && open) {
-        paint();
-        if (!state.topPlayers.ok && !state.topPlayers.loading) {
-          void loadTopPlayers(generation, cacheKey());
+      if (refreshChampionName()) {
+        if (open) {
+          paint();
+          if (!state.topPlayers.ok && !state.topPlayers.loading) {
+            void loadTopPlayers(generation, cacheKey());
+          }
+        } else {
+          notify();
+          if (state.build && !state.topPlayers.ok && !state.topPlayers.loading) {
+            void loadTopPlayers(generation, cacheKey());
+          }
         }
       }
       return;
@@ -435,6 +328,7 @@ export function makeBuildPanel({
     state.spellStatus = 'idle';
 
     if (open) void loadBuild();
+    else notify();
   }
 
   function openPanel() {
@@ -462,11 +356,6 @@ export function makeBuildPanel({
     return `${state.championId}|${state.position}|${state.mode}|${state.tier}|${state.region}|${state.loading}|${state.error}|${state.patch}|${Boolean(state.build)}|${state.runeStatus}|${state.itemSetStatus}|${state.spellStatus}|${state.viewingPlayer}|${state.topPlayers.loading}|${state.topPlayers.players.length}`;
   }
 
-  function renderHtml() {
-    refreshChampionName();
-    return renderBuildPanel(state);
-  }
-
   return {
     open: openPanel,
     close,
@@ -480,10 +369,16 @@ export function makeBuildPanel({
     loadBuild,
     getState: () => state,
     getStateSig,
-    renderHtml,
-    handleChange,
-    handleClick,
-    applyDropdownSelect,
+    setTier,
+    setRegion,
+    retry: () => loadBuild({ force: true }),
+    showAllRanks: () => setTier('all'),
+    viewPlayer: (riotId, region) => handlePlayerBuild(riotId, region || 'kr'),
+    clearPlayer,
+    applyRunes,
+    applySpells,
+    applyItems,
+    getSnapshot,
     onUpdate: (fn) => {
       listeners.add(fn);
       return () => listeners.delete(fn);

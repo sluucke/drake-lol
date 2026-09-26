@@ -82,6 +82,14 @@ beforeEach(() => {
 });
 
 describe('mountUI', () => {
+  it('mounts without a legacy render function', () => {
+    const onMount = vi.fn();
+    mountUI({ doc, win, onMount });
+    const host = doc.documentElement.children.find((c) => c.id === HOST_ID);
+    expect(host.shadow).not.toBeNull();
+    expect(onMount).toHaveBeenCalledWith(host.shadow, expect.anything());
+  });
+
   it('attaches the host to documentElement, not body', () => {
 
 
@@ -134,6 +142,21 @@ describe('mountUI', () => {
     expect(onOpenChange).toHaveBeenLastCalledWith(true);
     ui.toggle();
     expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('lets onToggleIntent veto the Ctrl+D toggle', () => {
+    const onToggleIntent = vi.fn(() => false);
+    const ui = mountUI({ doc, win, onToggleIntent });
+    win.dispatch('keydown', { ctrlKey: true, key: 'd', preventDefault() {} });
+    expect(onToggleIntent).toHaveBeenCalledTimes(1);
+    expect(ui.isOpen()).toBe(false);
+  });
+
+  it('mounts under a custom parent with a custom host id', () => {
+    const parent = doc.createElement('div');
+    mountUI({ doc, win, mountParent: parent, hostId: 'drake-overlay-ui-host' });
+    expect(parent.children.map((c) => c.id)).toEqual(['drake-overlay-ui-host']);
+    expect(doc.documentElement.children).toHaveLength(0);
   });
 
   it('opens on Ctrl+D and closes on Escape', () => {

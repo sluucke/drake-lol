@@ -36,27 +36,6 @@ export const SFX = {
 
 const KNOWN = new Set(Object.values(SFX));
 
-
-
-export function sfxFor(el) {
-  const has = (c) => !!el?.classList?.contains(c);
-
-  if (has('close')) return { click: SFX.close, hover: SFX.hover };
-  if (has('credit-link')) return { click: SFX.tab, hover: SFX.hover };
-  if (has('check-row')) return { click: SFX.check, hover: SFX.hover };
-  if (has('select-field')) return { click: SFX.select, hover: SFX.hover };
-  if (has('pill')) return { click: SFX.radio, hover: SFX.radioHover };
-  if (has('navitem')) return { click: SFX.tab, hover: SFX.hover };
-  if (has('champ') || has('skin')) return { click: SFX.card, hover: SFX.cardHover };
-  if (has('rank')) return { click: SFX.tile, hover: SFX.tileHover };
-  if (has('slider')) return { click: SFX.check, hover: null };
-  if (has('hextech-btn-muted') || has('hextech-btn-danger')) {
-    return { click: SFX.secondary, hover: SFX.hover };
-  }
-  if (has('hextech-btn')) return { click: SFX.click, hover: SFX.goldHover };
-  return { click: SFX.click, hover: SFX.hover };
-}
-
 export function makeSfx({ AudioImpl = typeof Audio !== 'undefined' ? Audio : null, enabled = true, volume = 0.35 } = {}) {
   
   

@@ -1,0 +1,579 @@
+{
+  "common": {
+    "close": "Close",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "on": "On",
+    "off": "Off",
+    "remove": "Remove"
+  },
+  "time": {
+    "seconds": {
+      "one": "{count} second",
+      "other": "{count} seconds"
+    }
+  },
+  "shell": {
+    "title": "Drake",
+    "hotkeyHint": "Ctrl + D",
+    "close": "Close",
+    "creditsButton": "Credits",
+    "nav": {
+      "auto-accept": "Auto Accept",
+      "auto-pick": "Auto Pick",
+      "auto-ban": "Auto Ban",
+      "queue": "Queue",
+      "status": "Status",
+      "profile": "Profile",
+      "friends": "Friends",
+      "whats-new": "What's New",
+      "settings": "Settings"
+    },
+    "footer": {
+      "trayUp": "Connected to the tray",
+      "trayDown": "Drake tray is not running"
+    },
+    "credits": {
+      "title": "Credits",
+      "disclaimer": "Drake is unofficial open source software. Not affiliated with Riot Games.",
+      "createdBy": "Created by",
+      "specialThanks": "Special thanks",
+      "inspiredBy": "Inspired by",
+      "assets": "Assets",
+      "github": "GitHub"
+    }
+  },
+  "screens": {
+    "autoAccept": {
+      "title": "Auto Accept",
+      "subtitle": "Accepts the ready check for you the moment it appears.",
+      "toggle": "Accept ready checks automatically",
+      "delayLabel": "Accept after",
+      "instant": "Instant",
+      "seconds": "{value}s",
+      "delayHelp": "A short wait leaves you a window to decline by hand, and looks less mechanical than accepting the instant the prompt renders."
+    },
+    "status": {
+      "title": "Status Message",
+      "subtitle": "Your chat presence. Line breaks work here — the client's own field is a single-line input and cannot hold them.",
+      "presence": "Presence",
+      "clientDefault": "Client default",
+      "availability": {
+        "chat": "Online",
+        "offline": "Offline",
+        "mobile": "Mobile",
+        "dnd": "Busy"
+      },
+      "presenceHelp": "Drake keeps re-applying the chosen status whenever the client resets it.",
+      "placeholder": "Type or paste your status. ASCII art welcome.",
+      "count": {
+        "one": "{chars} chars · {count} line",
+        "other": "{chars} chars · {count} lines"
+      },
+      "clear": "Clear",
+      "save": "Save",
+      "saved": "Status saved · {summary}",
+      "saveFailed": "Could not save: {reason}"
+    },
+    "queue": {
+      "title": "Queue",
+      "subtitle": "Tools for champ select.",
+      "revealTitle": "Lobby reveal",
+      "revealHelp": "Looks your whole team up on a scouting site. Only works while you are in champ select, because that is when the names exist.",
+      "provider": "Scouting site",
+      "revealButton": "Reveal Lobby",
+      "lookingUp": {
+        "one": "Looking up {count} summoner",
+        "other": "Looking up {count} summoners"
+      },
+      "inClient": "Reveal my team in-client",
+      "inClientHelp": "Rewrites ally rows and enables the Ctrl+Shift+D cards overlay while in champ select.",
+      "sampleSize": "Sample size",
+      "recentPool": "Recent pool",
+      "last5Pool": "Last 5 pool",
+      "concurrency": "Fetch at once",
+      "pool": {
+        "ranked_both": "Solo + Flex",
+        "current_queue": "Current queue",
+        "any": "Any queue"
+      },
+      "currentQueueWarn": "Current queue can look sparse if that player rarely plays this queue.",
+      "concurrencyWarn": "Higher concurrency loads the client harder and can hit rate limits.",
+      "estimate": "About ~{seconds}s for a full lobby at this setting.",
+      "recommend": {
+        "one": "Based on your last reveal, we suggest resolving {count} player at a time.",
+        "other": "Based on your last reveal, we suggest resolving {count} players at a time."
+      },
+      "optionsDisabled": "Enable in-client reveal to change these.",
+      "dodgeTitle": "Dodge",
+      "dodgeHelp": "Leaves champ select. Costs you the usual dodge penalty — Drake does not confirm first, so only press it if you mean it.",
+      "dodgeToggle": "Show dodge button in champ select",
+      "dodgeToggleHelp": "Places a Dodge button over the client while you are in champ select.",
+      "dodgeButton": "Dodge",
+      "dodging": "Dodging…",
+      "dodged": "Dodged!",
+      "dodgeFailed": "Failed",
+      "mapSide": "Show map side in champ select",
+      "muteAll": "Auto-mute teammates in champ select",
+      "autoMessage": "Auto-send message on chat connect",
+      "autoMessagePlaceholder": "Message to send when chat connects..."
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "How Drake itself behaves.",
+      "runAtStartup": "Start Drake with Windows",
+      "runAtStartupHelp": "Keeps the client injected before it launches, so this panel is always available.",
+      "autoReload": "Reload the client when Drake starts",
+      "autoReloadHelp": "Only used when Drake finds the client already running without Drake loaded.",
+      "autoUpdate": "Install updates automatically",
+      "autoUpdateHelp": "Downloads the latest GitHub release and runs the installer. Windows will ask for permission because Drake lives in Program Files.",
+      "analytics": "Share anonymous usage statistics",
+      "analyticsHelp": "Sends an anonymous install ID, the Drake version, your League server region and session start/stop, so we know how many people use Drake. No summoner name, account or match data.",
+      "updates": "Updates",
+      "version": "v{version}",
+      "checkUpdates": "Check for updates",
+      "checking": "Checking…",
+      "upToDate": "Drake is up to date.",
+      "available": "{version} is available.",
+      "install": "Install now",
+      "noInstaller": "{version} is on GitHub but has no Windows installer yet.",
+      "checkFailed": "Could not check for updates.",
+      "downloading": "Downloading and installing the update…",
+      "installing": "Installing update…",
+      "alreadyCurrent": "Drake is already up to date",
+      "unlockStatus": "Unlock the status message field",
+      "unlockStatusHelp": "Removes the client's 25-character cap on your own status message and gives the field room to breathe. Takes effect on the next client reload.",
+      "client": "Client",
+      "clientHelp": "Reloads the League client UI. Use this when Drake injected while the client was already open, or after a change that only applies on a reload.",
+      "restart": "Restart client",
+      "restarting": "Restarting the client…",
+      "language": "Language",
+      "languageHelp": "Drake follows the League client language by default. Pick a language here to always use it instead.",
+      "languageAuto": "Client language ({language})",
+      "streaming": "Streaming mode",
+      "streamingOff": "Off",
+      "streamingOn": "On",
+      "streamingAuto": "Auto (when a streaming app is open)",
+      "streamingHelp": "Moves Drake into a separate window that OBS, Streamlabs and Discord cannot capture, so your stream never shows it. Team reveal stays off while that window is in use.",
+      "streamingDragHelp": "In the overlay, drag the Drake and Dodge buttons to wherever you like.",
+      "resetOverlayPositions": "Reset overlay button positions"
+    },
+    "autoPick": {
+      "title": "Auto Pick",
+      "subtitle": "Up to 2 champions per role. Picks wait until your lane is assigned — Fill does nothing.",
+      "toggle": "Pick a champion automatically",
+      "instaLock": "Insta Lock",
+      "instaLockHelp": "Locks the champion in the instant the pick opens, instead of only hovering it. Nobody can take it from you, and you cannot change your mind.",
+      "rolesLabel": "Pick roles",
+      "empty": "Click up to 2 champions for this role — first is your pick, second is the backup."
+    },
+    "autoBan": {
+      "title": "Auto Ban",
+      "subtitle": "Bans a champion for you when the ban phase reaches your turn.",
+      "toggle": "Ban a champion automatically",
+      "toggleHelp": "A ban is always locked in — hovering a ban bans nothing.",
+      "champion": "Champion",
+      "empty": "Click a champion to ban — click again or ✕ to clear."
+    },
+    "profile": {
+      "title": "Profile",
+      "subtitle": "What other players see. None of this changes your account.",
+      "tabs": {
+        "rank": "Rank",
+        "banner": "Banner",
+        "riot-id": "Riot ID"
+      },
+      "tier": "Tier",
+      "division": "Division",
+      "queue": "Queue",
+      "crystal": "Crystal",
+      "rankHelp": "Shown next to your name in chat. Your real rank is unchanged.",
+      "reset": "Reset",
+      "apply": "Apply",
+      "applied": "Applied",
+      "badgesTitle": "Challenge badges",
+      "badgesHelp": "The three tokens on your profile. Clone copies the first into all three slots.",
+      "removeBadges": "Remove badges",
+      "cloneBadge": "Clone first to all 3",
+      "badgesRemoved": "Badges removed",
+      "badgeCloned": "Cloned first badge to all 3",
+      "skinSearch": "Search {count} skins...",
+      "noSkins": "No skins match.",
+      "backgroundSet": "Profile background set",
+      "riotHelp": "Renaming is rate-limited by Riot, not by Drake. If it refuses, that is their cooldown talking.",
+      "riotName": "Name",
+      "riotTag": "TAG",
+      "saveRiotId": "Save ID"
+    },
+    "friends": {
+      "title": "Friends",
+      "empty": "Nobody on the list, or the client has not shared it yet.",
+      "summary": "{online} online of {total}. Notes are the ones you set in the client.",
+      "warning": "Removing everyone cannot be undone from Drake.",
+      "removeAll": "Remove all",
+      "confirmTitle": "Remove all friends?",
+      "confirm": {
+        "one": "This removes {count} friend. It cannot be undone from Drake.",
+        "other": "This removes all {count} friends. It cannot be undone from Drake."
+      },
+      "removed": {
+        "one": "Removed {count} friend",
+        "other": "Removed {count} friends"
+      },
+      "removedPartial": "Removed {removed}, {failed} failed"
+    },
+    "whatsNew": {
+      "title": "What's New",
+      "subtitle": "Changes in v{version}",
+      "recent": "Recent changes",
+      "empty": "No notes for this version.",
+      "continue": "Continue"
+    }
+  },
+  "roles": {
+    "TOP": "Top",
+    "JUNGLE": "Jungle",
+    "MIDDLE": "Mid",
+    "BOTTOM": "ADC",
+    "UTILITY": "Support"
+  },
+  "champions": {
+    "search": "Search champions...",
+    "noMatch": "No champions match.",
+    "unavailable": "Champion list unavailable — reopen this screen to try again.",
+    "noneChosen": "none chosen",
+    "selected": {
+      "one": "{count} selected",
+      "other": "{count} selected"
+    }
+  },
+  "ranks": {
+    "tiers": {
+      "IRON": "Iron",
+      "BRONZE": "Bronze",
+      "SILVER": "Silver",
+      "GOLD": "Gold",
+      "PLATINUM": "Platinum",
+      "EMERALD": "Emerald",
+      "DIAMOND": "Diamond",
+      "MASTER": "Master",
+      "GRANDMASTER": "Grandmaster",
+      "CHALLENGER": "Challenger"
+    },
+    "queues": {
+      "RANKED_SOLO_5x5": "Solo/Duo",
+      "RANKED_FLEX_SR": "Flex",
+      "RANKED_TFT": "TFT"
+    }
+  },
+  "whatsNew": {
+    "v0_4_0": [
+      {
+        "title": "A brand-new Drake",
+        "body": "Every screen was rebuilt with a refined hextech look, smoother animations and clearer layouts — the panel, Team Scouting, the Build tab, the champ select docks and the social bar button."
+      },
+      {
+        "title": "Drake speaks your language",
+        "body": "Drake follows the League client language by default, and you can pick another one in Settings. English and Brazilian Portuguese are fully translated; other languages fall back to English for now."
+      },
+      {
+        "title": "Streaming mode",
+        "body": "Turn it on (or leave it on Auto) in Settings and Drake moves into its own window that OBS, Streamlabs and Discord cannot capture — you still see everything, your stream sees nothing. Team reveal stays off while it is active."
+      },
+      {
+        "title": "Quitting Drake really turns it off",
+        "body": "Quit in the tray now removes Drake from the League client and reloads it clean, so nothing keeps loading after Drake is closed. Open Drake again and it switches itself back on."
+      },
+      {
+        "title": "Anonymous usage stats",
+        "body": "Drake now counts how many people use it: an anonymous install ID, the Drake version and your League server region. No summoner name, account or match data. You can turn it off under Settings → Updates."
+      }
+    ],
+    "v0_3_25": [
+      {
+        "title": "Lobby reveal regions fixed",
+        "body": "External lobby reveal (Porofessor / OP.GG) now maps Riot platform ids correctly — e.g. LA2 → las — and OP.GG uses the current /lol/multisearch URL. Reported by Julio Maggioni."
+      }
+    ],
+    "v0_3_24": [
+      {
+        "title": "Dropdowns actually work now",
+        "body": "Rank, Region, and every other dropdown in Drake (Queue settings, Profile) responded to clicks unreliably or not at all for some users — replaced with a dropdown Drake fully controls, so picking an option always sticks."
+      },
+      {
+        "title": "Fixed Recent W/L, KDA, and Last 12h showing 0",
+        "body": "A queue-detection bug could zero out a teammate’s recent stats in Team Reveal. Fixed at the source."
+      },
+      {
+        "title": "Build Panel, redesigned",
+        "body": "If you missed it: champ select builds from OP.GG — runes, items by phase, skill order, matchups, and top players — now laid out closer to what you’d see on Mobalytics, with one-click Apply actions and Create Item Set. Open it from Ctrl+Shift+D."
+      }
+    ],
+    "v0_3_23": [
+      {
+        "title": "Team reveal match history via tray proxy",
+        "body": "Champ select scouting fetches recent games through the Drake tray proxy so W/L and Last 5 load reliably alongside names and ranks."
+      },
+      {
+        "title": "Match loading skeletons",
+        "body": "Opening Team Scouting while matches are still loading shows skeletons instead of empty 0W/0L placeholders."
+      }
+    ],
+    "v0_3_22": [
+      {
+        "title": "Build panel",
+        "body": "Champ select builds from OP.GG: runes, items, skill order, summoner spells, matchups, and top players — with Apply actions and Create Item Set."
+      },
+      {
+        "title": "Tighter build layout",
+        "body": "Summoner Spells sit under Skill Order so the right column fills and you scroll less to see the full loadout."
+      }
+    ],
+    "v0_3_21": [
+      {
+        "title": "Chat reveal waits for connect",
+        "body": "Team reveal keeps retrying until champ select chat connects, then posts the name map and rewrites authors."
+      }
+    ],
+    "v0_3_20": [
+      {
+        "title": "Reveal names in champ select chat",
+        "body": "Team reveal posts a private name map in chat and rewrites message authors to Riot IDs while you are in champ select."
+      },
+      {
+        "title": "Credits",
+        "body": "A ? next to Close opens credits for Drake and the tools that inspired it."
+      },
+      {
+        "title": "Fresh lobby W/L each queue",
+        "body": "Match history is fetched without HTTP cache so your W/L updates after the last game."
+      },
+      {
+        "title": "Update prompt when auto-update is off",
+        "body": "Starting Drake asks whether to install a newer release if automatic updates are disabled."
+      }
+    ],
+    "v0_3_19": [
+      {
+        "title": "Reveal follows swaps with you",
+        "body": "In-client team reveal remaps names when you trade cells with an ally, including when their identity is still obfuscated."
+      },
+      {
+        "title": "Auto Ban clear control",
+        "body": "Selected ban shows as a chip with icon and ✕ — no need to search the champion again to deselect."
+      },
+      {
+        "title": "Cancel Queue leaves search",
+        "body": "Cancel Queue declines the ready check and also exits matchmaking search so you are fully out of queue."
+      }
+    ],
+    "v0_3_18": [
+      {
+        "title": "Auto Pick by role",
+        "body": "Choose up to 2 champions for Top, Jungle, Mid, ADC, and Support. Picks wait until your role is assigned — old global picks were cleared."
+      },
+      {
+        "title": "Lobby reveal resets between games",
+        "body": "Ally names from the last lobby no longer stick when you queue again; scrub only rewrites rows that still show our reveal."
+      }
+    ],
+    "v0_3_17": [
+      {
+        "title": "Welcome tour",
+        "body": "First open shows a short welcome with an optional spotlight tour of the Ctrl+D screens. Skip anytime."
+      },
+      {
+        "title": "What's New",
+        "body": "After an update, Ctrl+D opens a changelog. Reopen it anytime from the sidebar; feature rows jump to that screen."
+      },
+      {
+        "title": "Reveal follows role swaps",
+        "body": "In-client team reveal remaps names when players trade cells in champ select."
+      },
+      {
+        "title": "Ranked pool controls",
+        "body": "Choose Solo+Flex, current queue, or any queue for recent games, plus sample size, last-5 pool, and fetch concurrency."
+      }
+    ],
+    "v0_3_16": [
+      {
+        "title": "Pick WR on cards",
+        "body": "Reveal cards show games and win rate for the champion they locked."
+      },
+      {
+        "title": "Champ select dodge",
+        "body": "Optional in-client dodge button (on by default) from Queue settings."
+      }
+    ]
+  },
+  "onboarding": {
+    "welcome": {
+      "copy": "Tools that sit beside the client. A short tour covers the screens you will use most.",
+      "tour": "Take the tour",
+      "skip": "Skip"
+    },
+    "tour": {
+      "progress": "{current} / {total}",
+      "next": "Next",
+      "done": "Done",
+      "skip": "Skip",
+      "steps": [
+        {
+          "title": "Auto Accept",
+          "body": "Accept ready checks automatically, with an optional delay so you can still decline by hand."
+        },
+        {
+          "title": "Queue",
+          "body": "Champ-select tools: dodge helpers and optional in-client team reveal."
+        },
+        {
+          "title": "Auto Pick & Ban",
+          "body": "Set up to two champions per role. Auto pick waits until your lane is assigned."
+        },
+        {
+          "title": "Status",
+          "body": "Set a long status message and lock Online, Offline, Mobile, or Busy."
+        },
+        {
+          "title": "Settings",
+          "body": "Startup, updates, and client reload live here."
+        }
+      ]
+    }
+  },
+  "overlays": {
+    "scouting": {
+      "title": "Team Scouting",
+      "tabs": {
+        "scouting": "Team Scouting",
+        "build": "Build"
+      },
+      "empty": "No team scouting data available",
+      "mute": {
+        "idle": "Mute All",
+        "muting": "Muting…",
+        "muted": "✓ Muted",
+        "failed": "Mute Failed"
+      },
+      "side": {
+        "BLUE": "Blue Side",
+        "RED": "Red Side"
+      },
+      "you": "(You)",
+      "unknown": "Unknown",
+      "unranked": "Unranked",
+      "queues": {
+        "solo": "Solo/Duo",
+        "flex": "Flex"
+      },
+      "lp": "{lp} LP",
+      "rows": {
+        "recentWl": "Recent W/L",
+        "recentWlGames": "Recent W/L · last {count} games",
+        "kda": "Recent KDA",
+        "last12h": "Last 12h",
+        "picked": "Picked",
+        "seasonMain": "Season Main",
+        "last5": "Last 5"
+      },
+      "winsShort": "{count}W",
+      "lossesShort": "{count}L",
+      "games": "{count}g",
+      "noGames": "no games",
+      "toast": {
+        "revealing": "Revealing lobby",
+        "revealed": "Session revealed. Press Ctrl+Shift+D to view it.",
+        "revealedSide": "Session revealed · {side} · Press Ctrl+Shift+D to view it.",
+        "view": "View"
+      }
+    },
+    "build": {
+      "champion": "Champion",
+      "championFallback": "Champion {id}",
+      "modes": {
+        "ranked": "Ranked",
+        "aram": "ARAM"
+      },
+      "patch": "Patch {patch}",
+      "rank": "Rank",
+      "region": "Region",
+      "globalRegion": "Global",
+      "stats": {
+        "win": "Win",
+        "pick": "Pick",
+        "ban": "Ban",
+        "kda": "KDA",
+        "games": "Games"
+      },
+      "tiers": {
+        "all": "All Ranks",
+        "ibsg": "Iron–Silver",
+        "gold_plus": "Gold+",
+        "platinum_plus": "Platinum+",
+        "emerald_plus": "Emerald+",
+        "diamond_plus": "Diamond+",
+        "master": "Master",
+        "grandmaster": "Grandmaster",
+        "challenger": "Challenger"
+      },
+      "viewing": "Viewing player build:",
+      "restore": "✕ Restore core build",
+      "restoreTitle": "Restore default build",
+      "pickChampion": "Pick a champion to see build recommendations",
+      "loading": "Loading build data…",
+      "noData": "No data for {tier}",
+      "seeAllRanks": "See All Ranks",
+      "retry": "Retry",
+      "opggError": "Could not reach OP.GG",
+      "cards": {
+        "runes": "Runes",
+        "items": "Items",
+        "spells": "Summoner Spells",
+        "skills": "Skill Order",
+        "matchups": "Matchups",
+        "topPlayers": "Top Players (OP.GG)"
+      },
+      "empty": {
+        "runes": "No rune data",
+        "items": "No item data",
+        "spells": "No spell data",
+        "matchups": "No data"
+      },
+      "phases": {
+        "starter": "Starter",
+        "boots": "Boots",
+        "core": "Core",
+        "situational": "Situational"
+      },
+      "actions": {
+        "apply": "Apply",
+        "applied": "Applied",
+        "applying": "Applying…",
+        "failed": "Failed — retry",
+        "createItemSet": "Create Item Set"
+      },
+      "wr": "{value} WR",
+      "winRate": "Win Rate",
+      "games": "Games",
+      "strong": "Strong Against",
+      "weak": "Weak Against",
+      "loadingPlayers": "Loading players…",
+      "unavailable": "Unavailable",
+      "unknown": "Unknown",
+      "playerTitle": "{tier} · {games} games"
+    },
+    "docks": {
+      "cancelQueue": "Cancel Queue"
+    },
+    "socialToggle": {
+      "open": "Open Drake",
+      "close": "Close Drake"
+    },
+    "hint": {
+      "text": "Tip: you can drag the Drake and Dodge buttons anywhere.",
+      "dismiss": "Got it"
+    }
+  }
+}

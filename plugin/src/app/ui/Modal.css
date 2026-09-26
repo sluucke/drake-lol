@@ -1,0 +1,97 @@
+.drk-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(1, 10, 19, 0.78);
+  pointer-events: auto;
+}
+
+.drk-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-0));
+  border: 1px solid var(--gold-4);
+  box-shadow: var(--shadow-1), 0 0 0 1px rgba(0, 0, 0, 0.8), var(--glow-gold);
+}
+
+.drk-modal::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(120, 90, 40, 0.35);
+  pointer-events: none;
+}
+
+.drk-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.drk-modal__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-1);
+}
+
+.drk-modal__close {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--gold-4);
+  border-radius: 0;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.drk-modal__close::before,
+.drk-modal__close::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 2px;
+  background: var(--gold-2);
+}
+
+.drk-modal__close::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.drk-modal__close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.drk-modal__close:hover {
+  border-color: var(--gold-2);
+}
+
+.drk-modal__close:hover::before,
+.drk-modal__close:hover::after {
+  background: var(--text-strong);
+}
+
+.drk-modal__close:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.drk-modal__body {
+  padding: var(--space-5);
+  overflow-y: auto;
+}
