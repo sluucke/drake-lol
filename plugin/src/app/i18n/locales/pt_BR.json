@@ -129,6 +129,8 @@
       "autoReloadHelp": "Usado apenas quando o Drake encontra o cliente já aberto sem o Drake carregado.",
       "autoUpdate": "Instalar atualizações automaticamente",
       "autoUpdateHelp": "Baixa a versão mais recente do GitHub e executa o instalador. O Windows vai pedir permissão porque o Drake fica em Arquivos de Programas.",
+      "analytics": "Compartilhar estatísticas anônimas de uso",
+      "analyticsHelp": "Envia um ID anônimo da instalação, a versão do Drake, a região do seu servidor do LoL e o início/fim das sessões, para sabermos quantas pessoas usam o Drake. Nenhum nome de invocador, conta ou dado de partida.",
       "updates": "Atualizações",
       "version": "v{version}",
       "checkUpdates": "Procurar atualizações",

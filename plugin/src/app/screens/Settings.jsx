@@ -144,6 +144,7 @@ export function SettingsScreen() {
         actions={<span className="drk-version">{t('screens.settings.version', { version: version || '?' })}</span>}
       >
         <SettingToggle id="auto_update" label={t('screens.settings.autoUpdate')} help={t('screens.settings.autoUpdateHelp')} defaultOn />
+        <SettingToggle id="analytics_enabled" label={t('screens.settings.analytics')} help={t('screens.settings.analyticsHelp')} defaultOn />
         <div className="drk-actions">
           <Button variant="secondary" disabled={trayDown || checking} onClick={() => actions.checkUpdates()}>
             {checking ? t('screens.settings.checking') : t('screens.settings.checkUpdates')}

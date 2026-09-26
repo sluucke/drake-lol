@@ -65,6 +65,8 @@ pub struct Settings {
     pub auto_ban_champion_id: u32,
     #[serde(default = "on")]
     pub auto_update: bool,
+    #[serde(default = "on")]
+    pub analytics_enabled: bool,
     #[serde(default = "off")]
     pub queue_team_reveal_in_client: bool,
     #[serde(default = "on")]
@@ -265,6 +267,7 @@ impl Default for Settings {
             auto_ban: off(),
             auto_ban_champion_id: no_champion(),
             auto_update: on(),
+            analytics_enabled: on(),
             queue_team_reveal_in_client: off(),
             queue_dodge_in_client: on(),
             queue_show_map_side: on(),
@@ -531,6 +534,7 @@ pub struct SettingsPatch {
     pub auto_ban: Option<bool>,
     pub auto_ban_champion_id: Option<u32>,
     pub auto_update: Option<bool>,
+    pub analytics_enabled: Option<bool>,
     pub queue_team_reveal_in_client: Option<bool>,
     pub queue_dodge_in_client: Option<bool>,
     pub queue_show_map_side: Option<bool>,
@@ -586,6 +590,7 @@ impl SettingsPatch {
                 .auto_ban_champion_id
                 .unwrap_or(base.auto_ban_champion_id),
             auto_update: self.auto_update.unwrap_or(base.auto_update),
+            analytics_enabled: self.analytics_enabled.unwrap_or(base.analytics_enabled),
             queue_team_reveal_in_client: self
                 .queue_team_reveal_in_client
                 .unwrap_or(base.queue_team_reveal_in_client),
@@ -1396,6 +1401,7 @@ mod tests {
         assert_eq!(Settings::default().run_at_startup, true);
         assert_eq!(Settings::default().auto_reload_on_open, false);
         assert_eq!(Settings::default().auto_update, true);
+        assert_eq!(Settings::default().analytics_enabled, true);
     }
 
     #[test]

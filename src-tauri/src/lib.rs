@@ -1,3 +1,4 @@
+pub mod analytics;
 pub mod browser;
 pub mod configd;
 pub mod deploy;
@@ -131,6 +132,8 @@ async fn try_prompt_manual_update(
     }
 }
 
+const ANALYTICS_FIRST_DELAY: std::time::Duration = std::time::Duration::from_secs(20);
+const ANALYTICS_RETRY: std::time::Duration = std::time::Duration::from_secs(5 * 60);
 const RELEASE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
 const RELEASE_POLL: std::time::Duration = std::time::Duration::from_millis(250);
 
@@ -180,6 +183,10 @@ pub fn run() {
             let install_error = check_vendored_loader(app.handle()).err();
 
             let state = Arc::new(configd::ConfigdState::new(CONFIGD_PORT, env!("CARGO_PKG_VERSION")));
+            let tracker = Arc::new(analytics::Tracker::new(
+                analytics::load_or_create_install_id(&paths::install_id_file()),
+                env!("CARGO_PKG_VERSION"),
+            ));
 
             let version_label = MenuItem::with_id(
                 app,
@@ -259,6 +266,7 @@ pub fn run() {
             let menu_shutdown = shutting_down.clone();
             let tick_guard = Arc::new(Mutex::new(()));
             let menu_tick_guard = tick_guard.clone();
+            let menu_tracker = tracker.clone();
             if let Err(e) = elevate::write_intent(&paths::slot_intent_file(), elevate::SlotIntent::Claim) {
                 eprintln!("[Drake] could not record the slot intent: {e}");
             }
@@ -268,7 +276,12 @@ pub fn run() {
                         return;
                     }
                     drop(menu_tick_guard.lock());
+                    let tracker = menu_tracker.clone();
+                    let send_close = menu_state.settings.lock().unwrap().analytics_enabled;
                     tauri::async_runtime::spawn(async move {
+                        if send_close && tracker.started() {
+                            tracker.send(analytics::Event::Close, analytics::CLOSE_TIMEOUT).await;
+                        }
                         release_injection().await;
                         if let Err(e) = lcu::restart_ux().await {
                             eprintln!("[Drake] could not reload the client on quit: {e}");
@@ -339,6 +352,7 @@ pub fn run() {
             let loop_note = update_note.clone();
             let loop_shutdown = shutting_down.clone();
             let loop_tick_guard = tick_guard.clone();
+            let loop_tracker = tracker.clone();
             tauri::async_runtime::spawn(async move {
                 let started = std::time::Instant::now();
                 let mut auto_reload_fired = false;
@@ -405,6 +419,10 @@ pub fn run() {
                             &cfg,
                         )
                     };
+                    loop_tracker.set_mode(
+                        analytics::mode_label(&mode),
+                        streaming::effective_label(streaming_effective),
+                    );
                     let mode_text = match &mode {
                         supervisor::Mode::OwnLoader => strings::MODE_OWN_LOADER.to_string(),
                         supervisor::Mode::Guest { host } => format!("{} {host}", strings::MODE_GUEST),
@@ -532,6 +550,35 @@ pub fn run() {
                     was_panel_open = ui.interactive();
                     let wait_ms = if dirty || overlay_mode { 50 } else { 250 };
                     tokio::time::sleep(std::time::Duration::from_millis(wait_ms)).await;
+                }
+            });
+
+            let analytics_state = state.clone();
+            let analytics_shutdown = shutting_down.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(ANALYTICS_FIRST_DELAY).await;
+                loop {
+                    if analytics_shutdown.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let enabled = analytics_state.settings.lock().unwrap().analytics_enabled;
+                    let next = if enabled {
+                        tracker.refresh_region().await;
+                        let event = if tracker.started() {
+                            analytics::Event::Heartbeat
+                        } else {
+                            analytics::Event::Startup
+                        };
+                        let sent = tracker.send(event, analytics::SEND_TIMEOUT).await;
+                        if sent || tracker.started() {
+                            analytics::HEARTBEAT_INTERVAL
+                        } else {
+                            ANALYTICS_RETRY
+                        }
+                    } else {
+                        ANALYTICS_RETRY
+                    };
+                    tokio::time::sleep(next).await;
                 }
             });
 

@@ -17,6 +17,7 @@ pub fn state_dir() -> PathBuf { data_dir().join("state") }
 pub fn settings_file() -> PathBuf { state_dir().join("settings.json") }
 pub fn update_attempt_file() -> PathBuf { state_dir().join("update-attempt.json") }
 pub fn slot_intent_file() -> PathBuf { state_dir().join("slot-intent") }
+pub fn install_id_file() -> PathBuf { state_dir().join("install-id") }
 
 #[cfg(test)]
 mod tests {
