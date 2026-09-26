@@ -3,7 +3,6 @@ import { startUI } from './ui/index.js';
 import { createPanelSync } from './features/panelSync.js';
 import { SESSION_ROUTE } from './features/champSelect.js';
 import { subscribe } from './subscribe.js';
-import { applyOverlayFonts } from './features/clientFonts.js';
 
 const SNAPSHOT_MS = 400;
 const DODGE_FEEDBACK_MS = 2500;
@@ -142,10 +141,7 @@ async function boot() {
     }
   });
 
-  const loadedFonts = new Set();
-
   function applySnapshot(snap) {
-    void applyOverlayFonts(snap.fonts, { base: baseUrl(port), loaded: loadedFonts });
     syncSession(!!snap.effective);
     for (const view of snap.views || []) ui.toggleView(view);
     const state = store.getState();

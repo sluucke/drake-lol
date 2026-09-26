@@ -23,18 +23,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function boot(cfgExtra, { failFonts = false } = {}) {
+async function boot(cfgExtra) {
   vi.resetModules();
   delete window.__drakeUIMounted;
   document.getElementById('drake-ui-host')?.remove();
   const posts = [];
   vi.stubGlobal('fetch', vi.fn(async (url, init = {}) => {
-    if (String(url).includes('/fe/fonts/')) {
-      return new Response(new Uint8Array([7, 7, 7]), { status: 200, headers: { 'content-type': 'font/woff2' } });
-    }
     posts.push({ url: String(url), body: init.body ? JSON.parse(init.body) : null });
-    if (failFonts && String(url).endsWith('/overlay/fonts')) return new Response(null, { status: 500 });
-    return new Response(null, { status: 204 });
+    return new Response('', { status: 204 });
   }));
   const { startUI } = await import('../../../src/ui/index.js');
   const cfg = { token: 't', port: 48151, version: '0.4.0', settings: { onboarding_done: true, whats_new_seen_version: '0.4.0' }, ...cfgExtra };
@@ -84,40 +80,6 @@ describe('client host', () => {
       expect(views[0]).toBe('scouting');
       expect(views).toContain('build');
     });
-  }, 60000);
-
-  it('hands the League fonts to the overlay once while streaming', async () => {
-    const style = document.createElement('style');
-    style.textContent = '@font-face { font-family: "LoL Display"; src: url("/fe/fonts/display.woff2"); font-weight: 700; }';
-    document.head.appendChild(style);
-    const { posts } = await boot({ streaming_effective: 'overlay' });
-    await waitFor(() => {
-      const uploads = posts.filter((p) => p.url.endsWith('/overlay/fonts'));
-      expect(uploads).toHaveLength(1);
-      expect(uploads[0].body.fonts).toEqual([
-        { family: 'LoL Display', weight: '700', style: 'normal', mime: 'font/woff2', data: 'BwcH' },
-      ]);
-    });
-    await new Promise((r) => setTimeout(r, 1600));
-    expect(posts.filter((p) => p.url.endsWith('/overlay/fonts'))).toHaveLength(1);
-    style.remove();
-  }, 60000);
-
-  it('gives up on sharing fonts after a few failed uploads', async () => {
-    vi.useFakeTimers({ toFake: ['setInterval', 'Date'] });
-    try {
-      const style = document.createElement('style');
-      style.textContent = '@font-face { font-family: "LoL Display"; src: url("/fe/fonts/display.woff2"); }';
-      document.head.appendChild(style);
-      const { posts } = await boot({ streaming_effective: 'overlay' }, { failFonts: true });
-      for (let i = 0; i < 12; i += 1) {
-        await vi.advanceTimersByTimeAsync(15000);
-      }
-      expect(posts.filter((p) => p.url.endsWith('/overlay/fonts'))).toHaveLength(3);
-      style.remove();
-    } finally {
-      vi.useRealTimers();
-    }
   }, 60000);
 });
 

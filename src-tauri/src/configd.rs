@@ -1,7 +1,7 @@
 use axum::http::{header, HeaderValue, Method, StatusCode};
 use axum::response::{Html, IntoResponse, Response};
 use axum::{
-    extract::{DefaultBodyLimit, Path as UrlPath, Query, State},
+    extract::{Query, State},
     routing::{get, post},
     Json, Router,
 };
@@ -969,11 +969,6 @@ fn router(state: Arc<ConfigdState>) -> Router {
         .route("/overlay/drain", post(overlay_drain))
         .route("/overlay/lcu", post(overlay_lcu))
         .route("/overlay/asset", get(overlay_asset))
-        .route(
-            "/overlay/fonts",
-            post(overlay_fonts).layer(DefaultBodyLimit::max(MAX_FONT_UPLOAD_BYTES)),
-        )
-        .route("/overlay/font/{index}", get(overlay_font))
         .layer(cors)
         .with_state(state)
 }
@@ -989,101 +984,6 @@ struct OverlaySnapshot {
     chrome: Option<crate::overlay::ClientBounds>,
     views: Vec<String>,
     effective: bool,
-    fonts: Vec<FontDescriptor>,
-}
-
-#[derive(Serialize)]
-struct FontDescriptor {
-    family: String,
-    weight: String,
-    style: String,
-    url: String,
-}
-
-const MAX_FONT_UPLOAD_BYTES: usize = 48 * 1024 * 1024;
-const MAX_FONT_FILES: usize = 16;
-const MAX_FONT_FILE_BYTES: usize = 8 * 1024 * 1024;
-
-#[derive(Deserialize)]
-struct FontUpload {
-    family: String,
-    weight: String,
-    style: String,
-    mime: String,
-    data: String,
-}
-
-#[derive(Deserialize)]
-struct OverlayFontsBody {
-    token: String,
-    fonts: Vec<FontUpload>,
-}
-
-fn clip(value: &str, max: usize) -> String {
-    value.chars().take(max).collect()
-}
-
-async fn overlay_fonts(
-    State(state): State<Arc<ConfigdState>>,
-    Json(body): Json<OverlayFontsBody>,
-) -> StatusCode {
-    use base64::Engine;
-    if body.token != state.token {
-        return StatusCode::UNAUTHORIZED;
-    }
-    let fonts: Vec<crate::overlay::FontFile> = body
-        .fonts
-        .into_iter()
-        .filter_map(|font| {
-            let bytes = base64::engine::general_purpose::STANDARD.decode(font.data.as_bytes()).ok()?;
-            if bytes.is_empty() || bytes.len() > MAX_FONT_FILE_BYTES {
-                return None;
-            }
-            let mime = if font.mime.starts_with("font/") || font.mime.starts_with("application/") {
-                clip(&font.mime, 64)
-            } else {
-                "application/octet-stream".to_string()
-            };
-            Some(crate::overlay::FontFile {
-                family: clip(&font.family, 64),
-                weight: clip(&font.weight, 16),
-                style: clip(&font.style, 16),
-                mime,
-                bytes,
-            })
-        })
-        .take(MAX_FONT_FILES)
-        .collect();
-    state.overlay.lock().unwrap().fonts = fonts;
-    StatusCode::NO_CONTENT
-}
-
-#[derive(Deserialize)]
-struct TokenQuery {
-    token: String,
-}
-
-async fn overlay_font(
-    State(state): State<Arc<ConfigdState>>,
-    UrlPath(index): UrlPath<usize>,
-    Query(query): Query<TokenQuery>,
-) -> Response {
-    use axum::body::Body;
-    use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE};
-
-    if query.token != state.token {
-        return StatusCode::UNAUTHORIZED.into_response();
-    }
-    let Some(font) = state.overlay.lock().unwrap().fonts.get(index).cloned() else {
-        return StatusCode::NOT_FOUND.into_response();
-    };
-    let mut res = Response::new(Body::from(font.bytes));
-    if let Ok(v) = HeaderValue::from_str(&font.mime) {
-        res.headers_mut().insert(CONTENT_TYPE, v);
-    }
-    res.headers_mut()
-        .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
-    res
 }
 
 async fn overlay_snapshot(
@@ -1094,20 +994,9 @@ async fn overlay_snapshot(
         return Err(StatusCode::UNAUTHORIZED);
     }
     let settings = state.settings.lock().unwrap().clone();
-    let (mut ui, views, effective, fonts) = {
+    let (mut ui, views, effective) = {
         let mut bridge = state.overlay.lock().unwrap();
-        let fonts = bridge
-            .fonts
-            .iter()
-            .enumerate()
-            .map(|(i, font)| FontDescriptor {
-                family: font.family.clone(),
-                weight: font.weight.clone(),
-                style: font.style.clone(),
-                url: format!("/overlay/font/{i}?token={}", state.token),
-            })
-            .collect();
-        (bridge.ui.clone(), bridge.drain_views(), bridge.effective_overlay, fonts)
+        (bridge.ui.clone(), bridge.drain_views(), bridge.effective_overlay)
     };
     ui.positions = settings.overlay_positions.clone();
     ui.show_hint = !settings.overlay_hint_seen;
@@ -1125,7 +1014,6 @@ async fn overlay_snapshot(
         chrome,
         views,
         effective,
-        fonts,
     }))
 }
 
@@ -1728,57 +1616,6 @@ mod tests {
         let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
         let snap: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(snap["views"], serde_json::json!([]));
-    }
-
-    #[tokio::test]
-    async fn client_fonts_are_served_to_the_overlay() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
-        let token = state.token.clone();
-        let body = format!(
-            r#"{{"token":"{token}","fonts":[{{"family":"LoL Display","weight":"700","style":"normal","mime":"font/woff2","data":"AAEC"}},{{"family":"Spiegel","weight":"400","style":"normal","mime":"font/woff2","data":"not base64!"}}]}}"#
-        );
-        let res = router(state.clone()).oneshot(json_post("/overlay/fonts", body)).await.unwrap();
-        assert_eq!(res.status(), StatusCode::NO_CONTENT);
-
-        let res = router(state.clone())
-            .oneshot(json_post("/overlay/snapshot", format!(r#"{{"token":"{token}"}}"#)))
-            .await
-            .unwrap();
-        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
-        let snap: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        let fonts = snap["fonts"].as_array().unwrap();
-        assert_eq!(fonts.len(), 1, "undecodable fonts are dropped");
-        assert_eq!(fonts[0]["family"], "LoL Display");
-        let url = fonts[0]["url"].as_str().unwrap().to_string();
-        assert!(url.starts_with("/overlay/font/0?token="));
-
-        let res = router(state.clone())
-            .oneshot(Request::builder().uri(url).body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.headers()["content-type"], "font/woff2");
-        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
-        assert_eq!(&bytes[..], &[0u8, 1, 2]);
-
-        let res = router(state.clone())
-            .oneshot(Request::builder().uri("/overlay/font/0?token=nope").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
-    }
-
-    #[tokio::test]
-    async fn client_font_uploads_accept_real_font_sizes() {
-        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
-        let token = state.token.clone();
-        let data = "A".repeat(3 * 1024 * 1024);
-        let body = format!(
-            r#"{{"token":"{token}","fonts":[{{"family":"LoL Display","weight":"700","style":"normal","mime":"font/otf","data":"{data}"}}]}}"#
-        );
-        let res = router(state.clone()).oneshot(json_post("/overlay/fonts", body)).await.unwrap();
-        assert_eq!(res.status(), StatusCode::NO_CONTENT);
-        assert_eq!(state.overlay.lock().unwrap().fonts.len(), 1);
     }
 
     #[tokio::test]

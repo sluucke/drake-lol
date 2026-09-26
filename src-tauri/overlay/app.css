@@ -1,3 +1,8 @@
+:root {
+  --font-display: 'Constantia', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --font-body: 'Segoe UI', Tahoma, sans-serif;
+}
+
 html, body {
   margin: 0;
   width: 100%;

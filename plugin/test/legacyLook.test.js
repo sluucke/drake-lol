@@ -39,4 +39,11 @@ describe('client look', () => {
     const tokens = read('../src/app/styles/tokens.css');
     expect(tokens).toMatch(/--font-heading:[^;]*Constantia/);
   });
+
+  it('gives the overlay window fonts that Windows ships with', () => {
+    const page = read('../../src-tauri/overlay/app.css');
+    expect(page).toMatch(/--font-display:\s*'Constantia'/);
+    expect(page).toMatch(/--font-body:\s*'Segoe UI'/);
+  });
 });
+
