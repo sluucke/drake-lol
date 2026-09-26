@@ -953,7 +953,8 @@ fn router(state: Arc<ConfigdState>) -> Router {
                     include_str!("../../plugin/dist/overlay.js"),
                 )
             }),
-        );
+        )
+        .route("/overlay/fonts/{name}", get(overlay_font));
     Router::new()
         .merge(overlay_pages)
         .route("/checkin", post(checkin))
@@ -1196,6 +1197,29 @@ async fn overlay_lcu(
 struct OverlayAssetQuery {
     token: String,
     path: String,
+}
+
+const OVERLAY_FONTS: &[(&str, &[u8])] = &[
+    ("cinzel-400.woff2", include_bytes!("../overlay/fonts/cinzel-400.woff2")),
+    ("cinzel-600.woff2", include_bytes!("../overlay/fonts/cinzel-600.woff2")),
+    ("cinzel-700.woff2", include_bytes!("../overlay/fonts/cinzel-700.woff2")),
+    ("source-sans-3-400.woff2", include_bytes!("../overlay/fonts/source-sans-3-400.woff2")),
+    ("source-sans-3-600.woff2", include_bytes!("../overlay/fonts/source-sans-3-600.woff2")),
+    ("source-sans-3-700.woff2", include_bytes!("../overlay/fonts/source-sans-3-700.woff2")),
+];
+
+async fn overlay_font(axum::extract::Path(name): axum::extract::Path<String>) -> Response {
+    match OVERLAY_FONTS.iter().find(|(file, _)| *file == name) {
+        Some((_, bytes)) => (
+            [
+                (header::CONTENT_TYPE, HeaderValue::from_static("font/woff2")),
+                (header::CACHE_CONTROL, HeaderValue::from_static("max-age=31536000, immutable")),
+            ],
+            *bytes,
+        )
+            .into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
 }
 
 async fn overlay_asset(
@@ -1525,6 +1549,22 @@ mod tests {
         // host component, not on the URL text.
         assert!(!is_openable("https://porofessor.gg.evil.com/x"));
         assert!(!is_openable("https://evil.com/?x=https://porofessor.gg/"));
+    }
+
+    #[tokio::test]
+    async fn overlay_fonts_are_served_from_the_binary() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let get = |uri: &str| Request::builder().uri(uri).body(Body::empty()).unwrap();
+        let res = router(state.clone())
+            .oneshot(get("/overlay/fonts/cinzel-700.woff2"))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()[header::CONTENT_TYPE], "font/woff2");
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(&body[..4], b"wOF2");
+        let res = router(state).oneshot(get("/overlay/fonts/..%2Fapp.css")).await.unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
     }
 
     // --- POST /settings: the UI's only write path ---

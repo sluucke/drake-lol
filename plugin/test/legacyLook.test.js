@@ -40,10 +40,13 @@ describe('client look', () => {
     expect(tokens).toMatch(/--font-heading:[^;]*Constantia/);
   });
 
-  it('gives the overlay window fonts that Windows ships with', () => {
+  it('gives the overlay window bundled League-like fonts with Windows fallbacks', () => {
     const page = read('../../src-tauri/overlay/app.css');
-    expect(page).toMatch(/--font-display:\s*'Constantia'/);
-    expect(page).toMatch(/--font-body:\s*'Segoe UI'/);
+    expect(page).toMatch(/--font-display:\s*'Drake Display',\s*'Constantia'/);
+    expect(page).toMatch(/--font-body:\s*'Drake Body',\s*'Segoe UI'/);
+    for (const file of ['cinzel-400', 'cinzel-700', 'source-sans-3-400', 'source-sans-3-700']) {
+      expect(page).toContain(`/overlay/fonts/${file}.woff2`);
+    }
   });
 });
 
