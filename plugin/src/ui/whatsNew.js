@@ -17,6 +17,15 @@ export const WHATS_NEW = [
         body: 'Turn it on (or leave it on Auto) in Settings and Drake moves into its own window that OBS, Streamlabs and Discord cannot capture — you still see everything, your stream sees nothing. Team reveal stays off while it is active.',
         screen: 'settings',
       },
+      {
+        title: 'Quitting Drake really turns it off',
+        body: 'Quit in the tray now removes Drake from the League client and reloads it clean, so nothing keeps loading after Drake is closed. Open Drake again and it switches itself back on.',
+      },
+      {
+        title: 'Anonymous usage stats',
+        body: 'Drake now counts how many people use it: an anonymous install ID, the Drake version and your League server region. No summoner name, account or match data. You can turn it off under Settings → Updates.',
+        screen: 'settings',
+      },
     ],
   },
   {

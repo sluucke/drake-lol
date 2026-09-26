@@ -281,6 +281,14 @@
       {
         "title": "Modo streamer",
         "body": "Ligue (ou deixe no Automático) nas Configurações e o Drake passa para uma janela própria que o OBS, o Streamlabs e o Discord não conseguem capturar — você continua vendo tudo, e a sua live não vê nada. A revelação do time fica desligada enquanto ele estiver ativo."
+      },
+      {
+        "title": "Sair do Drake agora desliga de verdade",
+        "body": "O Sair da bandeja agora remove o Drake do cliente do League e recarrega o cliente limpo, então nada continua carregando depois que o Drake fecha. Ao abrir o Drake de novo, ele se reativa sozinho."
+      },
+      {
+        "title": "Estatísticas anônimas de uso",
+        "body": "O Drake agora conta quantas pessoas o usam: um ID anônimo da instalação, a versão do Drake e a região do seu servidor do League. Nenhum nome de invocador, conta ou dado de partida. Você pode desligar em Configurações → Atualizações."
       }
     ],
     "v0_3_25": [
