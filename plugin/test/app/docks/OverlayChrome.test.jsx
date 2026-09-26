@@ -86,6 +86,18 @@ describe('OverlayChrome', () => {
     });
   });
 
+  it('lets go of the whole client when a drag loses its pointer capture', () => {
+    const { portalTarget, actions } = setup();
+    const fab = within(portalTarget).getByRole('button', { name: 'Open Drake' });
+    fireEvent.pointerDown(fab, { button: 0, pointerId: 1, screenX: 1220, screenY: 660 });
+    fireEvent.pointerMove(fab, { pointerId: 1, screenX: 620, screenY: 360 });
+    expect(actions.setOverlayDragging).toHaveBeenLastCalledWith(true);
+    fireEvent(fab, new Event('lostpointercapture', { bubbles: true }));
+    expect(actions.setOverlayDragging).toHaveBeenLastCalledWith(false);
+    expect(actions.setSettings).not.toHaveBeenCalled();
+    expect(actions.togglePanel).not.toHaveBeenCalled();
+  });
+
   it('draws a moved button at its saved spot', () => {
     const { portalTarget } = setup({ positions: { fab: { x: 5000, y: 5000 }, dodge: null } });
     const fab = within(portalTarget).getByRole('button', { name: 'Open Drake' });

@@ -93,6 +93,9 @@ function useDrag({ client, at, size, onTap, onDrop }) {
       onPointerCancel(event) {
         finish(event, true);
       },
+      onLostPointerCapture(event) {
+        finish(event, true);
+      },
       onClick(event) {
         if (event.detail === 0) onTap();
       },

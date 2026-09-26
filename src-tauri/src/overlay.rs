@@ -218,44 +218,37 @@ pub fn place_piece(
     (x.clamp(client.x, max_x), y.clamp(client.y, max_y))
 }
 
-pub fn chrome_bounds(client: &ClientBounds, ui: &OverlayUiState) -> ClientBounds {
-    if ui.expanded() {
-        return client.clone();
-    }
-
+pub fn chrome_pieces(client: &ClientBounds, ui: &OverlayUiState) -> Vec<ClientBounds> {
     let right_edge = client.x + client.width as i32;
     let bottom_edge = client.y + client.height as i32;
+    let rect = |pos: (i32, i32), size: (i32, i32)| ClientBounds {
+        x: pos.0,
+        y: pos.1,
+        width: size.0 as u32,
+        height: size.1 as u32,
+    };
     let fab = place_piece(
         client,
         ui.positions.fab,
         (right_edge - MARGIN - FAB_SIZE.0, bottom_edge - MARGIN - FAB_SIZE.1),
         FAB_SIZE,
     );
-    let mut left = fab.0;
-    let mut top = fab.1;
-    let mut right = fab.0 + FAB_SIZE.0;
-    let mut bottom = fab.1 + FAB_SIZE.1;
-    let mut include = |pos: (i32, i32), size: (i32, i32)| {
-        left = left.min(pos.0);
-        top = top.min(pos.1);
-        right = right.max(pos.0 + size.0);
-        bottom = bottom.max(pos.1 + size.1);
-    };
+    let mut pieces = vec![rect(fab, FAB_SIZE)];
 
     if ui.show_hint {
         let hint_x = (fab.0 + FAB_SIZE.0 - HINT_SIZE.0)
             .clamp(client.x, client.x + (client.width as i32 - HINT_SIZE.0).max(0));
         let hint_y = (fab.1 - HINT_GAP - HINT_SIZE.1)
             .clamp(client.y, client.y + (client.height as i32 - HINT_SIZE.1).max(0));
-        include((hint_x, hint_y), HINT_SIZE);
+        pieces.push(rect((hint_x, hint_y), HINT_SIZE));
     }
 
     if ui.ready_check {
         let cx = client.x + client.width as i32 / 2;
-        include(
+        pieces.push(rect(
             (cx - CANCEL_SIZE.0 / 2, bottom_edge - CANCEL_BOTTOM - CANCEL_SIZE.1),
             CANCEL_SIZE,
-        );
+        ));
     }
 
     if ui.dodge {
@@ -265,9 +258,21 @@ pub fn chrome_bounds(client: &ClientBounds, ui: &OverlayUiState) -> ClientBounds
             (right_edge - DODGE_RIGHT - DODGE_SIZE.0, bottom_edge - MARGIN - DODGE_SIZE.1),
             DODGE_SIZE,
         );
-        include(dodge, DODGE_SIZE);
+        pieces.push(rect(dodge, DODGE_SIZE));
     }
 
+    pieces
+}
+
+pub fn chrome_bounds(client: &ClientBounds, ui: &OverlayUiState) -> ClientBounds {
+    if ui.expanded() {
+        return client.clone();
+    }
+    let pieces = chrome_pieces(client, ui);
+    let left = pieces.iter().map(|p| p.x).min().unwrap_or(client.x);
+    let top = pieces.iter().map(|p| p.y).min().unwrap_or(client.y);
+    let right = pieces.iter().map(|p| p.x + p.width as i32).max().unwrap_or(left + 1);
+    let bottom = pieces.iter().map(|p| p.y + p.height as i32).max().unwrap_or(top + 1);
     ClientBounds {
         x: left,
         y: top,
@@ -275,6 +280,66 @@ pub fn chrome_bounds(client: &ClientBounds, ui: &OverlayUiState) -> ClientBounds
         height: (bottom - top).max(1) as u32,
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HitRect {
+    pub left: i32,
+    pub top: i32,
+    pub right: i32,
+    pub bottom: i32,
+}
+
+pub fn hit_region(client: &ClientBounds, ui: &OverlayUiState) -> Option<Vec<HitRect>> {
+    if ui.expanded() {
+        return None;
+    }
+    let chrome = chrome_bounds(client, ui);
+    let pieces = chrome_pieces(client, ui);
+    if pieces.len() < 2 {
+        return None;
+    }
+    Some(
+        pieces
+            .iter()
+            .map(|p| HitRect {
+                left: (p.x - chrome.x).max(0),
+                top: (p.y - chrome.y).max(0),
+                right: (p.x - chrome.x + p.width as i32).min(chrome.width as i32),
+                bottom: (p.y - chrome.y + p.height as i32).min(chrome.height as i32),
+            })
+            .filter(|r| r.right > r.left && r.bottom > r.top)
+            .collect(),
+    )
+}
+
+#[cfg(windows)]
+fn apply_hit_region(hwnd: isize, rects: Option<&[HitRect]>) {
+    use windows_sys::Win32::Foundation::HWND;
+    use windows_sys::Win32::Graphics::Gdi::{CombineRgn, CreateRectRgn, DeleteObject, SetWindowRgn, HRGN, RGN_OR};
+    unsafe {
+        let Some(rects) = rects else {
+            SetWindowRgn(hwnd as HWND, std::ptr::null_mut(), 1);
+            return;
+        };
+        let region: HRGN = CreateRectRgn(0, 0, 0, 0);
+        if region.is_null() {
+            return;
+        }
+        for r in rects {
+            let piece = CreateRectRgn(r.left, r.top, r.right, r.bottom);
+            if !piece.is_null() {
+                CombineRgn(region, region, piece, RGN_OR);
+                DeleteObject(piece);
+            }
+        }
+        if SetWindowRgn(hwnd as HWND, region, 1) == 0 {
+            DeleteObject(region);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn apply_hit_region(_hwnd: isize, _rects: Option<&[HitRect]>) {}
 
 #[cfg(windows)]
 pub fn exclude_from_capture(hwnd: isize) -> bool {
@@ -575,6 +640,7 @@ pub struct OverlaySyncCache {
     show: bool,
     chrome: Option<ClientBounds>,
     panel_open: bool,
+    region: Option<Option<Vec<HitRect>>>,
 }
 
 pub fn sync_window(
@@ -600,6 +666,7 @@ pub fn sync_window(
             let _ = win.hide();
             cache.show = false;
             cache.chrome = None;
+            cache.region = None;
         }
         return;
     }
@@ -609,6 +676,7 @@ pub fn sync_window(
             let _ = win.hide();
             cache.show = false;
             cache.chrome = None;
+            cache.region = None;
         }
         return;
     };
@@ -619,6 +687,14 @@ pub fn sync_window(
     let panel_opened = !was_panel_open && interactive;
     let need_show = !cache.show;
     let need_panel_style = cache.panel_open != interactive || need_show || panel_closed || panel_opened;
+
+    let region = hit_region(&league.bounds, ui);
+    if cache.region.as_ref() != Some(&region) {
+        if let Ok(hwnd) = win.hwnd() {
+            apply_hit_region(hwnd.0 as isize, region.as_deref());
+        }
+        cache.region = Some(region);
+    }
 
     if interactive && cache.panel_open && cache.show && !need_show {
         cache.panel_open = true;
@@ -730,6 +806,62 @@ mod tests {
             ..OverlayUiState::default()
         };
         assert_eq!(chrome_bounds(&client, &ui).width, 800);
+    }
+
+    #[test]
+    fn spread_out_pieces_only_take_clicks_on_the_buttons() {
+        let client = client_1280();
+        let ui = OverlayUiState {
+            dodge: true,
+            positions: OverlayPositions {
+                fab: Some(RelPos { x: 117, y: 208 }),
+                dodge: Some(RelPos { x: 9039, y: 7889 }),
+            },
+            ..OverlayUiState::default()
+        };
+        let chrome = chrome_bounds(&client, &ui);
+        assert!(chrome.width > 1000 && chrome.height > 500);
+        let region = hit_region(&client, &ui).expect("two pieces need a region");
+        assert_eq!(region.len(), 2);
+        let area: i32 = region.iter().map(|r| (r.right - r.left) * (r.bottom - r.top)).sum();
+        assert_eq!(area, FAB_SIZE.0 * FAB_SIZE.1 + DODGE_SIZE.0 * DODGE_SIZE.1);
+        let (cx, cy) = (chrome.width as i32 / 2, chrome.height as i32 / 2);
+        assert!(!region.iter().any(|r| cx >= r.left && cx < r.right && cy >= r.top && cy < r.bottom));
+    }
+
+    #[test]
+    fn region_rects_match_the_pieces() {
+        let client = client_1280();
+        let ui = OverlayUiState {
+            ready_check: true,
+            ..OverlayUiState::default()
+        };
+        let chrome = chrome_bounds(&client, &ui);
+        let region = hit_region(&client, &ui).unwrap();
+        for (piece, rect) in chrome_pieces(&client, &ui).iter().zip(&region) {
+            assert_eq!(rect.left, piece.x - chrome.x);
+            assert_eq!(rect.top, piece.y - chrome.y);
+            assert_eq!(rect.right - rect.left, piece.width as i32);
+            assert_eq!(rect.bottom - rect.top, piece.height as i32);
+        }
+    }
+
+    #[test]
+    fn no_region_when_the_window_is_one_piece_or_expanded() {
+        let client = client_1280();
+        assert_eq!(hit_region(&client, &OverlayUiState::default()), None);
+        let panel = OverlayUiState {
+            panel_open: true,
+            dodge: true,
+            ..OverlayUiState::default()
+        };
+        assert_eq!(hit_region(&client, &panel), None);
+        let dragging = OverlayUiState {
+            dragging: true,
+            dodge: true,
+            ..OverlayUiState::default()
+        };
+        assert_eq!(hit_region(&client, &dragging), None);
     }
 
     fn client_1280() -> ClientBounds {
