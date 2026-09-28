@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { AVAILABLE_LOCALES, DICTS } from '../../src/app/i18n/locales/index.js';
-import { createTranslator } from '../../src/app/i18n/runtime.js';
+import { createTranslator, resolveLocale } from '../../src/app/i18n/runtime.js';
 
 function flatten(node, prefix = '', out = {}) {
   for (const [key, value] of Object.entries(node)) {
@@ -16,7 +16,7 @@ function placeholders(text) {
 }
 
 const base = flatten(DICTS.en_US);
-const LOCALES = ['en_US', 'pt_BR', 'ru_RU', 'sv_SE', 'tr_TR'];
+const LOCALES = ['en_US', 'es_MX', 'pt_BR', 'ru_RU', 'sv_SE', 'tr_TR'];
 const PLURAL_CATEGORY = /\.(zero|one|two|few|many|other)$/;
 
 function pluralSibling(key) {
@@ -32,6 +32,13 @@ describe('locale dictionaries', () => {
   it('ships every supported language', () => {
     expect(AVAILABLE_LOCALES).toEqual(LOCALES);
     expect(Object.keys(DICTS).sort()).toEqual([...LOCALES].sort());
+  });
+
+  it('sends every Spanish client to the Latin American dictionary', () => {
+    expect(resolveLocale('es_ES', AVAILABLE_LOCALES)).toBe('es_MX');
+    expect(resolveLocale('es_MX', AVAILABLE_LOCALES)).toBe('es_MX');
+    expect(resolveLocale('tr_TR', AVAILABLE_LOCALES)).toBe('tr_TR');
+    expect(resolveLocale('ru_RU', AVAILABLE_LOCALES)).toBe('ru_RU');
   });
 
   it('ru_RU uses the Russian plural forms', () => {

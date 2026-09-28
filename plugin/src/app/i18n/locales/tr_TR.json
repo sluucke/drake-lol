@@ -129,8 +129,8 @@
       "autoReloadHelp": "Yalnızca Drake, istemciyi Drake yüklenmeden çalışır hâlde bulduğunda kullanılır.",
       "autoUpdate": "Güncellemeleri otomatik yükle",
       "autoUpdateHelp": "En son GitHub sürümünü indirir ve yükleyiciyi çalıştırır. Drake Program Files içinde olduğu için Windows izin isteyecektir.",
-      "analytics": "Anonim kullanım istatistiklerini paylaş",
-      "analyticsHelp": "Anonim bir kurulum kimliği, Drake sürümü, League sunucu bölgen ve oturum başlangıç/bitişini gönderir; böylece Drake'i kaç kişinin kullandığını biliriz. Sihirdar adı, hesap veya maç verisi gönderilmez.",
+      "analytics": "Anonim kullanım istatistiklerini ve hata raporlarını paylaş",
+      "analyticsHelp": "Anonim bir kurulum kimliği, Drake sürümü, League sunucu bölgen, oturum başlangıç/bitişleri ve hata raporları gönderilir; böylece Drake'i kaç kişinin kullandığını bilir ve bozulanları düzeltiriz. Sihirdar adı, hesap veya maç verisi gönderilmez.",
       "updates": "Güncellemeler",
       "version": "v{version}",
       "checkUpdates": "Güncellemeleri denetle",
@@ -269,6 +269,12 @@
     }
   },
   "whatsNew": {
+    "v0_4_1": [
+      {
+        "title": "Drake artık daha fazla dil konuşuyor",
+        "body": "İspanyolca, Türkçe, Rusça ve İsveççe; İngilizce ve Brezilya Portekizcesine katıldı. Drake, League istemcisinin dilini kullanır; İsveççe ise Ayarlar'dan seçilebilir."
+      }
+    ],
     "v0_4_0": [
       {
         "title": "Yepyeni bir Drake",

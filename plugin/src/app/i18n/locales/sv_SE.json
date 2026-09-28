@@ -129,8 +129,8 @@
       "autoReloadHelp": "Används bara när Drake hittar klienten redan igång utan att Drake är laddat.",
       "autoUpdate": "Installera uppdateringar automatiskt",
       "autoUpdateHelp": "Laddar ner den senaste versionen från GitHub och kör installationsprogrammet. Windows ber om behörighet eftersom Drake ligger i Program Files.",
-      "analytics": "Dela anonym användningsstatistik",
-      "analyticsHelp": "Skickar ett anonymt installations-ID, Drake-versionen, din League-serverregion och sessionens start/stopp, så att vi vet hur många som använder Drake. Inget summonernamn, konto eller matchdata.",
+      "analytics": "Dela anonym användningsstatistik och felrapporter",
+      "analyticsHelp": "Skickar ett anonymt installations-ID, Drake-versionen, din League-serverregion, sessionsstart/-slut och felrapporter, så att vi vet hur många som använder Drake och kan fixa det som går sönder. Inget summonernamn, konto eller matchdata.",
       "updates": "Uppdateringar",
       "version": "v{version}",
       "checkUpdates": "Sök efter uppdateringar",
@@ -269,6 +269,12 @@
     }
   },
   "whatsNew": {
+    "v0_4_1": [
+      {
+        "title": "Drake talar fler språk",
+        "body": "Spanska, turkiska, ryska och svenska ansluter till engelska och brasiliansk portugisiska. Drake följer League-klientens språk, och svenska kan väljas i Inställningar."
+      }
+    ],
     "v0_4_0": [
       {
         "title": "Ett helt nytt Drake",
