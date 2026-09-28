@@ -539,6 +539,32 @@ async fn checkin(
     StatusCode::NO_CONTENT
 }
 
+#[derive(Deserialize)]
+pub struct ErrorBody {
+    pub token: String,
+    pub source: String,
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub message: String,
+    #[serde(default)]
+    pub stack: Option<String>,
+}
+
+async fn report_error(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<ErrorBody>,
+) -> StatusCode {
+    if body.token != state.token {
+        return StatusCode::UNAUTHORIZED;
+    }
+    if !matches!(body.source.as_str(), "plugin" | "overlay") {
+        return StatusCode::BAD_REQUEST;
+    }
+    crate::analytics::report_error(&body.source, &body.kind, &body.message, body.stack.as_deref());
+    StatusCode::NO_CONTENT
+}
+
 /// A partial update. Every field optional so the UI can send only what the
 /// user actually changed, and a field nobody mentioned keeps its current value
 /// instead of silently snapping back to its default.
@@ -716,7 +742,7 @@ async fn put_settings(
     match state.apply_settings(next) {
         Ok(()) => StatusCode::NO_CONTENT,
         Err(e) => {
-            eprintln!("[Drake] could not persist settings from the UI: {e}");
+            crate::analytics::log_error("settings", format!("could not persist settings from the UI: {e}"));
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }
@@ -838,7 +864,7 @@ async fn apply_update(
         }
         Err(e) => {
             state.end_update();
-            eprintln!("[Drake] update apply failed: {e}");
+            crate::analytics::log_error("update", format!("update apply failed: {e}"));
             StatusCode::BAD_GATEWAY
         }
     }
@@ -985,6 +1011,7 @@ fn router(state: Arc<ConfigdState>) -> Router {
     Router::new()
         .merge(overlay_pages)
         .route("/checkin", post(checkin))
+        .route("/errors", post(report_error))
         .route("/settings", post(put_settings))
         .route("/open-url", post(open_url))
         .route("/proxy", post(proxy_request))
@@ -1992,6 +2019,35 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::NO_CONTENT);
         assert!(matches!(state.effective(true, "build-a"), EffectiveState::Injected { .. }));
+    }
+
+    #[tokio::test]
+    async fn errors_from_the_plugin_need_the_token_and_a_known_source() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let post = |body: String| {
+            Request::builder()
+                .method("POST")
+                .uri("/errors")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap()
+        };
+        let ok = router(state.clone())
+            .oneshot(post(format!(r#"{{"token":"{token}","source":"plugin","kind":"TypeError","message":"boom"}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(ok.status(), StatusCode::NO_CONTENT);
+        let wrong_token = router(state.clone())
+            .oneshot(post(r#"{"token":"nope","source":"plugin","message":"boom"}"#.into()))
+            .await
+            .unwrap();
+        assert_eq!(wrong_token.status(), StatusCode::UNAUTHORIZED);
+        let spoofed = router(state)
+            .oneshot(post(format!(r#"{{"token":"{token}","source":"tray","message":"boom"}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(spoofed.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]

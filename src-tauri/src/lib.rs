@@ -6,6 +6,7 @@ pub mod elevate;
 pub mod lcu;
 pub mod overlay;
 pub mod paths;
+pub mod reports;
 pub mod single_instance;
 pub mod slot;
 pub mod startup;
@@ -100,7 +101,7 @@ async fn try_apply_update(
             state.end_update();
         }
         Err(e) => {
-            eprintln!("[Drake] update failed: {e}");
+            analytics::log_error("update", format!("update failed: {e}"));
             *note.lock().unwrap() = Some(format!("Update failed: {e}"));
             state.end_update();
         }
@@ -134,6 +135,7 @@ async fn try_prompt_manual_update(
 
 const ANALYTICS_FIRST_DELAY: std::time::Duration = std::time::Duration::from_secs(20);
 const ANALYTICS_RETRY: std::time::Duration = std::time::Duration::from_secs(5 * 60);
+const ANALYTICS_TICK: std::time::Duration = std::time::Duration::from_secs(30);
 const RELEASE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
 const RELEASE_POLL: std::time::Duration = std::time::Duration::from_millis(250);
 
@@ -142,7 +144,7 @@ async fn release_injection() {
     let registry = slot::WindowsRegistry;
     let core = paths::our_core_dll();
     if let Err(e) = elevate::write_intent(&paths::slot_intent_file(), elevate::SlotIntent::Release) {
-        eprintln!("[Drake] could not record the slot intent: {e}");
+        analytics::log_error("slot-intent", format!("could not record the slot intent: {e}"));
     }
     let raw = registry.read_debugger().ok().flatten();
     if matches!(
@@ -160,7 +162,7 @@ async fn release_injection() {
                     }
                 }
             }
-            Err(e) => eprintln!("[Drake] could not release the injection slot: {e}"),
+            Err(e) => analytics::log_error("release", format!("could not release the injection slot: {e}")),
         }
     }
     let loader = raw
@@ -170,12 +172,13 @@ async fn release_injection() {
         .unwrap_or_else(paths::our_loader_dir);
     if let Err(e) = std::fs::remove_dir_all(deploy::plugin_dir(&loader)) {
         if e.kind() != std::io::ErrorKind::NotFound {
-            eprintln!("[Drake] could not remove the plugin on quit: {e}");
+            analytics::log_error("release", format!("could not remove the plugin on quit: {e}"));
         }
     }
 }
 
 pub fn run() {
+    reports::install_panic_hook(paths::crash_file());
     tauri::Builder::default()
         .setup(|app| {
             // Best-effort: a mismatched or missing core.dll must not crash
@@ -187,6 +190,10 @@ pub fn run() {
                 analytics::load_or_create_install_id(&paths::install_id_file()),
                 env!("CARGO_PKG_VERSION"),
             ));
+            analytics::install_reporter(tracker.clone());
+            if let Some(crash) = reports::take_crash(&paths::crash_file()) {
+                tracker.report(crash);
+            }
 
             let version_label = MenuItem::with_id(
                 app,
@@ -279,10 +286,13 @@ pub fn run() {
                     let tracker = menu_tracker.clone();
                     let send_close = menu_state.settings.lock().unwrap().analytics_enabled;
                     tauri::async_runtime::spawn(async move {
-                        if send_close && tracker.started() {
-                            tracker.send(analytics::Event::Close, analytics::CLOSE_TIMEOUT).await;
-                        }
                         release_injection().await;
+                        if send_close {
+                            tracker.flush_errors(analytics::CLOSE_TIMEOUT).await;
+                            if tracker.started() {
+                                tracker.send(analytics::Event::Close, analytics::CLOSE_TIMEOUT).await;
+                            }
+                        }
                         if let Err(e) = lcu::restart_ux().await {
                             eprintln!("[Drake] could not reload the client on quit: {e}");
                         }
@@ -302,7 +312,7 @@ pub fn run() {
                         settings.auto_update = auto_update_check.is_checked().unwrap_or(false);
                     }
                     if let Err(e) = configd::save(&settings) {
-                        eprintln!("[Drake] could not save settings: {e}");
+                        analytics::log_error("settings", format!("could not save settings: {e}"));
                     }
                 } else if event.id() == "check_updates" {
                     let tray = menu_state.clone();
@@ -316,7 +326,7 @@ pub fn run() {
                     // restarting someone's client unasked is hostile.
                     tauri::async_runtime::spawn(async move {
                         if let Err(e) = lcu::restart_ux().await {
-                            eprintln!("[Drake] could not reload the client: {e}");
+                            analytics::log_error("reload", format!("could not reload the client: {e}"));
                         }
                     });
                 }
@@ -396,7 +406,7 @@ pub fn run() {
                             exe,
                             settings.run_at_startup,
                         ) {
-                            eprintln!("[Drake] start-with-Windows: {e}");
+                            analytics::log_error("startup", format!("start-with-Windows: {e}"));
                         }
                     }
                     // Always runs: claiming the slot and deploying the
@@ -424,6 +434,9 @@ pub fn run() {
                         analytics::loader_label(&mode),
                         streaming::effective_label(streaming_effective),
                     );
+                    if let supervisor::Mode::Inactive { reason } = &mode {
+                        analytics::report_error("tray", "inactive", reason, None);
+                    }
                     let mode_text = match &mode {
                         supervisor::Mode::OwnLoader => strings::MODE_OWN_LOADER.to_string(),
                         supervisor::Mode::Guest { host, .. } => format!("{} {host}", strings::MODE_GUEST),
@@ -481,7 +494,7 @@ pub fn run() {
                         ) {
                             auto_reload_fired = true;
                             if let Err(e) = lcu::restart_ux().await {
-                                eprintln!("[Drake] auto-reload failed: {e}");
+                                analytics::log_error("reload", format!("auto-reload failed: {e}"));
                             }
                         }
                     }
@@ -558,30 +571,35 @@ pub fn run() {
             let analytics_shutdown = shutting_down.clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(ANALYTICS_FIRST_DELAY).await;
+                let mut next_ping = std::time::Instant::now();
                 loop {
                     if analytics_shutdown.load(Ordering::SeqCst) {
                         break;
                     }
                     let enabled = analytics_state.settings.lock().unwrap().analytics_enabled;
-                    let next = if enabled {
-                        let (region, locale) = analytics_state.client_info();
-                        tracker.use_client_info(region, locale);
-                        tracker.refresh_region().await;
-                        let event = if tracker.started() {
-                            analytics::Event::Heartbeat
-                        } else {
-                            analytics::Event::Startup
-                        };
-                        let sent = tracker.send(event, analytics::SEND_TIMEOUT).await;
-                        if sent || tracker.started() {
-                            analytics::HEARTBEAT_INTERVAL
-                        } else {
-                            ANALYTICS_RETRY
-                        }
+                    if !enabled {
+                        tracker.discard_errors();
                     } else {
-                        ANALYTICS_RETRY
-                    };
-                    tokio::time::sleep(next).await;
+                        if std::time::Instant::now() >= next_ping {
+                            let (region, locale) = analytics_state.client_info();
+                            tracker.use_client_info(region, locale);
+                            tracker.refresh_region().await;
+                            let event = if tracker.started() {
+                                analytics::Event::Heartbeat
+                            } else {
+                                analytics::Event::Startup
+                            };
+                            let sent = tracker.send(event, analytics::SEND_TIMEOUT).await;
+                            next_ping = std::time::Instant::now()
+                                + if sent || tracker.started() {
+                                    analytics::HEARTBEAT_INTERVAL
+                                } else {
+                                    ANALYTICS_RETRY
+                                };
+                        }
+                        tracker.flush_errors(analytics::SEND_TIMEOUT).await;
+                    }
+                    tokio::time::sleep(ANALYTICS_TICK).await;
                 }
             });
 

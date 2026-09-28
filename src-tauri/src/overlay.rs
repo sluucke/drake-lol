@@ -624,7 +624,7 @@ pub fn ensure_window(app: &tauri::AppHandle, port: u16, token: &str) {
                 _win.open_devtools();
             }
         }
-        Err(e) => eprintln!("[Drake] overlay window: {e}"),
+        Err(e) => crate::analytics::log_error("overlay", format!("overlay window: {e}")),
     }
 }
 

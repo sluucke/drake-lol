@@ -1,7 +1,8 @@
 use rand::RngCore;
 use serde::Serialize;
+use crate::reports::{ErrorQueue, ErrorReport};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 pub const ENDPOINT: &str = match option_env!("DRAKE_ANALYTICS_URL") {
@@ -11,6 +12,37 @@ pub const ENDPOINT: &str = match option_env!("DRAKE_ANALYTICS_URL") {
 pub const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(15 * 60);
 pub const SEND_TIMEOUT: Duration = Duration::from_secs(15);
 pub const CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
+
+pub fn errors_endpoint() -> String {
+    ENDPOINT.replace("/v1/events", "/v1/errors")
+}
+
+#[derive(Debug, Serialize)]
+pub struct ErrorPayload<'a> {
+    pub install_id: &'a str,
+    pub app_version: &'a str,
+    #[serde(flatten)]
+    pub report: &'a ErrorReport,
+}
+
+static REPORTER: OnceLock<Arc<Tracker>> = OnceLock::new();
+
+pub fn install_reporter(tracker: Arc<Tracker>) {
+    let _ = REPORTER.set(tracker);
+}
+
+pub fn report_error(source: &str, kind: &str, message: &str, stack: Option<&str>) -> bool {
+    let Some(report) = ErrorReport::new(source, kind, message, stack) else {
+        return false;
+    };
+    REPORTER.get().is_some_and(|tracker| tracker.report(report))
+}
+
+pub fn log_error(kind: &str, message: impl std::fmt::Display) {
+    let message = message.to_string();
+    eprintln!("[Drake] {kind}: {message}");
+    report_error("tray", kind, &message, None);
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -125,6 +157,7 @@ pub struct Tracker {
     app_version: String,
     os_build: Option<String>,
     context: Mutex<Context>,
+    errors: Mutex<ErrorQueue>,
 }
 
 impl Tracker {
@@ -135,6 +168,7 @@ impl Tracker {
             app_version: app_version.to_string(),
             os_build: os_build(),
             context: Mutex::new(Context::default()),
+            errors: Mutex::new(ErrorQueue::default()),
         }
     }
 
@@ -168,6 +202,54 @@ impl Tracker {
             loader: ctx.loader,
             streaming: ctx.streaming,
             os_build: self.os_build.clone(),
+        }
+    }
+
+    pub fn report(&self, report: ErrorReport) -> bool {
+        self.errors.lock().unwrap_or_else(|e| e.into_inner()).push(report)
+    }
+
+    pub fn discard_errors(&self) {
+        self.errors.lock().unwrap_or_else(|e| e.into_inner()).clear_pending();
+    }
+
+    pub fn error_payloads(&self, reports: &[ErrorReport]) -> Vec<serde_json::Value> {
+        reports
+            .iter()
+            .filter_map(|report| {
+                serde_json::to_value(ErrorPayload {
+                    install_id: &self.install_id,
+                    app_version: &self.app_version,
+                    report,
+                })
+                .ok()
+            })
+            .collect()
+    }
+
+    pub async fn flush_errors(&self, timeout: Duration) {
+        let pending = self.errors.lock().unwrap_or_else(|e| e.into_inner()).drain();
+        if pending.is_empty() || ENDPOINT.is_empty() {
+            return;
+        }
+        let Ok(client) = reqwest::Client::builder()
+            .timeout(timeout)
+            .user_agent(format!("Drake/{}", self.app_version))
+            .build()
+        else {
+            self.errors.lock().unwrap_or_else(|e| e.into_inner()).requeue(pending);
+            return;
+        };
+        let url = errors_endpoint();
+        let mut failed = Vec::new();
+        for (report, payload) in pending.iter().zip(self.error_payloads(&pending)) {
+            let ok = matches!(client.post(&url).json(&payload).send().await, Ok(res) if res.status().is_success());
+            if !ok {
+                failed.push(report.clone());
+            }
+        }
+        if !failed.is_empty() {
+            self.errors.lock().unwrap_or_else(|e| e.into_inner()).requeue(failed);
         }
     }
 
@@ -279,6 +361,24 @@ mod tests {
         let ping = tracker.ping(Event::Heartbeat);
         assert_eq!(ping.lol_region.as_deref(), Some("LA2"));
         assert_eq!(ping.locale.as_deref(), Some("es_MX"));
+    }
+
+    #[test]
+    fn error_reports_carry_the_install_and_nothing_else() {
+        let tracker = Tracker::new(new_uuid(), "1.2.3");
+        let report = ErrorReport::new("plugin", "TypeError", "x is undefined", Some("at a (Drake/index.js:1:2)")).unwrap();
+        assert!(tracker.report(report.clone()));
+        assert!(!tracker.report(report.clone()));
+        let json = &tracker.error_payloads(&[report])[0];
+        let mut keys: Vec<_> = json.as_object().unwrap().keys().cloned().collect();
+        keys.sort();
+        assert_eq!(keys, ["app_version", "install_id", "kind", "message", "source", "stack"]);
+        assert_eq!(json["kind"], "typeerror");
+    }
+
+    #[test]
+    fn errors_go_next_to_the_events_endpoint() {
+        assert!(errors_endpoint().ends_with("/v1/errors"));
     }
 
     #[test]

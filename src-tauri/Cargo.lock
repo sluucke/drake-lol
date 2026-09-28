@@ -759,10 +759,11 @@ dependencies = [
 
 [[package]]
 name = "drake"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "axum",
  "rand",
+ "regex",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

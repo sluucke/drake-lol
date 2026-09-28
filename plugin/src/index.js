@@ -1,6 +1,7 @@
 import { loadConfig } from './config.js';
 import { makeLcu } from './lcu.js';
 import { makeTransport } from './transport.js';
+import { installErrorReporter, ownedByPlugin, sendToTray } from './errorReporter.js';
 import { PLUGIN_BUILD } from './buildId.js';
 import { startAutoAccept } from './autoAccept.js';
 import { socketPushAvailable, subscribe } from './subscribe.js';
@@ -119,6 +120,12 @@ async function start() {
     ui = startUI({ cfg: { port: 0, token: '', settings: {} }, lcu });
     return;
   }
+
+  installErrorReporter({
+    send: sendToTray({ port: cfg.port, token: cfg.token }),
+    source: 'plugin',
+    ownsError: ownedByPlugin,
+  });
 
   let clientInfo = null;
   const readClientInfo = async () => {
