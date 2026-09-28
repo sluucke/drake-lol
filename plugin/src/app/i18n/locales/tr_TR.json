@@ -1,0 +1,579 @@
+{
+  "common": {
+    "close": "Kapat",
+    "loading": "Yükleniyor…",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "retry": "Tekrar dene",
+    "on": "Açık",
+    "off": "Kapalı",
+    "remove": "Kaldır"
+  },
+  "time": {
+    "seconds": {
+      "one": "{count} saniye",
+      "other": "{count} saniye"
+    }
+  },
+  "shell": {
+    "title": "Drake",
+    "hotkeyHint": "Ctrl + D",
+    "close": "Kapat",
+    "creditsButton": "Emeği Geçenler",
+    "nav": {
+      "auto-accept": "Otomatik Kabul",
+      "auto-pick": "Otomatik Seçim",
+      "auto-ban": "Otomatik Yasaklama",
+      "queue": "Sıra",
+      "status": "Durum",
+      "profile": "Profil",
+      "friends": "Arkadaşlar",
+      "whats-new": "Yenilikler",
+      "settings": "Ayarlar"
+    },
+    "footer": {
+      "trayUp": "Sistem tepsisine bağlı",
+      "trayDown": "Drake sistem tepsisinde çalışmıyor"
+    },
+    "credits": {
+      "title": "Emeği Geçenler",
+      "disclaimer": "Drake resmî olmayan açık kaynaklı bir yazılımdır. Riot Games ile bağlantılı değildir.",
+      "createdBy": "Geliştiren",
+      "specialThanks": "Özel teşekkürler",
+      "inspiredBy": "İlham kaynakları",
+      "assets": "Görseller",
+      "github": "GitHub"
+    }
+  },
+  "screens": {
+    "autoAccept": {
+      "title": "Otomatik Kabul",
+      "subtitle": "Maç bulunduğu anda onayı senin yerine verir.",
+      "toggle": "Maçları otomatik kabul et",
+      "delayLabel": "Kabul gecikmesi",
+      "instant": "Anında",
+      "seconds": "{value} sn",
+      "delayHelp": "Kısa bir bekleme, maçı elle reddetmen için sana zaman bırakır ve bildirim çıktığı anda kabul etmekten daha az mekanik görünür."
+    },
+    "status": {
+      "title": "Durum Mesajı",
+      "subtitle": "Sohbetteki görünümün. Burada satır atlamaları çalışır — istemcinin kendi alanı tek satırlıktır ve bunları tutamaz.",
+      "presence": "Çevrimiçi durumu",
+      "clientDefault": "İstemci varsayılanı",
+      "availability": {
+        "chat": "Çevrimiçi",
+        "offline": "Çevrimdışı",
+        "mobile": "Mobil",
+        "dnd": "Meşgul"
+      },
+      "presenceHelp": "İstemci durumu her sıfırladığında Drake seçtiğin durumu yeniden uygular.",
+      "placeholder": "Durumunu yaz veya yapıştır. ASCII sanatı serbest.",
+      "count": {
+        "one": "{chars} karakter · {count} satır",
+        "other": "{chars} karakter · {count} satır"
+      },
+      "clear": "Temizle",
+      "save": "Kaydet",
+      "saved": "Durum kaydedildi · {summary}",
+      "saveFailed": "Kaydedilemedi: {reason}"
+    },
+    "queue": {
+      "title": "Sıra",
+      "subtitle": "Şampiyon Seçimi araçları.",
+      "revealTitle": "Lobiyi göster",
+      "revealHelp": "Tüm takımını bir analiz sitesinde arar. Yalnızca Şampiyon Seçimi sırasında çalışır, çünkü isimler ancak o zaman mevcuttur.",
+      "provider": "Analiz sitesi",
+      "revealButton": "Lobiyi Göster",
+      "lookingUp": {
+        "one": "{count} sihirdar aranıyor",
+        "other": "{count} sihirdar aranıyor"
+      },
+      "inClient": "Takımımı istemcide göster",
+      "inClientHelp": "Şampiyon Seçimi sırasında takım arkadaşlarının satırlarını yeniden yazar ve Ctrl+Shift+D kart katmanını etkinleştirir.",
+      "sampleSize": "Örnek boyutu",
+      "recentPool": "Son maç havuzu",
+      "last5Pool": "Son 5 havuzu",
+      "concurrency": "Aynı anda sorgu",
+      "pool": {
+        "ranked_both": "Tek/Çift + Esnek",
+        "current_queue": "Mevcut sıra",
+        "any": "Tüm sıralar"
+      },
+      "currentQueueWarn": "Oyuncu bu sırayı nadiren oynuyorsa mevcut sıra verisi az görünebilir.",
+      "concurrencyWarn": "Daha yüksek eşzamanlılık istemciyi daha çok yorar ve istek sınırlarına takılabilir.",
+      "estimate": "Bu ayarla tam bir lobi yaklaşık ~{seconds} sn sürer.",
+      "recommend": {
+        "one": "Son gösterime göre aynı anda {count} oyuncu sorgulamanı öneriyoruz.",
+        "other": "Son gösterime göre aynı anda {count} oyuncu sorgulamanı öneriyoruz."
+      },
+      "optionsDisabled": "Bunları değiştirmek için istemcide göstermeyi aç.",
+      "dodgeTitle": "Dodge",
+      "dodgeHelp": "Şampiyon Seçimi'nden çıkar. Normal dodge cezası uygulanır — Drake onay sormaz, bu yüzden yalnızca gerçekten istiyorsan bas.",
+      "dodgeToggle": "Şampiyon Seçimi'nde dodge butonunu göster",
+      "dodgeToggleHelp": "Şampiyon Seçimi sırasında istemcinin üzerine bir Dodge butonu yerleştirir.",
+      "dodgeButton": "Dodge",
+      "dodging": "Çıkılıyor…",
+      "dodged": "Çıkıldı!",
+      "dodgeFailed": "Başarısız",
+      "mapSide": "Şampiyon Seçimi'nde harita tarafını göster",
+      "muteAll": "Şampiyon Seçimi'nde takım arkadaşlarını otomatik sustur",
+      "autoMessage": "Sohbet bağlanınca otomatik mesaj gönder",
+      "autoMessagePlaceholder": "Sohbet bağlandığında gönderilecek mesaj..."
+    },
+    "settings": {
+      "title": "Ayarlar",
+      "subtitle": "Drake'in kendi davranışı.",
+      "runAtStartup": "Drake'i Windows ile başlat",
+      "runAtStartupHelp": "İstemci açılmadan önce enjekte edilmiş olur, böylece bu panel her zaman kullanılabilir.",
+      "autoReload": "Drake başladığında istemciyi yeniden yükle",
+      "autoReloadHelp": "Yalnızca Drake, istemciyi Drake yüklenmeden çalışır hâlde bulduğunda kullanılır.",
+      "autoUpdate": "Güncellemeleri otomatik yükle",
+      "autoUpdateHelp": "En son GitHub sürümünü indirir ve yükleyiciyi çalıştırır. Drake Program Files içinde olduğu için Windows izin isteyecektir.",
+      "analytics": "Anonim kullanım istatistiklerini paylaş",
+      "analyticsHelp": "Anonim bir kurulum kimliği, Drake sürümü, League sunucu bölgen ve oturum başlangıç/bitişini gönderir; böylece Drake'i kaç kişinin kullandığını biliriz. Sihirdar adı, hesap veya maç verisi gönderilmez.",
+      "updates": "Güncellemeler",
+      "version": "v{version}",
+      "checkUpdates": "Güncellemeleri denetle",
+      "checking": "Denetleniyor…",
+      "upToDate": "Drake güncel.",
+      "available": "{version} kullanılabilir.",
+      "install": "Şimdi yükle",
+      "noInstaller": "{version} GitHub'da mevcut ama henüz Windows yükleyicisi yok.",
+      "checkFailed": "Güncellemeler denetlenemedi.",
+      "downloading": "Güncelleme indiriliyor ve yükleniyor…",
+      "installing": "Güncelleme yükleniyor…",
+      "alreadyCurrent": "Drake zaten güncel",
+      "unlockStatus": "Durum mesajı alanının kilidini aç",
+      "unlockStatusHelp": "İstemcinin durum mesajındaki 25 karakter sınırını kaldırır ve alana daha fazla yer açar. İstemci bir sonraki yeniden yüklemede etkili olur.",
+      "client": "İstemci",
+      "clientHelp": "League istemcisinin arayüzünü yeniden yükler. Drake istemci zaten açıkken enjekte edildiyse veya yalnızca yeniden yüklemeyle uygulanan bir değişiklikten sonra kullan.",
+      "restart": "İstemciyi yeniden başlat",
+      "restarting": "İstemci yeniden başlatılıyor…",
+      "language": "Dil",
+      "languageHelp": "Drake varsayılan olarak League istemcisinin dilini kullanır. Her zaman başka bir dil kullanmak için buradan seç.",
+      "languageAuto": "İstemci dili ({language})",
+      "streaming": "Yayın modu",
+      "streamingOff": "Kapalı",
+      "streamingOn": "Açık",
+      "streamingAuto": "Otomatik (bir yayın uygulaması açıkken)",
+      "streamingHelp": "Drake'i OBS, Streamlabs ve Discord'un yakalayamadığı ayrı bir pencereye taşır, böylece yayınında asla görünmez. Bu pencere kullanılırken takım gösterimi kapalı kalır.",
+      "streamingDragHelp": "Katmanda Drake ve Dodge butonlarını istediğin yere sürükle.",
+      "resetOverlayPositions": "Katman butonlarının konumunu sıfırla"
+    },
+    "autoPick": {
+      "title": "Otomatik Seçim",
+      "subtitle": "Rol başına en fazla 2 şampiyon. Seçim, koridorun belirlenene kadar bekler — Doldur hiçbir şey yapmaz.",
+      "toggle": "Otomatik olarak şampiyon seç",
+      "instaLock": "Anında Kilitle",
+      "instaLockHelp": "Şampiyonu yalnızca işaretlemek yerine seçim açıldığı anda kilitler. Kimse senden alamaz, sen de fikrini değiştiremezsin.",
+      "rolesLabel": "Roller",
+      "empty": "Bu rol için en fazla 2 şampiyona tıkla — ilki seçimin, ikincisi yedeğin."
+    },
+    "autoBan": {
+      "title": "Otomatik Yasaklama",
+      "subtitle": "Yasaklama aşamasında sıra sana geldiğinde senin yerine bir şampiyonu yasaklar.",
+      "toggle": "Otomatik olarak şampiyon yasakla",
+      "toggleHelp": "Yasaklama her zaman kilitlenir — yalnızca işaretlemek hiçbir şeyi yasaklamaz.",
+      "champion": "Şampiyon",
+      "empty": "Yasaklamak için bir şampiyona tıkla — temizlemek için tekrar tıkla veya ✕'e bas."
+    },
+    "profile": {
+      "title": "Profil",
+      "subtitle": "Diğer oyuncuların gördükleri. Bunların hiçbiri hesabını değiştirmez.",
+      "tabs": {
+        "rank": "Derece",
+        "banner": "Sancak",
+        "riot-id": "Riot ID"
+      },
+      "tier": "Kademe",
+      "division": "Küme",
+      "queue": "Sıra",
+      "crystal": "Kristal",
+      "rankHelp": "Sohbette adının yanında gösterilir. Gerçek derecen değişmez.",
+      "reset": "Sıfırla",
+      "apply": "Uygula",
+      "applied": "Uygulandı",
+      "badgesTitle": "Meydan okuma rozetleri",
+      "badgesHelp": "Profilindeki üç simge. Kopyala, ilkini üç yuvaya da kopyalar.",
+      "removeBadges": "Rozetleri kaldır",
+      "cloneBadge": "İlkini 3'üne kopyala",
+      "badgesRemoved": "Rozetler kaldırıldı",
+      "badgeCloned": "İlk rozet 3 yuvaya kopyalandı",
+      "skinSearch": "{count} kostüm içinde ara...",
+      "noSkins": "Eşleşen kostüm yok.",
+      "backgroundSet": "Profil arka planı ayarlandı",
+      "riotHelp": "Ad değiştirme sınırını Drake değil Riot koyar. Reddedilirse bekleme süresi dolmamıştır.",
+      "riotName": "Ad",
+      "riotTag": "ETİKET",
+      "saveRiotId": "ID'yi Kaydet"
+    },
+    "friends": {
+      "title": "Arkadaşlar",
+      "empty": "Listede kimse yok veya istemci listeyi henüz paylaşmadı.",
+      "summary": "{total} kişiden {online} çevrimiçi. Notlar, istemcide belirlediğin notlardır.",
+      "warning": "Herkesi kaldırma işlemi Drake üzerinden geri alınamaz.",
+      "removeAll": "Tümünü kaldır",
+      "confirmTitle": "Tüm arkadaşlar kaldırılsın mı?",
+      "confirm": {
+        "one": "Bu işlem {count} arkadaşı kaldırır. Drake üzerinden geri alınamaz.",
+        "other": "Bu işlem {count} arkadaşın tamamını kaldırır. Drake üzerinden geri alınamaz."
+      },
+      "removed": {
+        "one": "{count} arkadaş kaldırıldı",
+        "other": "{count} arkadaş kaldırıldı"
+      },
+      "removedPartial": "{removed} kaldırıldı, {failed} başarısız"
+    },
+    "whatsNew": {
+      "title": "Yenilikler",
+      "subtitle": "v{version} değişiklikleri",
+      "recent": "Son değişiklikler",
+      "empty": "Bu sürüm için not yok.",
+      "continue": "Devam"
+    }
+  },
+  "roles": {
+    "TOP": "Üst",
+    "JUNGLE": "Orman",
+    "MIDDLE": "Orta",
+    "BOTTOM": "Alt",
+    "UTILITY": "Destek"
+  },
+  "champions": {
+    "search": "Şampiyon ara...",
+    "noMatch": "Eşleşen şampiyon yok.",
+    "unavailable": "Şampiyon listesi kullanılamıyor — tekrar denemek için bu ekranı yeniden aç.",
+    "noneChosen": "seçilmedi",
+    "selected": {
+      "one": "{count} seçili",
+      "other": "{count} seçili"
+    }
+  },
+  "ranks": {
+    "tiers": {
+      "IRON": "Demir",
+      "BRONZE": "Bronz",
+      "SILVER": "Gümüş",
+      "GOLD": "Altın",
+      "PLATINUM": "Platin",
+      "EMERALD": "Zümrüt",
+      "DIAMOND": "Elmas",
+      "MASTER": "Ustalık",
+      "GRANDMASTER": "Büyük Ustalık",
+      "CHALLENGER": "Şampiyonluk"
+    },
+    "queues": {
+      "RANKED_SOLO_5x5": "Tek/Çift",
+      "RANKED_FLEX_SR": "Esnek",
+      "RANKED_TFT": "TFT"
+    }
+  },
+  "whatsNew": {
+    "v0_4_0": [
+      {
+        "title": "Yepyeni bir Drake",
+        "body": "Tüm ekranlar daha rafine bir hextech görünümü, daha akıcı animasyonlar ve daha net düzenlerle yeniden yapıldı — panel, Takım Analizi, Build sekmesi, Şampiyon Seçimi butonları ve sosyal çubuktaki buton."
+      },
+      {
+        "title": "Drake artık senin dilini konuşuyor",
+        "body": "Drake varsayılan olarak League istemcisinin dilini kullanır ve Ayarlar'dan başka bir dil seçebilirsin. İngilizce ve Brezilya Portekizcesi tamamen çevrildi; diğer diller şimdilik İngilizceye döner."
+      },
+      {
+        "title": "Yayın modu",
+        "body": "Ayarlar'dan aç (veya Otomatik'te bırak); Drake, OBS, Streamlabs ve Discord'un yakalayamadığı kendi penceresine taşınır — sen her şeyi görmeye devam edersin, yayının hiçbir şey görmez. Etkinken takım gösterimi kapalı kalır."
+      },
+      {
+        "title": "Drake'ten çıkmak artık onu gerçekten kapatıyor",
+        "body": "Sistem tepsisindeki Çıkış artık Drake'i League istemcisinden kaldırır ve istemciyi temiz şekilde yeniden yükler, böylece Drake kapandıktan sonra hiçbir şey yüklenmeye devam etmez. Drake'i tekrar açtığında kendini yeniden etkinleştirir."
+      },
+      {
+        "title": "Anonim kullanım istatistikleri",
+        "body": "Drake artık kaç kişinin kullandığını sayıyor: anonim bir kurulum kimliği, Drake sürümü ve League sunucu bölgen. Sihirdar adı, hesap veya maç verisi yok. Ayarlar → Güncellemeler bölümünden kapatabilirsin."
+      }
+    ],
+    "v0_3_25": [
+      {
+        "title": "Lobi gösterimi bölgeleri düzeltildi",
+        "body": "Harici lobi gösterimi (Porofessor / OP.GG) artık Riot platform kimliklerini doğru eşliyor — örneğin LA2 → las — ve OP.GG güncel /lol/multisearch URL'sini kullanıyor. Julio Maggioni tarafından bildirildi."
+      }
+    ],
+    "v0_3_24": [
+      {
+        "title": "Açılır menüler artık gerçekten çalışıyor",
+        "body": "Derece, Bölge ve Drake'teki diğer tüm açılır menüler (Sıra ayarları, Profil) bazı kullanıcılarda tıklamalara güvenilmez şekilde yanıt veriyor ya da hiç vermiyordu — tamamen Drake'in kontrol ettiği bir açılır menüyle değiştirildi, böylece seçtiğin seçenek her zaman kalıyor."
+      },
+      {
+        "title": "Son G/M, KDA ve Son 12 sa artık 0 göstermiyor",
+        "body": "Bir sıra algılama hatası, Takım Gösterimi'nde bir takım arkadaşının son istatistiklerini sıfırlayabiliyordu. Kaynağında düzeltildi."
+      },
+      {
+        "title": "Build Paneli yeniden tasarlandı",
+        "body": "Kaçırdıysan: OP.GG'den Şampiyon Seçimi buildleri — rünler, aşamalara göre eşyalar, yetenek sırası, eşleşmeler ve en iyi oyuncular — artık Mobalytics'te göreceğine daha yakın bir düzende, tek tıkla Uygula işlemleri ve Eşya Seti Oluştur ile. Ctrl+Shift+D ile aç."
+      }
+    ],
+    "v0_3_23": [
+      {
+        "title": "Tepsi proxy'si üzerinden takım gösterimi maç geçmişi",
+        "body": "Şampiyon Seçimi analizi son maçları Drake tepsi proxy'si üzerinden alır, böylece G/M ve Son 5 isimler ve derecelerle birlikte güvenilir şekilde yüklenir."
+      },
+      {
+        "title": "Maç yükleme iskeletleri",
+        "body": "Maçlar hâlâ yüklenirken Takım Analizi'ni açmak, boş 0G/0M yer tutucuları yerine iskeletler gösterir."
+      }
+    ],
+    "v0_3_22": [
+      {
+        "title": "Build paneli",
+        "body": "OP.GG'den Şampiyon Seçimi buildleri: rünler, eşyalar, yetenek sırası, sihirdar büyüleri, eşleşmeler ve en iyi oyuncular — Uygula işlemleri ve Eşya Seti Oluştur ile."
+      },
+      {
+        "title": "Daha sıkı build düzeni",
+        "body": "Sihirdar Büyüleri artık Yetenek Sırası'nın altında; böylece sağ sütun dolar ve tüm donanımı görmek için daha az kaydırırsın."
+      }
+    ],
+    "v0_3_21": [
+      {
+        "title": "Sohbet gösterimi bağlantıyı bekliyor",
+        "body": "Takım gösterimi, Şampiyon Seçimi sohbeti bağlanana kadar denemeye devam eder, ardından isim eşlemesini paylaşır ve mesaj yazarlarını yeniden yazar."
+      }
+    ],
+    "v0_3_20": [
+      {
+        "title": "Şampiyon Seçimi sohbetinde isimleri göster",
+        "body": "Takım gösterimi, Şampiyon Seçimi'ndeyken sohbete özel bir isim eşlemesi gönderir ve mesaj yazarlarını Riot ID'lerle yeniden yazar."
+      },
+      {
+        "title": "Emeği Geçenler",
+        "body": "Kapat'ın yanındaki ?, Drake'in ve ona ilham veren araçların emeği geçenler listesini açar."
+      },
+      {
+        "title": "Her sırada taze lobi G/M",
+        "body": "Maç geçmişi HTTP önbelleği olmadan alınır, böylece G/M verin son maçtan sonra güncellenir."
+      },
+      {
+        "title": "Otomatik güncelleme kapalıyken güncelleme bildirimi",
+        "body": "Otomatik güncellemeler devre dışıysa Drake başlarken daha yeni bir sürümü yükleyip yüklemeyeceğini sorar."
+      }
+    ],
+    "v0_3_19": [
+      {
+        "title": "Gösterim, takaslarını takip ediyor",
+        "body": "İstemci içi takım gösterimi, bir takım arkadaşınla yer değiştirdiğinde isimleri yeniden eşler; onun kimliği hâlâ gizliyken bile."
+      },
+      {
+        "title": "Otomatik Yasaklama temizleme kontrolü",
+        "body": "Seçili yasak, simgeli ve ✕ işaretli bir çip olarak görünür — seçimi kaldırmak için şampiyonu tekrar aramana gerek yok."
+      },
+      {
+        "title": "Sırayı İptal Et aramadan da çıkar",
+        "body": "Sırayı İptal Et maç onayını reddeder ve eşleştirme aramasından da çıkar, böylece sıradan tamamen çıkmış olursun."
+      }
+    ],
+    "v0_3_18": [
+      {
+        "title": "Role göre Otomatik Seçim",
+        "body": "Üst, Orman, Orta, Alt ve Destek için en fazla 2 şampiyon seç. Seçimler rolün belirlenene kadar bekler — eski genel seçimler temizlendi."
+      },
+      {
+        "title": "Lobi gösterimi maçlar arasında sıfırlanıyor",
+        "body": "Önceki lobideki takım arkadaşı isimleri tekrar sıraya girdiğinde artık kalmıyor; temizleme yalnızca hâlâ bizim gösterimimizi içeren satırları yeniden yazar."
+      }
+    ],
+    "v0_3_17": [
+      {
+        "title": "Hoş geldin turu",
+        "body": "İlk açılışta, Ctrl+D ekranlarında isteğe bağlı bir tanıtım turu içeren kısa bir karşılama gösterilir. İstediğin zaman atlayabilirsin."
+      },
+      {
+        "title": "Yenilikler",
+        "body": "Bir güncellemeden sonra Ctrl+D bir değişiklik günlüğü açar. İstediğin zaman kenar çubuğundan yeniden aç; özellik satırları ilgili ekrana götürür."
+      },
+      {
+        "title": "Gösterim rol takaslarını takip ediyor",
+        "body": "İstemci içi takım gösterimi, oyuncular Şampiyon Seçimi'nde yer değiştirdiğinde isimleri yeniden eşler."
+      },
+      {
+        "title": "Dereceli havuz ayarları",
+        "body": "Son maçlar için Tek/Çift+Esnek, mevcut sıra veya tüm sıralar arasından seç; ayrıca örnek boyutu, son 5 havuzu ve eşzamanlı sorgu sayısı."
+      }
+    ],
+    "v0_3_16": [
+      {
+        "title": "Kartlarda seçim KO",
+        "body": "Gösterim kartları, oyuncunun kilitlediği şampiyonla oynanan maç sayısını ve kazanma oranını gösterir."
+      },
+      {
+        "title": "Şampiyon Seçimi dodge",
+        "body": "Sıra ayarlarından isteğe bağlı istemci içi dodge butonu (varsayılan olarak açık)."
+      }
+    ]
+  },
+  "onboarding": {
+    "welcome": {
+      "copy": "İstemcinin yanında duran araçlar. Kısa bir tur en çok kullanacağın ekranları tanıtır.",
+      "tour": "Tura başla",
+      "skip": "Atla"
+    },
+    "tour": {
+      "progress": "{current} / {total}",
+      "next": "İleri",
+      "done": "Bitti",
+      "skip": "Atla",
+      "steps": [
+        {
+          "title": "Otomatik Kabul",
+          "body": "Maçları otomatik kabul et; istersen elle reddedebilmen için gecikme ekle."
+        },
+        {
+          "title": "Sıra",
+          "body": "Şampiyon Seçimi araçları: dodge yardımcıları ve isteğe bağlı istemci içi takım gösterimi."
+        },
+        {
+          "title": "Otomatik Seçim ve Yasaklama",
+          "body": "Rol başına en fazla iki şampiyon belirle. Otomatik seçim koridorun belirlenene kadar bekler."
+        },
+        {
+          "title": "Durum",
+          "body": "Uzun bir durum mesajı ayarla ve Çevrimiçi, Çevrimdışı, Mobil veya Meşgul durumunu sabitle."
+        },
+        {
+          "title": "Ayarlar",
+          "body": "Başlangıç, güncellemeler ve istemciyi yeniden yükleme burada."
+        }
+      ]
+    }
+  },
+  "overlays": {
+    "scouting": {
+      "title": "Takım Analizi",
+      "tabs": {
+        "scouting": "Takım Analizi",
+        "build": "Build"
+      },
+      "empty": "Takım analizi verisi yok",
+      "mute": {
+        "idle": "Tümünü Sustur",
+        "muting": "Susturuluyor…",
+        "muted": "✓ Susturuldu",
+        "failed": "Susturulamadı"
+      },
+      "side": {
+        "BLUE": "Mavi Taraf",
+        "RED": "Kırmızı Taraf"
+      },
+      "you": "(Sen)",
+      "unknown": "Bilinmiyor",
+      "unranked": "Derecesiz",
+      "queues": {
+        "solo": "Tek/Çift",
+        "flex": "Esnek"
+      },
+      "lp": "{lp} LP",
+      "rows": {
+        "recentWl": "Son G/M",
+        "recentWlGames": "Son G/M · son {count} maç",
+        "kda": "Son KDA",
+        "last12h": "Son 12 sa",
+        "picked": "Seçilen",
+        "seasonMain": "Sezonun Ana Şampiyonu",
+        "last5": "Son 5"
+      },
+      "winsShort": "{count}G",
+      "lossesShort": "{count}M",
+      "games": "{count} maç",
+      "noGames": "maç yok",
+      "toast": {
+        "revealing": "Lobi gösteriliyor",
+        "revealed": "Oturum gösterildi. Görmek için Ctrl+Shift+D'ye bas.",
+        "revealedSide": "Oturum gösterildi · {side} · Görmek için Ctrl+Shift+D'ye bas.",
+        "view": "Görüntüle"
+      }
+    },
+    "build": {
+      "champion": "Şampiyon",
+      "championFallback": "Şampiyon {id}",
+      "modes": {
+        "ranked": "Dereceli",
+        "aram": "ARAM"
+      },
+      "patch": "Yama {patch}",
+      "rank": "Derece",
+      "region": "Bölge",
+      "globalRegion": "Küresel",
+      "stats": {
+        "win": "Galibiyet",
+        "pick": "Seçim",
+        "ban": "Yasak",
+        "kda": "KDA",
+        "games": "Maç"
+      },
+      "tiers": {
+        "all": "Tüm Dereceler",
+        "ibsg": "Demir–Gümüş",
+        "gold_plus": "Altın+",
+        "platinum_plus": "Platin+",
+        "emerald_plus": "Zümrüt+",
+        "diamond_plus": "Elmas+",
+        "master": "Ustalık",
+        "grandmaster": "Büyük Ustalık",
+        "challenger": "Şampiyonluk"
+      },
+      "viewing": "Görüntülenen oyuncu buildi:",
+      "restore": "✕ Ana builde dön",
+      "restoreTitle": "Varsayılan builde dön",
+      "pickChampion": "Build önerilerini görmek için bir şampiyon seç",
+      "loading": "Build verileri yükleniyor…",
+      "noData": "{tier} için veri yok",
+      "seeAllRanks": "Tüm Dereceleri Gör",
+      "retry": "Tekrar dene",
+      "opggError": "OP.GG'ye ulaşılamadı",
+      "cards": {
+        "runes": "Rünler",
+        "items": "Eşyalar",
+        "spells": "Sihirdar Büyüleri",
+        "skills": "Yetenek Sırası",
+        "matchups": "Eşleşmeler",
+        "topPlayers": "En İyi Oyuncular (OP.GG)"
+      },
+      "empty": {
+        "runes": "Rün verisi yok",
+        "items": "Eşya verisi yok",
+        "spells": "Büyü verisi yok",
+        "matchups": "Veri yok"
+      },
+      "phases": {
+        "starter": "Başlangıç",
+        "boots": "Botlar",
+        "core": "Temel",
+        "situational": "Duruma Göre"
+      },
+      "actions": {
+        "apply": "Uygula",
+        "applied": "Uygulandı",
+        "applying": "Uygulanıyor…",
+        "failed": "Başarısız — tekrar dene",
+        "createItemSet": "Eşya Seti Oluştur"
+      },
+      "wr": "{value} KO",
+      "winRate": "Kazanma Oranı",
+      "games": "Maç",
+      "strong": "Güçlü Olduğu",
+      "weak": "Zayıf Olduğu",
+      "loadingPlayers": "Oyuncular yükleniyor…",
+      "unavailable": "Kullanılamıyor",
+      "unknown": "Bilinmiyor",
+      "playerTitle": "{tier} · {games} maç"
+    },
+    "docks": {
+      "cancelQueue": "Sırayı İptal Et"
+    },
+    "socialToggle": {
+      "open": "Drake'i Aç",
+      "close": "Drake'i Kapat"
+    },
+    "hint": {
+      "text": "İpucu: Drake ve Dodge butonlarını istediğin yere sürükleyebilirsin.",
+      "dismiss": "Anladım"
+    }
+  }
+}
