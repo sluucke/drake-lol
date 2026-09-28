@@ -6,7 +6,7 @@ use std::time::Duration;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mode {
     OwnLoader,
-    Guest { host: String },
+    Guest { host: String, loader: String },
     Inactive { reason: String },
 }
 
@@ -33,7 +33,11 @@ pub fn decide(slot: &SlotState, our_loader_dir: &Path) -> Plan {
             Some(dir) if !dir.as_os_str().is_empty() => Plan {
                 take_slot: false,
                 deploy_to: Some(dir.to_path_buf()),
-                mode: Mode::Guest { host: host.clone() },
+                mode: Mode::Guest {
+                    host: host.clone(),
+                    loader: slot::loader_name(core_dll, std::env::var("USERNAME").ok().as_deref())
+                        .unwrap_or_else(|| "other".into()),
+                },
             },
             _ => Plan {
                 take_slot: false,
@@ -411,7 +415,7 @@ mod tests {
             &cfg,
         );
 
-        assert_eq!(mode, Mode::Guest { host: "Other".into() });
+        assert_eq!(mode, Mode::Guest { host: "Other".into(), loader: "Other".into() });
         assert!(
             reg.writes.borrow().is_empty(),
             "must never write to a foreign loader's registry slot, but wrote: {:?}",
@@ -444,7 +448,7 @@ mod tests {
         let p = decide(&s, &ours());
         assert!(!p.take_slot, "taking a foreign slot would break the other product");
         assert_eq!(p.deploy_to, Some(PathBuf::from(r"C:\Other\Pengu Loader")));
-        assert_eq!(p.mode, Mode::Guest { host: "Other".into() });
+        assert_eq!(p.mode, Mode::Guest { host: "Other".into(), loader: "Other".into() });
     }
 
     #[test]

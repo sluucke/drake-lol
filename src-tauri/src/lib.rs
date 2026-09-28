@@ -421,11 +421,12 @@ pub fn run() {
                     };
                     loop_tracker.set_mode(
                         analytics::mode_label(&mode),
+                        analytics::loader_label(&mode),
                         streaming::effective_label(streaming_effective),
                     );
                     let mode_text = match &mode {
                         supervisor::Mode::OwnLoader => strings::MODE_OWN_LOADER.to_string(),
-                        supervisor::Mode::Guest { host } => format!("{} {host}", strings::MODE_GUEST),
+                        supervisor::Mode::Guest { host, .. } => format!("{} {host}", strings::MODE_GUEST),
                         supervisor::Mode::Inactive { reason } => {
                             format!("{}: {reason}", strings::MODE_INACTIVE)
                         }
@@ -563,6 +564,8 @@ pub fn run() {
                     }
                     let enabled = analytics_state.settings.lock().unwrap().analytics_enabled;
                     let next = if enabled {
+                        let (region, locale) = analytics_state.client_info();
+                        tracker.use_client_info(region, locale);
                         tracker.refresh_region().await;
                         let event = if tracker.started() {
                             analytics::Event::Heartbeat

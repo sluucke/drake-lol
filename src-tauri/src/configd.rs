@@ -397,6 +397,7 @@ pub struct ConfigdState {
     pub settings: Mutex<Settings>,
     pub http_client: reqwest::Client,
     last_checkin: Mutex<Option<(String, Instant, Option<String>)>>,
+    client_info: Mutex<(Option<String>, Option<String>)>,
     persist: Mutex<Persist>,
     update_busy: Mutex<bool>,
     pub overlay: Mutex<OverlayBridge>,
@@ -436,6 +437,7 @@ impl ConfigdState {
             settings: Mutex::new(settings),
             http_client,
             last_checkin: Mutex::new(None),
+            client_info: Mutex::new((None, None)),
             persist: Mutex::new(Box::new(save)),
             update_busy: Mutex::new(false),
             overlay: Mutex::new(OverlayBridge::default()),
@@ -463,6 +465,21 @@ impl ConfigdState {
 
     pub fn record_checkin(&self, host: String, plugin_build: Option<String>) {
         *self.last_checkin.lock().unwrap() = Some((host, Instant::now(), plugin_build));
+    }
+
+    pub fn record_client_info(&self, region: Option<String>, locale: Option<String>) {
+        let clean = |v: Option<String>| v.map(|s| s.trim().to_string()).filter(|s| !s.is_empty() && s.len() <= 16);
+        let mut info = self.client_info.lock().unwrap();
+        if let Some(region) = clean(region) {
+            info.0 = Some(region.to_ascii_uppercase());
+        }
+        if let Some(locale) = clean(locale) {
+            info.1 = Some(locale);
+        }
+    }
+
+    pub fn client_info(&self) -> (Option<String>, Option<String>) {
+        self.client_info.lock().unwrap().clone()
     }
 
     #[cfg(test)]
@@ -504,6 +521,10 @@ pub struct CheckInBody {
     pub host: String,
     #[serde(default)]
     pub plugin_build: Option<String>,
+    #[serde(default)]
+    pub region: Option<String>,
+    #[serde(default)]
+    pub locale: Option<String>,
 }
 
 async fn checkin(
@@ -513,6 +534,7 @@ async fn checkin(
     if body.token != state.token {
         return StatusCode::UNAUTHORIZED;
     }
+    state.record_client_info(body.region, body.locale);
     state.record_checkin(body.host, body.plugin_build);
     StatusCode::NO_CONTENT
 }
@@ -1970,6 +1992,31 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::NO_CONTENT);
         assert!(matches!(state.effective(true, "build-a"), EffectiveState::Injected { .. }));
+    }
+
+    #[tokio::test]
+    async fn checkin_keeps_the_last_known_client_region_and_locale() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let post = |body: String| {
+            Request::builder()
+                .method("POST")
+                .uri("/checkin")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap()
+        };
+        let res = router(state.clone())
+            .oneshot(post(format!(r#"{{"token":"{token}","host":"Drake","region":"la2","locale":"es_MX"}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.client_info(), (Some("LA2".into()), Some("es_MX".into())));
+        router(state.clone())
+            .oneshot(post(format!(r#"{{"token":"{token}","host":"Drake"}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(state.client_info(), (Some("LA2".into()), Some("es_MX".into())));
     }
 
     #[tokio::test]

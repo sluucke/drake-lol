@@ -120,12 +120,26 @@ async function start() {
     return;
   }
 
+  let clientInfo = null;
+  const readClientInfo = async () => {
+    try {
+      const body = await lcu.get('/riotclient/region-locale');
+      if (body?.region || body?.locale) clientInfo = { region: body.region || '', locale: body.locale || '' };
+    } catch {
+    }
+  };
+  void readClientInfo();
+
   const transport = makeTransport({
     port: cfg.port,
     token: cfg.token,
     dataStore: typeof DataStore !== 'undefined' ? DataStore : null,
     reloadConfig: loadConfig,
     pluginBuild: PLUGIN_BUILD,
+    clientInfo: () => {
+      if (!clientInfo) void readClientInfo();
+      return clientInfo;
+    },
   });
 
   

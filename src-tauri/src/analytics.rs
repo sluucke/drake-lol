@@ -29,6 +29,7 @@ pub struct Ping {
     pub lol_region: Option<String>,
     pub locale: Option<String>,
     pub mode: String,
+    pub loader: Option<String>,
     pub streaming: String,
     pub os_build: Option<String>,
 }
@@ -78,6 +79,14 @@ pub fn parse_region_locale(value: &serde_json::Value) -> (Option<String>, Option
     (field("region").map(|r| r.to_ascii_uppercase()), field("locale"))
 }
 
+pub fn loader_label(mode: &crate::supervisor::Mode) -> Option<String> {
+    match mode {
+        crate::supervisor::Mode::OwnLoader => Some("Drake".into()),
+        crate::supervisor::Mode::Guest { loader, .. } => Some(loader.clone()),
+        crate::supervisor::Mode::Inactive { .. } => None,
+    }
+}
+
 pub fn mode_label(mode: &crate::supervisor::Mode) -> &'static str {
     match mode {
         crate::supervisor::Mode::OwnLoader => "own",
@@ -105,6 +114,7 @@ struct Context {
     lol_region: Option<String>,
     locale: Option<String>,
     mode: String,
+    loader: Option<String>,
     streaming: String,
     started: bool,
 }
@@ -128,10 +138,21 @@ impl Tracker {
         }
     }
 
-    pub fn set_mode(&self, mode: &str, streaming: &str) {
+    pub fn set_mode(&self, mode: &str, loader: Option<String>, streaming: &str) {
         let mut ctx = self.context.lock().unwrap_or_else(|e| e.into_inner());
         ctx.mode = mode.to_string();
+        ctx.loader = loader;
         ctx.streaming = streaming.to_string();
+    }
+
+    pub fn use_client_info(&self, region: Option<String>, locale: Option<String>) {
+        let mut ctx = self.context.lock().unwrap_or_else(|e| e.into_inner());
+        if region.is_some() {
+            ctx.lol_region = region;
+        }
+        if locale.is_some() {
+            ctx.locale = locale;
+        }
     }
 
     pub fn ping(&self, event: Event) -> Ping {
@@ -144,6 +165,7 @@ impl Tracker {
             lol_region: ctx.lol_region,
             locale: ctx.locale,
             mode: ctx.mode,
+            loader: ctx.loader,
             streaming: ctx.streaming,
             os_build: self.os_build.clone(),
         }
@@ -235,15 +257,35 @@ mod tests {
     #[test]
     fn the_payload_carries_no_account_data() {
         let tracker = Tracker::new(new_uuid(), "1.2.3");
-        tracker.set_mode("own", "overlay");
+        tracker.set_mode("own", Some("Drake".into()), "overlay");
         let json = serde_json::to_value(tracker.ping(Event::Heartbeat)).unwrap();
         let mut keys: Vec<_> = json.as_object().unwrap().keys().cloned().collect();
         keys.sort();
         assert_eq!(
             keys,
-            ["app_version", "event", "install_id", "locale", "lol_region", "mode", "os_build", "session_id", "streaming"]
+            ["app_version", "event", "install_id", "loader", "locale", "lol_region", "mode", "os_build", "session_id", "streaming"]
         );
         assert_eq!(json["event"], "heartbeat");
         assert_eq!(json["mode"], "own");
+        assert_eq!(json["loader"], "Drake");
+    }
+
+    #[test]
+    fn the_plugin_fills_in_the_region_when_the_client_is_out_of_reach() {
+        let tracker = Tracker::new(new_uuid(), "1.2.3");
+        assert_eq!(tracker.ping(Event::Heartbeat).lol_region, None);
+        tracker.use_client_info(Some("LA2".into()), Some("es_MX".into()));
+        tracker.use_client_info(None, None);
+        let ping = tracker.ping(Event::Heartbeat);
+        assert_eq!(ping.lol_region.as_deref(), Some("LA2"));
+        assert_eq!(ping.locale.as_deref(), Some("es_MX"));
+    }
+
+    #[test]
+    fn guests_report_the_loader_they_run_inside() {
+        let guest = crate::supervisor::Mode::Guest { host: "Rose".into(), loader: "Rose".into() };
+        assert_eq!(loader_label(&guest).as_deref(), Some("Rose"));
+        assert_eq!(loader_label(&crate::supervisor::Mode::OwnLoader).as_deref(), Some("Drake"));
+        assert_eq!(loader_label(&crate::supervisor::Mode::Inactive { reason: "x".into() }), None);
     }
 }
