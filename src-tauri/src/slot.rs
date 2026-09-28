@@ -100,6 +100,34 @@ pub fn host_label(core_dll: &Path) -> String {
     }
 }
 
+const GENERIC_FOLDERS: &[&str] = &[
+    "users", "downloads", "desktop", "documents", "documentos", "área de trabalho", "appdata", "local",
+    "locallow", "roaming", "programdata", "program files", "program files (x86)", "arquivos de programas",
+    "temp", "tmp", "onedrive", "games", "jogos", "tools", "apps", "programs", "bin", "dist", "release",
+    "debug", "build", "portable", "new folder", "nova pasta",
+];
+const MAX_LOADER_NAME: usize = 40;
+
+pub fn loader_name(core_dll: &Path, user_name: Option<&str>) -> Option<String> {
+    let mut saw_generic_loader = false;
+    for dir in core_dll.parent()?.ancestors().take(3) {
+        let Some(name) = dir.file_name().map(|n| n.to_string_lossy().trim().to_string()) else {
+            break;
+        };
+        let lower = name.to_lowercase();
+        if lower == GENERIC_LOADER_FOLDER {
+            saw_generic_loader = true;
+            continue;
+        }
+        let personal = user_name.is_some_and(|u| u.eq_ignore_ascii_case(&name));
+        if name.is_empty() || personal || GENERIC_FOLDERS.contains(&lower.as_str()) || lower.starts_with("onedrive") {
+            continue;
+        }
+        return Some(name.chars().take(MAX_LOADER_NAME).collect());
+    }
+    saw_generic_loader.then(|| "Pengu Loader".to_string())
+}
+
 fn normalize_path_for_comparison(p: &Path) -> String {
     p.to_string_lossy()
         .trim()
@@ -159,6 +187,23 @@ mod tests {
             SlotState::Foreign { host, .. } => assert_eq!(host, "Rose"),
             other => panic!("expected Foreign, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn the_loader_is_named_by_its_product_folder() {
+        let name = |p: &str| loader_name(&PathBuf::from(p), Some("John"));
+        assert_eq!(name(r"C:\Users\John\AppData\Local\Rose\Pengu Loader\core.dll").as_deref(), Some("Rose"));
+        assert_eq!(name(r"D:\Games\pengu-loader-v1.1.6\core.dll").as_deref(), Some("pengu-loader-v1.1.6"));
+        assert_eq!(name(r"C:\Program Files\SkinForge\core.dll").as_deref(), Some("SkinForge"));
+    }
+
+    #[test]
+    fn personal_and_generic_folders_are_never_reported() {
+        let name = |p: &str| loader_name(&PathBuf::from(p), Some("John"));
+        assert_eq!(name(r"C:\Users\John\Downloads\Pengu Loader\core.dll").as_deref(), Some("Pengu Loader"));
+        assert_eq!(name(r"C:\Users\john\Desktop\core.dll"), None);
+        assert_eq!(name(r"C:\Users\John\OneDrive - Contoso\Tools\core.dll"), None);
+        assert_eq!(name(r"C:\core.dll"), None);
     }
 
     #[test]

@@ -20,16 +20,25 @@ export function makeTransport({
   dataStore = null,
   reloadConfig = null,
   pluginBuild = '',
+  clientInfo = () => null,
 }) {
   let currentToken = token;
   let refreshed = false;
   const loadedBuild = pluginBuild;
 
+  function checkInBody(host) {
+    const body = { token: currentToken, host, plugin_build: loadedBuild };
+    const info = clientInfo() || {};
+    if (info.region) body.region = info.region;
+    if (info.locale) body.locale = info.locale;
+    return body;
+  }
+
   async function viaLocalhost(host) {
     return fetchImpl(`http://127.0.0.1:${port}/checkin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: currentToken, host, plugin_build: loadedBuild }),
+      body: JSON.stringify(checkInBody(host)),
     });
   }
 

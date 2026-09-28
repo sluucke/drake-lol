@@ -13,6 +13,21 @@ describe('transport', () => {
     expect(body).toEqual({ token: 'sekret', host: 'Drake', plugin_build: 'abc' });
   });
 
+  it('adds the client region and locale once they are known', async () => {
+    const bodies = [];
+    const fakeFetch = async (url, init) => {
+      bodies.push(JSON.parse(init.body));
+      return { ok: true, status: 204 };
+    };
+    let info = null;
+    const t = makeTransport({ port: 48151, token: 'sekret', fetchImpl: fakeFetch, pluginBuild: 'abc', clientInfo: () => info });
+    await t.checkIn('Drake');
+    info = { region: 'BR', locale: 'pt_BR' };
+    await t.checkIn('Drake');
+    expect(bodies[0]).toEqual({ token: 'sekret', host: 'Drake', plugin_build: 'abc' });
+    expect(bodies[1]).toEqual({ token: 'sekret', host: 'Drake', plugin_build: 'abc', region: 'BR', locale: 'pt_BR' });
+  });
+
   it('falls back to DataStore when localhost is unreachable', async () => {
     const store = {};
     const t = makeTransport({

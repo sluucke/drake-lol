@@ -1,5 +1,11 @@
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
+import { reportReactError } from '../errorReporter.js';
+
+function onUncaughtError(error, info) {
+  console.error(error);
+  reportReactError(error, info);
+}
 
 export const APP_ROOT_ID = 'drake-app-root';
 
@@ -15,7 +21,7 @@ export function mountReactRoot(shadow, { styles = [], element }) {
   const container = doc.createElement('div');
   container.id = APP_ROOT_ID;
   shadow.appendChild(container);
-  const root = createRoot(container);
+  const root = createRoot(container, { onUncaughtError });
   flushSync(() => root.render(element));
   return {
     container,

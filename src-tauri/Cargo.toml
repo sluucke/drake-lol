@@ -1,6 +1,6 @@
 [package]
 name = "drake"
-version = "0.4.0"
+version = "0.4.1"
 description = "Keeps the Drake plugin injected into the League of Legends client."
 authors = ["David William"]
 license = "MIT"
@@ -23,6 +23,7 @@ tower-http = { version = "0.6", features = ["cors"] }
 thiserror = "2"
 winreg = "0.52"
 rand = "0.8"
+regex = "1"
 sysinfo = "0.33"
 reqwest = { version = "0.12", features = ["json", "native-tls"] }
 windows-sys = { version = "0.59", features = [

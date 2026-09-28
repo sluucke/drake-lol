@@ -1,0 +1,585 @@
+{
+  "common": {
+    "close": "Stäng",
+    "loading": "Laddar…",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "retry": "Försök igen",
+    "on": "På",
+    "off": "Av",
+    "remove": "Ta bort"
+  },
+  "time": {
+    "seconds": {
+      "one": "{count} sekund",
+      "other": "{count} sekunder"
+    }
+  },
+  "shell": {
+    "title": "Drake",
+    "hotkeyHint": "Ctrl + D",
+    "close": "Stäng",
+    "creditsButton": "Tack till",
+    "nav": {
+      "auto-accept": "Auto Accept",
+      "auto-pick": "Auto Pick",
+      "auto-ban": "Auto Ban",
+      "queue": "Kö",
+      "status": "Status",
+      "profile": "Profil",
+      "friends": "Vänner",
+      "whats-new": "Nyheter",
+      "settings": "Inställningar"
+    },
+    "footer": {
+      "trayUp": "Ansluten till Drake i systemfältet",
+      "trayDown": "Drake körs inte i systemfältet"
+    },
+    "credits": {
+      "title": "Tack till",
+      "disclaimer": "Drake är inofficiell programvara med öppen källkod. Inte associerad med Riot Games.",
+      "createdBy": "Skapad av",
+      "specialThanks": "Särskilt tack",
+      "inspiredBy": "Inspirerad av",
+      "assets": "Resurser",
+      "github": "GitHub"
+    }
+  },
+  "screens": {
+    "autoAccept": {
+      "title": "Auto Accept",
+      "subtitle": "Accepterar ready check åt dig så fort den dyker upp.",
+      "toggle": "Acceptera ready checks automatiskt",
+      "delayLabel": "Acceptera efter",
+      "instant": "Direkt",
+      "seconds": "{value}s",
+      "delayHelp": "En kort väntan ger dig chansen att neka manuellt, och ser mindre mekaniskt ut än att acceptera i samma stund som rutan visas."
+    },
+    "status": {
+      "title": "Statusmeddelande",
+      "subtitle": "Din närvaro i chatten. Radbrytningar fungerar här — klientens eget fält har bara en rad och klarar inte av dem.",
+      "presence": "Närvaro",
+      "clientDefault": "Klientens standard",
+      "availability": {
+        "chat": "Online",
+        "offline": "Offline",
+        "mobile": "Mobil",
+        "dnd": "Upptagen"
+      },
+      "presenceHelp": "Drake återställer den valda statusen varje gång klienten ändrar den.",
+      "placeholder": "Skriv eller klistra in din status. ASCII-konst välkomnas.",
+      "count": {
+        "one": "{chars} tecken · {count} rad",
+        "other": "{chars} tecken · {count} rader"
+      },
+      "clear": "Rensa",
+      "save": "Spara",
+      "saved": "Status sparad · {summary}",
+      "saveFailed": "Kunde inte spara: {reason}"
+    },
+    "queue": {
+      "title": "Kö",
+      "subtitle": "Verktyg för champ select.",
+      "revealTitle": "Visa lobbyn",
+      "revealHelp": "Slår upp hela ditt lag på en scoutingsajt. Fungerar bara i champ select, eftersom det är då namnen finns.",
+      "provider": "Scoutingsajt",
+      "revealButton": "Visa lobbyn",
+      "lookingUp": {
+        "one": "Slår upp {count} spelare",
+        "other": "Slår upp {count} spelare"
+      },
+      "inClient": "Visa mitt lag i klienten",
+      "inClientHelp": "Skriver om lagkamraternas rader och aktiverar korten med Ctrl+Shift+D i champ select.",
+      "sampleSize": "Urvalsstorlek",
+      "recentPool": "Köer för senaste matcher",
+      "last5Pool": "Köer för senaste 5",
+      "concurrency": "Hämtningar samtidigt",
+      "pool": {
+        "ranked_both": "Solo + Flex",
+        "current_queue": "Nuvarande kö",
+        "any": "Alla köer"
+      },
+      "currentQueueWarn": "Nuvarande kö kan ge lite data om spelaren sällan spelar den kön.",
+      "concurrencyWarn": "Fler samtidiga hämtningar belastar klienten mer och kan slå i rate limits.",
+      "estimate": "Ungefär ~{seconds}s för en hel lobby med den här inställningen.",
+      "recommend": {
+        "one": "Utifrån din senaste visning föreslår vi att hämta {count} spelare åt gången.",
+        "other": "Utifrån din senaste visning föreslår vi att hämta {count} spelare åt gången."
+      },
+      "optionsDisabled": "Aktivera visning i klienten för att ändra de här.",
+      "dodgeTitle": "Dodge",
+      "dodgeHelp": "Lämnar champ select. Du får det vanliga dodge-straffet — Drake frågar inte först, så tryck bara om du menar det.",
+      "dodgeToggle": "Visa dodge-knapp i champ select",
+      "dodgeToggleHelp": "Placerar en Dodge-knapp över klienten när du är i champ select.",
+      "dodgeButton": "Dodge",
+      "dodging": "Dodgar…",
+      "dodged": "Dodgat!",
+      "dodgeFailed": "Misslyckades",
+      "mapSide": "Visa kartsida i champ select",
+      "muteAll": "Tysta lagkamrater automatiskt i champ select",
+      "autoMessage": "Skicka meddelande automatiskt när chatten ansluter",
+      "autoMessagePlaceholder": "Meddelande att skicka när chatten ansluter..."
+    },
+    "settings": {
+      "title": "Inställningar",
+      "subtitle": "Hur Drake själv beter sig.",
+      "runAtStartup": "Starta Drake med Windows",
+      "runAtStartupHelp": "Injicerar klienten innan den startar, så att den här panelen alltid finns tillgänglig.",
+      "autoReload": "Ladda om klienten när Drake startar",
+      "autoReloadHelp": "Används bara när Drake hittar klienten redan igång utan att Drake är laddat.",
+      "autoUpdate": "Installera uppdateringar automatiskt",
+      "autoUpdateHelp": "Laddar ner den senaste versionen från GitHub och kör installationsprogrammet. Windows ber om behörighet eftersom Drake ligger i Program Files.",
+      "analytics": "Dela anonym användningsstatistik och felrapporter",
+      "analyticsHelp": "Skickar ett anonymt installations-ID, Drake-versionen, din League-serverregion, sessionsstart/-slut och felrapporter, så att vi vet hur många som använder Drake och kan fixa det som går sönder. Inget summonernamn, konto eller matchdata.",
+      "updates": "Uppdateringar",
+      "version": "v{version}",
+      "checkUpdates": "Sök efter uppdateringar",
+      "checking": "Kontrollerar…",
+      "upToDate": "Drake är uppdaterat.",
+      "available": "{version} finns tillgänglig.",
+      "install": "Installera nu",
+      "noInstaller": "{version} finns på GitHub men har inget installationsprogram för Windows än.",
+      "checkFailed": "Kunde inte söka efter uppdateringar.",
+      "downloading": "Laddar ner och installerar uppdateringen…",
+      "installing": "Installerar uppdatering…",
+      "alreadyCurrent": "Drake är redan uppdaterat",
+      "unlockStatus": "Lås upp fältet för statusmeddelande",
+      "unlockStatusHelp": "Tar bort klientens gräns på 25 tecken för ditt eget statusmeddelande och ger fältet mer utrymme. Gäller från nästa omladdning av klienten.",
+      "client": "Klient",
+      "clientHelp": "Laddar om League-klientens gränssnitt. Använd det när Drake injicerades medan klienten redan var öppen, eller efter en ändring som bara gäller efter en omladdning.",
+      "restart": "Starta om klienten",
+      "restarting": "Startar om klienten…",
+      "language": "Språk",
+      "languageHelp": "Drake följer League-klientens språk som standard. Välj ett språk här för att alltid använda det i stället.",
+      "languageAuto": "Klientens språk ({language})",
+      "streaming": "Streamingläge",
+      "streamingOff": "Av",
+      "streamingOn": "På",
+      "streamingAuto": "Auto (när en streamingapp är öppen)",
+      "streamingHelp": "Flyttar Drake till ett separat fönster som OBS, Streamlabs och Discord inte kan fånga, så att det aldrig syns i din stream. Lagvisningen är avstängd medan det fönstret används.",
+      "streamingDragHelp": "I overlayen kan du dra Drake- och Dodge-knapparna dit du vill.",
+      "resetOverlayPositions": "Återställ overlayknapparnas positioner"
+    },
+    "autoPick": {
+      "title": "Auto Pick",
+      "subtitle": "Upp till 2 champions per roll. Pick väntar tills din lane är tilldelad — Fill gör ingenting.",
+      "toggle": "Välj en champion automatiskt",
+      "instaLock": "Insta Lock",
+      "instaLockHelp": "Låser championen direkt när ditt pick öppnas, i stället för att bara hovra den. Ingen kan ta den från dig, och du kan inte ångra dig.",
+      "rolesLabel": "Roller",
+      "empty": "Klicka på upp till 2 champions för den här rollen — den första är ditt pick, den andra är reserv."
+    },
+    "autoBan": {
+      "title": "Auto Ban",
+      "subtitle": "Bannar en champion åt dig när banfasen når din tur.",
+      "toggle": "Banna en champion automatiskt",
+      "toggleHelp": "En ban låses alltid in — att bara hovra en ban bannar ingenting.",
+      "champion": "Champion",
+      "empty": "Klicka på en champion att banna — klicka igen eller på ✕ för att rensa."
+    },
+    "profile": {
+      "title": "Profil",
+      "subtitle": "Det andra spelare ser. Inget av detta ändrar ditt konto.",
+      "tabs": {
+        "rank": "Rank",
+        "banner": "Banner",
+        "riot-id": "Riot ID"
+      },
+      "tier": "Tier",
+      "division": "Division",
+      "queue": "Kö",
+      "crystal": "Kristall",
+      "rankHelp": "Visas bredvid ditt namn i chatten. Din riktiga rank ändras inte.",
+      "reset": "Återställ",
+      "apply": "Tillämpa",
+      "applied": "Tillämpat",
+      "badgesTitle": "Challenge-märken",
+      "badgesHelp": "De tre märkena på din profil. Klona kopierar det första till alla tre platser.",
+      "removeBadges": "Ta bort märken",
+      "cloneBadge": "Klona första till alla 3",
+      "badgesRemoved": "Märken borttagna",
+      "badgeCloned": "Första märket klonat till alla 3",
+      "skinSearch": "Sök bland {count} skins...",
+      "noSkins": "Inga skins matchar.",
+      "backgroundSet": "Profilbakgrund inställd",
+      "riotHelp": "Namnbyten begränsas av Riot, inte av Drake. Om det nekas är det deras cooldown.",
+      "riotName": "Namn",
+      "riotTag": "TAG",
+      "saveRiotId": "Spara ID"
+    },
+    "friends": {
+      "title": "Vänner",
+      "empty": "Ingen på listan, eller så har klienten inte delat den än.",
+      "summary": "{online} online av {total}. Anteckningarna är de du har satt i klienten.",
+      "warning": "Att ta bort alla kan inte ångras från Drake.",
+      "removeAll": "Ta bort alla",
+      "confirmTitle": "Ta bort alla vänner?",
+      "confirm": {
+        "one": "Detta tar bort {count} vän. Det kan inte ångras från Drake.",
+        "other": "Detta tar bort alla {count} vänner. Det kan inte ångras från Drake."
+      },
+      "removed": {
+        "one": "Tog bort {count} vän",
+        "other": "Tog bort {count} vänner"
+      },
+      "removedPartial": "Tog bort {removed}, {failed} misslyckades"
+    },
+    "whatsNew": {
+      "title": "Nyheter",
+      "subtitle": "Ändringar i v{version}",
+      "recent": "Senaste ändringar",
+      "empty": "Inga anteckningar för den här versionen.",
+      "continue": "Fortsätt"
+    }
+  },
+  "roles": {
+    "TOP": "Top",
+    "JUNGLE": "Jungle",
+    "MIDDLE": "Mid",
+    "BOTTOM": "ADC",
+    "UTILITY": "Support"
+  },
+  "champions": {
+    "search": "Sök champions...",
+    "noMatch": "Inga champions matchar.",
+    "unavailable": "Championlistan är inte tillgänglig — öppna skärmen igen för att försöka på nytt.",
+    "noneChosen": "ingen vald",
+    "selected": {
+      "one": "{count} vald",
+      "other": "{count} valda"
+    }
+  },
+  "ranks": {
+    "tiers": {
+      "IRON": "Iron",
+      "BRONZE": "Bronze",
+      "SILVER": "Silver",
+      "GOLD": "Gold",
+      "PLATINUM": "Platinum",
+      "EMERALD": "Emerald",
+      "DIAMOND": "Diamond",
+      "MASTER": "Master",
+      "GRANDMASTER": "Grandmaster",
+      "CHALLENGER": "Challenger"
+    },
+    "queues": {
+      "RANKED_SOLO_5x5": "Solo/Duo",
+      "RANKED_FLEX_SR": "Flex",
+      "RANKED_TFT": "TFT"
+    }
+  },
+  "whatsNew": {
+    "v0_4_1": [
+      {
+        "title": "Drake talar fler språk",
+        "body": "Spanska, turkiska, ryska och svenska ansluter till engelska och brasiliansk portugisiska. Drake följer League-klientens språk, och svenska kan väljas i Inställningar."
+      }
+    ],
+    "v0_4_0": [
+      {
+        "title": "Ett helt nytt Drake",
+        "body": "Varje skärm har byggts om med en förfinad hextech-look, mjukare animationer och tydligare layouter — panelen, Team Scouting, Build-fliken, knapparna i champ select och knappen i sociala fältet."
+      },
+      {
+        "title": "Drake talar ditt språk",
+        "body": "Drake följer League-klientens språk som standard, och du kan välja ett annat i Inställningar. Engelska och brasiliansk portugisiska är helt översatta; övriga språk använder engelska tills vidare."
+      },
+      {
+        "title": "Streamingläge",
+        "body": "Slå på det (eller lämna det på Auto) i Inställningar så flyttar Drake till ett eget fönster som OBS, Streamlabs och Discord inte kan fånga — du ser fortfarande allt, din stream ser ingenting. Lagvisningen är avstängd medan läget är aktivt."
+      },
+      {
+        "title": "Avsluta Drake stänger av det på riktigt",
+        "body": "Avsluta i systemfältet tar nu bort Drake från League-klienten och laddar om den ren, så att inget fortsätter laddas efter att Drake stängts. Öppna Drake igen så slår det på sig självt."
+      },
+      {
+        "title": "Anonym användningsstatistik",
+        "body": "Drake räknar nu hur många som använder det: ett anonymt installations-ID, Drake-versionen och din League-serverregion. Inget summonernamn, konto eller matchdata. Du kan stänga av det under Inställningar → Uppdateringar."
+      }
+    ],
+    "v0_3_25": [
+      {
+        "title": "Regioner för lobbyvisning fixade",
+        "body": "Extern lobbyvisning (Porofessor / OP.GG) mappar nu Riots plattforms-id:n korrekt — t.ex. LA2 → las — och OP.GG använder den nuvarande /lol/multisearch-URL:en. Rapporterat av Julio Maggioni."
+      }
+    ],
+    "v0_3_24": [
+      {
+        "title": "Rullgardinsmenyerna fungerar nu på riktigt",
+        "body": "Rank, Region och alla andra rullgardinsmenyer i Drake (Kö-inställningar, Profil) svarade opålitligt eller inte alls på klick för vissa användare — de har ersatts med en meny som Drake styr helt, så att valet alltid fastnar."
+      },
+      {
+        "title": "Fixat att Senaste V/F, KDA och Senaste 12h visade 0",
+        "body": "En bugg i kö-identifieringen kunde nollställa en lagkamrats senaste statistik i Team Reveal. Fixat vid källan."
+      },
+      {
+        "title": "Build-panelen, omgjord",
+        "body": "Om du missade det: builds i champ select från OP.GG — runor, items per fas, skill-ordning, matchups och toppspelare — är nu upplagda mer som på Mobalytics, med Tillämpa med ett klick och Skapa item set. Öppna den med Ctrl+Shift+D."
+      }
+    ],
+    "v0_3_23": [
+      {
+        "title": "Matchhistorik för lagvisning via systemfältets proxy",
+        "body": "Scouting i champ select hämtar senaste matcher via Drakes proxy i systemfältet, så att V/F och Senaste 5 laddas pålitligt tillsammans med namn och ranker."
+      },
+      {
+        "title": "Laddningsskelett för matcher",
+        "body": "Om du öppnar Team Scouting medan matcherna fortfarande laddas visas skelett i stället för tomma 0V/0F-platshållare."
+      }
+    ],
+    "v0_3_22": [
+      {
+        "title": "Build-panel",
+        "body": "Builds i champ select från OP.GG: runor, items, skill-ordning, summoner spells, matchups och toppspelare — med Tillämpa och Skapa item set."
+      },
+      {
+        "title": "Kompaktare build-layout",
+        "body": "Summoner spells ligger under skill-ordningen, så högerkolumnen fylls och du scrollar mindre för att se hela uppsättningen."
+      }
+    ],
+    "v0_3_21": [
+      {
+        "title": "Chattvisning väntar på anslutning",
+        "body": "Lagvisningen fortsätter försöka tills chatten i champ select ansluter, och postar sedan namnlistan och skriver om avsändarna."
+      }
+    ],
+    "v0_3_20": [
+      {
+        "title": "Visa namn i champ select-chatten",
+        "body": "Lagvisningen postar en privat namnlista i chatten och skriver om meddelandenas avsändare till Riot ID:n medan du är i champ select."
+      },
+      {
+        "title": "Tack till",
+        "body": "Ett ? bredvid Stäng öppnar tack till Drake och verktygen som inspirerade det."
+      },
+      {
+        "title": "Färsk V/F i lobbyn varje kö",
+        "body": "Matchhistoriken hämtas utan HTTP-cache, så att din V/F uppdateras efter senaste matchen."
+      },
+      {
+        "title": "Uppdateringsfråga när automatisk uppdatering är av",
+        "body": "När Drake startar frågar det om en nyare version ska installeras om automatiska uppdateringar är avstängda."
+      }
+    ],
+    "v0_3_19": [
+      {
+        "title": "Visningen följer med vid byten",
+        "body": "Lagvisningen i klienten mappar om namnen när du byter plats med en lagkamrat, även när deras identitet fortfarande är dold."
+      },
+      {
+        "title": "Rensa Auto Ban",
+        "body": "Vald ban visas som en bricka med ikon och ✕ — du behöver inte söka upp championen igen för att avmarkera den."
+      },
+      {
+        "title": "Avbryt kö lämnar sökningen",
+        "body": "Avbryt kö nekar ready check och avslutar även matchmaking-sökningen, så att du är helt ute ur kön."
+      }
+    ],
+    "v0_3_18": [
+      {
+        "title": "Auto Pick per roll",
+        "body": "Välj upp till 2 champions för Top, Jungle, Mid, ADC och Support. Pick väntar tills din roll är tilldelad — gamla globala val har rensats."
+      },
+      {
+        "title": "Lobbyvisningen nollställs mellan matcher",
+        "body": "Lagkamraternas namn från förra lobbyn fastnar inte längre när du köar igen; rensningen skriver bara om rader som fortfarande visar vår visning."
+      }
+    ],
+    "v0_3_17": [
+      {
+        "title": "Välkomstguide",
+        "body": "Första gången visas en kort välkomst med en valfri guidad tur genom Ctrl+D-skärmarna. Hoppa över när du vill."
+      },
+      {
+        "title": "Nyheter",
+        "body": "Efter en uppdatering öppnar Ctrl+D en ändringslogg. Öppna den igen när du vill från sidofältet; funktionsrader tar dig till rätt skärm."
+      },
+      {
+        "title": "Visningen följer rollbyten",
+        "body": "Lagvisningen i klienten mappar om namnen när spelare byter plats i champ select."
+      },
+      {
+        "title": "Inställningar för ranked-köer",
+        "body": "Välj Solo+Flex, nuvarande kö eller alla köer för senaste matcher, plus urvalsstorlek, köer för senaste 5 och antal samtidiga hämtningar."
+      }
+    ],
+    "v0_3_16": [
+      {
+        "title": "Pick-WR på korten",
+        "body": "Visningskorten visar matcher och vinstprocent med championen spelaren har låst."
+      },
+      {
+        "title": "Dodge i champ select",
+        "body": "Valfri dodge-knapp i klienten (på som standard) i Kö-inställningarna."
+      }
+    ]
+  },
+  "onboarding": {
+    "welcome": {
+      "copy": "Verktyg som sitter bredvid klienten. En kort tur visar skärmarna du kommer att använda mest.",
+      "tour": "Ta turen",
+      "skip": "Hoppa över"
+    },
+    "tour": {
+      "progress": "{current} / {total}",
+      "next": "Nästa",
+      "done": "Klar",
+      "skip": "Hoppa över",
+      "steps": [
+        {
+          "title": "Auto Accept",
+          "body": "Acceptera ready checks automatiskt, med en valfri fördröjning så att du fortfarande kan neka manuellt."
+        },
+        {
+          "title": "Kö",
+          "body": "Verktyg för champ select: dodge-hjälp och valfri lagvisning i klienten."
+        },
+        {
+          "title": "Auto Pick & Ban",
+          "body": "Välj upp till två champions per roll. Auto pick väntar tills din lane är tilldelad."
+        },
+        {
+          "title": "Status",
+          "body": "Sätt ett långt statusmeddelande och lås Online, Offline, Mobil eller Upptagen."
+        },
+        {
+          "title": "Inställningar",
+          "body": "Uppstart, uppdateringar och omladdning av klienten finns här."
+        }
+      ]
+    }
+  },
+  "overlays": {
+    "scouting": {
+      "title": "Team Scouting",
+      "tabs": {
+        "scouting": "Team Scouting",
+        "build": "Build"
+      },
+      "empty": "Ingen scoutingdata för laget tillgänglig",
+      "mute": {
+        "idle": "Tysta alla",
+        "muting": "Tystar…",
+        "muted": "✓ Tystade",
+        "failed": "Kunde inte tysta"
+      },
+      "side": {
+        "BLUE": "Blå sida",
+        "RED": "Röd sida"
+      },
+      "you": "(Du)",
+      "unknown": "Okänd",
+      "unranked": "Unranked",
+      "queues": {
+        "solo": "Solo/Duo",
+        "flex": "Flex"
+      },
+      "lp": "{lp} LP",
+      "rows": {
+        "recentWl": "Senaste V/F",
+        "recentWlGames": "Senaste V/F · senaste {count} matcher",
+        "kda": "Senaste KDA",
+        "last12h": "Senaste 12h",
+        "picked": "Vald",
+        "seasonMain": "Säsongens main",
+        "last5": "Senaste 5"
+      },
+      "winsShort": "{count}V",
+      "lossesShort": "{count}F",
+      "games": "{count}m",
+      "noGames": "inga matcher",
+      "toast": {
+        "revealing": "Visar lobbyn",
+        "revealed": "Sessionen visad. Tryck Ctrl+Shift+D för att se den.",
+        "revealedSide": "Sessionen visad · {side} · Tryck Ctrl+Shift+D för att se den.",
+        "view": "Visa"
+      }
+    },
+    "build": {
+      "champion": "Champion",
+      "championFallback": "Champion {id}",
+      "modes": {
+        "ranked": "Ranked",
+        "aram": "ARAM"
+      },
+      "patch": "Patch {patch}",
+      "rank": "Rank",
+      "region": "Region",
+      "globalRegion": "Global",
+      "stats": {
+        "win": "Vinst",
+        "pick": "Pick",
+        "ban": "Ban",
+        "kda": "KDA",
+        "games": "Matcher"
+      },
+      "tiers": {
+        "all": "Alla ranker",
+        "ibsg": "Iron–Silver",
+        "gold_plus": "Gold+",
+        "platinum_plus": "Platinum+",
+        "emerald_plus": "Emerald+",
+        "diamond_plus": "Diamond+",
+        "master": "Master",
+        "grandmaster": "Grandmaster",
+        "challenger": "Challenger"
+      },
+      "viewing": "Visar spelarens build:",
+      "restore": "✕ Återställ core build",
+      "restoreTitle": "Återställ standardbuild",
+      "pickChampion": "Välj en champion för att se build-rekommendationer",
+      "loading": "Laddar builddata…",
+      "noData": "Ingen data för {tier}",
+      "seeAllRanks": "Visa alla ranker",
+      "retry": "Försök igen",
+      "opggError": "Kunde inte nå OP.GG",
+      "cards": {
+        "runes": "Runor",
+        "items": "Items",
+        "spells": "Summoner spells",
+        "skills": "Skill-ordning",
+        "matchups": "Matchups",
+        "topPlayers": "Toppspelare (OP.GG)"
+      },
+      "empty": {
+        "runes": "Ingen rundata",
+        "items": "Ingen itemdata",
+        "spells": "Ingen spelldata",
+        "matchups": "Ingen data"
+      },
+      "phases": {
+        "starter": "Start",
+        "boots": "Boots",
+        "core": "Core",
+        "situational": "Situationsberoende"
+      },
+      "actions": {
+        "apply": "Tillämpa",
+        "applied": "Tillämpat",
+        "applying": "Tillämpar…",
+        "failed": "Misslyckades — försök igen",
+        "createItemSet": "Skapa item set"
+      },
+      "wr": "{value} WR",
+      "winRate": "Vinstprocent",
+      "games": "Matcher",
+      "strong": "Stark mot",
+      "weak": "Svag mot",
+      "loadingPlayers": "Laddar spelare…",
+      "unavailable": "Inte tillgänglig",
+      "unknown": "Okänd",
+      "playerTitle": "{tier} · {games} matcher"
+    },
+    "docks": {
+      "cancelQueue": "Avbryt kö"
+    },
+    "socialToggle": {
+      "open": "Öppna Drake",
+      "close": "Stäng Drake"
+    },
+    "hint": {
+      "text": "Tips: du kan dra Drake- och Dodge-knapparna var du vill.",
+      "dismiss": "Uppfattat"
+    }
+  }
+}

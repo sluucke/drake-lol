@@ -397,6 +397,7 @@ pub struct ConfigdState {
     pub settings: Mutex<Settings>,
     pub http_client: reqwest::Client,
     last_checkin: Mutex<Option<(String, Instant, Option<String>)>>,
+    client_info: Mutex<(Option<String>, Option<String>)>,
     persist: Mutex<Persist>,
     update_busy: Mutex<bool>,
     pub overlay: Mutex<OverlayBridge>,
@@ -436,6 +437,7 @@ impl ConfigdState {
             settings: Mutex::new(settings),
             http_client,
             last_checkin: Mutex::new(None),
+            client_info: Mutex::new((None, None)),
             persist: Mutex::new(Box::new(save)),
             update_busy: Mutex::new(false),
             overlay: Mutex::new(OverlayBridge::default()),
@@ -463,6 +465,21 @@ impl ConfigdState {
 
     pub fn record_checkin(&self, host: String, plugin_build: Option<String>) {
         *self.last_checkin.lock().unwrap() = Some((host, Instant::now(), plugin_build));
+    }
+
+    pub fn record_client_info(&self, region: Option<String>, locale: Option<String>) {
+        let clean = |v: Option<String>| v.map(|s| s.trim().to_string()).filter(|s| !s.is_empty() && s.len() <= 16);
+        let mut info = self.client_info.lock().unwrap();
+        if let Some(region) = clean(region) {
+            info.0 = Some(region.to_ascii_uppercase());
+        }
+        if let Some(locale) = clean(locale) {
+            info.1 = Some(locale);
+        }
+    }
+
+    pub fn client_info(&self) -> (Option<String>, Option<String>) {
+        self.client_info.lock().unwrap().clone()
     }
 
     #[cfg(test)]
@@ -504,6 +521,10 @@ pub struct CheckInBody {
     pub host: String,
     #[serde(default)]
     pub plugin_build: Option<String>,
+    #[serde(default)]
+    pub region: Option<String>,
+    #[serde(default)]
+    pub locale: Option<String>,
 }
 
 async fn checkin(
@@ -513,7 +534,34 @@ async fn checkin(
     if body.token != state.token {
         return StatusCode::UNAUTHORIZED;
     }
+    state.record_client_info(body.region, body.locale);
     state.record_checkin(body.host, body.plugin_build);
+    StatusCode::NO_CONTENT
+}
+
+#[derive(Deserialize)]
+pub struct ErrorBody {
+    pub token: String,
+    pub source: String,
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub message: String,
+    #[serde(default)]
+    pub stack: Option<String>,
+}
+
+async fn report_error(
+    State(state): State<Arc<ConfigdState>>,
+    Json(body): Json<ErrorBody>,
+) -> StatusCode {
+    if body.token != state.token {
+        return StatusCode::UNAUTHORIZED;
+    }
+    if !matches!(body.source.as_str(), "plugin" | "overlay") {
+        return StatusCode::BAD_REQUEST;
+    }
+    crate::analytics::report_error(&body.source, &body.kind, &body.message, body.stack.as_deref());
     StatusCode::NO_CONTENT
 }
 
@@ -694,7 +742,7 @@ async fn put_settings(
     match state.apply_settings(next) {
         Ok(()) => StatusCode::NO_CONTENT,
         Err(e) => {
-            eprintln!("[Drake] could not persist settings from the UI: {e}");
+            crate::analytics::log_error("settings", format!("could not persist settings from the UI: {e}"));
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }
@@ -816,7 +864,7 @@ async fn apply_update(
         }
         Err(e) => {
             state.end_update();
-            eprintln!("[Drake] update apply failed: {e}");
+            crate::analytics::log_error("update", format!("update apply failed: {e}"));
             StatusCode::BAD_GATEWAY
         }
     }
@@ -963,6 +1011,7 @@ fn router(state: Arc<ConfigdState>) -> Router {
     Router::new()
         .merge(overlay_pages)
         .route("/checkin", post(checkin))
+        .route("/errors", post(report_error))
         .route("/settings", post(put_settings))
         .route("/open-url", post(open_url))
         .route("/proxy", post(proxy_request))
@@ -1970,6 +2019,60 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::NO_CONTENT);
         assert!(matches!(state.effective(true, "build-a"), EffectiveState::Injected { .. }));
+    }
+
+    #[tokio::test]
+    async fn errors_from_the_plugin_need_the_token_and_a_known_source() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let post = |body: String| {
+            Request::builder()
+                .method("POST")
+                .uri("/errors")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap()
+        };
+        let ok = router(state.clone())
+            .oneshot(post(format!(r#"{{"token":"{token}","source":"plugin","kind":"TypeError","message":"boom"}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(ok.status(), StatusCode::NO_CONTENT);
+        let wrong_token = router(state.clone())
+            .oneshot(post(r#"{"token":"nope","source":"plugin","message":"boom"}"#.into()))
+            .await
+            .unwrap();
+        assert_eq!(wrong_token.status(), StatusCode::UNAUTHORIZED);
+        let spoofed = router(state)
+            .oneshot(post(format!(r#"{{"token":"{token}","source":"tray","message":"boom"}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(spoofed.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn checkin_keeps_the_last_known_client_region_and_locale() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let post = |body: String| {
+            Request::builder()
+                .method("POST")
+                .uri("/checkin")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap()
+        };
+        let res = router(state.clone())
+            .oneshot(post(format!(r#"{{"token":"{token}","host":"Drake","region":"la2","locale":"es_MX"}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.client_info(), (Some("LA2".into()), Some("es_MX".into())));
+        router(state.clone())
+            .oneshot(post(format!(r#"{{"token":"{token}","host":"Drake"}}"#)))
+            .await
+            .unwrap();
+        assert_eq!(state.client_info(), (Some("LA2".into()), Some("es_MX".into())));
     }
 
     #[tokio::test]

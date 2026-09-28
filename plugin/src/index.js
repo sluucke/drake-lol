@@ -1,6 +1,7 @@
 import { loadConfig } from './config.js';
 import { makeLcu } from './lcu.js';
 import { makeTransport } from './transport.js';
+import { installErrorReporter, ownedByPlugin, sendToTray } from './errorReporter.js';
 import { PLUGIN_BUILD } from './buildId.js';
 import { startAutoAccept } from './autoAccept.js';
 import { socketPushAvailable, subscribe } from './subscribe.js';
@@ -120,12 +121,32 @@ async function start() {
     return;
   }
 
+  installErrorReporter({
+    send: sendToTray({ port: cfg.port, token: cfg.token }),
+    source: 'plugin',
+    ownsError: ownedByPlugin,
+  });
+
+  let clientInfo = null;
+  const readClientInfo = async () => {
+    try {
+      const body = await lcu.get('/riotclient/region-locale');
+      if (body?.region || body?.locale) clientInfo = { region: body.region || '', locale: body.locale || '' };
+    } catch {
+    }
+  };
+  void readClientInfo();
+
   const transport = makeTransport({
     port: cfg.port,
     token: cfg.token,
     dataStore: typeof DataStore !== 'undefined' ? DataStore : null,
     reloadConfig: loadConfig,
     pluginBuild: PLUGIN_BUILD,
+    clientInfo: () => {
+      if (!clientInfo) void readClientInfo();
+      return clientInfo;
+    },
   });
 
   

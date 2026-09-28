@@ -3,6 +3,7 @@ import { startUI } from './ui/index.js';
 import { createPanelSync } from './features/panelSync.js';
 import { SESSION_ROUTE } from './features/champSelect.js';
 import { subscribe } from './subscribe.js';
+import { installErrorReporter, sendToTray } from './errorReporter.js';
 
 const SNAPSHOT_MS = 400;
 const DODGE_FEEDBACK_MS = 2500;
@@ -77,6 +78,7 @@ function snapshotConfig(snap, token, port) {
 
 async function boot() {
   const { token, port } = readParams();
+  installErrorReporter({ send: sendToTray({ port, token }), source: 'overlay' });
   globalThis.__DRAKE_ASSET_PROXY__ = `${baseUrl(port)}/overlay/asset?token=${encodeURIComponent(token)}&path=`;
   const post = (path, body) => postJson(port, token, path, body);
   const snapshot = () => post('/overlay/snapshot', {});

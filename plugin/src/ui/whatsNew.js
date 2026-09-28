@@ -1,5 +1,15 @@
 export const WHATS_NEW = [
   {
+    version: '0.4.1',
+    items: [
+      {
+        title: 'Drake speaks more languages',
+        body: 'Spanish, Turkish, Russian and Swedish join English and Brazilian Portuguese. Drake follows the League client language, and Swedish can be picked in Settings.',
+        screen: 'settings',
+      },
+    ],
+  },
+  {
     version: '0.4.0',
     items: [
       {
