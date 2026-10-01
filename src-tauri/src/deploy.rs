@@ -14,8 +14,28 @@ pub enum DeployOutcome {
     Written,
 }
 
+pub fn parse_plugins_dir(config: &str) -> Option<PathBuf> {
+    config
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.starts_with(';') && !line.starts_with('#'))
+        .filter_map(|line| line.split_once('='))
+        .filter(|(key, _)| key.trim().eq_ignore_ascii_case("plugins_dir"))
+        .map(|(_, value)| value.trim().trim_matches('"').trim().to_string())
+        .find(|value| !value.is_empty())
+        .map(PathBuf::from)
+}
+
+pub fn plugins_root(loader_dir: &Path) -> PathBuf {
+    std::fs::read_to_string(loader_dir.join("config"))
+        .ok()
+        .and_then(|config| parse_plugins_dir(&config))
+        .map(|dir| if dir.is_absolute() { dir } else { loader_dir.join(dir) })
+        .unwrap_or_else(|| loader_dir.join("plugins"))
+}
+
 pub fn plugin_dir(loader_dir: &Path) -> PathBuf {
-    loader_dir.join("plugins").join(PLUGIN_FOLDER_NAME)
+    plugins_root(loader_dir).join(PLUGIN_FOLDER_NAME)
 }
 
 pub fn ensure_plugin(loader_dir: &Path, index_js: &str) -> Result<DeployOutcome, DeployError> {
@@ -39,6 +59,30 @@ pub fn ensure_plugin(loader_dir: &Path, index_js: &str) -> Result<DeployOutcome,
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_the_plugins_folder_a_loader_configures() {
+        let config = "; Gerado pelo SkLoLLauncher.\nplugins_dir = C:\\Program Files\\SkLoL\\plugin\nuse_devtools = false\n";
+        assert_eq!(parse_plugins_dir(config), Some(PathBuf::from(r"C:\Program Files\SkLoL\plugin")));
+        assert_eq!(parse_plugins_dir("PLUGINS_DIR=\"D:\\x\"\n"), Some(PathBuf::from(r"D:\x")));
+        assert_eq!(parse_plugins_dir("; plugins_dir = C:\\nope\nuse_devtools = true"), None);
+        assert_eq!(parse_plugins_dir("plugins_dir =   \n"), None);
+    }
+
+    #[test]
+    fn deploys_where_the_loader_config_points() {
+        let tmp = tempfile::tempdir().unwrap();
+        let loader = tmp.path().join("core");
+        std::fs::create_dir_all(&loader).unwrap();
+        assert_eq!(plugin_dir(&loader), loader.join("plugins").join("Drake"));
+        let custom = tmp.path().join("plugin");
+        std::fs::write(loader.join("config"), format!("plugins_dir = {}\n", custom.display())).unwrap();
+        assert_eq!(plugin_dir(&loader), custom.join("Drake"));
+        std::fs::write(loader.join("config"), "plugins_dir = extras\n").unwrap();
+        assert_eq!(plugin_dir(&loader), loader.join("extras").join("Drake"));
+        ensure_plugin(&loader, "x").unwrap();
+        assert!(loader.join("extras").join("Drake").join("index.js").is_file());
+    }
 
     #[test]
     fn writes_the_plugin_when_absent() {
