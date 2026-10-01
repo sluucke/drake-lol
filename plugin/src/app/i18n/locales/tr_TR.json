@@ -229,7 +229,13 @@
       "subtitle": "v{version} değişiklikleri",
       "recent": "Son değişiklikler",
       "empty": "Bu sürüm için not yok.",
-      "continue": "Devam"
+      "continue": "Devam",
+      "missedTitle": "Bunları da kaçırdın",
+      "earlierTitle": "Önceki güncellemeler",
+      "missedCount": {
+        "one": "{count} sürüm atladın",
+        "other": "{count} sürüm atladın"
+      }
     }
   },
   "roles": {

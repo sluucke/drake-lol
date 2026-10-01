@@ -14,10 +14,12 @@ export const WHATS_NEW = [
     items: [
       {
         title: 'Drake works inside SkLoL',
+        highlight: true,
         body: "Drake now loads inside SkLoL and other Pengu-based loaders that keep their plugins in their own folder, and shows the loader's real name. If the loader needs administrator rights, Drake asks once.",
       },
       {
         title: 'Required updates',
+        highlight: true,
         body: 'When an update is required, Drake tells you right in the client and pauses until you install it. League keeps working in the meantime.',
         screen: 'settings',
       },
@@ -28,6 +30,7 @@ export const WHATS_NEW = [
     items: [
       {
         title: 'Drake speaks more languages',
+        highlight: true,
         body: 'Spanish, Turkish, Russian and Swedish join English and Brazilian Portuguese. Drake follows the League client language, and Swedish can be picked in Settings.',
         screen: 'settings',
       },
@@ -38,6 +41,7 @@ export const WHATS_NEW = [
     items: [
       {
         title: 'A brand-new Drake',
+        highlight: true,
         body: 'Every screen was rebuilt with a refined hextech look, smoother animations and clearer layouts — the panel, Team Scouting, the Build tab, the champ select docks and the social bar button.',
         screen: 'auto-accept',
       },
@@ -48,11 +52,13 @@ export const WHATS_NEW = [
       },
       {
         title: 'Streaming mode',
+        highlight: true,
         body: 'Turn it on (or leave it on Auto) in Settings and Drake moves into its own window that OBS, Streamlabs and Discord cannot capture — you still see everything, your stream sees nothing. Team reveal stays off while it is active.',
         screen: 'settings',
       },
       {
         title: 'Quitting Drake really turns it off',
+        highlight: true,
         body: 'Quit in the tray now removes Drake from the League client and reloads it clean, so nothing keeps loading after Drake is closed. Open Drake again and it switches itself back on.',
       },
       {
@@ -240,6 +246,20 @@ export function compareSemver(a, b) {
     if (d) return d < 0 ? -1 : 1;
   }
   return 0;
+}
+
+export const HISTORY_LIMIT = 3;
+export const MISSED_LIMIT = 6;
+
+export function whatsNewHistory(entries, version, seenVersion) {
+  const list = Array.isArray(entries) ? entries : [];
+  const current = pickWhatsNew(list, version);
+  const older = list
+    .filter((e) => !current || compareSemver(e.version, current.version) < 0)
+    .sort((a, b) => compareSemver(b.version, a.version));
+  const missed = seenVersion ? older.filter((e) => compareSemver(e.version, seenVersion) > 0) : [];
+  if (missed.length) return { kind: 'missed', entries: missed.slice(0, MISSED_LIMIT) };
+  return { kind: 'recent', entries: older.slice(0, HISTORY_LIMIT) };
 }
 
 export function pickWhatsNew(entries, version) {

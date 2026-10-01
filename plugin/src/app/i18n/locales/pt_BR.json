@@ -229,7 +229,13 @@
       "subtitle": "Mudanças na v{version}",
       "recent": "Mudanças recentes",
       "empty": "Nenhuma nota para esta versão.",
-      "continue": "Continuar"
+      "continue": "Continuar",
+      "missedTitle": "Você também perdeu",
+      "earlierTitle": "Atualizações anteriores",
+      "missedCount": {
+        "one": "{count} versão pulada",
+        "other": "{count} versões puladas"
+      }
     }
   },
   "roles": {
