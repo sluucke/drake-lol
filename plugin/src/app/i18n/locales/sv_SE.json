@@ -284,6 +284,12 @@
     "failed": "Uppdateringen kunde inte installeras: {reason}"
   },
   "whatsNew": {
+    "v0_4_4": [
+      {
+        "title": "Se vad du har missat",
+        "body": "Om du hoppar över en uppdatering visar Nyheter nu även versionerna du missade, med de viktiga ändringarna förklarade. Annars visas de senaste versionerna."
+      }
+    ],
     "v0_4_3": [
       {
         "title": "Smidigare start i andra loaders",

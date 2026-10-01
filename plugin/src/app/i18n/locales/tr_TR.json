@@ -284,6 +284,12 @@
     "failed": "Güncelleme yüklenemedi: {reason}"
   },
   "whatsNew": {
+    "v0_4_4": [
+      {
+        "title": "Kaçırdıklarını yakala",
+        "body": "Bir güncellemeyi atlarsan Yenilikler artık kaçırdığın sürümleri de önemli değişiklikleri açıklayarak gösteriyor. Atlamadıysan son birkaç sürümü gösteriyor."
+      }
+    ],
     "v0_4_3": [
       {
         "title": "Diğer yükleyicilerde daha sorunsuz başlangıç",

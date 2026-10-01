@@ -284,6 +284,12 @@
     "failed": "Não foi possível instalar a atualização: {reason}"
   },
   "whatsNew": {
+    "v0_4_4": [
+      {
+        "title": "Veja o que você perdeu",
+        "body": "Se você pular uma atualização, a tela de Novidades agora também mostra as versões que você perdeu, com as mudanças importantes explicadas. Caso contrário, mostra as últimas versões."
+      }
+    ],
     "v0_4_3": [
       {
         "title": "Início mais tranquilo dentro de outros loaders",
