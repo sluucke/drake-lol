@@ -437,14 +437,17 @@ pub fn run() {
                         analytics::loader_label(&mode),
                         streaming::effective_label(streaming_effective),
                     );
-                    if let supervisor::Mode::Inactive { reason } = &mode {
-                        analytics::report_error("tray", "inactive", reason, None);
-                    }
                     let needs_admin = matches!(
                         &mode,
                         supervisor::Mode::Inactive { reason } if reason.starts_with(supervisor::GUEST_GRANT_REASON)
                     );
-                    if admin_gate.update(needs_admin, admin::is_elevated()) {
+                    let ask_admin = admin_gate.update(needs_admin, admin::is_elevated());
+                    if let supervisor::Mode::Inactive { reason } = &mode {
+                        if !needs_admin || admin_gate.stuck() {
+                            analytics::report_error("tray", "inactive", reason, None);
+                        }
+                    }
+                    if ask_admin {
                         let locale = loop_state.client_info().1.unwrap_or_else(|| settings.ui_language.clone());
                         let host = {
                             use slot::RegistryAccess;
