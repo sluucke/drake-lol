@@ -61,6 +61,10 @@ impl PromptGate {
         true
     }
 
+    pub fn stuck(&self) -> bool {
+        self.since.is_some_and(|at| at.elapsed() >= PROMPT_AFTER)
+    }
+
     #[cfg(test)]
     fn backdate(&mut self, by: Duration) {
         self.since = self.since.map(|at| at - by);
@@ -166,6 +170,17 @@ mod tests {
         gate.backdate(PROMPT_AFTER);
         assert!(gate.update(true, false));
         assert!(!gate.update(true, false), "only once per session");
+    }
+
+    #[test]
+    fn a_locked_folder_only_counts_as_stuck_after_the_wait() {
+        let mut gate = PromptGate::default();
+        gate.update(true, true);
+        assert!(!gate.stuck(), "the SYSTEM task usually opens it within seconds");
+        gate.backdate(PROMPT_AFTER);
+        assert!(gate.stuck());
+        gate.update(false, true);
+        assert!(!gate.stuck());
     }
 
     #[test]

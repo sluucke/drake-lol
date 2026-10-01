@@ -278,6 +278,12 @@
     "failed": "Güncelleme yüklenemedi: {reason}"
   },
   "whatsNew": {
+    "v0_4_3": [
+      {
+        "title": "Diğer yükleyicilerde daha sorunsuz başlangıç",
+        "body": "Drake, SkLoL gibi başka bir yükleyicinin eklenti klasörünü hazırlarken artık geçici bir hata bildirmiyor."
+      }
+    ],
     "v0_4_2": [
       {
         "title": "Drake artık SkLoL içinde çalışıyor",

@@ -278,6 +278,12 @@
     "failed": "Não foi possível instalar a atualização: {reason}"
   },
   "whatsNew": {
+    "v0_4_3": [
+      {
+        "title": "Início mais tranquilo dentro de outros loaders",
+        "body": "O Drake não reporta mais um erro temporário enquanto prepara a pasta de plugins de outro loader, como o SkLoL."
+      }
+    ],
     "v0_4_2": [
       {
         "title": "O Drake funciona dentro do SkLoL",

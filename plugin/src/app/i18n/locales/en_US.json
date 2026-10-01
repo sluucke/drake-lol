@@ -278,6 +278,12 @@
     "failed": "The update could not be installed: {reason}"
   },
   "whatsNew": {
+    "v0_4_3": [
+      {
+        "title": "Smoother start inside other loaders",
+        "body": "Drake no longer reports a temporary error while it prepares the plugins folder of another loader, such as SkLoL."
+      }
+    ],
     "v0_4_2": [
       {
         "title": "Drake works inside SkLoL",
