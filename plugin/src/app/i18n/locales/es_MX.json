@@ -284,6 +284,12 @@
     "failed": "No se pudo instalar la actualización: {reason}"
   },
   "whatsNew": {
+    "v0_4_4": [
+      {
+        "title": "Ponte al día con lo que te perdiste",
+        "body": "Si te saltas una actualización, Novedades ahora también muestra las versiones que te perdiste, con los cambios importantes explicados. Si no, muestra las últimas versiones."
+      }
+    ],
     "v0_4_3": [
       {
         "title": "Inicio más estable dentro de otros loaders",

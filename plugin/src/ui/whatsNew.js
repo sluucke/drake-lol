@@ -1,5 +1,15 @@
 export const WHATS_NEW = [
   {
+    version: '0.4.4',
+    items: [
+      {
+        title: 'Catch up on what you missed',
+        highlight: true,
+        body: "If you skip an update, What's New now also lists the versions you missed, with the important changes spelled out. Otherwise it shows the last few releases.",
+      },
+    ],
+  },
+  {
     version: '0.4.3',
     items: [
       {

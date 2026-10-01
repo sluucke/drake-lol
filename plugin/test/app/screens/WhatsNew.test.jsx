@@ -29,8 +29,9 @@ describe('WhatsNewScreen', () => {
   });
 
   it('jumps to the screen of a note and marks it seen', () => {
-    const { actions } = setup();
-    const item = WHATS_NEW[0].items.find((i) => i.screen);
+    const entry = WHATS_NEW.find((e) => e.items.some((i) => i.screen));
+    const { actions } = setup({ version: entry.version, seen: entry.version });
+    const item = entry.items.find((i) => i.screen);
     fireEvent.click(screen.getByRole('button', { name: item.title }));
     expect(actions.dismissWhatsNew).toHaveBeenCalledWith(item.screen);
   });

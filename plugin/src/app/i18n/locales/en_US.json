@@ -284,6 +284,12 @@
     "failed": "The update could not be installed: {reason}"
   },
   "whatsNew": {
+    "v0_4_4": [
+      {
+        "title": "Catch up on what you missed",
+        "body": "If you skip an update, What's New now also lists the versions you missed, with the important changes spelled out. Otherwise it shows the last few releases."
+      }
+    ],
     "v0_4_3": [
       {
         "title": "Smoother start inside other loaders",
