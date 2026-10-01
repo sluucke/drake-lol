@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod analytics;
 pub mod browser;
 pub mod configd;
@@ -366,6 +367,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let started = std::time::Instant::now();
                 let mut auto_reload_fired = false;
+                let mut admin_gate = admin::PromptGate::default();
                 let exe = std::env::current_exe().ok();
 
                 loop {
@@ -436,6 +438,31 @@ pub fn run() {
                     );
                     if let supervisor::Mode::Inactive { reason } = &mode {
                         analytics::report_error("tray", "inactive", reason, None);
+                    }
+                    let needs_admin = matches!(
+                        &mode,
+                        supervisor::Mode::Inactive { reason } if reason.starts_with(supervisor::GUEST_GRANT_REASON)
+                    );
+                    if admin_gate.update(needs_admin, admin::is_elevated()) {
+                        let locale = loop_state.client_info().1.unwrap_or_else(|| settings.ui_language.clone());
+                        let host = {
+                            use slot::RegistryAccess;
+                            let raw = slot::WindowsRegistry.read_debugger().ok().flatten();
+                            match slot::classify(raw.as_deref(), &paths::our_core_dll()) {
+                                slot::SlotState::Foreign { host, .. } => host,
+                                _ => "Pengu Loader".to_string(),
+                            }
+                        };
+                        std::thread::spawn(move || {
+                            if !admin::ask(&host, &locale) {
+                                return;
+                            }
+                            match admin::relaunch_elevated() {
+                                Ok(true) => std::process::exit(0),
+                                Ok(false) => {}
+                                Err(e) => analytics::log_error("elevate", format!("could not restart as administrator: {e}")),
+                            }
+                        });
                     }
                     let mode_text = match &mode {
                         supervisor::Mode::OwnLoader => strings::MODE_OWN_LOADER.to_string(),

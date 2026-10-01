@@ -59,6 +59,17 @@ pub fn acquire_or_alert() -> bool {
     false
 }
 
+pub fn acquire_waiting_or_alert(timeout: std::time::Duration) -> bool {
+    let deadline = std::time::Instant::now() + timeout;
+    while std::time::Instant::now() < deadline {
+        if try_acquire_guard() {
+            return true;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
+    acquire_or_alert()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

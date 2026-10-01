@@ -127,10 +127,19 @@ pub fn tick<R: RegistryAccess, C: elevate::SlotClaimer>(
     };
 
     if let Some(loader) = &plan.deploy_to {
+        let guest = matches!(plan.mode, Mode::Guest { .. });
         if let Err(e) = deploy::ensure_plugin(loader, index_js) {
+            if guest && permission_denied(&e) {
+                request_guest_grant(claimer, &LAST_GUEST_GRANT);
+                return Mode::Inactive { reason: format!("{GUEST_GRANT_REASON}: {e}") };
+            }
             return Mode::Inactive { reason: format!("cannot install the plugin: {e}") };
         }
         if let Err(e) = configd::write_plugin_config(&deploy::plugin_dir(loader), cfg) {
+            if guest && permission_denied(&e) {
+                request_guest_grant(claimer, &LAST_GUEST_GRANT);
+                return Mode::Inactive { reason: format!("{GUEST_GRANT_REASON}: {e}") };
+            }
             return Mode::Inactive { reason: format!("cannot write the plugin config: {e}") };
         }
     }
@@ -140,6 +149,34 @@ pub fn tick<R: RegistryAccess, C: elevate::SlotClaimer>(
     }
 
     plan.mode
+}
+
+pub const GUEST_GRANT_RETRY: Duration = Duration::from_secs(60);
+pub const GUEST_GRANT_REASON: &str = "waiting for the elevated task to open the guest loader's plugins folder";
+static LAST_GUEST_GRANT: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+
+pub fn permission_denied(err: &(dyn std::error::Error + 'static)) -> bool {
+    let mut current = Some(err);
+    while let Some(e) = current {
+        if e.downcast_ref::<std::io::Error>().is_some_and(|io| io.kind() == std::io::ErrorKind::PermissionDenied) {
+            return true;
+        }
+        current = e.source();
+    }
+    false
+}
+
+pub fn request_guest_grant<C: elevate::SlotClaimer>(
+    claimer: &C,
+    last: &std::sync::Mutex<Option<std::time::Instant>>,
+) -> bool {
+    let mut last = last.lock().unwrap_or_else(|e| e.into_inner());
+    if last.is_some_and(|at| at.elapsed() < GUEST_GRANT_RETRY) {
+        return false;
+    }
+    *last = Some(std::time::Instant::now());
+    let _ = claimer.claim();
+    true
 }
 
 #[cfg(test)]
@@ -387,6 +424,32 @@ mod tests {
         tick(&reg, &claimer, &ours().join("core.dll"), &ours(), "x", &a_config());
 
         assert_eq!(claimer.calls.get(), 0, "must never trigger a claim over a foreign slot");
+    }
+
+    #[test]
+    fn access_denied_is_found_behind_our_own_errors() {
+        let denied = crate::deploy::DeployError::Write {
+            path: PathBuf::from(r"C:\Program Files\SkLoL\plugin\Drake"),
+            source: std::io::Error::from(std::io::ErrorKind::PermissionDenied),
+        };
+        assert!(permission_denied(&denied));
+        let missing = crate::deploy::DeployError::Write {
+            path: PathBuf::from("x"),
+            source: std::io::Error::from(std::io::ErrorKind::NotFound),
+        };
+        assert!(!permission_denied(&missing));
+    }
+
+    #[test]
+    fn the_guest_folder_grant_is_asked_for_at_most_once_a_minute() {
+        let claimer = FakeClaimer::ok();
+        let last = std::sync::Mutex::new(None);
+        assert!(request_guest_grant(&claimer, &last));
+        assert!(!request_guest_grant(&claimer, &last));
+        assert_eq!(claimer.calls.get(), 1);
+        *last.lock().unwrap() = Some(std::time::Instant::now() - GUEST_GRANT_RETRY - Duration::from_secs(1));
+        assert!(request_guest_grant(&claimer, &last));
+        assert_eq!(claimer.calls.get(), 2);
     }
 
     #[test]

@@ -167,13 +167,66 @@ pub fn sync_slot(
 /// Runs elevated, from the scheduled task only. Claims or releases the slot
 /// according to the intent the tray left in the state dir.
 pub fn perform_activation() -> Result<(), Box<dyn std::error::Error>> {
+    use crate::slot::RegistryAccess;
     use crate::{paths, slot};
-    sync_slot(
-        &slot::WindowsRegistry,
-        &paths::our_core_dll(),
-        read_intent(&paths::slot_intent_file()),
-    )?;
+    let intent = read_intent(&paths::slot_intent_file());
+    sync_slot(&slot::WindowsRegistry, &paths::our_core_dll(), intent)?;
+    if intent == SlotIntent::Claim {
+        let raw = slot::WindowsRegistry.read_debugger()?;
+        if let slot::SlotState::Foreign { core_dll, .. } = slot::classify(raw.as_deref(), &paths::our_core_dll()) {
+            if let Some(dir) = prepare_guest_plugin_dir(&core_dll)? {
+                grant_users_write(&dir)?;
+            }
+        }
+    }
     Ok(())
+}
+
+fn without_verbatim_prefix(path: &Path) -> std::path::PathBuf {
+    let text = path.to_string_lossy();
+    match text.strip_prefix(r"\\?\") {
+        Some(rest) if !rest.starts_with("UNC\\") => std::path::PathBuf::from(rest),
+        _ => path.to_path_buf(),
+    }
+}
+
+pub fn prepare_guest_plugin_dir(core_dll: &Path) -> std::io::Result<Option<std::path::PathBuf>> {
+    let (Some(loader), Some(product)) = (core_dll.parent(), core_dll.parent().and_then(Path::parent)) else {
+        return Ok(None);
+    };
+    let (Ok(product), Ok(root)) = (
+        std::fs::canonicalize(product),
+        std::fs::canonicalize(crate::deploy::plugins_root(loader)),
+    ) else {
+        return Ok(None);
+    };
+    if !root.starts_with(&product) || !root.is_dir() {
+        return Ok(None);
+    }
+    let dir = root.join(crate::deploy::PLUGIN_FOLDER_NAME);
+    if let Ok(meta) = std::fs::symlink_metadata(&dir) {
+        if meta.file_type().is_symlink() || !meta.is_dir() {
+            return Ok(None);
+        }
+    }
+    std::fs::create_dir_all(&dir)?;
+    if std::fs::canonicalize(&dir)? != dir {
+        return Ok(None);
+    }
+    Ok(Some(without_verbatim_prefix(&dir)))
+}
+
+fn grant_users_write(dir: &Path) -> std::io::Result<()> {
+    let system = std::env::var_os("SystemRoot").map(std::path::PathBuf::from).unwrap_or_else(|| r"C:\Windows".into());
+    let status = Command::new(system.join("System32").join("icacls.exe"))
+        .arg(dir)
+        .args(["/grant", "*S-1-5-32-545:(OI)(CI)M"])
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!("icacls exited with {status}")))
+    }
 }
 
 pub fn is_deactivation_invocation(args: &[String]) -> bool {
@@ -228,6 +281,44 @@ mod tests {
     use crate::slot::{RegistryAccess, SlotError};
     use std::cell::{Cell, RefCell};
     use std::path::PathBuf;
+
+    fn guest_install(root: &Path, config: &str) -> PathBuf {
+        let core = root.join("SkLoL").join("core");
+        std::fs::create_dir_all(&core).unwrap();
+        std::fs::write(core.join("config"), config).unwrap();
+        core.join("core.dll")
+    }
+
+    #[test]
+    fn prepares_our_folder_where_a_guest_loader_reads_plugins() {
+        let tmp = tempfile::tempdir().unwrap();
+        let plugins = tmp.path().join("SkLoL").join("plugin");
+        std::fs::create_dir_all(&plugins).unwrap();
+        let core = guest_install(tmp.path(), &format!("plugins_dir = {}\n", plugins.display()));
+        let dir = prepare_guest_plugin_dir(&core).unwrap().expect("inside the product folder");
+        assert!(dir.ends_with(r"SkLoL\plugin\Drake"));
+        assert!(plugins.join("Drake").is_dir());
+        assert!(!dir.to_string_lossy().starts_with(r"\\?\"));
+    }
+
+    #[test]
+    fn refuses_a_plugins_folder_outside_the_guest_product() {
+        let tmp = tempfile::tempdir().unwrap();
+        let elsewhere = tmp.path().join("Windows").join("System32");
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        let core = guest_install(tmp.path(), &format!("plugins_dir = {}\n", elsewhere.display()));
+        assert_eq!(prepare_guest_plugin_dir(&core).unwrap(), None);
+        assert!(!elsewhere.join("Drake").exists());
+        let dotdot = guest_install(tmp.path(), "plugins_dir = ..\\..\\Windows\\System32\n");
+        assert_eq!(prepare_guest_plugin_dir(&dotdot).unwrap(), None);
+    }
+
+    #[test]
+    fn refuses_a_missing_plugins_folder() {
+        let tmp = tempfile::tempdir().unwrap();
+        let core = guest_install(tmp.path(), "plugins_dir = plugin_that_is_not_there\n");
+        assert_eq!(prepare_guest_plugin_dir(&core).unwrap(), None);
+    }
 
     #[test]
     fn activation_flag_is_recognised() {

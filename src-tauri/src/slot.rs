@@ -84,6 +84,9 @@ pub fn parse_core_path(raw: &str) -> Option<PathBuf> {
 }
 
 pub fn host_label(core_dll: &Path) -> String {
+    if let Some(name) = loader_name(core_dll, std::env::var("USERNAME").ok().as_deref()) {
+        return name;
+    }
     let parent = core_dll.parent();
     let parent_name = parent
         .and_then(|p| p.file_name())
@@ -104,7 +107,8 @@ const GENERIC_FOLDERS: &[&str] = &[
     "users", "downloads", "desktop", "documents", "documentos", "área de trabalho", "appdata", "local",
     "locallow", "roaming", "programdata", "program files", "program files (x86)", "arquivos de programas",
     "temp", "tmp", "onedrive", "games", "jogos", "tools", "apps", "programs", "bin", "dist", "release",
-    "debug", "build", "portable", "new folder", "nova pasta",
+    "debug", "build", "portable", "new folder", "nova pasta", "core", "loader", "lib", "libs", "dll", "dlls",
+    "x64", "x86", "win64", "app", "resources", "data", "runtime",
 ];
 const MAX_LOADER_NAME: usize = 40;
 
@@ -195,6 +199,17 @@ mod tests {
         assert_eq!(name(r"C:\Users\John\AppData\Local\Rose\Pengu Loader\core.dll").as_deref(), Some("Rose"));
         assert_eq!(name(r"D:\Games\pengu-loader-v1.1.6\core.dll").as_deref(), Some("pengu-loader-v1.1.6"));
         assert_eq!(name(r"C:\Program Files\SkinForge\core.dll").as_deref(), Some("SkinForge"));
+        assert_eq!(name(r"C:\Program Files\SkLoL\core\core.dll").as_deref(), Some("SkLoL"));
+        assert_eq!(name(r"D:\Tools\MyLoader\bin\x64\core.dll").as_deref(), Some("MyLoader"));
+    }
+
+    #[test]
+    fn the_tray_names_the_host_like_analytics_does() {
+        let raw = r#"rundll32 "C:\Program Files\SkLoL\core\core.dll", #6000"#;
+        match classify(Some(raw), &ours()) {
+            SlotState::Foreign { host, .. } => assert_eq!(host, "SkLoL"),
+            other => panic!("expected Foreign, got {other:?}"),
+        }
     }
 
     #[test]
