@@ -279,11 +279,26 @@
     "body": "Drake {version} är en obligatorisk uppdatering. Installera den för att fortsätta använda Drake.",
     "note": "Tills du uppdaterar är Drake avstängt i klienten. Själva League fungerar som vanligt.",
     "update": "Uppdatera nu",
-    "installing": "Installerar…",
+    "installing": "Laddar ner och installerar…",
     "later": "Fortsätt utan Drake",
-    "failed": "Uppdateringen kunde inte installeras: {reason}"
+    "failed": "Uppdateringen kunde inte installeras: {reason}",
+    "restarting": "Drake startar om med den nya versionen…",
+    "reloading": "Laddar om klienten…",
+    "cancelled": "Uppdateringen installerades inte. Om Windows frågar om behörighet, välj Ja och försök igen.",
+    "timeout": "Drake startade inte igen efter uppdateringen. Öppna Drake igen från Start-menyn och ladda om klienten.",
+    "retry": "Försök igen"
   },
   "whatsNew": {
+    "v0_4_5": [
+      {
+        "title": "Smidigare obligatoriska uppdateringar",
+        "body": "När du klickar på Uppdatera nu visar Drake varje steg, startar om med den nya versionen och laddar om klienten åt dig. Om uppdateringen inte blir klar förklarar den varför och låter dig försöka igen."
+      },
+      {
+        "title": "Länkarna i Tack till öppnas igen",
+        "body": "Länkarna på sidan Tack till öppnas i webbläsaren igen."
+      }
+    ],
     "v0_4_4": [
       {
         "title": "Se vad du har missat",

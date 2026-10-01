@@ -279,11 +279,26 @@
     "body": "O Drake {version} é uma atualização obrigatória. Instale para continuar usando o Drake.",
     "note": "Até atualizar, o Drake fica desligado no cliente. O League continua funcionando normalmente.",
     "update": "Atualizar agora",
-    "installing": "Instalando…",
+    "installing": "Baixando e instalando…",
     "later": "Continuar sem o Drake",
-    "failed": "Não foi possível instalar a atualização: {reason}"
+    "failed": "Não foi possível instalar a atualização: {reason}",
+    "restarting": "O Drake está reiniciando com a nova versão…",
+    "reloading": "Recarregando o cliente…",
+    "cancelled": "A atualização não foi instalada. Se o Windows pedir permissão, escolha Sim e tente de novo.",
+    "timeout": "O Drake não voltou depois da atualização. Abra o Drake de novo pelo menu Iniciar e recarregue o cliente.",
+    "retry": "Tentar de novo"
   },
   "whatsNew": {
+    "v0_4_5": [
+      {
+        "title": "Atualizações obrigatórias mais tranquilas",
+        "body": "Depois de clicar em Atualizar agora, o Drake mostra cada etapa, reinicia na nova versão e recarrega o cliente sozinho. Se a atualização não terminar, ele explica o motivo e deixa você tentar de novo."
+      },
+      {
+        "title": "Links dos créditos voltaram a abrir",
+        "body": "Os links da página de Créditos voltaram a abrir no navegador."
+      }
+    ],
     "v0_4_4": [
       {
         "title": "Veja o que você perdeu",

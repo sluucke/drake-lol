@@ -12,6 +12,7 @@ export const NOOP_ACTIONS = {
   dodge: resolved,
   checkUpdates: async () => {},
   installUpdate: resolved,
+  installRequiredUpdate: resolved,
   restartClient: resolved,
   selectProfileTab: async () => {},
   applyProfileRank: resolved,

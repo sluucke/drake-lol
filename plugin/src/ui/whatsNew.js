@@ -1,5 +1,19 @@
 export const WHATS_NEW = [
   {
+    version: '0.4.5',
+    items: [
+      {
+        title: 'Smoother required updates',
+        highlight: true,
+        body: 'After you click Update now, Drake shows each step, restarts with the new version and reloads the client for you. If the update does not finish, it tells you why and lets you try again.',
+      },
+      {
+        title: 'Credits links open again',
+        body: 'The links on the Credits page open in your browser again.',
+      },
+    ],
+  },
+  {
     version: '0.4.4',
     items: [
       {

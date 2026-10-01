@@ -759,7 +759,7 @@ dependencies = [
 
 [[package]]
 name = "drake"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "axum",
  "rand",
