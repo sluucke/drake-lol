@@ -16,7 +16,12 @@ fn main() {
         }
         return;
     }
-    if !drake_lib::single_instance::acquire_or_alert() {
+    let acquired = if drake_lib::admin::is_elevated_relaunch(&args) {
+        drake_lib::single_instance::acquire_waiting_or_alert(std::time::Duration::from_secs(15))
+    } else {
+        drake_lib::single_instance::acquire_or_alert()
+    };
+    if !acquired {
         std::process::exit(0);
     }
     drake_lib::run()
