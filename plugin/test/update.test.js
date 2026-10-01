@@ -20,6 +20,22 @@ describe('makeUpdater', () => {
     expect(JSON.parse(fetchImpl.mock.calls[0][1].body).token).toBe('abc');
   });
 
+  it('only forces a fresh GitHub check when asked, and passes the mandatory flag through', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ status: 'available', current: '0.4.1', version: 'v0.4.2', mandatory: true }),
+      }),
+    );
+    const updater = makeUpdater({ port: 48151, token: 'abc', fetchImpl });
+    const silent = await updater.check();
+    await updater.check({ force: true });
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({ token: 'abc' });
+    expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({ token: 'abc', force: true });
+    expect(silent).toMatchObject({ ok: true, status: 'available', mandatory: true });
+  });
+
   it('maps an available release for the settings screen', async () => {
     const fetchImpl = vi.fn(() =>
       Promise.resolve({

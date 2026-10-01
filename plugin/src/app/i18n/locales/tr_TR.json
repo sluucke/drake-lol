@@ -268,6 +268,15 @@
       "RANKED_TFT": "TFT"
     }
   },
+  "mandatoryUpdate": {
+    "title": "Güncelleme gerekli",
+    "body": "Drake {version} zorunlu bir güncelleme. Drake'i kullanmaya devam etmek için yükle.",
+    "note": "Güncelleyene kadar Drake istemcide kapalı kalır. League normal şekilde çalışmaya devam eder.",
+    "update": "Şimdi güncelle",
+    "installing": "Yükleniyor…",
+    "later": "Drake olmadan devam et",
+    "failed": "Güncelleme yüklenemedi: {reason}"
+  },
   "whatsNew": {
     "v0_4_1": [
       {

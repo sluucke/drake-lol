@@ -70,6 +70,9 @@ function isAramSession(session) {
 
 
 
+const REQUIRED_UPDATE_FIRST_CHECK_MS = 5000;
+const REQUIRED_UPDATE_CHECK_MS = 30 * 60 * 1000;
+
 export function startUI({
   cfg,
   onSettingsChanged,
@@ -78,6 +81,7 @@ export function startUI({
   mountParent = null,
   reloadConfig = loadConfig,
   onPanelChange,
+  onUpdateRequired,
   subscribeImpl = subscribe,
 }) {
   const overlayHost = host === 'overlay';
@@ -549,7 +553,19 @@ export function startUI({
       store.getState().setStatusLine(null);
     }
 
+    function requireUpdate(version) {
+      if (store.getState().session.updateRequired?.version === version) return;
+      store.getState().setSession({ updateRequired: { version, phase: 'required' } });
+      if (onUpdateRequired) onUpdateRequired(version);
+    }
+
+    async function checkRequiredUpdate() {
+      const result = await updater.check();
+      if (result.ok && result.status === 'available' && result.mandatory) requireUpdate(result.version);
+    }
+
     function applyUpdateStatus(body) {
+      if (body.status === 'available' && body.mandatory) requireUpdate(body.version);
       if (body.status === 'current') updateUi = { phase: 'current' };
       else if (body.status === 'available') {
         updateUi = { phase: 'available', version: body.version };
@@ -561,7 +577,7 @@ export function startUI({
     async function runUpdateCheck() {
       updateUi = { phase: 'checking' };
       paint();
-      const result = await updater.check();
+      const result = await updater.check({ force: true });
       if (!result.ok) {
         trayDown = result.reason.includes('not running');
         updateUi = { phase: 'error', message: result.reason };
@@ -861,6 +877,8 @@ export function startUI({
 
     paint();
     applyStreamingPolicy();
+    window.setTimeout(() => void checkRequiredUpdate().catch(() => {}), REQUIRED_UPDATE_FIRST_CHECK_MS);
+    window.setInterval(() => void checkRequiredUpdate().catch(() => {}), REQUIRED_UPDATE_CHECK_MS);
     if (!overlayHost) {
       window.setInterval(() => {
         void pollStreaming().catch(() => {});

@@ -31,6 +31,17 @@ let champSelectCtl = null;
 let ui = null;
 let currentSettings = {};
 let idleInGame = false;
+let updateRequired = false;
+
+function blockForUpdate() {
+  updateRequired = true;
+  stopFeatures();
+  stopProfileRank();
+  if (champSelectCtl) {
+    champSelectCtl.stop();
+    champSelectCtl = null;
+  }
+}
 
 function sleepPlugin() {
   stopFeatures();
@@ -50,7 +61,7 @@ function wireFeatures(settings) {
   currentSettings = settings;
   stopFeatures();
   stopProfileRank();
-  if (idleInGame) return;
+  if (idleInGame || updateRequired) return;
   const stopAutoAccept = startAutoAccept({
     enabled: !!settings.auto_accept,
     delayMs: settings.auto_accept_delay_ms || 0,
@@ -158,7 +169,7 @@ async function start() {
   console.log(TAG, 'check-in', ok ? 'ok' : 'failed', '| settings', JSON.stringify(cfg.settings));
   console.log(TAG, 'lcu events', socketPushAvailable() ? 'pushed by the loader' : 'polled');
 
-  ui = startUI({ cfg, onSettingsChanged: wireFeatures, lcu });
+  ui = startUI({ cfg, onSettingsChanged: wireFeatures, onUpdateRequired: blockForUpdate, lcu });
   wireFeatures(cfg.settings);
   startInGameIdle({
     subscribe,

@@ -4,11 +4,11 @@ const TRAY_DOWN = 'the Drake tray is not running';
 export function makeUpdater({ port, token, fetchImpl = fetch, reloadConfig }) {
   let currentToken = token;
 
-  async function post(path) {
+  async function post(path, extra = {}) {
     return fetchImpl(`http://127.0.0.1:${port}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: currentToken }),
+      body: JSON.stringify({ token: currentToken, ...extra }),
     });
   }
 
@@ -37,8 +37,8 @@ export function makeUpdater({ port, token, fetchImpl = fetch, reloadConfig }) {
   }
 
   return {
-    async check() {
-      const out = await withRetry(() => post('/update/check'));
+    async check({ force = false } = {}) {
+      const out = await withRetry(() => post('/update/check', force ? { force: true } : {}));
       if (out.ok === false) return out;
       const { res } = out;
       if (res.status === 409) {

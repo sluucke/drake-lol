@@ -8,6 +8,7 @@ export function createSessionSlice({ appVersion }) {
       idle: false,
       statusText: '',
       updateUi: { phase: 'idle' },
+      updateRequired: null,
       hostLabel: '',
       statusLine: null,
       revealTiming: { lastMs: 0, lastConcurrency: 1 },
