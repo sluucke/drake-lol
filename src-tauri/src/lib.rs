@@ -120,6 +120,7 @@ async fn try_prompt_manual_update(
     }
     match update::check_for_update(env!("CARGO_PKG_VERSION")).await {
         Ok(status) => {
+            state.record_update_status(status.clone());
             let Some(version) = update::prompt_version_for_manual_update(false, true, &status)
             else {
                 return;

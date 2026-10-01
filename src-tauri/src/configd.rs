@@ -398,6 +398,7 @@ pub struct ConfigdState {
     pub http_client: reqwest::Client,
     last_checkin: Mutex<Option<(String, Instant, Option<String>)>>,
     client_info: Mutex<(Option<String>, Option<String>)>,
+    update_cache: Mutex<Option<(Instant, crate::update::UpdateStatus)>>,
     persist: Mutex<Persist>,
     update_busy: Mutex<bool>,
     pub overlay: Mutex<OverlayBridge>,
@@ -438,6 +439,7 @@ impl ConfigdState {
             http_client,
             last_checkin: Mutex::new(None),
             client_info: Mutex::new((None, None)),
+            update_cache: Mutex::new(None),
             persist: Mutex::new(Box::new(save)),
             update_busy: Mutex::new(false),
             overlay: Mutex::new(OverlayBridge::default()),
@@ -475,6 +477,24 @@ impl ConfigdState {
         }
         if let Some(locale) = clean(locale) {
             info.1 = Some(locale);
+        }
+    }
+
+    pub fn record_update_status(&self, status: crate::update::UpdateStatus) {
+        *self.update_cache.lock().unwrap() = Some((Instant::now(), status));
+    }
+
+    pub fn cached_update_status(&self) -> Option<crate::update::UpdateStatus> {
+        match self.update_cache.lock().unwrap().as_ref() {
+            Some((at, status)) if at.elapsed() < UPDATE_CACHE => Some(status.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn required_update(&self) -> Option<String> {
+        match self.update_cache.lock().unwrap().as_ref() {
+            Some((_, crate::update::UpdateStatus::Available { version, mandatory: true, .. })) => Some(version.clone()),
+            _ => None,
         }
     }
 
@@ -807,12 +827,26 @@ pub struct TokenBody {
     pub token: String,
 }
 
+pub const UPDATE_CACHE: Duration = Duration::from_secs(15 * 60);
+
+#[derive(Deserialize)]
+pub struct CheckBody {
+    pub token: String,
+    #[serde(default)]
+    pub force: bool,
+}
+
 async fn check_update(
     State(state): State<Arc<ConfigdState>>,
-    Json(body): Json<TokenBody>,
+    Json(body): Json<CheckBody>,
 ) -> Result<Json<crate::update::UpdateStatus>, StatusCode> {
     if body.token != state.token {
         return Err(StatusCode::UNAUTHORIZED);
+    }
+    if !body.force {
+        if let Some(status) = state.cached_update_status() {
+            return Ok(Json(status));
+        }
     }
     if !state.try_begin_update() {
         return Err(StatusCode::CONFLICT);
@@ -821,7 +855,10 @@ async fn check_update(
     let result = crate::update::check_for_update(&current).await;
     state.end_update();
     match result {
-        Ok(status) => Ok(Json(status)),
+        Ok(status) => {
+            state.record_update_status(status.clone());
+            Ok(Json(status))
+        }
         Err(e) => {
             eprintln!("[Drake] update check failed: {e}");
             Err(StatusCode::BAD_GATEWAY)
@@ -1039,6 +1076,7 @@ struct OverlaySnapshot {
     chrome: Option<crate::overlay::ClientBounds>,
     views: Vec<String>,
     effective: bool,
+    update_required: Option<String>,
 }
 
 async fn overlay_snapshot(
@@ -1069,6 +1107,7 @@ async fn overlay_snapshot(
         chrome,
         views,
         effective,
+        update_required: state.required_update(),
     }))
 }
 
@@ -2019,6 +2058,53 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::NO_CONTENT);
         assert!(matches!(state.effective(true, "build-a"), EffectiveState::Injected { .. }));
+    }
+
+    #[test]
+    fn a_mandatory_release_is_remembered_and_served_from_cache() {
+        let state = ConfigdState::new_with_settings(48151, Settings::default(), "0.4.1");
+        assert_eq!(state.required_update(), None);
+        assert_eq!(state.cached_update_status(), None);
+        state.record_update_status(crate::update::UpdateStatus::Available {
+            current: "0.4.1".into(),
+            version: "v0.4.2".into(),
+            mandatory: true,
+        });
+        assert_eq!(state.required_update().as_deref(), Some("v0.4.2"));
+        assert!(state.cached_update_status().is_some());
+        state.record_update_status(crate::update::UpdateStatus::Available {
+            current: "0.4.1".into(),
+            version: "v0.4.2".into(),
+            mandatory: false,
+        });
+        assert_eq!(state.required_update(), None);
+    }
+
+    #[tokio::test]
+    async fn a_cached_check_answers_without_reaching_github() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.4.1"));
+        state.record_update_status(crate::update::UpdateStatus::Available {
+            current: "0.4.1".into(),
+            version: "v0.4.2".into(),
+            mandatory: true,
+        });
+        let token = state.token.clone();
+        let res = router(state)
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/update/check")
+                    .header("content-type", "application/json")
+                    .body(Body::from(format!(r#"{{"token":"{token}"}}"#)))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["status"], "available");
+        assert_eq!(json["mandatory"], true);
     }
 
     #[tokio::test]

@@ -88,6 +88,30 @@ pub struct GithubRelease {
     pub tag_name: String,
     #[serde(default)]
     pub assets: Vec<ReleaseAsset>,
+    #[serde(default)]
+    pub body: Option<String>,
+}
+
+pub const MANDATORY_MARKER: &str = "drake:mandatory";
+pub const MIN_VERSION_MARKER: &str = "drake:min-version";
+
+pub fn required_minimum(rel: &GithubRelease) -> Option<String> {
+    let body = rel.body.as_deref()?.to_ascii_lowercase();
+    if body.contains(MANDATORY_MARKER) {
+        return Some(rel.tag_name.clone());
+    }
+    let after = &body[body.find(MIN_VERSION_MARKER)? + MIN_VERSION_MARKER.len()..];
+    let version: String = after
+        .trim_start_matches(|c: char| c == ':' || c == '=' || c.is_whitespace())
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || *c == '.')
+        .collect();
+    parse_version(&version).map(|_| version)
+}
+
+pub fn is_mandatory(rel: &GithubRelease, current: &str) -> bool {
+    installer_from_release(rel).is_some()
+        && required_minimum(rel).is_some_and(|minimum| is_newer(&minimum, current))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,11 +147,11 @@ pub fn installer_from_release(rel: &GithubRelease) -> Option<&ReleaseAsset> {
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum UpdateStatus {
     Current { current: String },
-    Available { current: String, version: String },
+    Available { current: String, version: String, mandatory: bool },
     NoInstaller { current: String, version: String },
 }
 
-pub fn status_from_plan(current: &str, plan: UpdatePlan) -> UpdateStatus {
+pub fn status_from_plan(current: &str, plan: UpdatePlan, mandatory: bool) -> UpdateStatus {
     match plan {
         UpdatePlan::UpToDate => UpdateStatus::Current {
             current: current.to_string(),
@@ -139,6 +163,7 @@ pub fn status_from_plan(current: &str, plan: UpdatePlan) -> UpdateStatus {
         UpdatePlan::Newer { version, .. } => UpdateStatus::Available {
             current: current.to_string(),
             version,
+            mandatory,
         },
     }
 }
@@ -146,7 +171,8 @@ pub fn status_from_plan(current: &str, plan: UpdatePlan) -> UpdateStatus {
 pub async fn check_for_update(current: &str) -> Result<UpdateStatus, UpdateError> {
     let client = http_client()?;
     let release = fetch_latest(&client).await?;
-    Ok(status_from_plan(current, plan_update(&release, current)))
+    let mandatory = is_mandatory(&release, current);
+    Ok(status_from_plan(current, plan_update(&release, current), mandatory))
 }
 
 pub fn prompt_version_for_manual_update(
@@ -478,6 +504,7 @@ mod tests {
                 .iter()
                 .map(|(name, url)| ReleaseAsset { name: (*name).into(), browser_download_url: (*url).into() })
                 .collect(),
+            body: None,
         }
     }
 
@@ -796,14 +823,56 @@ mod tests {
                 url: "https://example/setup.exe".into(),
                 filename: "Drake_0.2.0_x64-setup.exe".into(),
             },
+            true,
         );
         assert_eq!(
             s,
             UpdateStatus::Available {
                 current: "0.1.0".into(),
                 version: "v0.2.0".into(),
+                mandatory: true,
             }
         );
+    }
+
+    fn release_with_body(tag: &str, body: &str) -> GithubRelease {
+        GithubRelease {
+            tag_name: tag.into(),
+            assets: vec![ReleaseAsset {
+                name: format!("Drake_{}_x64-setup.exe", tag.trim_start_matches('v')),
+                browser_download_url: "https://example/setup.exe".into(),
+            }],
+            body: Some(body.into()),
+        }
+    }
+
+    #[test]
+    fn a_release_marked_mandatory_forces_every_older_version() {
+        let rel = release_with_body("v0.4.2", "## Fixes
+<!-- drake:mandatory -->
+");
+        assert_eq!(required_minimum(&rel).as_deref(), Some("v0.4.2"));
+        assert!(is_mandatory(&rel, "0.4.1"));
+        assert!(!is_mandatory(&rel, "0.4.2"));
+    }
+
+    #[test]
+    fn a_minimum_version_keeps_forcing_after_an_optional_release() {
+        let rel = release_with_body("v0.4.3", "Notes
+<!-- drake:min-version 0.4.2 -->");
+        assert_eq!(required_minimum(&rel).as_deref(), Some("0.4.2"));
+        assert!(is_mandatory(&rel, "0.4.1"));
+        assert!(!is_mandatory(&rel, "0.4.2"), "already on the minimum: optional");
+        assert!(is_mandatory(&release_with_body("v0.5.0", "<!-- Drake:Min-Version: v0.4.9 -->"), "0.4.8"));
+    }
+
+    #[test]
+    fn plain_releases_and_releases_without_an_installer_are_never_forced() {
+        assert!(!is_mandatory(&release_with_body("v0.4.2", "## Fixes"), "0.4.1"));
+        assert!(!is_mandatory(&release_with_body("v0.4.2", "<!-- drake:min-version nope -->"), "0.4.1"));
+        let mut no_installer = release_with_body("v0.4.2", "<!-- drake:mandatory -->");
+        no_installer.assets.clear();
+        assert!(!is_mandatory(&no_installer, "0.4.1"));
     }
 
     #[test]
@@ -811,6 +880,7 @@ mod tests {
         let status = UpdateStatus::Available {
             current: "0.3.0".into(),
             version: "v0.3.1".into(),
+            mandatory: false,
         };
         assert_eq!(
             prompt_version_for_manual_update(false, true, &status).as_deref(),
@@ -823,6 +893,7 @@ mod tests {
         let status = UpdateStatus::Available {
             current: "0.3.0".into(),
             version: "v0.3.1".into(),
+            mandatory: false,
         };
         assert_eq!(prompt_version_for_manual_update(true, true, &status), None);
     }
@@ -832,6 +903,7 @@ mod tests {
         let status = UpdateStatus::Available {
             current: "0.3.0".into(),
             version: "v0.3.1".into(),
+            mandatory: false,
         };
         assert_eq!(prompt_version_for_manual_update(false, false, &status), None);
     }
