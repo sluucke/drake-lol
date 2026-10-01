@@ -289,6 +289,16 @@
     "retry": "Try again"
   },
   "whatsNew": {
+    "v0_4_5": [
+      {
+        "title": "Smoother required updates",
+        "body": "After you click Update now, Drake shows each step, restarts with the new version and reloads the client for you. If the update does not finish, it tells you why and lets you try again."
+      },
+      {
+        "title": "Credits links open again",
+        "body": "The links on the Credits page open in your browser again."
+      }
+    ],
     "v0_4_4": [
       {
         "title": "Catch up on what you missed",

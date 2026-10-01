@@ -289,6 +289,16 @@
     "retry": "Försök igen"
   },
   "whatsNew": {
+    "v0_4_5": [
+      {
+        "title": "Smidigare obligatoriska uppdateringar",
+        "body": "När du klickar på Uppdatera nu visar Drake varje steg, startar om med den nya versionen och laddar om klienten åt dig. Om uppdateringen inte blir klar förklarar den varför och låter dig försöka igen."
+      },
+      {
+        "title": "Länkarna i Tack till öppnas igen",
+        "body": "Länkarna på sidan Tack till öppnas i webbläsaren igen."
+      }
+    ],
     "v0_4_4": [
       {
         "title": "Se vad du har missat",

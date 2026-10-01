@@ -289,6 +289,16 @@
     "retry": "Intentar de nuevo"
   },
   "whatsNew": {
+    "v0_4_5": [
+      {
+        "title": "Actualizaciones obligatorias más fluidas",
+        "body": "Después de hacer clic en Actualizar ahora, Drake muestra cada paso, se reinicia con la nueva versión y recarga el cliente por ti. Si la actualización no termina, te dice por qué y te deja intentarlo de nuevo."
+      },
+      {
+        "title": "Los enlaces de créditos vuelven a abrirse",
+        "body": "Los enlaces de la página de Créditos vuelven a abrirse en tu navegador."
+      }
+    ],
     "v0_4_4": [
       {
         "title": "Ponte al día con lo que te perdiste",
