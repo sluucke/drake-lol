@@ -268,6 +268,15 @@
       "RANKED_TFT": "TFT"
     }
   },
+  "mandatoryUpdate": {
+    "title": "Atualização obrigatória",
+    "body": "O Drake {version} é uma atualização obrigatória. Instale para continuar usando o Drake.",
+    "note": "Até atualizar, o Drake fica desligado no cliente. O League continua funcionando normalmente.",
+    "update": "Atualizar agora",
+    "installing": "Instalando…",
+    "later": "Continuar sem o Drake",
+    "failed": "Não foi possível instalar a atualização: {reason}"
+  },
   "whatsNew": {
     "v0_4_1": [
       {

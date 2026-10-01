@@ -10,7 +10,7 @@ import { DURATION, EASE_OUT } from './motion.js';
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, header, ariaLabel, width = 560, closeLabel, className = '', children }) {
+export function Modal({ open, onClose, title, header, ariaLabel, width = 560, closeLabel, className = '', dismissible = true, children }) {
   const sfx = useSfx();
   const t = useT();
   const dialogRef = useRef(null);
@@ -28,7 +28,7 @@ export function Modal({ open, onClose, title, header, ariaLabel, width = 560, cl
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onCloseRef.current?.();
+        if (dismissible) onCloseRef.current?.();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -47,7 +47,7 @@ export function Modal({ open, onClose, title, header, ariaLabel, width = 560, cl
     };
     win.addEventListener('keydown', onKeyDown, true);
     return () => win.removeEventListener('keydown', onKeyDown, true);
-  }, [open]);
+  }, [open, dismissible]);
 
   const close = () => {
     sfx.play(SFX.close);
@@ -66,7 +66,7 @@ export function Modal({ open, onClose, title, header, ariaLabel, width = 560, cl
             exit={{ opacity: 0 }}
             transition={{ duration: DURATION.base }}
             onMouseDown={(event) => {
-              if (event.target === event.currentTarget) close();
+              if (dismissible && event.target === event.currentTarget) close();
             }}
           >
             <motion.div
@@ -89,13 +89,15 @@ export function Modal({ open, onClose, title, header, ariaLabel, width = 560, cl
                       {title}
                     </h2>
                   ))}
-                <button
-                  type="button"
-                  className="drk-modal__close"
-                  aria-label={closeLabel ?? t('common.close')}
-                  onMouseEnter={() => sfx.play(SFX.hover)}
-                  onClick={close}
-                />
+                {dismissible ? (
+                  <button
+                    type="button"
+                    className="drk-modal__close"
+                    aria-label={closeLabel ?? t('common.close')}
+                    onMouseEnter={() => sfx.play(SFX.hover)}
+                    onClick={close}
+                  />
+                ) : null}
               </header>
               <div className="drk-modal__body">{children}</div>
             </motion.div>

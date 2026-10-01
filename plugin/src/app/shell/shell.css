@@ -303,3 +303,27 @@
   justify-content: flex-end;
   margin-top: var(--space-5);
 }
+
+.drk-mandatory-update__body {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
+  color: var(--text-strong);
+}
+
+.drk-mandatory-update__note {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.drk-mandatory-update__error {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.drk-mandatory-update__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}

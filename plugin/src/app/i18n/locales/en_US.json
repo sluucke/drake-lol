@@ -268,6 +268,15 @@
       "RANKED_TFT": "TFT"
     }
   },
+  "mandatoryUpdate": {
+    "title": "Update required",
+    "body": "Drake {version} is a required update. Install it to keep using Drake.",
+    "note": "Until you update, Drake stays off in the client. League itself keeps working.",
+    "update": "Update now",
+    "installing": "Installing…",
+    "later": "Continue without Drake",
+    "failed": "The update could not be installed: {reason}"
+  },
   "whatsNew": {
     "v0_4_1": [
       {
