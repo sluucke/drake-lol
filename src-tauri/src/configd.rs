@@ -768,13 +768,23 @@ async fn put_settings(
     }
 }
 
-/// Hosts the lobby-reveal feature is allowed to open.
+/// Hosts the panel is allowed to open: lobby reveal and the credits links.
 ///
 /// Deliberately an allow-list, not a scheme check. This endpoint hands a URL
 /// to the operating system, and anything running in the client's page can
 /// reach it -- so "open any https URL" would turn Drake into a general
 /// launcher for whatever ends up executing in there.
-const OPENABLE_HOSTS: [&str; 3] = ["porofessor.gg", "www.op.gg", "op.gg"];
+const OPENABLE_HOSTS: [&str; 9] = [
+    "porofessor.gg",
+    "www.op.gg",
+    "op.gg",
+    "github.com",
+    "www.github.com",
+    "twitch.tv",
+    "www.twitch.tv",
+    "communitydragon.org",
+    "www.communitydragon.org",
+];
 
 pub fn is_openable(raw: &str) -> bool {
     // Parsed rather than pattern-matched: `https://porofessor.gg.evil.com/`
@@ -892,8 +902,11 @@ async fn apply_update(
     .await
     {
         Ok(true) => {
-            std::thread::sleep(crate::update::HANDOFF_START_GRACE);
-            std::process::exit(0);
+            tokio::spawn(async {
+                tokio::time::sleep(crate::update::HANDOFF_START_GRACE).await;
+                std::process::exit(0);
+            });
+            StatusCode::ACCEPTED
         }
         Ok(false) => {
             state.end_update();
@@ -1635,6 +1648,17 @@ mod tests {
         assert!(!is_openable("file:///C:/Windows/System32/calc.exe"));
         assert!(!is_openable("javascript:alert(1)"));
         assert!(!is_openable(""));
+    }
+
+    #[test]
+    fn the_credits_links_can_be_opened() {
+        assert!(is_openable("https://github.com/sluucke"));
+        assert!(is_openable("https://github.com/sluucke/drake-lol"));
+        assert!(is_openable("https://github.com/369gabriel/tiamat"));
+        assert!(is_openable("https://twitch.tv/bieelyi"));
+        assert!(is_openable("https://www.communitydragon.org"));
+        assert!(!is_openable("https://github.com@evil.com/"));
+        assert!(!is_openable("https://gist.github.com.evil.com/"));
     }
 
     #[test]
