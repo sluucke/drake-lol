@@ -1,5 +1,19 @@
 export const WHATS_NEW = [
   {
+    version: '0.4.2',
+    items: [
+      {
+        title: 'Drake works inside SkLoL',
+        body: "Drake now loads inside SkLoL and other Pengu-based loaders that keep their plugins in their own folder, and shows the loader's real name. If the loader needs administrator rights, Drake asks once.",
+      },
+      {
+        title: 'Required updates',
+        body: 'When an update is required, Drake tells you right in the client and pauses until you install it. League keeps working in the meantime.',
+        screen: 'settings',
+      },
+    ],
+  },
+  {
     version: '0.4.1',
     items: [
       {
