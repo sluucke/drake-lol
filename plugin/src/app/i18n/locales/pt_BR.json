@@ -278,6 +278,16 @@
     "failed": "Não foi possível instalar a atualização: {reason}"
   },
   "whatsNew": {
+    "v0_4_2": [
+      {
+        "title": "O Drake funciona dentro do SkLoL",
+        "body": "O Drake agora carrega dentro do SkLoL e de outros loaders baseados no Pengu que guardam os plugins em pasta própria, e mostra o nome real do loader. Se o loader precisar de administrador, o Drake pergunta uma vez."
+      },
+      {
+        "title": "Atualizações obrigatórias",
+        "body": "Quando uma atualização for obrigatória, o Drake avisa direto no cliente e fica pausado até você instalar. O League continua funcionando enquanto isso."
+      }
+    ],
     "v0_4_1": [
       {
         "title": "O Drake fala mais idiomas",

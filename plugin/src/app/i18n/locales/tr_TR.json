@@ -278,6 +278,16 @@
     "failed": "Güncelleme yüklenemedi: {reason}"
   },
   "whatsNew": {
+    "v0_4_2": [
+      {
+        "title": "Drake artık SkLoL içinde çalışıyor",
+        "body": "Drake artık SkLoL'ün ve eklentilerini kendi klasöründe tutan diğer Pengu tabanlı yükleyicilerin içinde yükleniyor ve yükleyicinin gerçek adını gösteriyor. Yükleyici yönetici izni isterse Drake bir kez sorar."
+      },
+      {
+        "title": "Zorunlu güncellemeler",
+        "body": "Bir güncelleme zorunlu olduğunda Drake bunu doğrudan istemcide bildirir ve sen yükleyene kadar duraklar. League bu sırada normal şekilde çalışmaya devam eder."
+      }
+    ],
     "v0_4_1": [
       {
         "title": "Drake artık daha fazla dil konuşuyor",
