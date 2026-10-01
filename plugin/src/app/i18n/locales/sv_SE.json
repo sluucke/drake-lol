@@ -278,6 +278,12 @@
     "failed": "Uppdateringen kunde inte installeras: {reason}"
   },
   "whatsNew": {
+    "v0_4_3": [
+      {
+        "title": "Smidigare start i andra loaders",
+        "body": "Drake rapporterar inte längre ett tillfälligt fel medan den förbereder plugin-mappen för en annan loader, till exempel SkLoL."
+      }
+    ],
     "v0_4_2": [
       {
         "title": "Drake fungerar i SkLoL",

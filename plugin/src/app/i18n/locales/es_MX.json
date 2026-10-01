@@ -278,6 +278,12 @@
     "failed": "No se pudo instalar la actualización: {reason}"
   },
   "whatsNew": {
+    "v0_4_3": [
+      {
+        "title": "Inicio más estable dentro de otros loaders",
+        "body": "Drake ya no reporta un error temporal mientras prepara la carpeta de plugins de otro loader, como SkLoL."
+      }
+    ],
     "v0_4_2": [
       {
         "title": "Drake funciona dentro de SkLoL",

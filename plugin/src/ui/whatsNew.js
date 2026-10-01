@@ -1,5 +1,15 @@
 export const WHATS_NEW = [
   {
+    version: '0.4.3',
+    items: [
+      {
+        title: 'Smoother start inside other loaders',
+        body: 'Drake no longer reports a temporary error while it prepares the plugins folder of another loader, such as SkLoL.',
+        screen: 'settings',
+      },
+    ],
+  },
+  {
     version: '0.4.2',
     items: [
       {
