@@ -28,6 +28,7 @@ import { loadSkins, makeBackground } from '../features/skins.js';
 import { makeSfx } from './sfx.js';
 import { makeSettingsClient } from './settingsClient.js';
 import { makeUpdater } from '../features/update.js';
+import { waitForNewTray } from '../features/updateHandoff.js';
 import { loadConfig } from '../config.js';
 import { canCancel, cancelQueue } from '../autoAccept.js';
 import { inChampSelect } from './dodgeDock.js';
@@ -741,6 +742,41 @@ export function startUI({
       return reveal.reveal(providerId);
     }
 
+    function setRequired(patch) {
+      const current = store.getState().session.updateRequired;
+      if (current) store.getState().setSession({ updateRequired: { ...current, ...patch } });
+    }
+
+    async function installRequiredUpdate() {
+      const required = store.getState().session.updateRequired;
+      if (!required) return;
+      setRequired({ phase: 'installing', reason: '', message: '' });
+      let previousToken = cfg.token;
+      try {
+        previousToken = (await reloadConfig())?.token || previousToken;
+      } catch {
+      }
+      const result = await updater.apply();
+      const trayLeft = !result.ok && result.reason.includes('not running');
+      if (!result.ok && !trayLeft) {
+        setRequired({ phase: 'error', reason: 'failed', message: result.reason });
+        return;
+      }
+      if (result.ok && result.upToDate) {
+        setRequired({ phase: 'reloading' });
+        await restarter.restart();
+        return;
+      }
+      setRequired({ phase: 'restarting' });
+      const outcome = await waitForNewTray({ loadConfig: reloadConfig, previousToken, targetVersion: required.version });
+      if (outcome.status !== 'updated') {
+        setRequired({ phase: 'error', reason: outcome.status, message: '' });
+        return;
+      }
+      setRequired({ phase: 'reloading' });
+      await restarter.restart();
+    }
+
     async function installUpdate() {
       const result = await updater.apply();
       if (!result.ok) {
@@ -758,6 +794,7 @@ export function startUI({
       dodge: () => runDodge(),
       checkUpdates: () => runUpdateCheck(),
       installUpdate,
+      installRequiredUpdate: () => installRequiredUpdate(),
       restartClient: () => restarter.restart(),
     });
 

@@ -279,9 +279,14 @@
     "body": "Drake {version} zorunlu bir güncelleme. Drake'i kullanmaya devam etmek için yükle.",
     "note": "Güncelleyene kadar Drake istemcide kapalı kalır. League normal şekilde çalışmaya devam eder.",
     "update": "Şimdi güncelle",
-    "installing": "Yükleniyor…",
+    "installing": "İndiriliyor ve yükleniyor…",
     "later": "Drake olmadan devam et",
-    "failed": "Güncelleme yüklenemedi: {reason}"
+    "failed": "Güncelleme yüklenemedi: {reason}",
+    "restarting": "Drake yeni sürümle yeniden başlıyor…",
+    "reloading": "İstemci yeniden yükleniyor…",
+    "cancelled": "Güncelleme yüklenmedi. Windows izin isterse Evet'i seç ve tekrar dene.",
+    "timeout": "Drake güncellemeden sonra geri gelmedi. Drake'i Başlat menüsünden yeniden aç ve istemciyi yeniden yükle.",
+    "retry": "Tekrar dene"
   },
   "whatsNew": {
     "v0_4_4": [

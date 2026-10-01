@@ -9,43 +9,65 @@ function makeShadow() {
   return host.attachShadow({ mode: 'open' });
 }
 
-function setup({ installUpdate = vi.fn(async () => ({ ok: true, installing: true })), locale } = {}) {
+function setup({ installRequiredUpdate = vi.fn(async () => {}), locale } = {}) {
   const shadow = makeShadow();
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
-  const actions = { navigate: vi.fn(), close: vi.fn(), openUrl: vi.fn(), installUpdate };
+  const actions = { navigate: vi.fn(), close: vi.fn(), openUrl: vi.fn(), installRequiredUpdate };
   const app = startApp(shadow, { store, actions });
-  return { shadow, store, actions, app, view: within(shadow) };
+  const require = (patch = {}) =>
+    act(() => store.getState().setSession({ updateRequired: { version: 'v0.4.4', phase: 'required', ...patch } }));
+  return { shadow, store, actions, app, require, view: within(shadow) };
 }
 
 describe('mandatory update', () => {
   it('replaces Drake with a popup that cannot be closed', () => {
-    const { shadow, store, view, app } = setup();
+    const { shadow, view, app, require } = setup();
     expect(shadow.querySelector('.drk-panel')).not.toBeNull();
-    act(() => store.getState().setSession({ updateRequired: { version: 'v0.4.2', phase: 'required' } }));
+    require();
     expect(shadow.querySelector('.drk-panel')).toBeNull();
     const dialog = view.getByRole('dialog', { name: 'Update required' });
-    expect(dialog.textContent).toContain('v0.4.2');
+    expect(dialog.textContent).toContain('v0.4.4');
     expect(dialog.querySelector('.drk-modal__close')).toBeNull();
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(view.getByRole('dialog')).toBeTruthy();
     act(() => app.unmount());
   });
 
-  it('installs from the popup and shows why it failed', async () => {
-    const installUpdate = vi.fn(async () => ({ ok: false, reason: 'could not install the update (500)' }));
-    const { store, view, app } = setup({ installUpdate });
-    act(() => store.getState().setSession({ updateRequired: { version: 'v0.4.2', phase: 'required' } }));
+  it('hands the install to the runtime and walks through each step', () => {
+    const { actions, view, app, require } = setup();
+    require();
     fireEvent.click(view.getByRole('button', { name: 'Update now' }));
-    expect(installUpdate).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(view.getByRole('alert').textContent).toContain('could not install the update (500)'));
-    expect(store.getState().session.updateRequired.phase).toBe('error');
+    expect(actions.installRequiredUpdate).toHaveBeenCalledTimes(1);
+    for (const [phase, text] of [
+      ['installing', 'Downloading and installing…'],
+      ['restarting', 'Drake is restarting with the new version…'],
+      ['reloading', 'Reloading the client…'],
+    ]) {
+      require({ phase });
+      expect(view.getByRole('status').textContent).toBe(text);
+      expect(view.getByRole('button', { name: 'Update now' }).disabled).toBe(true);
+      expect(view.getByRole('button', { name: 'Continue without Drake' }).disabled).toBe(true);
+    }
+    act(() => app.unmount());
+  });
+
+  it('explains why the update did not finish and offers to try again', () => {
+    const { actions, view, app, require } = setup();
+    require({ phase: 'error', reason: 'same-version' });
+    expect(view.getByRole('alert').textContent).toContain('choose Yes and try again');
+    require({ phase: 'error', reason: 'timeout' });
+    expect(view.getByRole('alert').textContent).toContain('Start menu');
+    require({ phase: 'error', reason: 'failed', message: 'could not install the update (502)' });
+    expect(view.getByRole('alert').textContent).toContain('could not install the update (502)');
+    fireEvent.click(view.getByRole('button', { name: 'Try again' }));
+    expect(actions.installRequiredUpdate).toHaveBeenCalledTimes(1);
     act(() => app.unmount());
   });
 
   it('lets the player continue without Drake, which stays off', async () => {
-    const { shadow, store, view, app } = setup();
-    act(() => store.getState().setSession({ updateRequired: { version: 'v0.4.2', phase: 'required' } }));
+    const { shadow, store, view, app, require } = setup();
+    require();
     fireEvent.click(view.getByRole('button', { name: 'Continue without Drake' }));
     await waitFor(() => expect(view.queryByRole('dialog')).toBeNull());
     expect(shadow.querySelector('.drk-panel')).toBeNull();
@@ -54,10 +76,10 @@ describe('mandatory update', () => {
   });
 
   it('speaks the client language', () => {
-    const { store, view, app } = setup({ locale: 'pt_BR' });
-    act(() => store.getState().setSession({ updateRequired: { version: 'v0.4.2', phase: 'required' } }));
+    const { view, app, require } = setup({ locale: 'pt_BR' });
+    require({ phase: 'restarting' });
     expect(view.getByRole('dialog', { name: 'Atualização obrigatória' })).toBeTruthy();
-    expect(view.getByRole('button', { name: 'Atualizar agora' })).toBeTruthy();
+    expect(view.getByRole('status').textContent).toBe('O Drake está reiniciando com a nova versão…');
     act(() => app.unmount());
   });
 });

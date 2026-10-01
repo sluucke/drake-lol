@@ -279,9 +279,14 @@
     "body": "Drake {version} is a required update. Install it to keep using Drake.",
     "note": "Until you update, Drake stays off in the client. League itself keeps working.",
     "update": "Update now",
-    "installing": "Installing…",
+    "installing": "Downloading and installing…",
     "later": "Continue without Drake",
-    "failed": "The update could not be installed: {reason}"
+    "failed": "The update could not be installed: {reason}",
+    "restarting": "Drake is restarting with the new version…",
+    "reloading": "Reloading the client…",
+    "cancelled": "The update was not installed. If Windows asks for permission, choose Yes and try again.",
+    "timeout": "Drake did not come back after the update. Open Drake again from the Start menu, then reload the client.",
+    "retry": "Try again"
   },
   "whatsNew": {
     "v0_4_4": [

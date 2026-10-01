@@ -279,9 +279,14 @@
     "body": "Drake {version} es una actualización obligatoria. Instálala para seguir usando Drake.",
     "note": "Hasta que actualices, Drake queda desactivado en el cliente. League sigue funcionando normalmente.",
     "update": "Actualizar ahora",
-    "installing": "Instalando…",
+    "installing": "Descargando e instalando…",
     "later": "Continuar sin Drake",
-    "failed": "No se pudo instalar la actualización: {reason}"
+    "failed": "No se pudo instalar la actualización: {reason}",
+    "restarting": "Drake se está reiniciando con la nueva versión…",
+    "reloading": "Recargando el cliente…",
+    "cancelled": "La actualización no se instaló. Si Windows pide permiso, elige Sí e inténtalo de nuevo.",
+    "timeout": "Drake no volvió después de la actualización. Abre Drake otra vez desde el menú Inicio y recarga el cliente.",
+    "retry": "Intentar de nuevo"
   },
   "whatsNew": {
     "v0_4_4": [

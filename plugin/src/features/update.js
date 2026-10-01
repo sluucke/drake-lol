@@ -59,7 +59,7 @@ export function makeUpdater({ port, token, fetchImpl = fetch, reloadConfig }) {
         return { ok: false, reason: 'an update is already in progress' };
       }
       if (res.status === 204 || res.ok) {
-        return { ok: true, installing: true };
+        return { ok: true, installing: true, upToDate: res.status === 204 };
       }
       return { ok: false, reason: `could not install the update (${res.status})` };
     },
