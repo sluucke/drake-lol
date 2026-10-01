@@ -229,7 +229,13 @@
       "subtitle": "Changes in v{version}",
       "recent": "Recent changes",
       "empty": "No notes for this version.",
-      "continue": "Continue"
+      "continue": "Continue",
+      "missedTitle": "Also new since your last update",
+      "earlierTitle": "Earlier updates",
+      "missedCount": {
+        "one": "{count} version you skipped",
+        "other": "{count} versions you skipped"
+      }
     }
   },
   "roles": {

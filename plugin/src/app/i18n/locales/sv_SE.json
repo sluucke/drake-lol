@@ -229,7 +229,13 @@
       "subtitle": "Ändringar i v{version}",
       "recent": "Senaste ändringar",
       "empty": "Inga anteckningar för den här versionen.",
-      "continue": "Fortsätt"
+      "continue": "Fortsätt",
+      "missedTitle": "Du missade också",
+      "earlierTitle": "Tidigare uppdateringar",
+      "missedCount": {
+        "one": "{count} version du hoppade över",
+        "other": "{count} versioner du hoppade över"
+      }
     }
   },
   "roles": {
