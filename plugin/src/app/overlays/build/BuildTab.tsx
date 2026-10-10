@@ -1,0 +1,116 @@
+// @ts-nocheck
+import { useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useT } from '../../i18n/I18nProvider';
+import { useLegacyActions } from '../../shell/LegacyActions';
+import { useDrake } from '../../store/StoreContext';
+import { Button } from '../../ui/Button';
+import { DURATION } from '../../ui/motion';
+import { BuildHeader } from './BuildHeader';
+import { ItemsCard, RunesCard, SkillOrderCard, SpellsCard } from './BuildCards';
+import { MatchupsCard, TopPlayersCard } from './BuildSidebar';
+
+const OPGG_ERROR = 'Could not reach OP.GG';
+
+function Placeholder({ children, error = false }) {
+  return <div className={['drk-build-placeholder', error && 'is-error'].filter(Boolean).join(' ')}>{children}</div>;
+}
+
+export function BuildBody() {
+  return (
+    <div className="drk-build-body">
+      <aside className="drk-build-sidebar">
+        <TopPlayersCard />
+        <MatchupsCard />
+      </aside>
+      <div className="drk-build-main">
+        <div className="drk-build-col">
+          <RunesCard />
+          <ItemsCard />
+        </div>
+        <div className="drk-build-col">
+          <SkillOrderCard />
+          <SpellsCard />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BuildTab({ body = <BuildBody /> }) {
+  const t = useT();
+  const actions = useLegacyActions();
+  const state = useDrake((s) => s.build);
+  const firstRef = useRef(true);
+
+  useEffect(() => {
+    if (firstRef.current) {
+      firstRef.current = false;
+      return;
+    }
+    if (state.championId) void actions.loadBuild();
+  }, [state.championId]);
+
+  let content;
+  if (!state.championId) {
+    content = <Placeholder>{t('overlays.build.pickChampion')}</Placeholder>;
+  } else if (state.loading) {
+    content = (
+      <Placeholder>
+        <span className="drk-build-spinner" aria-hidden="true" />
+        {t('overlays.build.loading')}
+      </Placeholder>
+    );
+  } else if (state.error) {
+    content = (
+      <Placeholder error>
+        <span>{state.error === OPGG_ERROR ? t('overlays.build.opggError') : state.error}</span>
+        <Button size="sm" onClick={() => actions.retryBuild()}>
+          {t('overlays.build.retry')}
+        </Button>
+      </Placeholder>
+    );
+  } else if (!state.build?.hasData) {
+    content = (
+      <Placeholder>
+        <span>{t('overlays.build.noData', { tier: t(`overlays.build.tiers.${state.tier}`) })}</span>
+        <Button size="sm" onClick={() => actions.showAllRanks()}>
+          {t('overlays.build.seeAllRanks')}
+        </Button>
+      </Placeholder>
+    );
+  } else {
+    content = body;
+  }
+
+  return (
+    <div className="drk-build">
+      <BuildHeader />
+      <AnimatePresence initial={false}>
+        {state.viewingPlayer && (
+          <motion.div
+            key="viewing"
+            className="drk-build-viewing"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: DURATION.base }}
+          >
+            <span>
+              {t('overlays.build.viewing')} <b>{state.viewingPlayer}</b>
+            </span>
+            <button
+              type="button"
+              className="drk-build-viewing__restore"
+              title={t('overlays.build.restoreTitle')}
+              onClick={() => actions.clearPlayerBuild()}
+            >
+              {t('overlays.build.restore')}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {content}
+    </div>
+  );
+}

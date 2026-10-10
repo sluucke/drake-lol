@@ -1,0 +1,29 @@
+// @ts-nocheck
+import { mountReactRoot } from './mountReact';
+import { App } from './App';
+import { APP_STYLES } from './styles/index';
+
+export const APP_LAYER_ID = 'drake-app-layer';
+
+const mounted = new WeakMap();
+
+export function startApp(shadow, { sfx, store, actions } = {}) {
+  if (mounted.has(shadow)) return mounted.get(shadow);
+  const layer = shadow.ownerDocument.createElement('div');
+  layer.id = APP_LAYER_ID;
+  const app = mountReactRoot(shadow, {
+    styles: APP_STYLES,
+    element: <App sfx={sfx} portalTarget={layer} store={store} actions={actions} />,
+  });
+  shadow.appendChild(layer);
+  const result = {
+    ...app,
+    layer,
+    unmount() {
+      app.unmount();
+      layer.remove();
+    },
+  };
+  mounted.set(shadow, result);
+  return result;
+}

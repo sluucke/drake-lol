@@ -1,0 +1,36 @@
+// @ts-nocheck
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
+import { reportReactError } from '../errorReporter';
+
+function onUncaughtError(error, info) {
+  console.error(error);
+  reportReactError(error, info);
+}
+
+export const APP_ROOT_ID = 'drake-app-root';
+
+export function mountReactRoot(shadow, { styles = [], element }) {
+  const doc = shadow.ownerDocument;
+  const styleEls = styles.map((css) => {
+    const el = doc.createElement('style');
+    el.setAttribute('data-drake-style', '');
+    el.textContent = css;
+    shadow.appendChild(el);
+    return el;
+  });
+  const container = doc.createElement('div');
+  container.id = APP_ROOT_ID;
+  shadow.appendChild(container);
+  const root = createRoot(container, { onUncaughtError });
+  flushSync(() => root.render(element));
+  return {
+    container,
+    root,
+    unmount() {
+      root.unmount();
+      container.remove();
+      for (const el of styleEls) el.remove();
+    },
+  };
+}
