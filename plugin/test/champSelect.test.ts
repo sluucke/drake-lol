@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import {
   findMyAction,
@@ -8,14 +7,22 @@ import {
   makeChampSelect,
   unavailableChampionIds,
 } from '../src/features/champSelect';
+import type { ChampSelectAction, ChampSelectSession } from '../src/features/champSelect';
+import type { Lcu } from '../src/lcu';
 
-const session = ({ cell = 0, actions = [], ...extra } = {}) => ({
+const asLcu = (fake: object): Lcu => fake as unknown as Lcu;
+
+const session = ({
+  cell = 0,
+  actions = [],
+  ...extra
+}: { cell?: number; actions?: ChampSelectAction[][] } & Partial<ChampSelectSession> = {}): ChampSelectSession => ({
   localPlayerCellId: cell,
   actions,
   ...extra,
 });
 
-const action = (over = {}) => ({
+const action = (over: Partial<ChampSelectAction> = {}): ChampSelectAction => ({
   id: 1,
   actorCellId: 0,
   championId: 0,
@@ -28,7 +35,7 @@ const action = (over = {}) => ({
 describe('findMyAction', () => {
   it('finds my in-progress pick', () => {
     const s = session({ actions: [[action({ id: 7 })]] });
-    expect(findMyAction(s, 'pick').id).toBe(7);
+    expect(findMyAction(s, 'pick')?.id).toBe(7);
   });
 
   it('ignores actions belonging to other players', () => {
@@ -52,7 +59,7 @@ describe('findMyAction', () => {
   it('does not confuse a ban with a pick', () => {
     const s = session({ actions: [[action({ id: 4, type: 'ban' })]] });
     expect(findMyAction(s, 'pick')).toBe(null);
-    expect(findMyAction(s, 'ban').id).toBe(4);
+    expect(findMyAction(s, 'ban')?.id).toBe(4);
   });
 
   it('searches every phase, not just the first', () => {
@@ -62,7 +69,7 @@ describe('findMyAction', () => {
         [action({ id: 9, type: 'pick' })],
       ],
     });
-    expect(findMyAction(s, 'pick').id).toBe(9);
+    expect(findMyAction(s, 'pick')?.id).toBe(9);
   });
 
   it('is safe on a session that is not champ select at all', () => {
@@ -143,7 +150,7 @@ describe('makeChampSelect', () => {
       get: vi.fn().mockResolvedValue({ errorCode: 'RPC_ERROR', httpStatus: 404 }),
     };
 
-    expect(await makeChampSelect({ lcu }).getSession()).toBe(null);
+    expect(await makeChampSelect({ lcu: asLcu(lcu) }).getSession()).toBe(null);
   });
 
   it('locks a champion with a single call carrying the completion', async () => {
@@ -155,7 +162,7 @@ describe('makeChampSelect', () => {
       post: vi.fn(),
     };
 
-    const result = await makeChampSelect({ lcu }).commit(42, 103, true, 'pick');
+    const result = await makeChampSelect({ lcu: asLcu(lcu) }).commit(42, 103, true, 'pick');
 
     expect(result.ok).toBe(true);
     expect(lcu.patch).toHaveBeenCalledWith(actionRoute(42), {
@@ -175,7 +182,7 @@ describe('makeChampSelect', () => {
       post: vi.fn().mockResolvedValue({ ok: true, status: 204 }),
     };
 
-    const result = await makeChampSelect({ lcu }).commit(42, 103, true, 'pick');
+    const result = await makeChampSelect({ lcu: asLcu(lcu) }).commit(42, 103, true, 'pick');
 
     expect(result.ok).toBe(true);
     expect(lcu.patch).toHaveBeenNthCalledWith(2, actionRoute(42), { championId: 103 });
@@ -186,7 +193,7 @@ describe('makeChampSelect', () => {
 
     const lcu = { patch: vi.fn().mockResolvedValue({ ok: true }) };
 
-    await makeChampSelect({ lcu }).commit(42, 103, false);
+    await makeChampSelect({ lcu: asLcu(lcu) }).commit(42, 103, false);
 
     expect(lcu.patch).toHaveBeenCalledWith(actionRoute(42), {
       championId: 103,
@@ -199,7 +206,7 @@ describe('makeChampSelect', () => {
       post: vi.fn().mockResolvedValue({ ok: false, status: 404 }),
     };
 
-    const result = await makeChampSelect({ lcu }).commit(42, 55, true, 'ban');
+    const result = await makeChampSelect({ lcu: asLcu(lcu) }).commit(42, 55, true, 'ban');
 
     expect(result.ok).toBe(false);
     expect(result.reason).toContain('404');
@@ -214,7 +221,7 @@ describe('makeChampSelect', () => {
       post: vi.fn().mockResolvedValue({ ok: false, status: 500 }),
     };
 
-    const result = await makeChampSelect({ lcu }).commit(7, 103, true, 'pick');
+    const result = await makeChampSelect({ lcu: asLcu(lcu) }).commit(7, 103, true, 'pick');
 
     expect(result.ok).toBe(false);
     expect(result.retry).toBe(true);
@@ -230,7 +237,7 @@ describe('makeChampSelect', () => {
       post: vi.fn().mockRejectedValue(new Error('gone')),
     };
 
-    const result = await makeChampSelect({ lcu }).commit(7, 103, true, 'pick');
+    const result = await makeChampSelect({ lcu: asLcu(lcu) }).commit(7, 103, true, 'pick');
 
     expect(result.ok).toBe(false);
   });
@@ -240,7 +247,7 @@ describe('makeChampSelect', () => {
     // calling it ok is how a ban that never happened got logged as done.
     const lcu = { patch: vi.fn().mockResolvedValue(undefined), post: vi.fn() };
 
-    const result = await makeChampSelect({ lcu }).commit(42, 55, true, 'ban');
+    const result = await makeChampSelect({ lcu: asLcu(lcu) }).commit(42, 55, true, 'ban');
 
     expect(result.ok).toBe(false);
     expect(lcu.post).not.toHaveBeenCalled();
@@ -257,7 +264,7 @@ describe('makeChampSelect', () => {
       post: vi.fn().mockResolvedValue({ ok: true, status: 200 }),
     };
 
-    const result = await makeChampSelect({ lcu }).commit(42, 55, true, 'ban');
+    const result = await makeChampSelect({ lcu: asLcu(lcu) }).commit(42, 55, true, 'ban');
 
     expect(result.ok).toBe(true);
     expect(result.hoverStatus).toBe(204);
@@ -266,7 +273,7 @@ describe('makeChampSelect', () => {
 
   it('survives the call throwing', async () => {
     const lcu = { patch: vi.fn().mockRejectedValue(new Error('gone')) };
-    const result = await makeChampSelect({ lcu }).commit(1, 2, true);
+    const result = await makeChampSelect({ lcu: asLcu(lcu) }).commit(1, 2, true);
     expect(result.ok).toBe(false);
   });
 });

@@ -1,7 +1,209 @@
-// @ts-nocheck
+import type { FetchLike, Lcu } from '../lcu';
+import type { ChampSelectPlayer, ChampSelectSession } from './champSelect';
 import { resolveChampSelectPuuid } from './champSelectPuuid';
 import { formatRiotId, SUMMONER_BY_PUUID_ROUTE, SUMMONER_BY_ID_ROUTE } from './reveal';
+import type { RiotIdParts, SummonerRecord } from './reveal';
 import { createSgpContext, fetchQueueMatchHistory, normalizeMatchGames } from './sgpMatchHistory';
+import type { MatchHistoryPayload, RawMatchGame, RawMatchParticipant } from './sgpMatchHistory';
+
+export interface RevealPlayer extends ChampSelectPlayer {
+  position?: string;
+  selectedChampionId?: number;
+  riotId?: string;
+  obf?: string;
+}
+
+export interface RevealSession extends ChampSelectSession {
+  myTeam?: RevealPlayer[];
+  gameData?: {
+    gameId?: number;
+    queueId?: number;
+    queue?: { id?: number; queueId?: number };
+  };
+  counter?: number;
+}
+
+export interface IdentitySource extends RiotIdParts {
+  puuid?: string;
+  summonerId?: number;
+  obfuscatedPuuid?: string;
+  obf?: string;
+  riotId?: string;
+}
+
+export interface RemappableRow extends IdentitySource {
+  cellId?: number;
+  assignedPosition?: string;
+  isLocalPlayer?: boolean;
+}
+
+export interface MatchPoolEntry {
+  queueId?: unknown;
+}
+
+export interface MatchEntry {
+  game: RawMatchGame;
+  participant: RawMatchParticipant;
+  queueId: number;
+}
+
+export interface RankedQueueEntry {
+  queueType?: string;
+  tier?: string;
+  division?: string;
+  rank?: string;
+  leaguePoints?: number;
+  wins?: number;
+  currentSeasonWinsForRewards?: number;
+  losses?: number | string | null;
+  loss?: number | string | null;
+  games?: number;
+}
+
+export interface RankedStatsPayload {
+  queueMap?: Record<string, RankedQueueEntry | null> | null;
+  queues?: (RankedQueueEntry | null)[] | null;
+}
+
+export interface RankedQueueRank {
+  tier: string;
+  division: string;
+  lp: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  hasRank: boolean;
+}
+
+export interface RankedQueues {
+  solo: RankedQueueRank;
+  flex: RankedQueueRank;
+}
+
+export interface RecentGame {
+  championId: number;
+  win: boolean;
+  kills: number;
+  deaths: number;
+  assists: number;
+}
+
+export interface PickedChampionStats {
+  pickedChampionId: number;
+  pickedGames: number;
+  pickedWins: number;
+  pickedLosses: number;
+  pickedWinRate: number;
+}
+
+export interface EntrySummary {
+  wins: number;
+  losses: number;
+  winRate: number;
+  kda: number;
+  last12hWins: number;
+  last12hLosses: number;
+  mostPlayedChampionId: number;
+  mostPlayedCount: number;
+  matchesUsed: number;
+  queueScopedMatches: number;
+}
+
+export interface PlayerStats extends EntrySummary, PickedChampionStats {
+  recentGames: RecentGame[];
+}
+
+export interface SeasonMainStats {
+  seasonMostPlayedChampionId: number;
+  seasonMostPlayedCount: number;
+  seasonMostPlayedWins: number;
+  seasonMostPlayedLosses: number;
+  seasonMostPlayedWinRate: number;
+}
+
+export interface SeasonStats {
+  seasonWins: number;
+  seasonLosses: number;
+  seasonWinRate: number;
+  seasonTier: string;
+  seasonDivision: string;
+  seasonLp: number;
+  hasSeason: boolean;
+}
+
+export interface TeamRevealRow extends PlayerStats, SeasonMainStats, SeasonStats {
+  cellId: number;
+  puuid: string;
+  riotId: string;
+  isLocalPlayer: boolean;
+  rankedQueueType: string;
+  assignedPosition: string;
+  soloRank: RankedQueueRank;
+  flexRank: RankedQueueRank;
+  matchesPending: boolean;
+  historyGames?: RawMatchGame[];
+}
+
+export interface SeasonEntry {
+  id?: number;
+  seasonId?: number;
+  isActive?: boolean;
+  active?: boolean;
+}
+
+export type SeasonPayload =
+  | SeasonEntry[]
+  | {
+      seasonId?: number;
+      seasons?: SeasonEntry[];
+      currentSplitSeasons?: SeasonEntry[];
+      splitSeasons?: SeasonEntry[];
+    }
+  | null
+  | undefined;
+
+export interface FetchTimingInput {
+  lastMs?: number | null;
+  lastConcurrency?: number | null;
+}
+
+export interface RevealDurationInput extends FetchTimingInput {
+  concurrency?: number | null;
+}
+
+export interface PlayerStatsOptions {
+  recentPool?: string;
+  last5Pool?: string;
+  sampleSize?: number;
+  pickedChampionId?: number;
+}
+
+export interface TeamRevealSnapshotOptions {
+  session: RevealSession | null | undefined;
+  lcu: Pick<Lcu, 'get'>;
+  fetchImpl?: FetchLike;
+  sampleSize?: number;
+  seasonSampleSize?: number;
+  recentPool?: string;
+  last5Pool?: string;
+  fetchConcurrency?: number;
+  now?: number;
+  onProgress?: (rows: TeamRevealRow[]) => void;
+  signal?: AbortSignal;
+}
+
+export interface RemapResult<R> {
+  rows: R[];
+  changed: boolean;
+  ok: boolean;
+}
+
+export interface RefreshPickedRow {
+  cellId: number;
+  puuid: string;
+  pickedChampionId?: number;
+  historyGames?: RawMatchGame[];
+}
 
 export const TEAM_REVEAL_SAMPLE_SIZE = 50;
 export const TEAM_REVEAL_SAMPLE_SIZES = [20, 50, 100];
@@ -17,7 +219,7 @@ export const MATCH_POOL_RANKED_BOTH = 'ranked_both';
 export const MATCH_POOL_CURRENT_QUEUE = 'current_queue';
 export const MATCH_POOL_ANY = 'any';
 
-export const RANKED_QUEUE_BY_ID = {
+export const RANKED_QUEUE_BY_ID: Record<number, string> = {
   420: 'RANKED_SOLO_5x5',
   440: 'RANKED_FLEX_SR',
 };
@@ -25,7 +227,7 @@ export const RANKED_QUEUE_BY_ID = {
 export const RANKED_SOLO = 'RANKED_SOLO_5x5';
 export const RANKED_FLEX = 'RANKED_FLEX_SR';
 
-export function normalizeMatchPool(value, fallback = MATCH_POOL_RANKED_BOTH) {
+export function normalizeMatchPool(value: unknown, fallback: string = MATCH_POOL_RANKED_BOTH): string {
   const raw = String(value || '').trim().toLowerCase();
   if (raw === MATCH_POOL_RANKED_BOTH || raw === MATCH_POOL_CURRENT_QUEUE || raw === MATCH_POOL_ANY) {
     return raw;
@@ -33,17 +235,21 @@ export function normalizeMatchPool(value, fallback = MATCH_POOL_RANKED_BOTH) {
   return fallback;
 }
 
-export function normalizeSampleSize(value, fallback = TEAM_REVEAL_SAMPLE_SIZE) {
+export function normalizeSampleSize(value: unknown, fallback = TEAM_REVEAL_SAMPLE_SIZE): number {
   const n = Number(value) || 0;
   return TEAM_REVEAL_SAMPLE_SIZES.includes(n) ? n : fallback;
 }
 
-export function normalizeFetchConcurrency(value, fallback = TEAM_REVEAL_FETCH_CONCURRENCY) {
+export function normalizeFetchConcurrency(value: unknown, fallback = TEAM_REVEAL_FETCH_CONCURRENCY): number {
   const n = Number(value) || 0;
   return TEAM_REVEAL_FETCH_CONCURRENCIES.includes(n) ? n : fallback;
 }
 
-export function filterMatchEntriesByPool(entries, queueId, pool) {
+export function filterMatchEntriesByPool<T extends MatchPoolEntry>(
+  entries: T[] | null | undefined,
+  queueId: unknown,
+  pool?: unknown,
+): T[] {
   const list = Array.isArray(entries) ? entries : [];
   const mode = normalizeMatchPool(pool);
   const qid = Number(queueId) || 0;
@@ -59,7 +265,7 @@ export function filterMatchEntriesByPool(entries, queueId, pool) {
   return list.filter((entry) => (Number(entry?.queueId) || 0) === qid);
 }
 
-export function recommendFetchConcurrency({ lastMs, lastConcurrency } = {}) {
+export function recommendFetchConcurrency({ lastMs, lastConcurrency }: FetchTimingInput = {}): number {
   const prev = normalizeFetchConcurrency(lastConcurrency);
   const ms = Number(lastMs) || 0;
   if (ms <= 0) return prev;
@@ -75,7 +281,7 @@ export function estimateRevealDurationMs({
   concurrency,
   lastMs,
   lastConcurrency,
-} = {}) {
+}: RevealDurationInput = {}): number {
   const next = normalizeFetchConcurrency(concurrency);
   const prev = normalizeFetchConcurrency(lastConcurrency);
   const ms = Number(lastMs) || 0;
@@ -84,13 +290,15 @@ export function estimateRevealDurationMs({
   }
   return Math.round(Math.ceil(5 / next) * 3500);
 }
-export function readAssignedPosition(player) {
+export function readAssignedPosition(
+  player: { assignedPosition?: string; position?: string } | null | undefined,
+): string {
   const raw = String(player?.assignedPosition ?? player?.position ?? '').trim().toUpperCase();
   if (!raw || raw === 'UNSELECTED') return '';
   return raw;
 }
 
-function playerIdentityKey(player) {
+function playerIdentityKey(player: IdentitySource | undefined): string {
   const puuid = String(player?.puuid || '').trim();
   if (puuid) return `p:${puuid}`;
   const summonerId = Number(player?.summonerId) || 0;
@@ -104,14 +312,17 @@ function playerIdentityKey(player) {
   return '';
 }
 
-export function remapSnapshotToSession(snapshot, session) {
+export function remapSnapshotToSession<R extends RemappableRow>(
+  snapshot: R[] | null | undefined,
+  session: RevealSession | null | undefined,
+): RemapResult<R> {
   if (!Array.isArray(snapshot) || !snapshot.length) {
     return { rows: snapshot || [], changed: false, ok: false };
   }
   const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
   if (!team.length) return { rows: snapshot, changed: false, ok: false };
 
-  const byIdentity = new Map();
+  const byIdentity = new Map<string, R>();
   for (const row of snapshot) {
     const key = playerIdentityKey(row);
     if (key) byIdentity.set(key, row);
@@ -119,7 +330,7 @@ export function remapSnapshotToSession(snapshot, session) {
 
   const localCellId = Number(session?.localPlayerCellId ?? -1);
   let changed = false;
-  const rows = [];
+  const rows: (R & { cellId: number })[] = [];
   for (let index = 0; index < team.length; index += 1) {
     const player = team[index];
     const cellId = Number(player?.cellId ?? index);
@@ -148,7 +359,7 @@ export function remapSnapshotToSession(snapshot, session) {
   return { rows, changed, ok: true };
 }
 
-export function readLobbyKey(session) {
+export function readLobbyKey(session: RevealSession | null | undefined): string {
   if (!session) return '';
   const gameId = session.gameId ?? session.gameData?.gameId;
   if (gameId != null && Number(gameId) !== 0) return `game:${gameId}`;
@@ -161,25 +372,25 @@ export function readLobbyKey(session) {
   return '';
 }
 
-export function matchHistoryRoute(puuid, sampleSize = TEAM_REVEAL_SAMPLE_SIZE) {
+export function matchHistoryRoute(puuid: string, sampleSize: number = TEAM_REVEAL_SAMPLE_SIZE): string {
   return `/lol-match-history/v1/products/lol/${puuid}/matches?begIndex=0&endIndex=${sampleSize}`;
 }
 
-export function rankedStatsRoute(puuid) {
+export function rankedStatsRoute(puuid: string): string {
   return `/lol-ranked/v1/ranked-stats/${puuid}`;
 }
 
-export function leagueLaddersRoute(puuid) {
+export function leagueLaddersRoute(puuid: string): string {
   return `/lol-ranked/v1/league-ladders/${puuid}`;
 }
 
-export function currentSeasonRoute() {
+export function currentSeasonRoute(): string {
   return '/lol-seasons/v1/season/product/LOL';
 }
 
-export function readCurrentSeasonId(payload) {
+export function readCurrentSeasonId(payload: SeasonPayload): number {
   if (!payload) return 0;
-  if (typeof payload.seasonId === 'number') return payload.seasonId;
+  if (!Array.isArray(payload) && typeof payload.seasonId === 'number') return payload.seasonId;
   const seasons = Array.isArray(payload)
     ? payload
     : payload.seasons || payload.currentSplitSeasons || payload.splitSeasons || [];
@@ -195,11 +406,15 @@ export function readCurrentSeasonId(payload) {
   return readNumber(sorted[0]?.id ?? sorted[0]?.seasonId);
 }
 
-function readGameSeasonId(game) {
+function readGameSeasonId(game: RawMatchGame | null | undefined): number {
   return readNumber(game?.seasonId ?? game?.gameSeasonId ?? game?.season?.id ?? game?.season?.seasonId);
 }
 
-export function formatWl(wins, losses, winRate) {
+export function formatWl(
+  wins: number | null | undefined,
+  losses: number | null | undefined,
+  winRate?: number | null,
+): string {
   const w = wins ?? 0;
   const l = losses ?? 0;
   const total = w + l;
@@ -207,15 +422,15 @@ export function formatWl(wins, losses, winRate) {
   return `${w}W/${l}L · ${rate}%`;
 }
 
-export function formatWlPair(wins, losses) {
+export function formatWlPair(wins: number | null | undefined, losses: number | null | undefined): string {
   return `${wins ?? 0}W/${losses ?? 0}L`;
 }
 
-export function readRankedQueueType(queueId) {
+export function readRankedQueueType(queueId: unknown): string {
   return RANKED_QUEUE_BY_ID[Number(queueId)] || '';
 }
 
-function readQueueId(session) {
+function readQueueId(session: RevealSession | null | undefined): number {
   const fromQueue = session?.gameData?.queue;
   // Nullish-coalesce to pick the first field that's actually present, then
   // convert once at the end. A `Number(x) || Number(y) || ...` chain would
@@ -225,11 +440,14 @@ function readQueueId(session) {
   return Number(raw) || 0;
 }
 
-function readGames(payload, puuid = '') {
+function readGames(payload: MatchHistoryPayload, puuid = ''): RawMatchGame[] {
   return normalizeMatchGames(payload, puuid);
 }
 
-export function seasonHistoryCount(rank, fallback = TEAM_REVEAL_SEASON_SAMPLE_SIZE) {
+export function seasonHistoryCount(
+  rank: { wins?: number; losses?: number } | null | undefined,
+  fallback: number = TEAM_REVEAL_SEASON_SAMPLE_SIZE,
+): number {
   const wins = rank?.wins || 0;
   const losses = rank?.losses || 0;
   const total = wins + losses;
@@ -240,11 +458,11 @@ export function seasonHistoryCount(rank, fallback = TEAM_REVEAL_SEASON_SAMPLE_SI
   return Math.min(Math.max(total, fallback), TEAM_REVEAL_SEASON_MAX);
 }
 
-function readGameQueueId(game) {
+function readGameQueueId(game: RawMatchGame | null | undefined): number {
   return Number(game?.queueId ?? game?.gameQueueConfigId ?? game?.queue?.id ?? 0) || 0;
 }
 
-function pickParticipant(game, puuid) {
+function pickParticipant(game: RawMatchGame | null | undefined, puuid: string): RawMatchParticipant | null {
   const participants = Array.isArray(game?.participants) ? game.participants : [];
   return (
     participants.find((p) => p?.puuid === puuid || p?.playerPuuid === puuid || p?.summoner?.puuid === puuid) ||
@@ -252,23 +470,29 @@ function pickParticipant(game, puuid) {
   );
 }
 
-function readWin(game, participant) {
-  const raw = participant?.stats?.win ?? participant?.win ?? game?.win;
+function readWin(
+  game: RawMatchGame | null | undefined,
+  participant: RawMatchParticipant | null | undefined,
+): boolean {
+  const raw: unknown = participant?.stats?.win ?? participant?.win ?? game?.win;
   if (raw === true || raw === 1) return true;
   if (raw === false || raw === 0) return false;
   if (typeof raw === 'string') return raw.toLowerCase() === 'win' || raw.toLowerCase() === 'true';
   return false;
 }
 
-function readNumber(value) {
+function readNumber(value: unknown): number {
   return Number(value) || 0;
 }
 
-function readChampionId(game, participant) {
+function readChampionId(
+  game: RawMatchGame | null | undefined,
+  participant: RawMatchParticipant | null | undefined,
+): number {
   return readNumber(participant?.championId ?? participant?.champion?.id ?? game?.championId);
 }
 
-function readTimestamp(game) {
+function readTimestamp(game: RawMatchGame | null | undefined): number {
   return (
     readNumber(game?.gameCreation) ||
     readNumber(game?.gameCreationDate) ||
@@ -278,22 +502,22 @@ function readTimestamp(game) {
   );
 }
 
-function round2(value) {
+function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function readCount(value) {
+function readCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-function rankEntryScore(entry) {
+function rankEntryScore(entry: RankedQueueEntry | null | undefined): number {
   if (!entry) return -1;
   return readCount(entry.losses) * 100 + readCount(entry.games);
 }
 
-function listRankedQueueEntries(payload) {
-  const out = [];
+function listRankedQueueEntries(payload: RankedStatsPayload | null | undefined): RankedQueueEntry[] {
+  const out: RankedQueueEntry[] = [];
   const queueMap = payload?.queueMap && typeof payload.queueMap === 'object' ? payload.queueMap : {};
   for (const [key, entry] of Object.entries(queueMap)) {
     if (!entry || typeof entry !== 'object') continue;
@@ -306,7 +530,10 @@ function listRankedQueueEntries(payload) {
   return out;
 }
 
-function pickQueueEntry(payload, queueType) {
+function pickQueueEntry(
+  payload: RankedStatsPayload | null | undefined,
+  queueType: string,
+): RankedQueueEntry | null {
   const matched = listRankedQueueEntries(payload).filter(
     (entry) => String(entry.queueType || '') === queueType,
   );
@@ -315,7 +542,7 @@ function pickQueueEntry(payload, queueType) {
   return matched[0];
 }
 
-function readQueueRank(entry) {
+function readQueueRank(entry: RankedQueueEntry | null | undefined): RankedQueueRank {
   if (!entry) {
     return {
       tier: '',
@@ -353,14 +580,14 @@ function readQueueRank(entry) {
   };
 }
 
-export function readRankedQueues(rankedPayload) {
+export function readRankedQueues(rankedPayload: RankedStatsPayload | null | undefined): RankedQueues {
   return {
     solo: readQueueRank(pickQueueEntry(rankedPayload, RANKED_SOLO)),
     flex: readQueueRank(pickQueueEntry(rankedPayload, RANKED_FLEX)),
   };
 }
 
-function emptyPlayerStats() {
+function emptyPlayerStats(): PlayerStats {
   return {
     wins: 0,
     losses: 0,
@@ -381,7 +608,7 @@ function emptyPlayerStats() {
   };
 }
 
-function emptyPickedChampionStats() {
+function emptyPickedChampionStats(): PickedChampionStats {
   return {
     pickedChampionId: 0,
     pickedGames: 0,
@@ -391,7 +618,7 @@ function emptyPickedChampionStats() {
   };
 }
 
-function emptySeasonMain() {
+function emptySeasonMain(): SeasonMainStats {
   return {
     seasonMostPlayedChampionId: 0,
     seasonMostPlayedCount: 0,
@@ -413,7 +640,19 @@ function makeRevealRow({
   seasonMain = emptySeasonMain(),
   season,
   matchesPending = false,
-}) {
+}: {
+  cellId: number;
+  puuid: string;
+  riotId: string;
+  isLocalPlayer: boolean;
+  rankedQueueType: string;
+  ranks: RankedQueues;
+  assignedPosition?: string;
+  stats?: PlayerStats;
+  seasonMain?: SeasonMainStats;
+  season: SeasonStats;
+  matchesPending?: boolean;
+}): TeamRevealRow {
   return {
     cellId,
     puuid,
@@ -430,12 +669,16 @@ function makeRevealRow({
   };
 }
 
-function yieldUi() {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+function yieldUi(): Promise<void> {
+  return new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
-async function mapPool(items, limit, mapper) {
-  const results = new Array(items.length);
+async function mapPool<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
   let next = 0;
   async function worker() {
     while (next < items.length) {
@@ -449,8 +692,8 @@ async function mapPool(items, limit, mapper) {
   return results;
 }
 
-function readSeasonStats(ranks, queueType) {
-  const empty = {
+function readSeasonStats(ranks: RankedQueues, queueType: string): SeasonStats {
+  const empty: SeasonStats = {
     seasonWins: 0,
     seasonLosses: 0,
     seasonWinRate: 0,
@@ -473,7 +716,10 @@ function readSeasonStats(ranks, queueType) {
   };
 }
 
-function resolveParticipantByIdentity(game, puuid) {
+function resolveParticipantByIdentity(
+  game: RawMatchGame | null | undefined,
+  puuid: string,
+): RawMatchParticipant | null {
   const identities = Array.isArray(game?.participantIdentities) ? game.participantIdentities : [];
   const participants = Array.isArray(game?.participants) ? game.participants : [];
   const identity = identities.find((entry) => {
@@ -485,12 +731,12 @@ function resolveParticipantByIdentity(game, puuid) {
   return participants.find((entry) => Number(entry?.participantId) === Number(identity.participantId)) || null;
 }
 
-function resolveParticipant(game, puuid) {
+function resolveParticipant(game: RawMatchGame, puuid: string): RawMatchParticipant | null {
   return pickParticipant(game, puuid) || resolveParticipantByIdentity(game, puuid);
 }
 
-function listParticipantEntries(games, puuid) {
-  const entries = [];
+function listParticipantEntries(games: RawMatchGame[], puuid: string): MatchEntry[] {
+  const entries: MatchEntry[] = [];
   for (const game of games) {
     const participant = resolveParticipant(game, puuid);
     if (!participant) continue;
@@ -503,7 +749,7 @@ function listParticipantEntries(games, puuid) {
   return entries;
 }
 
-function summarizeEntries(selected, now) {
+function summarizeEntries(selected: MatchEntry[], now: number): EntrySummary {
   let wins = 0;
   let losses = 0;
   let kills = 0;
@@ -511,7 +757,7 @@ function summarizeEntries(selected, now) {
   let assists = 0;
   let last12hWins = 0;
   let last12hLosses = 0;
-  const championCounts = new Map();
+  const championCounts = new Map<number, number>();
   const windowStart = now - LAST_12H_MS;
 
   for (const entry of selected) {
@@ -564,12 +810,12 @@ function summarizeEntries(selected, now) {
 }
 
 export function buildPickedChampionStats(
-  games,
-  puuid,
-  championId,
-  queueId,
-  pool = MATCH_POOL_RANKED_BOTH,
-) {
+  games: RawMatchGame[],
+  puuid: string,
+  championId: unknown,
+  queueId: unknown,
+  pool: string = MATCH_POOL_RANKED_BOTH,
+): PickedChampionStats {
   const empty = emptyPickedChampionStats();
   const id = readNumber(championId);
   if (!puuid || !id) return empty;
@@ -593,17 +839,17 @@ export function buildPickedChampionStats(
 }
 
 function buildPlayerStats(
-  games,
-  puuid,
-  queueId,
-  now,
+  games: RawMatchGame[],
+  puuid: string,
+  queueId: number,
+  now: number,
   {
     recentPool = MATCH_POOL_RANKED_BOTH,
     last5Pool = MATCH_POOL_CURRENT_QUEUE,
     sampleSize = TEAM_REVEAL_SAMPLE_SIZE,
     pickedChampionId = 0,
-  } = {},
-) {
+  }: PlayerStatsOptions = {},
+): PlayerStats {
   const entries = listParticipantEntries(games, puuid);
   const byRecent = filterMatchEntriesByPool(entries, queueId, recentPool).sort(
     (a, b) => readTimestamp(b.game) - readTimestamp(a.game),
@@ -620,7 +866,7 @@ function buildPlayerStats(
   };
 }
 
-function listRecentGames(entries, limit = TEAM_REVEAL_RECENT_GAMES) {
+function listRecentGames(entries: MatchEntry[], limit = TEAM_REVEAL_RECENT_GAMES): RecentGame[] {
   const ordered = [...entries].sort((a, b) => readTimestamp(b.game) - readTimestamp(a.game));
   return ordered.slice(0, limit).map((entry) => ({
     championId: readChampionId(entry.game, entry.participant),
@@ -631,7 +877,9 @@ function listRecentGames(entries, limit = TEAM_REVEAL_RECENT_GAMES) {
   }));
 }
 
-function pickMostPlayedChampion(championStats) {
+function pickMostPlayedChampion(
+  championStats: Map<number, { wins: number; losses: number }>,
+): { championId: number; games: number } {
   let championId = 0;
   let games = 0;
   for (const [id, stat] of championStats.entries()) {
@@ -644,8 +892,8 @@ function pickMostPlayedChampion(championStats) {
   return { championId, games };
 }
 
-function listScopedEntries(games, puuid, queueId) {
-  const entries = [];
+function listScopedEntries(games: RawMatchGame[], puuid: string, queueId: number): MatchEntry[] {
+  const entries: MatchEntry[] = [];
   for (const game of games) {
     const participant = resolveParticipant(game, puuid);
     if (!participant) continue;
@@ -659,8 +907,13 @@ function listScopedEntries(games, puuid, queueId) {
   return queueScoped.length > 0 ? queueScoped : entries;
 }
 
-export function buildSeasonChampionStats(games, puuid, queueId, seasonId) {
-  const empty = {
+export function buildSeasonChampionStats(
+  games: RawMatchGame[],
+  puuid: string,
+  queueId: number,
+  seasonId: number,
+): SeasonMainStats {
+  const empty: SeasonMainStats = {
     seasonMostPlayedChampionId: 0,
     seasonMostPlayedCount: 0,
     seasonMostPlayedWins: 0,
@@ -676,7 +929,7 @@ export function buildSeasonChampionStats(games, puuid, queueId, seasonId) {
       ? scoped.filter((entry) => readGameSeasonId(entry.game) === seasonId)
       : scoped;
   const selected = seasonScoped.length > 0 ? seasonScoped : scoped;
-  const championStats = new Map();
+  const championStats = new Map<number, { wins: number; losses: number }>();
 
   for (const entry of selected) {
     const championId = readChampionId(entry.game, entry.participant);
@@ -690,7 +943,7 @@ export function buildSeasonChampionStats(games, puuid, queueId, seasonId) {
   const { championId, games: gamesPlayed } = pickMostPlayedChampion(championStats);
   if (!championId) return empty;
 
-  const best = championStats.get(championId);
+  const best = championStats.get(championId)!;
   const wins = best.wins;
   const losses = best.losses;
   return {
@@ -702,7 +955,10 @@ export function buildSeasonChampionStats(games, puuid, queueId, seasonId) {
   };
 }
 
-async function resolveIdentity(player, lcu) {
+async function resolveIdentity(
+  player: RevealPlayer | undefined,
+  lcu: Pick<Lcu, 'get'>,
+): Promise<{ riotId: string; puuid: string }> {
   const direct = formatRiotId(player);
   if (direct && player?.puuid) return { riotId: direct, puuid: player.puuid };
 
@@ -712,7 +968,7 @@ async function resolveIdentity(player, lcu) {
 
   if (resolvedPuuid) {
     try {
-      const resolved = await lcu.get(SUMMONER_BY_PUUID_ROUTE(resolvedPuuid));
+      const resolved = await lcu.get<SummonerRecord>(SUMMONER_BY_PUUID_ROUTE(resolvedPuuid));
       return {
         riotId: formatRiotId(resolved),
         puuid: resolved?.puuid || resolvedPuuid,
@@ -724,7 +980,7 @@ async function resolveIdentity(player, lcu) {
 
   if (!player?.summonerId) return { riotId: '', puuid: '' };
   try {
-    const resolved = await lcu.get(SUMMONER_BY_ID_ROUTE(player.summonerId));
+    const resolved = await lcu.get<SummonerRecord>(SUMMONER_BY_ID_ROUTE(player.summonerId));
     return {
       riotId: formatRiotId(resolved),
       puuid: resolved?.puuid || '',
@@ -734,15 +990,15 @@ async function resolveIdentity(player, lcu) {
   }
 }
 
-async function getSafe(lcu, route) {
+async function getSafe<T>(lcu: Pick<Lcu, 'get'>, route: string): Promise<T | null> {
   try {
-    return await lcu.get(route);
+    return await lcu.get<T>(route);
   } catch {
     return null;
   }
 }
 
-function readPickedChampionId(player) {
+function readPickedChampionId(player: RevealPlayer | undefined): number {
   return (
     readNumber(player?.championId) ||
     readNumber(player?.selectedChampionId) ||
@@ -762,7 +1018,7 @@ export async function buildTeamRevealSnapshot({
   now = Date.now(),
   onProgress,
   signal,
-}) {
+}: TeamRevealSnapshotOptions): Promise<TeamRevealRow[]> {
   if (signal?.aborted) return [];
   const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
   const localCellId = Number(session?.localPlayerCellId ?? -1);
@@ -776,7 +1032,7 @@ export async function buildTeamRevealSnapshot({
     recentMode === MATCH_POOL_CURRENT_QUEUE && last5Mode === MATCH_POOL_CURRENT_QUEUE ? queueId : 0;
 
   const [seasonPayload, sgp] = await Promise.all([
-    getSafe(lcu, currentSeasonRoute()),
+    getSafe<SeasonPayload>(lcu, currentSeasonRoute()),
     createSgpContext(lcu),
   ]);
   const currentSeasonId = readCurrentSeasonId(seasonPayload);
@@ -787,10 +1043,10 @@ export async function buildTeamRevealSnapshot({
     const identity = await resolveIdentity(player, lcu);
     const puuid = identity.puuid;
     const riotId = identity.riotId;
-    let rankedPayload = null;
+    let rankedPayload: RankedStatsPayload | null = null;
     if (puuid) {
       try {
-        rankedPayload = await lcu.get(rankedStatsRoute(puuid));
+        rankedPayload = await lcu.get<RankedStatsPayload | null>(rankedStatsRoute(puuid));
       } catch {
       }
     }
@@ -820,12 +1076,12 @@ export async function buildTeamRevealSnapshot({
 
   const byCellPlayer = new Map(team.map((player) => [Number(player?.cellId), player]));
 
-  const rows = await mapPool(shells, concurrency, async (shell) => {
+  const rows = await mapPool(shells, concurrency, async (shell): Promise<TeamRevealRow> => {
     if (signal?.aborted) return shell;
     await yieldUi();
     if (signal?.aborted) return shell;
     const puuid = shell.puuid;
-    let games = [];
+    let games: RawMatchGame[] = [];
     const rankedForQueue = queueId === 440 ? shell.flexRank : shell.soloRank;
     const historyCount = Math.max(
       sample * (historyQueueId ? 1 : 3),
@@ -855,7 +1111,7 @@ export async function buildTeamRevealSnapshot({
       if (!games.length) {
         try {
           games = readGames(
-            await lcu.get(matchHistoryRoute(puuid, Math.min(historyCount, TEAM_REVEAL_NATIVE_HISTORY_MAX))),
+            await lcu.get<MatchHistoryPayload>(matchHistoryRoute(puuid, Math.min(historyCount, TEAM_REVEAL_NATIVE_HISTORY_MAX))),
             puuid,
           );
         } catch {
@@ -899,14 +1155,18 @@ export async function buildTeamRevealSnapshot({
   return rows;
 }
 
-export function refreshPickedChampionOnRows(rows, session, recentPool = MATCH_POOL_RANKED_BOTH) {
+export function refreshPickedChampionOnRows<R extends RefreshPickedRow>(
+  rows: R[] | null | undefined,
+  session: RevealSession | null | undefined,
+  recentPool: string = MATCH_POOL_RANKED_BOTH,
+): { rows: R[]; changed: boolean } {
   if (!Array.isArray(rows) || !rows.length) return { rows: rows || [], changed: false };
   const queueId = readQueueId(session);
   const recentMode = normalizeMatchPool(recentPool);
   const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
   const byCell = new Map(team.map((player) => [Number(player?.cellId), player]));
   let changed = false;
-  const next = rows.map((row) => {
+  const next = rows.map((row): R => {
     const player = byCell.get(Number(row.cellId));
     const pickedChampionId = readPickedChampionId(player);
     if (pickedChampionId === Number(row.pickedChampionId || 0)) return row;

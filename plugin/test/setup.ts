@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { afterEach } from 'vitest';
 
 if (typeof document !== 'undefined') {
@@ -14,10 +13,12 @@ if (typeof document !== 'undefined') {
 
 if (typeof window !== 'undefined' && !window.PointerEvent) {
   window.PointerEvent = class PointerEvent extends window.MouseEvent {
-    constructor(type, init = {}) {
+    pointerId: number;
+    pointerType: string;
+    constructor(type: string, init: PointerEventInit = {}) {
       super(type, init);
       this.pointerId = init.pointerId ?? 0;
       this.pointerType = init.pointerType ?? 'mouse';
     }
-  };
+  } as unknown as typeof window.PointerEvent;
 }

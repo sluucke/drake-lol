@@ -1,15 +1,117 @@
-// @ts-nocheck
+import type { HttpFetch } from './proxyFetch';
+
 const TAG = '[Drake]';
+
+export type OpggMode = 'ranked' | 'aram';
+
+export type OpggPosition = 'top' | 'jungle' | 'mid' | 'adc' | 'support' | 'none';
+
+export interface OpggOption {
+  value: string;
+  label: string;
+}
+
+export interface ChampionBuildQuery {
+  region?: string;
+  mode?: string;
+  championId?: number | string;
+  position?: string;
+  tier?: string;
+  version?: string | number;
+}
+
+export interface OpggRequestOptions {
+  fetchFn?: HttpFetch | null;
+  timeout?: number;
+}
+
+export interface OpggStatEntry {
+  ids?: (number | string)[];
+  play?: number;
+  win?: number;
+  pick_rate?: number;
+}
+
+export interface OpggAverageStats {
+  win_rate?: number;
+  pick_rate?: number;
+  ban_rate?: number;
+  kda?: number;
+  play?: number;
+  tier?: number;
+  rank?: number;
+}
+
+export interface OpggSummary {
+  average_stats?: OpggAverageStats | null;
+}
+
+export interface OpggRuneBuild {
+  primary_rune_ids?: number[];
+  secondary_rune_ids?: number[];
+  stat_mod_ids?: number[];
+  play?: number;
+  win?: number;
+  pick_rate?: number;
+}
+
+export interface OpggRunePage {
+  primary_page_id?: number;
+  secondary_page_id?: number;
+  pick_rate?: number;
+  builds?: OpggRuneBuild[];
+}
+
+export interface OpggSkillBuild {
+  order?: string[];
+  play?: number;
+  win?: number;
+  pick_rate?: number;
+}
+
+export interface OpggSkillMastery {
+  ids?: string[];
+  builds?: OpggSkillBuild[];
+  play?: number;
+  win?: number;
+}
+
+export interface OpggCounter {
+  champion_id?: number;
+  play?: number;
+  win?: number;
+}
+
+export interface OpggChampionData {
+  summary?: OpggSummary | null;
+  starter_items?: OpggStatEntry[];
+  boots?: OpggStatEntry[];
+  core_items?: OpggStatEntry[];
+  last_items?: OpggStatEntry[];
+  summoner_spells?: OpggStatEntry[];
+  rune_pages?: OpggRunePage[];
+  skill_masteries?: OpggSkillMastery[];
+  counters?: OpggCounter[];
+}
+
+export interface OpggChampionResponse {
+  data?: OpggChampionData | null;
+  meta?: { version?: string; cached_at?: string } | null;
+}
+
+interface OpggVersionsResponse {
+  data?: string[];
+}
 
 export const OPGG_BASE = 'https://lol-api-champion.op.gg';
 
 export const DEFAULT_TIER = 'emerald_plus';
 export const DEFAULT_REGION = 'global';
-export const DEFAULT_MODE = 'ranked';
+export const DEFAULT_MODE: OpggMode = 'ranked';
 
-export const OPGG_MODES = ['ranked', 'aram'];
+export const OPGG_MODES: readonly string[] = ['ranked', 'aram'];
 
-export const OPGG_TIERS = [
+export const OPGG_TIERS: OpggOption[] = [
   { value: 'all', label: 'All Ranks' },
   { value: 'ibsg', label: 'Iron–Silver' },
   { value: 'gold_plus', label: 'Gold+' },
@@ -21,7 +123,7 @@ export const OPGG_TIERS = [
   { value: 'challenger', label: 'Challenger' },
 ];
 
-export const OPGG_REGIONS = [
+export const OPGG_REGIONS: OpggOption[] = [
   { value: 'global', label: 'Global' },
   { value: 'br', label: 'BR' },
   { value: 'na', label: 'NA' },
@@ -37,7 +139,7 @@ export const OPGG_REGIONS = [
   { value: 'vn', label: 'VN' },
 ];
 
-const POSITION_MAP = {
+const POSITION_MAP: Record<string, OpggPosition> = {
   TOP: 'top',
   JUNGLE: 'jungle',
   JG: 'jungle',
@@ -52,27 +154,27 @@ const POSITION_MAP = {
   SUP: 'support',
 };
 
-export function normalizeOpggPosition(lane) {
+export function normalizeOpggPosition(lane: string | null | undefined): OpggPosition {
   const key = String(lane || '').trim().toUpperCase();
   return POSITION_MAP[key] || 'none';
 }
 
-function normalizeMode(mode) {
+function normalizeMode(mode: string | null | undefined): string {
   const value = String(mode || DEFAULT_MODE).trim().toLowerCase();
   return OPGG_MODES.includes(value) ? value : DEFAULT_MODE;
 }
 
-function normalizeRegion(region) {
+function normalizeRegion(region: string | null | undefined): string {
   const value = String(region || DEFAULT_REGION).trim().toLowerCase();
   return OPGG_REGIONS.some((r) => r.value === value) ? value : DEFAULT_REGION;
 }
 
-function normalizeTier(tier) {
+function normalizeTier(tier: string | null | undefined): string {
   const value = String(tier || DEFAULT_TIER).trim().toLowerCase();
   return OPGG_TIERS.some((t) => t.value === value) ? value : DEFAULT_TIER;
 }
 
-export function buildChampionUrl({ region, mode, championId, position, tier, version } = {}) {
+export function buildChampionUrl({ region, mode, championId, position, tier, version }: ChampionBuildQuery = {}): string {
   const reg = normalizeRegion(region);
   const gameMode = normalizeMode(mode);
   const pos = gameMode === 'aram' ? 'none' : normalizeOpggPosition(position);
@@ -85,11 +187,14 @@ export function buildChampionUrl({ region, mode, championId, position, tier, ver
   return `${OPGG_BASE}/api/${reg}/champions/${gameMode}/${id}/${pos}?${params.toString()}`;
 }
 
-export function buildVersionsUrl({ region, mode } = {}) {
+export function buildVersionsUrl({ region, mode }: Pick<ChampionBuildQuery, 'region' | 'mode'> = {}): string {
   return `${OPGG_BASE}/api/${normalizeRegion(region)}/champions/${normalizeMode(mode)}/versions`;
 }
 
-async function requestJson(url, { fetchFn, timeout }) {
+async function requestJson<T>(
+  url: string,
+  { fetchFn, timeout }: { fetchFn: HttpFetch | null | undefined; timeout: number },
+): Promise<T | null> {
   if (typeof fetchFn !== 'function') return null;
 
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -105,20 +210,26 @@ async function requestJson(url, { fetchFn, timeout }) {
       console.warn(TAG, `OP.GG API returned ${res?.status} for ${url}`);
       return null;
     }
-    return await res.json();
+    return (await res.json()) as T;
   } catch (err) {
-    console.warn(TAG, 'OP.GG API error:', err?.message || err);
+    console.warn(TAG, 'OP.GG API error:', (err as Error | null)?.message || err);
     return null;
   } finally {
     if (timer) clearTimeout(timer);
   }
 }
 
-export async function fetchChampionBuild(options = {}, { fetchFn = globalThis.fetch, timeout = 8000 } = {}) {
-  return requestJson(buildChampionUrl(options), { fetchFn, timeout });
+export async function fetchChampionBuild(
+  options: ChampionBuildQuery = {},
+  { fetchFn = globalThis.fetch, timeout = 8000 }: OpggRequestOptions = {},
+): Promise<OpggChampionResponse | null> {
+  return requestJson<OpggChampionResponse>(buildChampionUrl(options), { fetchFn, timeout });
 }
 
-export async function fetchVersions(options = {}, { fetchFn = globalThis.fetch, timeout = 8000 } = {}) {
-  const json = await requestJson(buildVersionsUrl(options), { fetchFn, timeout });
+export async function fetchVersions(
+  options: Pick<ChampionBuildQuery, 'region' | 'mode'> = {},
+  { fetchFn = globalThis.fetch, timeout = 8000 }: OpggRequestOptions = {},
+): Promise<string[]> {
+  const json = await requestJson<OpggVersionsResponse>(buildVersionsUrl(options), { fetchFn, timeout });
   return Array.isArray(json?.data) ? json.data : [];
 }

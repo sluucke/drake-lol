@@ -1,8 +1,7 @@
-// @ts-nocheck
 import { useEffect } from 'react';
 import { useDrakeStore } from '../store/StoreContext';
 
-export function useEscapeLayer(active) {
+export function useEscapeLayer(active: boolean) {
   const store = useDrakeStore();
   useEffect(() => {
     if (!active) return undefined;

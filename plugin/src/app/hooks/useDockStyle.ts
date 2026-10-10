@@ -1,8 +1,12 @@
-// @ts-nocheck
 import { useEffect, useState } from 'react';
 import { dockStyle, findAnchor, layoutKey, watchAnchor } from '../../ui/dodgeDock';
 
-export function useDockStyle(active, { doc = document, win = window } = {}) {
+export interface DomScope {
+  doc?: Document;
+  win?: Window;
+}
+
+export function useDockStyle(active: boolean, { doc = document, win = window }: DomScope = {}) {
   const [style, setStyle] = useState(() => dockStyle(null, win));
 
   useEffect(() => {

@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SFX } from '../../ui/sfx';
 import { useSfx } from '../hooks/useSfx';
@@ -7,16 +7,31 @@ import { useEscapeLayer } from '../hooks/useEscapeLayer';
 import { Layer } from './Layer';
 import { DURATION, EASE_OUT } from './motion';
 
-function same(a, b) {
+export interface SelectOption<V extends string | number = string> {
+  value: V;
+  label: ReactNode;
+  icon?: string;
+}
+
+export interface SelectProps<V extends string | number = string> {
+  value: V;
+  options: readonly SelectOption<V>[];
+  onChange?: (value: V) => void;
+  disabled?: boolean;
+  ariaLabel?: string;
+  className?: string;
+}
+
+function same(a: unknown, b: unknown) {
   return String(a) === String(b);
 }
 
-export function Select({ value, options, onChange, disabled = false, ariaLabel, className = '' }) {
+export function Select<V extends string | number = string>({ value, options, onChange, disabled = false, ariaLabel, className = '' }: SelectProps<V>) {
   const sfx = useSfx();
   const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState(null);
-  const triggerRef = useRef(null);
-  const listRef = useRef(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const listId = useId();
   const selected = options.find((o) => same(o.value, value)) || options[0] || null;
   useEscapeLayer(open);
@@ -30,12 +45,12 @@ export function Select({ value, options, onChange, disabled = false, ariaLabel, 
     const doc = triggerRef.current?.ownerDocument;
     const win = doc?.defaultView;
     if (!doc || !win) return undefined;
-    const onPointerDown = (event) => {
-      const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
+    const onPointerDown = (event: Event) => {
+      const path: (EventTarget | null)[] = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
       if (path.includes(triggerRef.current) || path.includes(listRef.current)) return;
       setOpen(false);
     };
-    const onKeyDown = (event) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.stopPropagation();
       setOpen(false);
@@ -48,13 +63,13 @@ export function Select({ value, options, onChange, disabled = false, ariaLabel, 
     };
   }, [open]);
 
-  const pick = (option) => {
+  const pick = (option: SelectOption<V>) => {
     sfx.play(SFX.check);
     setOpen(false);
     if (!same(option.value, selected?.value)) onChange?.(option.value);
   };
 
-  const listStyle = rect
+  const listStyle: CSSProperties | undefined = rect
     ? { position: 'fixed', top: rect.bottom + 4, left: rect.left, minWidth: rect.width }
     : undefined;
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import {
   formatMcpChampionName,
@@ -16,7 +15,7 @@ const MATCHES_TEXT =
   'Participant(Summoner(1,"a"),157,"MID","x","y",[3153,6673,3031,3006],[4,14],' +
   'Rune(8000,8008,8400),[1,2],Stats(1,2,3,"WIN"';
 
-function jsonRpc(text) {
+function jsonRpc(text: string) {
   return {
     ok: true,
     status: 200,

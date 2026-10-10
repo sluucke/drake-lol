@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { makeSummonerIdLoader, CURRENT_SUMMONER_ROUTE } from '../src/features/summonerId';
 

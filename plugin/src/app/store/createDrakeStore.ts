@@ -1,17 +1,27 @@
-// @ts-nocheck
 import { createStore } from 'zustand/vanilla';
+import type { SettingsValues } from '../../settings';
 import { createSettingsSlice } from './settingsSlice';
+import type { SettingsClient } from './settingsSlice';
 import { createSessionSlice } from './sessionSlice';
 import { createUiSlice } from './uiSlice';
 import { createTeamRevealSlice } from './teamRevealSlice';
 import { createBuildSlice } from './buildSlice';
 import { createChampSelectSlice } from './champSelectSlice';
+import type { DrakeState, DrakeStore } from './types';
 
-function defined(fields) {
-  return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
+export type { DrakeState, DrakeStore } from './types';
+
+export interface CreateDrakeStoreOptions {
+  settings?: SettingsValues;
+  appVersion?: string;
+  settingsClient?: SettingsClient | null;
 }
 
-export function createDrakeStore({ settings = {}, appVersion = '0.0.0', settingsClient = null } = {}) {
+function defined<T extends object>(fields: T): Partial<T> {
+  return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
+export function createDrakeStore({ settings = {}, appVersion = '0.0.0', settingsClient = null }: CreateDrakeStoreOptions = {}): DrakeStore {
   const settingsSlice = createSettingsSlice({ settings, settingsClient });
   const sessionSlice = createSessionSlice({ appVersion });
   const uiSlice = createUiSlice();
@@ -19,7 +29,7 @@ export function createDrakeStore({ settings = {}, appVersion = '0.0.0', settings
   const buildSlice = createBuildSlice();
   const champSelectSlice = createChampSelectSlice();
 
-  return createStore((set, get) => ({
+  return createStore<DrakeState>((set, get) => ({
     ...settingsSlice(set, get),
     ...sessionSlice(set, get),
     ...uiSlice(set, get),

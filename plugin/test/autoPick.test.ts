@@ -1,11 +1,12 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { decideAction, startChampSelectAutomation } from '../src/features/autoPick';
 import { SESSION_ROUTE } from '../src/features/champSelect';
 import { GAMEFLOW_PHASE_ROUTE } from '../src/features/dodge';
 import { autoPickOrder, emptyAutoPickByRole, toggleAutoPickChampion } from '../src/features/autoPickRoles';
+import type { ChampSelectAction, ChampSelectSession } from '../src/features/champSelect';
+import type { SettingsValues } from '../src/settings';
 
-const act = (over = {}) => ({
+const act = (over: Partial<ChampSelectAction> = {}): ChampSelectAction => ({
   id: 1,
   actorCellId: 0,
   championId: 0,
@@ -15,21 +16,21 @@ const act = (over = {}) => ({
   ...over,
 });
 
-const session = (actions, extra = {}) => ({
+const session = (actions: ChampSelectAction[], extra: Partial<ChampSelectSession> = {}): ChampSelectSession => ({
   localPlayerCellId: 0,
   actions: [actions],
   myTeam: [{ cellId: 0, assignedPosition: 'MIDDLE' }],
   ...extra,
 });
 
-const rolePicks = (over = {}) => ({ ...emptyAutoPickByRole(), ...over });
+const rolePicks = (over: Partial<Record<string, number[]>> = {}) => ({ ...emptyAutoPickByRole(), ...over });
 
-const mid = (...ids) => ({
+const mid = (...ids: number[]) => ({
   auto_pick: true,
   auto_pick_by_role: rolePicks({ MIDDLE: ids }),
 });
 
-const settings = (over = {}) => ({
+const settings = (over: SettingsValues = {}): SettingsValues => ({
   auto_pick: false,
   auto_pick_by_role: rolePicks(),
   insta_lock: false,
@@ -53,7 +54,7 @@ describe('decideAction', () => {
       session([act({ id: 5 })]),
       settings({ ...mid(103), insta_lock: true }),
     );
-    expect(d.completed).toBe(true);
+    expect(d?.completed).toBe(true);
   });
 
   it('does not try to ban during planning, since nothing completes there', () => {
@@ -89,7 +90,7 @@ describe('decideAction', () => {
       session([act({ id: 5, isInProgress: true })], { timer: { phase: 'BAN_PICK' } }),
       settings({ ...mid(103), insta_lock: true }),
     );
-    expect(d.completed).toBe(true);
+    expect(d?.completed).toBe(true);
   });
 
   it('always completes a ban, because a hovered ban bans nothing', () => {
@@ -109,7 +110,7 @@ describe('decideAction', () => {
         auto_ban_champion_id: 55,
       }),
     );
-    expect(d.kind).toBe('ban');
+    expect(d?.kind).toBe('ban');
   });
 
   it('ignores a feature with no champion chosen for the assigned role', () => {
@@ -142,7 +143,7 @@ describe('decideAction', () => {
         auto_pick_by_role: rolePicks({ TOP: [64], MIDDLE: [103] }),
       }),
     );
-    expect(d.championId).toBe(64);
+    expect(d?.championId).toBe(64);
   });
 
   it('does nothing when the action belongs to someone else', () => {
@@ -156,7 +157,7 @@ describe('decideAction', () => {
       session([act({ id: 5 })], { bans: { myTeamBans: [103], theirTeamBans: [] } }),
       settings(mid(103, 64)),
     );
-    expect(d.championId).toBe(64);
+    expect(d?.championId).toBe(64);
   });
 
   it('falls back when a teammate already locked the first champion', () => {
@@ -167,12 +168,12 @@ describe('decideAction', () => {
       ]),
       settings(mid(103, 64)),
     );
-    expect(d.championId).toBe(64);
+    expect(d?.championId).toBe(64);
   });
 
   it('keeps the first pick when it is still available', () => {
     const d = decideAction(session([act({ id: 5 })]), settings(mid(103, 64)));
-    expect(d.championId).toBe(103);
+    expect(d?.championId).toBe(103);
   });
 
   it('does nothing when both picks are unavailable', () => {
@@ -204,19 +205,19 @@ describe('decideAction', () => {
 
 describe('startChampSelectAutomation', () => {
   function makeSubscribe() {
-    const handlers = new Map();
-    const subscribe = (route, fn) => {
+    const handlers = new Map<string, (payload: unknown) => void>();
+    const subscribe = (route: string, fn: (payload: unknown) => void) => {
       handlers.set(route, fn);
       return () => handlers.delete(route);
     };
     return {
       subscribe,
-      enterChampSelect: () => handlers.get(GAMEFLOW_PHASE_ROUTE)('ChampSelect'),
-      fireSession: (session) => handlers.get(SESSION_ROUTE)?.(session),
+      enterChampSelect: () => handlers.get(GAMEFLOW_PHASE_ROUTE)!('ChampSelect'),
+      fireSession: (session: unknown) => handlers.get(SESSION_ROUTE)?.(session),
     };
   }
 
-  function harness(over = {}) {
+  function harness(over: SettingsValues = {}) {
     const commit = vi.fn().mockResolvedValue({ ok: true });
     const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
     const stop = startChampSelectAutomation({
@@ -229,8 +230,8 @@ describe('startChampSelectAutomation', () => {
   }
 
   it('does not subscribe to session while gameflow is not ChampSelect', () => {
-    const routes = [];
-    const subscribe = vi.fn((route, fn) => {
+    const routes: string[] = [];
+    const subscribe = vi.fn((route: string, _fn: (payload: unknown) => void) => {
       routes.push(route);
       return () => {};
     });
@@ -243,9 +244,9 @@ describe('startChampSelectAutomation', () => {
   });
 
   it('arms session polling only after entering ChampSelect', () => {
-    const handlers = new Map();
-    const routes = [];
-    const subscribe = (route, fn) => {
+    const handlers = new Map<string, (payload: unknown) => void>();
+    const routes: string[] = [];
+    const subscribe = (route: string, fn: (payload: unknown) => void) => {
       routes.push(route);
       handlers.set(route, fn);
       return () => handlers.delete(route);
@@ -256,11 +257,11 @@ describe('startChampSelectAutomation', () => {
       subscribe,
     });
     expect(routes).toEqual([GAMEFLOW_PHASE_ROUTE]);
-    handlers.get(GAMEFLOW_PHASE_ROUTE)('Lobby');
+    handlers.get(GAMEFLOW_PHASE_ROUTE)!('Lobby');
     expect(routes).toEqual([GAMEFLOW_PHASE_ROUTE]);
-    handlers.get(GAMEFLOW_PHASE_ROUTE)('ChampSelect');
+    handlers.get(GAMEFLOW_PHASE_ROUTE)!('ChampSelect');
     expect(routes).toEqual([GAMEFLOW_PHASE_ROUTE, SESSION_ROUTE]);
-    handlers.get(GAMEFLOW_PHASE_ROUTE)('Lobby');
+    handlers.get(GAMEFLOW_PHASE_ROUTE)!('Lobby');
     expect(routes).toEqual([GAMEFLOW_PHASE_ROUTE, SESSION_ROUTE]);
   });
 
@@ -323,7 +324,7 @@ describe('startChampSelectAutomation', () => {
     let current = settings({ ...mid(103), insta_lock: false });
     const commit = vi.fn().mockResolvedValue({ ok: true });
     const { subscribe, enterChampSelect, fireSession } = makeSubscribe();
-    const ctl = startChampSelectAutomation({
+    startChampSelectAutomation({
       getSettings: () => current,
       champSelect: { commit },
       subscribe,

@@ -1,4 +1,5 @@
-// @ts-nocheck
+import type { SettingsValues } from '../settings';
+import type { Unsubscribe } from '../subscribe';
 import {
   findMyAction,
   findMyQueuedAction,
@@ -7,19 +8,52 @@ import {
   SESSION_ROUTE,
   unavailableChampionIds,
 } from './champSelect';
+import type { ChampSelect, ChampSelectSession, CommitResult } from './champSelect';
 import { GAMEFLOW_PHASE_ROUTE } from './dodge';
 import { isChampSelectPhase, readGameflowPhase } from './inGameIdle';
 import { autoPickOrder, localPlayerPickRole } from './autoPickRoles';
 
 export const CHAMP_SELECT_POLL_MS = 500;
 
-function pickCandidates(session, settings) {
+export interface AutoPickDecision {
+  actionId: number;
+  championId: number;
+  completed: boolean;
+  kind: 'ban' | 'pick';
+}
+
+export interface ObservedAction {
+  actionId: number;
+  championId: number;
+  completed: boolean;
+  phase: string;
+}
+
+type TimerHandle = ReturnType<typeof setTimeout>;
+
+export interface ChampSelectAutomationOptions {
+  getSettings: () => SettingsValues;
+  champSelect: Pick<ChampSelect, 'commit'>;
+  subscribe: (route: string, handler: (payload: unknown) => void) => Unsubscribe;
+  onResult?: (decision: AutoPickDecision, result: CommitResult, observed: ObservedAction) => void;
+  onSession?: (session: ChampSelectSession | null) => void;
+  getSession?: () => Promise<unknown>;
+  setTimeoutImpl?: (handler: () => void, ms: number) => TimerHandle;
+  clearTimeoutImpl?: (id: TimerHandle) => void;
+}
+
+export interface ChampSelectAutomation {
+  refresh(): void;
+  stop(): void;
+}
+
+function pickCandidates(session: ChampSelectSession, settings: SettingsValues): number[] {
   const role = localPlayerPickRole(session);
   if (!role) return [];
   return autoPickOrder(settings, role);
 }
 
-function choosePickChampion(session, settings, skipped) {
+function choosePickChampion(session: ChampSelectSession, settings: SettingsValues, skipped: Set<number>): number {
   const taken = unavailableChampionIds(session);
   for (const id of pickCandidates(session, settings)) {
     if (taken.has(id) || skipped.has(id)) continue;
@@ -28,7 +62,11 @@ function choosePickChampion(session, settings, skipped) {
   return 0;
 }
 
-export function decideAction(session, settings, skipped = new Set()) {
+export function decideAction(
+  session: ChampSelectSession,
+  settings: SettingsValues,
+  skipped: Set<number> = new Set(),
+): AutoPickDecision | null {
   const planning = isPlanningPhase(session);
   const ban = findMyAction(session, 'ban');
   const banTarget = settings.auto_ban_champion_id;
@@ -59,7 +97,7 @@ export function decideAction(session, settings, skipped = new Set()) {
   return null;
 }
 
-function decisionKey(decision) {
+function decisionKey(decision: AutoPickDecision): string {
   return `${decision.kind}:${decision.actionId}:${decision.championId}:${decision.completed ? 'lock' : 'hover'}`;
 }
 
@@ -72,18 +110,18 @@ export function startChampSelectAutomation({
   getSession,
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
-}) {
-  let pending = null;
+}: ChampSelectAutomationOptions): ChampSelectAutomation {
+  let pending: string | null = null;
   let echoed = false;
-  let lastSession = null;
-  let skipped = new Set();
-  let pollId = 0;
+  let lastSession: ChampSelectSession | null = null;
+  let skipped = new Set<number>();
+  let pollId: TimerHandle | 0 = 0;
   let applying = false;
   let inChampSelect = false;
-  let stopPhase = null;
-  let stopSession = null;
+  let stopPhase: Unsubscribe | null = null;
+  let stopSession: Unsubscribe | null = null;
 
-  function armSession(active) {
+  function armSession(active: boolean) {
     if (active === inChampSelect) return;
     inChampSelect = active;
     if (active) {
@@ -119,7 +157,7 @@ export function startChampSelectAutomation({
     }, CHAMP_SELECT_POLL_MS);
   }
 
-  const apply = async (rawSession) => {
+  const apply = async (rawSession: unknown): Promise<void> => {
     const session = isChampSelectSession(rawSession) ? rawSession : null;
     lastSession = session;
     if (onSession) onSession(session);
@@ -190,7 +228,7 @@ export function startChampSelectAutomation({
           decision.kind,
         );
 
-        const observed = {
+        const observed: ObservedAction = {
           actionId: mine.id,
           championId: mine.championId,
           completed: !!mine.completed,
@@ -207,7 +245,7 @@ export function startChampSelectAutomation({
         if (onResult) onResult(decision, result, observed);
 
         if (decision.kind === 'ban') {
-          if (!result.retry) skipped = new Set(skipped).add(decision.championId);
+          if (!result.retry) skipped = new Set<number>(skipped).add(decision.championId);
           schedulePoll();
           return;
         }

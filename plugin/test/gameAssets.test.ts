@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { Lcu } from '../src/lcu';
 import {
   ITEMS_ROUTE,
   SUMMONER_SPELLS_ROUTE,
@@ -23,12 +23,12 @@ const SPELLS = [
 
 function makeLcu({ items = ITEMS, spells = SPELLS } = {}) {
   return {
-    get: vi.fn(async (route) => {
+    get: vi.fn(async (route: string) => {
       if (route === ITEMS_ROUTE) return items;
       if (route === SUMMONER_SPELLS_ROUTE) return spells;
       throw new Error(`unexpected route ${route}`);
     }),
-  };
+  } as unknown as Pick<Lcu, 'get'>;
 }
 
 beforeEach(() => {

@@ -1,22 +1,42 @@
-// @ts-nocheck
 import { GAMEFLOW_PHASE_ROUTE } from './features/dodge';
 import { isReadyCheckPhase, readGameflowPhase } from './features/inGameIdle';
+
+import type { Lcu } from './lcu';
+import type { SubscribeFn, Unsubscribe } from './subscribe';
+
+export interface ReadyCheckPayload {
+  state?: string;
+  playerResponse?: string;
+  timer?: number;
+}
+
+export type TimerHandle = ReturnType<typeof setTimeout>;
+
+export interface AutoAcceptOptions {
+  enabled: boolean;
+  delayMs?: number;
+  lcu: Pick<Lcu, 'post'>;
+  subscribe: SubscribeFn;
+  setTimeoutImpl?: (fn: () => void, ms: number) => TimerHandle;
+  clearTimeoutImpl?: (id: TimerHandle) => void;
+  onState?: ((payload: ReadyCheckPayload | null) => void) | null;
+}
 
 export const ACCEPT_ROUTE = '/lol-matchmaking/v1/ready-check/accept';
 export const DECLINE_ROUTE = '/lol-matchmaking/v1/ready-check/decline';
 export const CANCEL_SEARCH_ROUTE = '/lol-lobby/v2/lobby/matchmaking/search';
 
-export function shouldAccept(payload) {
+export function shouldAccept(payload: ReadyCheckPayload | null | undefined): boolean {
   if (!payload) return false;
   return payload.state === 'InProgress' && payload.playerResponse === 'None';
 }
 
-export function canCancel(payload) {
+export function canCancel(payload: ReadyCheckPayload | null | undefined): boolean {
   if (!payload) return false;
   return payload.state === 'InProgress' && payload.playerResponse === 'Accepted';
 }
 
-export async function cancelQueue(lcu) {
+export async function cancelQueue(lcu: Pick<Lcu, 'post' | 'delete'>): Promise<void> {
   try {
     await lcu.post(DECLINE_ROUTE);
   } catch {}
@@ -31,11 +51,11 @@ export function startAutoAccept({
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
   onState,
-}) {
+}: AutoAcceptOptions): Unsubscribe {
   if (!enabled && !onState) return () => {};
 
-  let pending = null;
-  let unsubscribeReadyCheck = null;
+  let pending: TimerHandle | null = null;
+  let unsubscribeReadyCheck: Unsubscribe | null = null;
 
   const cancelPending = () => {
     if (pending !== null) {
@@ -54,7 +74,7 @@ export function startAutoAccept({
 
   const startReadyCheck = () => {
     if (unsubscribeReadyCheck) return;
-    unsubscribeReadyCheck = subscribe('/lol-matchmaking/v1/ready-check', async (payload) => {
+    unsubscribeReadyCheck = subscribe<ReadyCheckPayload>('/lol-matchmaking/v1/ready-check', async (payload) => {
       if (onState) onState(payload);
 
       if (!shouldAccept(payload)) {

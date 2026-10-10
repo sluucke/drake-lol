@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { makeRestartUx, RESTART_UX_ROUTE } from '../src/features/restartUx';
 

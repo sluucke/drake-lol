@@ -1,5 +1,19 @@
-// @ts-nocheck
+import type { Lcu } from '../lcu';
 import { CHAT_ME, readLol } from './presence';
+import type { ActionResult, ChatMeResponse } from './presence';
+
+export interface ChallengePayload {
+  lol?: ChallengePayload | string | null;
+  challengeTokensSelected?: string;
+  preferences?: { challengeIds?: unknown } | null;
+  playerPreferences?: { challengeIds?: unknown } | null;
+  challengeIds?: unknown;
+}
+
+export interface Challenges {
+  removeBadges(): Promise<ActionResult>;
+  cloneFirstBadge(): Promise<ActionResult>;
+}
 
 export const CHALLENGE_PREFS_ROUTE = '/lol-challenges/v1/update-player-preferences';
 export const CHALLENGE_CLIENT_STATE_ROUTE = '/lol-challenges/v1/client-state';
@@ -7,7 +21,7 @@ export const CHALLENGE_SUMMARY_ROUTE = '/lol-challenges/v1/summary-player-data/l
 
 const READ_ROUTES = [CHALLENGE_CLIENT_STATE_ROUTE, CHAT_ME, CHALLENGE_SUMMARY_ROUTE];
 
-export function readChallengeIdSlots(payload) {
+export function readChallengeIdSlots(payload: ChallengePayload | null | undefined): number[] {
   if (!payload) return [];
 
   const lol = payload?.lol ?? (payload?.challengeTokensSelected !== undefined ? payload : null);
@@ -30,21 +44,21 @@ export function readChallengeIdSlots(payload) {
   });
 }
 
-export function readFirstSlotChallengeId(payload) {
+export function readFirstSlotChallengeId(payload: ChallengePayload | null | undefined): number {
   const first = readChallengeIdSlots(payload)[0];
   return first > 0 ? first : 0;
 }
 
-export function readEquippedChallengeIds(payload) {
+export function readEquippedChallengeIds(payload: ChallengePayload | null | undefined): number[] {
   return readChallengeIdSlots(payload).filter((id) => id > 0);
 }
 
-function accepted(res) {
+function accepted(res: Response | null | undefined): boolean {
   return !res || res.ok !== false;
 }
 
-export function makeChallenges({ lcu }) {
-  async function writeIds(ids) {
+export function makeChallenges({ lcu }: { lcu: Pick<Lcu, 'get' | 'post'> }): Challenges {
+  async function writeIds(ids: number[]): Promise<ActionResult> {
     try {
       const res = await lcu.post(CHALLENGE_PREFS_ROUTE, { challengeIds: ids });
       if (!accepted(res)) {
@@ -52,15 +66,16 @@ export function makeChallenges({ lcu }) {
       }
       return { ok: true };
     } catch (e) {
-      return { ok: false, reason: `could not reach the client (${e.message})` };
+      return { ok: false, reason: `could not reach the client (${(e as Error).message})` };
     }
   }
 
-  async function readFirstBadgeId() {
+  async function readFirstBadgeId(): Promise<number> {
     for (const route of READ_ROUTES) {
       try {
-        const raw = await lcu.get(route);
-        const payload = route === CHAT_ME ? readLol(raw) : raw;
+        const raw = await lcu.get<unknown>(route);
+        const payload: ChallengePayload | null =
+          route === CHAT_ME ? readLol(raw as ChatMeResponse | null) : (raw as ChallengePayload | null);
         const first = readFirstSlotChallengeId(payload);
         if (first) return first;
       } catch {
@@ -80,7 +95,7 @@ export function makeChallenges({ lcu }) {
         if (!first) return { ok: false, reason: 'no badge equipped in the first slot' };
         return writeIds([first, first, first]);
       } catch (e) {
-        return { ok: false, reason: `could not read your badges (${e.message})` };
+        return { ok: false, reason: `could not read your badges (${(e as Error).message})` };
       }
     },
   };

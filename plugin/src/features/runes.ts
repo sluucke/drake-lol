@@ -1,13 +1,60 @@
-// @ts-nocheck
+import type { Lcu } from '../lcu';
 import { gameDataUrl } from './assetUrl';
 const TAG = '[Drake]';
+
+export interface RuneAssetEntry {
+  name: string;
+  iconPath: string;
+}
+
+export interface RunePageInput {
+  name?: string | null;
+  primaryStyleId?: number | string;
+  subStyleId?: number | string;
+  selectedPerkIds?: (number | string)[];
+}
+
+export interface RunePagePayload {
+  name: string;
+  primaryStyleId: number;
+  subStyleId: number;
+  selectedPerkIds: number[];
+  current: boolean;
+  isActive: boolean;
+}
+
+export interface ApplyRunePageResult {
+  success: boolean;
+  error?: string;
+  pageId?: number | string;
+}
+
+export interface LcuRunePage {
+  id?: number | string | null;
+  isDeletable?: boolean;
+  isEditable?: boolean;
+  isCustom?: boolean;
+}
+
+interface RawRuneAsset {
+  id?: number | string;
+  name?: string;
+  iconPath?: string;
+}
+
+interface LcuWriteResponse {
+  ok?: boolean;
+  status?: number;
+  json?: () => Promise<unknown>;
+  id?: number | string;
+}
 
 export const RUNES_PAGES_ROUTE = '/lol-perks/v1/pages';
 export const RUNES_CURRENT_PAGE_ROUTE = '/lol-perks/v1/currentpage';
 export const PERKS_ROUTE = '/lol-game-data/assets/v1/perks.json';
 export const PERK_STYLES_ROUTE = '/lol-game-data/assets/v1/perkstyles.json';
 
-export const STYLE_NAMES = {
+export const STYLE_NAMES: Record<number, string> = {
   8000: 'Precision',
   8100: 'Domination',
   8200: 'Sorcery',
@@ -15,7 +62,7 @@ export const STYLE_NAMES = {
   8400: 'Resolve',
 };
 
-export const STYLE_ICONS = {
+export const STYLE_ICONS: Record<number, string> = {
   8000: '/lol-game-data/assets/v1/perk-images/Styles/7201_Precision.png',
   8100: '/lol-game-data/assets/v1/perk-images/Styles/7200_Domination.png',
   8200: '/lol-game-data/assets/v1/perk-images/Styles/7202_Sorcery.png',
@@ -23,7 +70,7 @@ export const STYLE_ICONS = {
   8400: '/lol-game-data/assets/v1/perk-images/Styles/7204_Resolve.png',
 };
 
-export const PERK_PATHS = {
+export const PERK_PATHS: Record<number, string> = {
   // Precision
   8005: 'perk-images/Styles/Precision/PressTheAttack/PressTheAttack.png',
   8008: 'perk-images/Styles/Precision/LethalTempo/LethalTempoTemp.png',
@@ -114,7 +161,7 @@ export const PERK_PATHS = {
   5013: 'perk-images/StatMods/StatModsTenacityIcon.png',
 };
 
-export const PERK_NAMES = {
+export const PERK_NAMES: Record<number, string> = {
   8005: 'Press the Attack',
   8008: 'Lethal Tempo',
   8021: 'Fleet Footwork',
@@ -194,15 +241,15 @@ export const PERK_NAMES = {
   5013: 'Tenacity',
 };
 
-const perks = new Map();
-const perkStyles = new Map();
+const perks = new Map<number, RuneAssetEntry>();
+const perkStyles = new Map<number, RuneAssetEntry>();
 let runeAssetsLoaded = false;
-let runeAssetsLoading = null;
+let runeAssetsLoading: Promise<boolean> | null = null;
 
-function ingestPerks(list) {
+function ingestPerks(list: unknown): number {
   if (!Array.isArray(list)) return 0;
   let count = 0;
-  for (const entry of list) {
+  for (const entry of list as (RawRuneAsset | null | undefined)[]) {
     const id = Number(entry?.id);
     if (!Number.isInteger(id) || id <= 0) continue;
     perks.set(id, {
@@ -214,7 +261,7 @@ function ingestPerks(list) {
   return count;
 }
 
-function ingestPerkStyles(payload) {
+function ingestPerkStyles(payload: { styles?: (RawRuneAsset | null | undefined)[] } | null | undefined): number {
   const list = Array.isArray(payload?.styles) ? payload.styles : [];
   let count = 0;
   for (const entry of list) {
@@ -240,15 +287,15 @@ export function resetRuneAssets() {
 // PERK_PATHS/STYLE_ICONS maps below are only a fallback for before this load
 // resolves (or for a perk it doesn't yet know about). The LCU's own game-data
 // manifest is authoritative and always matches the running patch.
-export async function loadRuneAssets(lcu) {
+export async function loadRuneAssets(lcu: Pick<Lcu, 'get'>): Promise<boolean> {
   if (runeAssetsLoaded) return true;
   if (runeAssetsLoading) return runeAssetsLoading;
 
   runeAssetsLoading = (async () => {
     try {
       const [perkList, styleList] = await Promise.all([
-        lcu.get(PERKS_ROUTE),
-        lcu.get(PERK_STYLES_ROUTE),
+        lcu.get<unknown>(PERKS_ROUTE),
+        lcu.get<{ styles?: (RawRuneAsset | null | undefined)[] } | null>(PERK_STYLES_ROUTE),
       ]);
       const perkCount = ingestPerks(perkList);
       ingestPerkStyles(styleList);
@@ -256,7 +303,7 @@ export async function loadRuneAssets(lcu) {
       if (!runeAssetsLoaded) console.warn(TAG, 'rune assets loaded but contained no perks');
       return runeAssetsLoaded;
     } catch (err) {
-      console.warn(TAG, 'failed to load rune assets:', err?.message || err);
+      console.warn(TAG, 'failed to load rune assets:', (err as Error | null)?.message || err);
       resetRuneAssets();
       return false;
     } finally {
@@ -267,29 +314,29 @@ export async function loadRuneAssets(lcu) {
   return runeAssetsLoading;
 }
 
-export function perkStyleName(styleId) {
+export function perkStyleName(styleId: number | string): string {
   const id = Number(styleId);
   const dynamic = perkStyles.get(id)?.name;
   return dynamic || STYLE_NAMES[id] || `Tree ${styleId}`;
 }
 
-export function perkStyleIconUrl(styleId) {
+export function perkStyleIconUrl(styleId: number | string): string {
   const sid = Number(styleId);
   const dynamic = perkStyles.get(sid)?.iconPath;
   return gameDataUrl(dynamic || STYLE_ICONS[sid] || `/lol-game-data/assets/v1/perk-images/Styles/${sid}.png`);
 }
 
-export function perkRelativePath(perkId) {
+export function perkRelativePath(perkId: number | string): string {
   const id = Number(perkId);
   return PERK_PATHS[id] || `perk-images/${id}.png`;
 }
 
-export function perkCdnUrl(perkId) {
+export function perkCdnUrl(perkId: number | string): string {
   const path = perkRelativePath(perkId);
   return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/${path}`;
 }
 
-export function perkIconUrl(perkId) {
+export function perkIconUrl(perkId: number | string): string {
   const id = Number(perkId);
   const dynamic = perks.get(id)?.iconPath;
   if (dynamic) return gameDataUrl(dynamic);
@@ -300,13 +347,18 @@ export function perkIconUrl(perkId) {
   return gameDataUrl(`/lol-game-data/assets/v1/perk-images/${id}.png`);
 }
 
-export function perkName(perkId) {
+export function perkName(perkId: number | string): string {
   const id = Number(perkId);
   const dynamic = perks.get(id)?.name;
   return dynamic || PERK_NAMES[id] || `Rune ${id}`;
 }
 
-export function formatRunePagePayload(name, primaryStyleId, subStyleId, selectedPerkIds) {
+export function formatRunePagePayload(
+  name?: string | null,
+  primaryStyleId?: number | string | null,
+  subStyleId?: number | string | null,
+  selectedPerkIds?: (number | string)[] | null,
+): RunePagePayload {
   return {
     name: name ? String(name) : 'Drake',
     primaryStyleId: Number(primaryStyleId) || 0,
@@ -317,7 +369,10 @@ export function formatRunePagePayload(name, primaryStyleId, subStyleId, selected
   };
 }
 
-async function parseResponse(res, fallbackId) {
+async function parseResponse(
+  res: LcuWriteResponse | null | undefined,
+  fallbackId?: number | string,
+): Promise<ApplyRunePageResult> {
   if (!res) {
     return { success: true, ...(fallbackId !== undefined ? { pageId: fallbackId } : {}) };
   }
@@ -326,7 +381,7 @@ async function parseResponse(res, fallbackId) {
   }
   if (typeof res.json === 'function') {
     try {
-      const data = await res.json();
+      const data = (await res.json()) as { id?: number | string } | null;
       const pageId = data?.id ?? fallbackId;
       return { success: true, ...(pageId !== undefined ? { pageId } : {}) };
     } catch {
@@ -337,7 +392,10 @@ async function parseResponse(res, fallbackId) {
   return { success: true, ...(pageId !== undefined ? { pageId } : {}) };
 }
 
-export async function applyRunePage(lcu, pageData) {
+export async function applyRunePage(
+  lcu: (Pick<Lcu, 'get' | 'put' | 'post'> & Partial<Pick<Lcu, 'delete'>>) | null | undefined,
+  pageData: RunePageInput | null | undefined,
+): Promise<ApplyRunePageResult> {
   if (!lcu) {
     return { success: false, error: 'LCU client is required' };
   }
@@ -350,11 +408,11 @@ export async function applyRunePage(lcu, pageData) {
   );
 
   try {
-    let pages = [];
+    let pages: (LcuRunePage | null)[] = [];
     try {
-      const res = await lcu.get(RUNES_PAGES_ROUTE);
+      const res = await lcu.get<unknown>(RUNES_PAGES_ROUTE);
       if (Array.isArray(res)) {
-        pages = res;
+        pages = res as (LcuRunePage | null)[];
       }
     } catch {
       pages = [];
@@ -388,6 +446,6 @@ export async function applyRunePage(lcu, pageData) {
     }
     return { success: false, error: `Failed to create rune page (${createRes.status || 'error'})` };
   } catch (err) {
-    return { success: false, error: err?.message || 'Failed to apply rune page' };
+    return { success: false, error: (err as Error | null)?.message || 'Failed to apply rune page' };
   }
 }

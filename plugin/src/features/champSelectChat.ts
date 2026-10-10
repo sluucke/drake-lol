@@ -1,7 +1,24 @@
-// @ts-nocheck
+import type { Lcu } from '../lcu';
+import type { ChampSelectSession } from './champSelect';
+
+export interface ChatConversation {
+  id?: string;
+  name?: string;
+  type?: string;
+}
+
+export interface ChampSelectMessageResult {
+  success: boolean;
+  conversationId?: string;
+  error?: string;
+}
+
 export const CONVERSATIONS_ROUTE = '/lol-chat/v1/conversations';
 
-export async function resolveChampSelectConversationId(lcu, session) {
+export async function resolveChampSelectConversationId(
+  lcu: Partial<Pick<Lcu, 'get'>> | null | undefined,
+  session: ChampSelectSession | null | undefined,
+): Promise<string | null> {
   const directId =
     session?.chatDetails?.chatRoomName ||
     session?.chatDetails?.multiUserChatId ||
@@ -16,7 +33,7 @@ export async function resolveChampSelectConversationId(lcu, session) {
 
   if (lcu && typeof lcu.get === 'function') {
     try {
-      const conversations = await lcu.get(CONVERSATIONS_ROUTE);
+      const conversations = await lcu.get<(ChatConversation | null)[] | null>(CONVERSATIONS_ROUTE);
       if (Array.isArray(conversations)) {
         const match = conversations.find(
           (c) =>
@@ -44,7 +61,11 @@ export async function resolveChampSelectConversationId(lcu, session) {
   return null;
 }
 
-export async function sendChampSelectMessage(lcu, session, message) {
+export async function sendChampSelectMessage(
+  lcu: Partial<Pick<Lcu, 'get' | 'post'>> | null | undefined,
+  session: ChampSelectSession | null | undefined,
+  message: unknown,
+): Promise<ChampSelectMessageResult> {
   if (typeof message !== 'string' || !message.trim()) {
     return { success: false, error: 'Empty message' };
   }
@@ -53,11 +74,11 @@ export async function sendChampSelectMessage(lcu, session, message) {
     return { success: false, error: 'LCU unavailable' };
   }
 
-  let conversationId;
+  let conversationId: string | null;
   try {
     conversationId = await resolveChampSelectConversationId(lcu, session);
   } catch (err) {
-    return { success: false, error: err?.message || 'Failed to resolve conversation' };
+    return { success: false, error: (err as Error | null)?.message || 'Failed to resolve conversation' };
   }
 
   if (!conversationId) {
@@ -72,6 +93,6 @@ export async function sendChampSelectMessage(lcu, session, message) {
     }
     return { success: true, conversationId };
   } catch (err) {
-    return { success: false, conversationId, error: err?.message || 'Failed to send message' };
+    return { success: false, conversationId, error: (err as Error | null)?.message || 'Failed to send message' };
   }
 }

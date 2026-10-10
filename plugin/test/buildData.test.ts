@@ -1,11 +1,6 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { normalizeChampionBuild, EMPTY_BUILD } from '../src/features/buildData';
-
-const fixture = JSON.parse(
-  readFileSync(new URL('./fixtures/opgg-yasuo-mid.json', import.meta.url), 'utf8')
-);
+import fixture from './fixtures/opgg-yasuo-mid.json';
 
 describe('normalizeChampionBuild', () => {
   it('reports no data for empty or malformed input', () => {
@@ -21,24 +16,24 @@ describe('normalizeChampionBuild', () => {
     expect(build.patch).toBe(fixture.meta.version);
 
     const raw = fixture.data.summary.average_stats;
-    expect(build.stats.winRate).toBeCloseTo(Math.round(raw.win_rate * 1000) / 10, 5);
-    expect(build.stats.pickRate).toBeCloseTo(Math.round(raw.pick_rate * 1000) / 10, 5);
-    expect(build.stats.play).toBe(raw.play);
-    expect(build.stats.tier).toBe(raw.tier);
+    expect(build.stats!.winRate).toBeCloseTo(Math.round(raw.win_rate * 1000) / 10, 5);
+    expect(build.stats!.pickRate).toBeCloseTo(Math.round(raw.pick_rate * 1000) / 10, 5);
+    expect(build.stats!.play).toBe(raw.play);
+    expect(build.stats!.tier).toBe(raw.tier);
 
     // Percentages, not fractions.
-    expect(build.stats.winRate).toBeGreaterThan(1);
-    expect(build.stats.winRate).toBeLessThan(100);
+    expect(build.stats!.winRate).toBeGreaterThan(1);
+    expect(build.stats!.winRate).toBeLessThan(100);
   });
 
   it('normalizes every item bucket into id lists with rates', () => {
     const build = normalizeChampionBuild(fixture);
-    for (const bucket of ['starter', 'boots', 'core', 'last']) {
+    for (const bucket of ['starter', 'boots', 'core', 'last'] as const) {
       expect(Array.isArray(build.items[bucket])).toBe(true);
       expect(build.items[bucket].length).toBeGreaterThan(0);
       for (const entry of build.items[bucket]) {
         expect(Array.isArray(entry.ids)).toBe(true);
-        expect(entry.ids.every((id) => Number.isInteger(id) && id > 0)).toBe(true);
+        expect(entry.ids.every((id: number) => Number.isInteger(id) && id > 0)).toBe(true);
         expect(entry.winRate).toBeGreaterThan(0);
         expect(entry.pickRate).toBeGreaterThan(0);
       }
@@ -49,7 +44,7 @@ describe('normalizeChampionBuild', () => {
   it('sorts item buckets by pick rate, most played first', () => {
     const build = normalizeChampionBuild(fixture);
     const rates = build.items.core.map((e) => e.pickRate);
-    expect([...rates].sort((a, b) => b - a)).toEqual(rates);
+    expect([...rates].sort((a, b) => b! - a!)).toEqual(rates);
   });
 
   it('flattens rune pages into apply-ready perk lists', () => {
@@ -79,7 +74,7 @@ describe('normalizeChampionBuild', () => {
   it('sorts rune pages by global pick rate, most played first', () => {
     const build = normalizeChampionBuild(fixture);
     const rates = build.runePages.map((p) => p.pickRate);
-    expect([...rates].sort((a, b) => b - a)).toEqual(rates);
+    expect([...rates].sort((a, b) => b! - a!)).toEqual(rates);
   });
 
   it('extracts the skill mastery and the level order', () => {
@@ -98,7 +93,7 @@ describe('normalizeChampionBuild', () => {
     for (const entry of build.counters.weak) expect(entry.winRate).toBeLessThan(50);
 
     const strongRates = build.counters.strong.map((e) => e.winRate);
-    expect([...strongRates].sort((a, b) => b - a)).toEqual(strongRates);
+    expect([...strongRates].sort((a, b) => b! - a!)).toEqual(strongRates);
     const weakRates = build.counters.weak.map((e) => e.winRate);
     expect([...weakRates].sort((a, b) => a - b)).toEqual(weakRates);
   });

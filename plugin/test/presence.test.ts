@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import {
   readLol,
@@ -8,6 +7,10 @@ import {
   makePresence,
   CHAT_ME,
 } from '../src/features/presence';
+import type { Lcu } from '../src/lcu';
+import type { LolPresence } from '../src/features/presence';
+
+const asLcu = (fake: object): Lcu => fake as unknown as Lcu;
 
 describe('readLol', () => {
   it('reads the lol block when it is an object', () => {
@@ -32,12 +35,12 @@ describe('readLol', () => {
 });
 
 describe('makePresence', () => {
-  function harness(current = { level: '88', bannerIdSelected: '1' }) {
+  function harness(current: LolPresence = { level: '88', bannerIdSelected: '1' }) {
     const lcu = {
       get: vi.fn().mockResolvedValue({ lol: current }),
       put: vi.fn().mockResolvedValue({ ok: true }),
     };
-    return { lcu, presence: makePresence({ lcu }) };
+    return { lcu, presence: makePresence({ lcu: asLcu(lcu) }) };
   }
 
   it('merges into the existing presence instead of replacing it', async () => {
@@ -93,7 +96,7 @@ describe('makePresence', () => {
       get: vi.fn().mockResolvedValue({ lol: {} }),
       put: vi.fn().mockResolvedValue({ ok: false, status: 400 }),
     };
-    const result = await makePresence({ lcu }).setBanner(2);
+    const result = await makePresence({ lcu: asLcu(lcu) }).setBanner(2);
     expect(result.ok).toBe(false);
     expect(result.reason).toContain('400');
   });
@@ -104,7 +107,7 @@ describe('makePresence', () => {
       get: vi.fn().mockRejectedValue(new Error('offline')),
       put: vi.fn(),
     };
-    const result = await makePresence({ lcu }).setBanner(2);
+    const result = await makePresence({ lcu: asLcu(lcu) }).setBanner(2);
     expect(result.ok).toBe(false);
     expect(lcu.put).not.toHaveBeenCalled();
   });
@@ -113,7 +116,7 @@ describe('makePresence', () => {
     const lcu = {
       put: vi.fn().mockResolvedValue({ ok: true }),
     };
-    const result = await makePresence({ lcu }).setAvailability('offline');
+    const result = await makePresence({ lcu: asLcu(lcu) }).setAvailability('offline');
     expect(result.ok).toBe(true);
     expect(lcu.put).toHaveBeenCalledWith(CHAT_ME, { availability: 'offline' });
   });

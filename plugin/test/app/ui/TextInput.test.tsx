@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -19,7 +18,7 @@ describe('TextInput', () => {
 
   it('can be disabled', () => {
     renderWithProviders(<TextInput value="" ariaLabel="Message" disabled />);
-    expect(screen.getByRole('textbox', { name: 'Message' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLInputElement>('textbox', { name: 'Message' }).disabled).toBe(true);
   });
 
   it('supports the search type', () => {

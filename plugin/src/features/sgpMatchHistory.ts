@@ -1,8 +1,9 @@
-// @ts-nocheck
+import type { FetchLike, Lcu } from '../lcu';
+
 export const ENTITLEMENTS_ROUTE = '/entitlements/v1/token';
 export const CHAT_ME_ROUTE = '/lol-chat/v1/me';
 
-const SGP_SERVERS = {
+const SGP_SERVERS: Record<string, { matchHistory: string }> = {
   TW2: { matchHistory: 'https://apse1-red.pp.sgp.pvp.net' },
   SG2: { matchHistory: 'https://apse1-red.pp.sgp.pvp.net' },
   PH2: { matchHistory: 'https://apse1-red.pp.sgp.pvp.net' },
@@ -36,7 +37,7 @@ const SGP_SERVERS = {
   TENCENT_PREPBE: { matchHistory: 'https://prepbe-sgp.lol.qq.com:21019' },
 };
 
-const PLATFORM_ID_TO_SGP_KEY = {
+const PLATFORM_ID_TO_SGP_KEY: Record<string, string> = {
   EUW1: 'EUW',
   EUN: 'EUN1',
   EUNE: 'EUN1',
@@ -69,25 +70,132 @@ const TENCENT_PLATFORM_IDS = new Set([
   'PBE', 'PREPBE',
 ]);
 
-export function queueIdToTag(queueId) {
+export interface EntitlementsToken {
+  accessToken?: string;
+  issuer?: string;
+}
+
+export interface ChatMe {
+  platformId?: string;
+  puuid?: string;
+}
+
+export interface SgpContext {
+  accessToken: string;
+  serverId: string;
+}
+
+interface RawPuuidHolder {
+  puuid?: string;
+  playerPuuid?: string;
+  summoner?: { puuid?: string };
+}
+
+export interface RawMatchStats {
+  win?: boolean;
+  kills?: number;
+  deaths?: number;
+  assists?: number;
+}
+
+export interface RawMatchParticipant extends RawPuuidHolder {
+  participantId?: number;
+  championId?: number;
+  champion?: { id?: number };
+  win?: boolean;
+  kills?: number;
+  deaths?: number;
+  assists?: number;
+  stats?: RawMatchStats | null;
+}
+
+export interface RawParticipantIdentity {
+  participantId?: number;
+  player?: RawPuuidHolder | null;
+}
+
+export interface RawMatchGame {
+  json?: RawMatchGame | null;
+  queueId?: number;
+  gameQueueConfigId?: number;
+  queue?: { id?: number };
+  seasonId?: number;
+  gameSeasonId?: number;
+  season?: { id?: number; seasonId?: number };
+  gameCreation?: number;
+  gameCreationDate?: string;
+  gameEndTimestamp?: number;
+  gameStartTime?: number;
+  championId?: number;
+  win?: boolean;
+  participants?: (RawMatchParticipant | null)[];
+  participantIdentities?: RawParticipantIdentity[];
+}
+
+export type MatchHistoryPayload =
+  | RawMatchGame[]
+  | { games?: RawMatchGame[] | { games?: RawMatchGame[] } }
+  | null
+  | undefined;
+
+export interface SlimParticipant {
+  puuid: string;
+  participantId: number | undefined;
+  championId: number;
+  win: boolean | undefined;
+  kills: number | undefined;
+  deaths: number | undefined;
+  assists: number | undefined;
+  stats: RawMatchStats;
+}
+
+export interface SlimIdentity {
+  participantId: number | undefined;
+  player: { puuid: string };
+}
+
+export interface SlimMatchGame {
+  queueId: number | undefined;
+  seasonId: number | undefined;
+  gameCreation: number | undefined;
+  gameCreationDate: string | undefined;
+  gameEndTimestamp: number | undefined;
+  gameStartTime: number | undefined;
+  championId: number | undefined;
+  win: boolean | undefined;
+  participants: SlimParticipant[];
+  participantIdentities: SlimIdentity[];
+}
+
+export interface FetchQueueMatchHistoryOptions {
+  lcu?: Pick<Lcu, 'get'> | null;
+  fetchImpl?: FetchLike;
+  puuid: string;
+  queueId?: number | string;
+  count?: number;
+  sgp?: SgpContext | null;
+  signal?: AbortSignal;
+}
+
+export function queueIdToTag(queueId: unknown): string {
   const id = Number(queueId) || 0;
   return id > 0 ? `q_${id}` : '';
 }
 
-function normalizeSgpServerKey(rawCode) {
+function normalizeSgpServerKey(rawCode: unknown): string {
   const code = String(rawCode || '').toUpperCase();
   const mapped = PLATFORM_ID_TO_SGP_KEY[code] || code;
   return SGP_SERVERS[mapped] ? mapped : '';
 }
 
-function serverIdFromPlatformId(platformId) {
+function serverIdFromPlatformId(platformId: unknown): string {
   const id = String(platformId || '').toUpperCase();
   if (!id) return '';
   if (TENCENT_PLATFORM_IDS.has(id)) return normalizeSgpServerKey(`TENCENT_${id}`);
   return normalizeSgpServerKey(id);
 }
 
-function serverIdFromIssuer(issuer) {
+function serverIdFromIssuer(issuer: unknown): string {
   const value = String(issuer || '');
   const tencentMatch = value.match(/https?:\/\/([a-z0-9]+)(?:-[a-z0-9]+)*\.lol\.qq\.com/i);
   if (tencentMatch) return normalizeSgpServerKey(`TENCENT_${tencentMatch[1].toUpperCase()}`);
@@ -99,11 +207,18 @@ function serverIdFromIssuer(issuer) {
   return '';
 }
 
-export function resolveSgpServerId(chatMe, token) {
+export function resolveSgpServerId(
+  chatMe: ChatMe | null | undefined,
+  token: EntitlementsToken | null | undefined,
+): string {
   return serverIdFromPlatformId(chatMe?.platformId) || serverIdFromIssuer(token?.issuer) || '';
 }
 
-export function sgpMatchHistoryUrl(serverId, puuid, { startIndex = 0, count = 100, tag = '' } = {}) {
+export function sgpMatchHistoryUrl(
+  serverId: string,
+  puuid: string,
+  { startIndex = 0, count = 100, tag = '' }: { startIndex?: number; count?: number; tag?: string } = {},
+): string {
   const base = SGP_SERVERS[serverId]?.matchHistory;
   if (!base || !puuid) return '';
   const params = new URLSearchParams();
@@ -113,13 +228,13 @@ export function sgpMatchHistoryUrl(serverId, puuid, { startIndex = 0, count = 10
   return `${base}/match-history-query/v1/products/lol/player/${puuid}/SUMMARY?${params}`;
 }
 
-function readPuuid(entry) {
+function readPuuid(entry: RawPuuidHolder | null | undefined): string {
   return entry?.puuid || entry?.playerPuuid || entry?.summoner?.puuid || '';
 }
 
-function slimParticipant(participant) {
+function slimParticipant(participant: RawMatchParticipant | null): SlimParticipant | null {
   if (!participant) return null;
-  const stats = participant.stats && typeof participant.stats === 'object' ? participant.stats : {};
+  const stats: RawMatchStats = participant.stats && typeof participant.stats === 'object' ? participant.stats : {};
   const win = participant.win ?? stats.win;
   const kills = participant.kills ?? stats.kills;
   const deaths = participant.deaths ?? stats.deaths;
@@ -136,7 +251,7 @@ function slimParticipant(participant) {
   };
 }
 
-function slimIdentity(identity) {
+function slimIdentity(identity: RawParticipantIdentity): SlimIdentity {
   const player = identity?.player || {};
   return {
     participantId: identity.participantId,
@@ -144,21 +259,23 @@ function slimIdentity(identity) {
   };
 }
 
-function participantMatches(participant, puuid) {
+function participantMatches(participant: RawMatchParticipant | null, puuid: string): boolean {
   return Boolean(puuid) && readPuuid(participant) === puuid;
 }
 
-function identityMatches(identity, puuid) {
+function identityMatches(identity: RawParticipantIdentity, puuid: string): boolean {
   return Boolean(puuid) && readPuuid(identity?.player || {}) === puuid;
 }
 
-function slimMatchGame(entry, focusPuuid = '') {
+function slimMatchGame(entry: RawMatchGame | null | undefined, focusPuuid = ''): SlimMatchGame | null {
   if (!entry) return null;
   const json = entry.json && typeof entry.json === 'object' ? entry.json : entry;
   let participants = Array.isArray(json.participants) ? json.participants : [];
   let identities = Array.isArray(json.participantIdentities) ? json.participantIdentities : [];
   if (focusPuuid) {
-    const focused = participants.filter((participant) => participantMatches(participant, focusPuuid));
+    const focused = participants.filter(
+      (participant): participant is RawMatchParticipant => participantMatches(participant, focusPuuid),
+    );
     if (focused.length) {
       participants = focused;
       const keepIds = new Set(focused.map((participant) => Number(participant.participantId)).filter(Boolean));
@@ -177,30 +294,31 @@ function slimMatchGame(entry, focusPuuid = '') {
     gameStartTime: json.gameStartTime,
     championId: json.championId,
     win: json.win,
-    participants: participants.map(slimParticipant).filter(Boolean),
+    participants: participants.map(slimParticipant).filter((p): p is SlimParticipant => Boolean(p)),
     participantIdentities: identities.map(slimIdentity),
   };
 }
 
-export function normalizeMatchGames(payload, focusPuuid = '') {
-  const list = Array.isArray(payload)
+export function normalizeMatchGames(payload: MatchHistoryPayload, focusPuuid = ''): SlimMatchGame[] {
+  const games = Array.isArray(payload) ? undefined : payload?.games;
+  const list: RawMatchGame[] = Array.isArray(payload)
     ? payload
-    : Array.isArray(payload?.games?.games)
-      ? payload.games.games
-      : Array.isArray(payload?.games)
-        ? payload.games
+    : games && !Array.isArray(games) && Array.isArray(games.games)
+      ? games.games
+      : Array.isArray(games)
+        ? games
         : [];
-  return list.map((entry) => slimMatchGame(entry, focusPuuid)).filter(Boolean);
+  return list.map((entry) => slimMatchGame(entry, focusPuuid)).filter((g): g is SlimMatchGame => Boolean(g));
 }
 
-export async function createSgpContext(lcu) {
+export async function createSgpContext(lcu: Pick<Lcu, 'get'> | null | undefined): Promise<SgpContext | null> {
   if (!lcu?.get) return null;
   try {
-    const token = await lcu.get(ENTITLEMENTS_ROUTE);
+    const token = await lcu.get<EntitlementsToken | null>(ENTITLEMENTS_ROUTE);
     if (!token?.accessToken) return null;
-    let chatMe = null;
+    let chatMe: ChatMe | null = null;
     try {
-      chatMe = await lcu.get(CHAT_ME_ROUTE);
+      chatMe = await lcu.get<ChatMe | null>(CHAT_ME_ROUTE);
     } catch {
     }
     const serverId = resolveSgpServerId(chatMe, token);
@@ -219,7 +337,7 @@ export async function fetchQueueMatchHistory({
   count,
   sgp = null,
   signal,
-}) {
+}: FetchQueueMatchHistoryOptions): Promise<SlimMatchGame[]> {
   if (!puuid || signal?.aborted) return [];
   try {
     const ctx = sgp === undefined ? await createSgpContext(lcu) : sgp;
@@ -236,7 +354,7 @@ export async function fetchQueueMatchHistory({
       signal,
     });
     if (!resp?.ok) return [];
-    return normalizeMatchGames(await resp.json(), puuid);
+    return normalizeMatchGames((await resp.json()) as MatchHistoryPayload, puuid);
   } catch {
     return [];
   }

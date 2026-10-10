@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import {
   queueIdToTag,
@@ -7,6 +6,8 @@ import {
   normalizeMatchGames,
   fetchQueueMatchHistory,
 } from '../src/features/sgpMatchHistory';
+import type { FetchLike, Lcu } from '../src/lcu';
+import type { MatchHistoryPayload } from '../src/features/sgpMatchHistory';
 
 describe('sgpMatchHistory', () => {
   it('builds queue tags and BR match-history urls', () => {
@@ -68,9 +69,9 @@ describe('sgpMatchHistory', () => {
             },
           },
         ],
-      },
+      } as unknown as MatchHistoryPayload,
       'abc',
-    );
+    ) as unknown as { mapId?: unknown; gameVersion?: unknown; participants: { puuid: string; challenges?: unknown; stats: { kills?: number } }[] }[];
 
     expect(games[0].mapId).toBeUndefined();
     expect(games[0].gameVersion).toBeUndefined();
@@ -81,14 +82,14 @@ describe('sgpMatchHistory', () => {
   });
 
   it('bypasses HTTP cache so the local player W/L refreshes each queue', async () => {
-    const fetchImpl = vi.fn(async () => ({
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) => ({
       ok: true,
       json: async () => ({ games: [] }),
-    }));
+    }) as unknown as Response);
 
     await fetchQueueMatchHistory({
-      lcu: { get: async () => ({}) },
-      fetchImpl,
+      lcu: { get: async () => ({}) } as unknown as Lcu,
+      fetchImpl: fetchImpl as FetchLike,
       puuid: 'abc',
       queueId: 420,
       count: 50,
@@ -97,6 +98,6 @@ describe('sgpMatchHistory', () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const [, init] = fetchImpl.mock.calls[0];
-    expect(init.cache).toBe('no-store');
+    expect(init?.cache).toBe('no-store');
   });
 });

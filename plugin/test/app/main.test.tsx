@@ -1,9 +1,9 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { act } from 'react';
 import { startApp, APP_LAYER_ID } from '../../src/app/main';
 import { APP_ROOT_ID } from '../../src/app/mountReact';
 import { APP_STYLES } from '../../src/app/styles/index';
+import type { StartedApp } from '../../src/app/main';
 
 function makeShadow() {
   const host = document.createElement('div');
@@ -17,16 +17,17 @@ describe('startApp', () => {
     await act(async () => {
       startApp(shadow);
     });
-    expect(shadow.getElementById(APP_ROOT_ID).querySelector('[data-drake-app]')).not.toBeNull();
+    expect(shadow.getElementById(APP_ROOT_ID)?.querySelector('[data-drake-app]')).not.toBeNull();
     expect(shadow.querySelectorAll('style[data-drake-style]').length).toBe(APP_STYLES.length);
   });
 
   it('adds the portal layer after the app root', async () => {
     const shadow = makeShadow();
-    let app;
+    let app: StartedApp | undefined;
     await act(async () => {
       app = startApp(shadow);
     });
+    if (!app) throw new Error('not mounted');
     expect(app.layer.id).toBe(APP_LAYER_ID);
     expect(shadow.lastElementChild).toBe(app.layer);
     expect(app.container.nextElementSibling).toBe(app.layer);
@@ -46,11 +47,11 @@ describe('startApp', () => {
 
   it('unmount removes root and layer', async () => {
     const shadow = makeShadow();
-    let app;
+    let app: StartedApp | undefined;
     await act(async () => {
       app = startApp(shadow);
     });
-    await act(async () => app.unmount());
+    await act(async () => app?.unmount());
     expect(shadow.getElementById(APP_ROOT_ID)).toBeNull();
     expect(shadow.getElementById(APP_LAYER_ID)).toBeNull();
   });

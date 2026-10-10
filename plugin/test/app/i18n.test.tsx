@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { I18nProvider, useFormat, useLocale, useT } from '../../src/app/i18n/I18nProvider';

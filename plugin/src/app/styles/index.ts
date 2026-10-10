@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { CHECKBOX_SPRITE } from '../../ui/assets';
 import tokens from './tokens.css';
 import base from './base.css';

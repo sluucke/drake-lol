@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, render, renderHook, screen } from '@testing-library/react';
 import { useSfx } from '../../src/app/hooks/useSfx';
@@ -9,19 +8,19 @@ import { App } from '../../src/app/App';
 import { Layer } from '../../src/app/ui/Layer';
 
 afterEach(() => {
-  delete window.matchMedia;
+  delete (window as { matchMedia?: unknown }).matchMedia;
 });
 
-function stubMatchMedia(matches) {
-  const listeners = new Set();
+function stubMatchMedia(matches: boolean) {
+  const listeners = new Set<() => void>();
   const mql = {
     matches,
-    addEventListener: (_type, fn) => listeners.add(fn),
-    removeEventListener: (_type, fn) => listeners.delete(fn),
+    addEventListener: (_type: string, fn: () => void) => listeners.add(fn),
+    removeEventListener: (_type: string, fn: () => void) => listeners.delete(fn),
   };
-  window.matchMedia = vi.fn(() => mql);
+  window.matchMedia = vi.fn(() => mql) as unknown as typeof window.matchMedia;
   return {
-    set(next) {
+    set(next: boolean) {
       mql.matches = next;
       for (const fn of listeners) fn();
     },
@@ -49,7 +48,7 @@ describe('usePortalTarget and Layer', () => {
     const { result } = renderHook(() => usePortalTarget());
     expect(result.current).toBeNull();
     const { container } = render(<Layer><b>inline</b></Layer>);
-    expect(container.querySelector('b').textContent).toBe('inline');
+    expect(container.querySelector('b')?.textContent).toBe('inline');
   });
 
   it('portals Layer children into the target', () => {
@@ -61,7 +60,7 @@ describe('usePortalTarget and Layer', () => {
       </AppProviders>,
     );
     expect(container.querySelector('b')).toBeNull();
-    expect(target.querySelector('b').textContent).toBe('floating');
+    expect(target.querySelector('b')?.textContent).toBe('floating');
   });
 });
 

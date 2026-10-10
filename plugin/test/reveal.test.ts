@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import {
   buildRevealUrl,
@@ -11,6 +10,9 @@ import {
   makeReveal,
 } from '../src/features/reveal';
 import { obfuscateChampSelectPuuid } from '../src/features/champSelectPuuid';
+import type { Lcu } from '../src/lcu';
+
+const asLcu = (fake: object): Lcu => fake as unknown as Lcu;
 
 describe('buildRevealUrl', () => {
   const names = ['Faker#KR1', 'Dude Guy#BR1'];
@@ -183,8 +185,8 @@ describe('makeReveal', () => {
         throw new Error(`unexpected ${route}`);
       }),
     };
-    const opened = [];
-    const r = makeReveal({ lcu, region: 'BR', open: (u) => opened.push(u) });
+    const opened: string[] = [];
+    const r = makeReveal({ lcu: asLcu(lcu), region: 'BR', open: (u: string) => opened.push(u) });
 
     const result = await r.reveal('porofessor');
 
@@ -198,7 +200,7 @@ describe('makeReveal', () => {
 
   it('explains itself when there is nobody to look up', async () => {
     const lcu = { get: vi.fn().mockResolvedValue({ myTeam: [], theirTeam: [] }) };
-    const r = makeReveal({ lcu, region: 'BR', open: () => {} });
+    const r = makeReveal({ lcu: asLcu(lcu), region: 'BR', open: () => {} });
 
     const result = await r.reveal('porofessor');
 
@@ -209,7 +211,7 @@ describe('makeReveal', () => {
   it('does not open a browser tab when the lookup fails', async () => {
     const lcu = { get: vi.fn().mockRejectedValue(new Error('no session')) };
     let opened = 0;
-    const r = makeReveal({ lcu, region: 'BR', open: () => { opened += 1; } });
+    const r = makeReveal({ lcu: asLcu(lcu), region: 'BR', open: () => { opened += 1; } });
 
     const result = await r.reveal('porofessor');
 

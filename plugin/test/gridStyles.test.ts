@@ -1,9 +1,9 @@
-// @ts-nocheck
+/// <reference types="node" />
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const block = (css, selector) => {
+const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
+const block = (css: string, selector: string) => {
   const i = css.indexOf(`${selector} {`);
   expect(i, `${selector} must exist`).toBeGreaterThan(-1);
   return css.slice(i, css.indexOf('}', i));

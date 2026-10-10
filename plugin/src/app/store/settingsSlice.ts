@@ -1,16 +1,47 @@
-// @ts-nocheck
+import type { DrakeSettings, SettingsPatch, SettingsValues } from '../../settings';
+import type { SliceCreator } from './types';
+
 const TRAY_DOWN_HINT = 'not running';
 
-function revertKeys(current, previous, patch) {
-  const next = { ...current };
-  for (const key of Object.keys(patch)) {
-    if (Object.prototype.hasOwnProperty.call(previous, key)) next[key] = previous[key];
+export interface SaveSettingsResult {
+  ok: boolean;
+  reason?: string;
+}
+
+export interface SettingsClient {
+  save(patch: SettingsPatch): Promise<SaveSettingsResult>;
+}
+
+export interface SettingsState {
+  values: SettingsValues;
+  trayDown: boolean;
+  error: string;
+}
+
+export interface SettingsSlice {
+  settings: SettingsState;
+  saveSettings(patch: SettingsPatch): Promise<SaveSettingsResult>;
+}
+
+export interface SettingsSliceOptions {
+  settings: SettingsValues;
+  settingsClient: SettingsClient | null;
+}
+
+function copyKey<K extends keyof DrakeSettings>(target: SettingsValues, source: SettingsValues, key: K) {
+  target[key] = source[key];
+}
+
+function revertKeys(current: SettingsValues, previous: SettingsValues, patch: SettingsPatch): SettingsValues {
+  const next: SettingsValues = { ...current };
+  for (const key of Object.keys(patch) as (keyof DrakeSettings)[]) {
+    if (Object.prototype.hasOwnProperty.call(previous, key)) copyKey(next, previous, key);
     else delete next[key];
   }
   return next;
 }
 
-export function createSettingsSlice({ settings, settingsClient }) {
+export function createSettingsSlice({ settings, settingsClient }: SettingsSliceOptions): SliceCreator<SettingsSlice> {
   return (set, get) => ({
     settings: { values: { ...settings }, trayDown: false, error: '' },
 

@@ -1,5 +1,13 @@
-// @ts-nocheck
 import { unlockIn } from './unlockFields';
+
+export type UnlockRoot = ParentNode & Node & { documentElement?: Element | null };
+
+export interface StartUnlocksOptions {
+  enabled?: boolean;
+  root?: UnlockRoot;
+  observe?: boolean;
+  onFirstUnlock?: (count: number) => void;
+}
 
 
 
@@ -12,7 +20,7 @@ export function startUnlocks({
   root = document,
   observe = true,
   onFirstUnlock,
-} = {}) {
+}: StartUnlocksOptions = {}): () => void {
   if (!enabled) return () => {};
 
   let announced = false;

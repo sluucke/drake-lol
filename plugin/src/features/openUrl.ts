@@ -1,4 +1,4 @@
-// @ts-nocheck
+import type { FetchLike } from '../lcu';
 
 
 
@@ -8,9 +8,24 @@
 
 
 
-export function makeOpener({ port, token, fetchImpl = fetch }) {
+export interface OpenUrlResult {
+  ok: boolean;
+  reason?: string;
+}
+
+export interface OpenerOptions {
+  port: number;
+  token: string;
+  fetchImpl?: FetchLike;
+}
+
+export interface Opener {
+  open(url: string): Promise<OpenUrlResult>;
+}
+
+export function makeOpener({ port, token, fetchImpl = fetch }: OpenerOptions): Opener {
   return {
-    async open(url) {
+    async open(url: string): Promise<OpenUrlResult> {
       try {
         const res = await fetchImpl(`http://127.0.0.1:${port}/open-url`, {
           method: 'POST',

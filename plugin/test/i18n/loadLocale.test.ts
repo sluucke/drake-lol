@@ -1,9 +1,10 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { loadLocale } from '../../src/app/i18n/loadLocale';
+import type { Lcu } from '../../src/lcu';
 
-function lcuReturning(value) {
-  return { get: vi.fn(() => (value instanceof Error ? Promise.reject(value) : Promise.resolve(value))) };
+function lcuReturning(value: unknown) {
+  const get = vi.fn(() => (value instanceof Error ? Promise.reject(value) : Promise.resolve(value)));
+  return { get: get as unknown as Lcu['get'] };
 }
 
 describe('loadLocale', () => {

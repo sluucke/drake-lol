@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { AppProviders } from '../../src/app/AppProviders';

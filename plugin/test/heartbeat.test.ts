@@ -1,11 +1,10 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { startHeartbeat, HEARTBEAT_INTERVAL_MS } from '../src/heartbeat';
 
 function fakeClock() {
-  const scheduled = [];
+  const scheduled: { fn: () => unknown; ms: number }[] = [];
   return {
-    setIntervalImpl: (fn, ms) => {
+    setIntervalImpl: (fn: () => unknown, ms: number) => {
       scheduled.push({ fn, ms });
       return scheduled.length;
     },
@@ -18,10 +17,10 @@ function fakeClock() {
 
 describe('heartbeat', () => {
   it('checks in immediately, before any interval elapses', async () => {
-    const hosts = [];
+    const hosts: string[] = [];
     const clock = fakeClock();
     await startHeartbeat({
-      checkIn: async (h) => { hosts.push(h); return true; },
+      checkIn: async (h: string) => { hosts.push(h); return true; },
       host: 'pengu 1.1.6',
       setIntervalImpl: clock.setIntervalImpl,
     });
@@ -32,10 +31,10 @@ describe('heartbeat', () => {
 
 
 
-    const hosts = [];
+    const hosts: string[] = [];
     const clock = fakeClock();
     await startHeartbeat({
-      checkIn: async (h) => { hosts.push(h); return true; },
+      checkIn: async (h: string) => { hosts.push(h); return true; },
       host: 'pengu',
       setIntervalImpl: clock.setIntervalImpl,
     });

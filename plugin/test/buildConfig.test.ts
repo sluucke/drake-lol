@@ -1,19 +1,20 @@
-// @ts-nocheck
+/// <reference types="node" />
 import { describe, it, expect } from 'vitest';
 import { build } from 'esbuild';
+import type { BuildOptions } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { esbuildOptions, overlayOptions, SOURCE_EXTENSIONS } from '../buildConfig.mjs';
 
 const entry = fileURLToPath(new URL('./fixtures/build/entry.jsx', import.meta.url));
 
-async function bundle(opts) {
+async function bundle(opts: BuildOptions) {
   const result = await build({
     ...opts,
     entryPoints: [entry],
     outfile: 'out.js',
     write: false,
   });
-  return result.outputFiles[0].text;
+  return result.outputFiles![0].text;
 }
 
 describe('esbuildOptions', () => {

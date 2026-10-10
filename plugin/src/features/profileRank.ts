@@ -1,9 +1,19 @@
-// @ts-nocheck
+import type { Lcu } from '../lcu';
+import type { SettingsPatch, SettingsValues } from '../settings';
+import type { SubscribeFn, Unsubscribe } from '../subscribe';
 import { CHAT_ME, readLol } from './presence';
+import type { ActionResult, ChatMeResponse, LolPresence, Presence } from './presence';
+
+export interface ProfileRankConfig {
+  tier: string;
+  division: string;
+  queue: string;
+  crystal: string;
+}
 import { GAMEFLOW_PHASE_ROUTE } from './dodge';
 import { isInGamePhase, readGameflowPhase } from './inGameIdle';
 
-export function readProfileRank(settings) {
+export function readProfileRank(settings: SettingsValues | null | undefined): ProfileRankConfig {
   return {
     tier: String(settings?.profile_rank_tier || '').trim(),
     division: settings?.profile_rank_division || 'I',
@@ -12,7 +22,7 @@ export function readProfileRank(settings) {
   };
 }
 
-export function profileRankPatch({ tier, division, queue, crystal }) {
+export function profileRankPatch({ tier, division, queue, crystal }: ProfileRankConfig): SettingsPatch {
   return {
     profile_rank_tier: tier,
     profile_rank_division: division,
@@ -21,7 +31,7 @@ export function profileRankPatch({ tier, division, queue, crystal }) {
   };
 }
 
-export function rankNeedsRefresh(lol, cfg) {
+export function rankNeedsRefresh(lol: LolPresence, cfg: ProfileRankConfig): boolean {
   if (!cfg.tier) return false;
   return (
     lol.rankedLeagueTier !== cfg.tier ||
@@ -31,7 +41,10 @@ export function rankNeedsRefresh(lol, cfg) {
   );
 }
 
-export async function applyProfileRank(presence, cfg) {
+export async function applyProfileRank(
+  presence: Pick<Presence, 'setRank' | 'setBadges'>,
+  cfg: ProfileRankConfig,
+): Promise<ActionResult> {
   if (!cfg.tier) return { ok: true };
   const rank = await presence.setRank({
     tier: cfg.tier,
@@ -42,16 +55,26 @@ export async function applyProfileRank(presence, cfg) {
   return presence.setBadges({ crystal: cfg.crystal });
 }
 
-export function startProfileRankRefresh({ subscribe, getSettings, presence, lcu }) {
+export function startProfileRankRefresh({
+  subscribe,
+  getSettings,
+  presence,
+  lcu,
+}: {
+  subscribe: SubscribeFn;
+  getSettings: () => SettingsValues | null | undefined;
+  presence: Pick<Presence, 'setRank' | 'setBadges'>;
+  lcu: Pick<Lcu, 'get'>;
+}): Unsubscribe {
   let refreshing = false;
 
   async function refreshIfNeeded() {
     if (refreshing) return;
     const cfg = readProfileRank(getSettings());
     if (!cfg.tier) return;
-    let lol;
+    let lol: LolPresence;
     try {
-      lol = readLol(await lcu.get(CHAT_ME));
+      lol = readLol(await lcu.get<ChatMeResponse | null>(CHAT_ME));
     } catch {
       return;
     }

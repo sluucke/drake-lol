@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { AppProviders } from './AppProviders';
+import type { AppProvidersProps } from './AppProviders';
 import { DevShowcase } from './dev/Showcase';
 import { PanelFrame } from './shell/PanelFrame';
 import { ScoutingModal } from './overlays/scouting/ScoutingModal';
@@ -26,7 +26,9 @@ function AppContent() {
   );
 }
 
-export function App({ sfx, portalTarget, store, actions }) {
+export type AppProps = Omit<AppProvidersProps, 'children'>;
+
+export function App({ sfx, portalTarget, store, actions }: AppProps) {
   return (
     <AppProviders sfx={sfx} portalTarget={portalTarget} store={store} actions={actions}>
       <div className="drake-app" data-drake-app="">

@@ -1,27 +1,30 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { makeTransport } from '../src/transport';
+import type { TransportOptions } from '../src/transport';
+
+type LooseTransportOptions = Omit<TransportOptions, 'fetchImpl' | 'dataStore'> & { fetchImpl?: unknown; dataStore?: unknown };
+const transport = (opts: LooseTransportOptions) => makeTransport(opts as TransportOptions);
 
 describe('transport', () => {
   it('posts a check-in carrying the token', async () => {
-    let body;
-    const fakeFetch = async (url, init) => {
-      body = JSON.parse(init.body);
+    let body: unknown;
+    const fakeFetch = async (_url: string, init: RequestInit) => {
+      body = JSON.parse(String(init.body));
       return { ok: true, status: 204 };
     };
-    const t = makeTransport({ port: 48151, token: 'sekret', fetchImpl: fakeFetch, pluginBuild: 'abc' });
+    const t = transport({ port: 48151, token: 'sekret', fetchImpl: fakeFetch, pluginBuild: 'abc' });
     expect(await t.checkIn('Drake')).toBe(true);
     expect(body).toEqual({ token: 'sekret', host: 'Drake', plugin_build: 'abc' });
   });
 
   it('adds the client region and locale once they are known', async () => {
-    const bodies = [];
-    const fakeFetch = async (url, init) => {
-      bodies.push(JSON.parse(init.body));
+    const bodies: unknown[] = [];
+    const fakeFetch = async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
       return { ok: true, status: 204 };
     };
-    let info = null;
-    const t = makeTransport({ port: 48151, token: 'sekret', fetchImpl: fakeFetch, pluginBuild: 'abc', clientInfo: () => info });
+    let info: { region: string; locale: string } | null = null;
+    const t = transport({ port: 48151, token: 'sekret', fetchImpl: fakeFetch, pluginBuild: 'abc', clientInfo: () => info });
     await t.checkIn('Drake');
     info = { region: 'BR', locale: 'pt_BR' };
     await t.checkIn('Drake');
@@ -30,19 +33,19 @@ describe('transport', () => {
   });
 
   it('falls back to DataStore when localhost is unreachable', async () => {
-    const store = {};
-    const t = makeTransport({
+    const store: Record<string, string> = {};
+    const t = transport({
       port: 48151,
       token: 'sekret',
       fetchImpl: async () => { throw new Error('blocked'); },
-      dataStore: { set: (k, v) => { store[k] = v; } },
+      dataStore: { set: (k: string, v: string) => { store[k] = v; } },
     });
     expect(await t.checkIn('Drake')).toBe(true);
     expect(JSON.parse(store['drake_checkin']).host).toBe('Drake');
   });
 
   it('reports failure when both paths are unavailable', async () => {
-    const t = makeTransport({
+    const t = transport({
       port: 48151,
       token: 'sekret',
       fetchImpl: async () => { throw new Error('blocked'); },
@@ -52,7 +55,7 @@ describe('transport', () => {
 
   it('does not touch DataStore when localhost succeeds', async () => {
     let dataStoreTouched = false;
-    const t = makeTransport({
+    const t = transport({
       port: 48151,
       token: 'sekret',
       fetchImpl: async () => ({ ok: true, status: 204 }),
@@ -64,7 +67,7 @@ describe('transport', () => {
 
   it('reports failure (not a fallback) when the tray rejects the token', async () => {
     let dataStoreTouched = false;
-    const t = makeTransport({
+    const t = transport({
       port: 48151,
       token: 'stale',
       fetchImpl: async () => ({ ok: false, status: 401 }),
@@ -79,13 +82,13 @@ describe('transport', () => {
 
 
 
-    const sent = [];
-    const fetchImpl = async (_url, init) => {
-      const { token } = JSON.parse(init.body);
+    const sent: string[] = [];
+    const fetchImpl = async (_url: string, init: RequestInit) => {
+      const { token } = JSON.parse(String(init.body));
       sent.push(token);
       return token === 'fresh' ? { ok: true, status: 204 } : { ok: false, status: 401 };
     };
-    const t = makeTransport({
+    const t = transport({
       port: 48151,
       token: 'stale',
       fetchImpl,
@@ -98,14 +101,14 @@ describe('transport', () => {
 
   it('keeps using the refreshed token on later beats', async () => {
 
-    const sent = [];
-    const fetchImpl = async (_url, init) => {
-      const { token } = JSON.parse(init.body);
+    const sent: string[] = [];
+    const fetchImpl = async (_url: string, init: RequestInit) => {
+      const { token } = JSON.parse(String(init.body));
       sent.push(token);
       return token === 'fresh' ? { ok: true, status: 204 } : { ok: false, status: 401 };
     };
     let reloads = 0;
-    const t = makeTransport({
+    const t = transport({
       port: 48151,
       token: 'stale',
       fetchImpl,
@@ -121,7 +124,7 @@ describe('transport', () => {
 
   it('gives up after one refresh rather than retrying in a loop', async () => {
     let reloads = 0;
-    const t = makeTransport({
+    const t = transport({
       port: 48151,
       token: 'stale',
       fetchImpl: async () => ({ ok: false, status: 401 }),

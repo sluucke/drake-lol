@@ -1,41 +1,42 @@
-// @ts-nocheck
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { UNLOCKS, unlockIn, isUnlockTarget } from '../src/features/unlockFields';
 
-function field({ cls = '', maxlength = '25' } = {}) {
-  const attrs = maxlength === null ? {} : { maxlength };
+function field({ cls = '', maxlength = '25' }: { cls?: string; maxlength?: string | null } = {}) {
+  const attrs: Record<string, string> = maxlength === null ? {} : { maxlength };
   return {
     className: cls,
-    style: {},
-    dataset: {},
+    style: {} as { height?: string },
+    dataset: {} as Record<string, string | undefined>,
     attrs,
-    matches(sel) {
-      return sel.split(',').some((s) => this.className.includes(s.trim().replace('input.', '')));
+    matches(sel: string): boolean {
+      return sel.split(',').some((s: string) => this.className.includes(s.trim().replace('input.', '')));
     },
-    getAttribute: (k) => attrs[k] ?? null,
-    removeAttribute(k) { delete attrs[k]; },
-    setAttribute(k, v) { attrs[k] = v; },
+    getAttribute: (k: string) => attrs[k] ?? null,
+    removeAttribute(k: string) { delete attrs[k]; },
+    setAttribute(k: string, v: string) { attrs[k] = v; },
   };
 }
 
-function rootWith(fields) {
-  return { querySelectorAll: () => fields };
+const asElement = (fake: object): Element => fake as unknown as Element;
+
+function rootWith(fields: object[]): ParentNode {
+  return { querySelectorAll: () => fields } as unknown as ParentNode;
 }
 
 describe('isUnlockTarget', () => {
   it('recognises the status message input', () => {
-    expect(isUnlockTarget(field({ cls: 'input social-status-change-input' }))).toBe(true);
+    expect(isUnlockTarget(asElement(field({ cls: 'input social-status-change-input' })))).toBe(true);
   });
 
   it('leaves the chat input alone', () => {
 
 
 
-    expect(isUnlockTarget(field({ cls: 'chat-input' }))).toBe(false);
+    expect(isUnlockTarget(asElement(field({ cls: 'chat-input' })))).toBe(false);
   });
 
   it('leaves the summoner-name search field alone', () => {
-    expect(isUnlockTarget(field({ cls: 'player-name-input__game-name-input' }))).toBe(false);
+    expect(isUnlockTarget(asElement(field({ cls: 'player-name-input__game-name-input' })))).toBe(false);
   });
 });
 
@@ -85,7 +86,7 @@ describe('unlockIn', () => {
 
   it('survives a root that cannot be queried', () => {
     const hostile = { querySelectorAll() { throw new Error('detached'); } };
-    expect(() => unlockIn(hostile)).not.toThrow();
+    expect(() => unlockIn(hostile as unknown as ParentNode)).not.toThrow();
   });
 });
 

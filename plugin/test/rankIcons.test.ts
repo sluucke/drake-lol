@@ -1,4 +1,4 @@
-// @ts-nocheck
+/// <reference types="node" />
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -6,8 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), '../assets/rank');
 
-function contentBox(svg) {
-  const tm = svg.match(/transform="translate\(([^)]+)\)\s*scale\(([^)]+)\)"/);
+function contentBox(svg: string) {
+  const tm = svg.match(/transform="translate\(([^)]+)\)\s*scale\(([^)]+)\)"/)!;
   const [tx, ty] = tm[1].trim().split(/[\s,]+/).map(Number);
   const scale = Number(tm[2]);
 
@@ -41,7 +41,7 @@ describe('rank SVGs', () => {
   it('use a square viewBox centered on the artwork, so tiles line up', () => {
     for (const file of files) {
       const svg = readFileSync(join(DIR, file), 'utf8');
-      const vb = svg.match(/viewBox="([^"]+)"/)[1].trim().split(/[\s,]+/).map(Number);
+      const vb = svg.match(/viewBox="([^"]+)"/)![1].trim().split(/[\s,]+/).map(Number);
       const [vx, vy, vw, vh] = vb;
       expect(vw, file).toBeCloseTo(vh, 3);
 

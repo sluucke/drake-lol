@@ -1,8 +1,28 @@
-// @ts-nocheck
+import type { Lcu } from '../lcu';
+import type { ChampSelectSession } from './champSelect';
+
+export interface MutedPlayer {
+  puuid?: string;
+  summonerId?: number | string;
+  obfuscatedPuuid?: string;
+  obfuscatedSummonerId?: number | string;
+}
+
+export type MutedPlayersResponse = (MutedPlayer | null)[] | { mutedPlayers?: (MutedPlayer | null)[] } | null;
+
+export interface MuteTeammatesResult {
+  mutedCount: number;
+  totalTeammates: number;
+  success: boolean;
+}
+
 export const MUTE_TOGGLE_ROUTE = '/lol-champ-select/v1/toggle-player-muted';
 export const MUTED_PLAYERS_ROUTE = '/lol-champ-select/v1/muted-players';
 
-export function isPlayerMuted(player, mutedList) {
+export function isPlayerMuted(
+  player: MutedPlayer | null | undefined,
+  mutedList: (MutedPlayer | null)[] | null | undefined,
+): boolean {
   if (!player || !Array.isArray(mutedList) || !mutedList.length) return false;
 
   const pPuuid = player.puuid ? String(player.puuid).trim() : '';
@@ -25,7 +45,10 @@ export function isPlayerMuted(player, mutedList) {
   });
 }
 
-export async function muteTeammates(lcu, session) {
+export async function muteTeammates(
+  lcu: Pick<Lcu, 'get' | 'post'> | null | undefined,
+  session: ChampSelectSession | null | undefined,
+): Promise<MuteTeammatesResult> {
   if (!lcu) {
     return { mutedCount: 0, totalTeammates: 0, success: false };
   }
@@ -39,9 +62,9 @@ export async function muteTeammates(lcu, session) {
     return { mutedCount: 0, totalTeammates: 0, success: true };
   }
 
-  let mutedList = [];
+  let mutedList: (MutedPlayer | null)[] = [];
   try {
-    const res = await lcu.get(MUTED_PLAYERS_ROUTE);
+    const res = await lcu.get<MutedPlayersResponse>(MUTED_PLAYERS_ROUTE);
     if (Array.isArray(res)) {
       mutedList = res;
     } else if (Array.isArray(res?.mutedPlayers)) {

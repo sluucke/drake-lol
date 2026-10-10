@@ -1,10 +1,17 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { createDrakeStore } from '../src/app/store/createDrakeStore';
+import type { SaveSettingsResult } from '../src/app/store/settingsSlice';
+import type { BuildState } from '../src/app/store/buildSlice';
+import type { Friend, ScoutRow } from '../src/app/store/types';
+import type { SettingsValues } from '../src/settings';
 
-function deferred() {
-  let resolve;
-  const promise = new Promise((r) => {
+function loose(values: Record<string, unknown>): SettingsValues {
+  return values as SettingsValues;
+}
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((r) => {
     resolve = r;
   });
   return { promise, resolve };
@@ -57,7 +64,7 @@ describe('createDrakeStore', () => {
   it('reverts patched keys and flags the tray when it is down', async () => {
     const save = vi.fn(async () => ({ ok: false, reason: 'the Drake tray is not running' }));
     const store = createDrakeStore({ settings: { auto_accept: false }, settingsClient: { save } });
-    const result = await store.getState().saveSettings({ auto_accept: true, new_key: 1 });
+    const result = await store.getState().saveSettings(loose({ auto_accept: true, new_key: 1 }));
     expect(result.ok).toBe(false);
     const { settings } = store.getState();
     expect(settings.values).toEqual({ auto_accept: false });
@@ -68,29 +75,29 @@ describe('createDrakeStore', () => {
   it('does not flag the tray for other failures', async () => {
     const save = vi.fn(async () => ({ ok: false, reason: 'the tray rejected the change (500)' }));
     const store = createDrakeStore({ settings: {}, settingsClient: { save } });
-    await store.getState().saveSettings({ a: 1 });
+    await store.getState().saveSettings(loose({ a: 1 }));
     expect(store.getState().settings.trayDown).toBe(false);
   });
 
   it('keeps unrelated changes made while a save is pending', async () => {
-    const gate = deferred();
+    const gate = deferred<SaveSettingsResult>();
     const save = vi.fn(() => gate.promise);
-    const store = createDrakeStore({ settings: { a: 1, b: 1 }, settingsClient: { save } });
-    const pending = store.getState().saveSettings({ a: 2 });
-    store.getState().syncLegacy({ settings: { ...store.getState().settings.values, b: 5 } });
+    const store = createDrakeStore({ settings: loose({ a: 1, b: 1 }), settingsClient: { save } });
+    const pending = store.getState().saveSettings(loose({ a: 2 }));
+    store.getState().syncLegacy({ settings: { ...store.getState().settings.values, ...loose({ b: 5 }) } });
     gate.resolve({ ok: false, reason: 'the tray rejected the change (500)' });
     await pending;
     expect(store.getState().settings.values).toEqual({ a: 1, b: 5 });
   });
 
   it('saves locally without a client', async () => {
-    const store = createDrakeStore({ settings: { a: 1 } });
-    await expect(store.getState().saveSettings({ a: 2 })).resolves.toEqual({ ok: true });
-    expect(store.getState().settings.values.a).toBe(2);
+    const store = createDrakeStore({ settings: loose({ a: 1 }) });
+    await expect(store.getState().saveSettings(loose({ a: 2 }))).resolves.toEqual({ ok: true });
+    expect(store.getState().settings.values).toMatchObject({ a: 2 });
   });
 
   it('syncs only the defined legacy fields', () => {
-    const store = createDrakeStore({ settings: { a: 1 }, appVersion: '1.0.0' });
+    const store = createDrakeStore({ settings: loose({ a: 1 }), appVersion: '1.0.0' });
     store.getState().setLocale('pt_BR');
     store.getState().syncLegacy({ screen: 'status', statusText: 'chat', trayDown: true });
     const state = store.getState();
@@ -175,14 +182,14 @@ describe('profile state', () => {
 
   it('syncs any other legacy field into the session', () => {
     const store = createDrakeStore();
-    const friends = [{ id: 'a', riotId: 'A#1', online: true }];
+    const friends = [{ id: 'a', riotId: 'A#1', online: true }] as Friend[];
     store.getState().syncLegacy({ profileTab: 'banner', friends, backgroundId: 7, screen: 'profile' });
     const state = store.getState();
     expect(state.session.profileTab).toBe('banner');
     expect(state.session.friends).toBe(friends);
     expect(state.session.backgroundId).toBe(7);
     expect(state.ui.screen).toBe('profile');
-    expect(state.session.screen).toBeUndefined();
+    expect((state.session as unknown as Record<string, unknown>).screen).toBeUndefined();
   });
 });
 
@@ -200,7 +207,7 @@ describe('team reveal slice', () => {
       rows: [],
       buildSig: '',
     });
-    store.getState().setTeamReveal({ open: true, rows: [{ cellId: 1 }] });
+    store.getState().setTeamReveal({ open: true, rows: [{ cellId: 1 } satisfies ScoutRow] });
     expect(store.getState().teamReveal.open).toBe(true);
     expect(store.getState().teamReveal.rows).toEqual([{ cellId: 1 }]);
     expect(store.getState().teamReveal.activeTab).toBe('scouting');
@@ -216,7 +223,7 @@ describe('build slice', () => {
     expect(build.region).toBe('global');
     expect(build.topPlayers).toEqual({ loading: false, ok: false, players: [], reason: '' });
     expect(build.runeStatus).toBe('idle');
-    store.getState().setBuild({ championId: 157, tier: 'master' });
+    store.getState().setBuild({ championId: 157, tier: 'master' } as BuildState);
     expect(store.getState().build).toEqual({ championId: 157, tier: 'master' });
   });
 });

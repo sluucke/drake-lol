@@ -1,5 +1,14 @@
-// @ts-nocheck
-export function Card({ title, actions, glow = false, className = '', children }) {
+import type { ReactNode } from 'react';
+
+export interface CardProps {
+  title?: ReactNode;
+  actions?: ReactNode;
+  glow?: boolean;
+  className?: string;
+  children?: ReactNode;
+}
+
+export function Card({ title, actions, glow = false, className = '', children }: CardProps) {
   const classes = ['drk-card', glow && 'drk-card--glow', className].filter(Boolean).join(' ');
   return (
     <section className={classes}>

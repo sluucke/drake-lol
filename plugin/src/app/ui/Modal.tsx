@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { useEffect, useId, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SFX } from '../../ui/sfx';
 import { useSfx } from '../hooks/useSfx';
@@ -8,13 +8,26 @@ import { useEscapeLayer } from '../hooks/useEscapeLayer';
 import { Layer } from './Layer';
 import { DURATION, EASE_OUT } from './motion';
 
+export interface ModalProps {
+  open: boolean;
+  onClose?: () => void;
+  title?: ReactNode;
+  header?: ReactNode;
+  ariaLabel?: string;
+  width?: number | string;
+  closeLabel?: string;
+  className?: string;
+  dismissible?: boolean;
+  children?: ReactNode;
+}
+
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, header, ariaLabel, width = 560, closeLabel, className = '', dismissible = true, children }) {
+export function Modal({ open, onClose, title, header, ariaLabel, width = 560, closeLabel, className = '', dismissible = true, children }: ModalProps) {
   const sfx = useSfx();
   const t = useT();
-  const dialogRef = useRef(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   const titleId = useId();
   onCloseRef.current = onClose;
@@ -25,19 +38,20 @@ export function Modal({ open, onClose, title, header, ariaLabel, width = 560, cl
     const dialog = dialogRef.current;
     const win = dialog?.ownerDocument?.defaultView;
     if (!dialog || !win) return undefined;
-    dialog.querySelector(FOCUSABLE)?.focus();
-    const onKeyDown = (event) => {
+    dialog.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
         if (dismissible) onCloseRef.current?.();
         return;
       }
       if (event.key !== 'Tab') return;
-      const items = [...dialog.querySelectorAll(FOCUSABLE)];
+      const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)];
       if (items.length === 0) return;
       const first = items[0];
       const last = items[items.length - 1];
-      const active = dialog.getRootNode().activeElement;
+      const root = dialog.getRootNode();
+      const active = 'activeElement' in root ? root.activeElement : undefined;
       if (event.shiftKey && active === first) {
         event.preventDefault();
         last.focus();

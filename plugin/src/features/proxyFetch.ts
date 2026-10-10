@@ -1,13 +1,34 @@
-// @ts-nocheck
-export function makeProxyFetch({ port, token, fetchImpl = globalThis.fetch } = {}) {
-  return async function proxyFetch(url, options = {}) {
+import type { FetchLike } from '../lcu';
+
+export interface HttpResponseLike {
+  ok: boolean;
+  status: number;
+  text(): Promise<string>;
+  json(): Promise<unknown>;
+}
+
+export type HttpFetch = (url: string, init?: RequestInit) => Promise<HttpResponseLike | null | undefined>;
+
+export interface ProxyFetchOptions {
+  port?: number;
+  token?: string;
+  fetchImpl?: FetchLike;
+}
+
+interface ProxyPayload {
+  status?: number | string;
+  text?: string;
+}
+
+export function makeProxyFetch({ port, token, fetchImpl = globalThis.fetch }: ProxyFetchOptions = {}): HttpFetch {
+  return async function proxyFetch(url: string, options: RequestInit = {}): Promise<HttpResponseLike | null> {
     if (!port || !token || typeof fetchImpl !== 'function') {
       return typeof fetchImpl === 'function' ? fetchImpl(url, options) : null;
     }
 
     try {
       const method = (options?.method || 'GET').toUpperCase();
-      let bodyJson = null;
+      let bodyJson: unknown = null;
       if (options?.body) {
         if (typeof options.body === 'string') {
           try {
@@ -20,14 +41,15 @@ export function makeProxyFetch({ port, token, fetchImpl = globalThis.fetch } = {
         }
       }
 
-      const headersObj = {};
+      const headersObj: Record<string, string> = {};
       if (options?.headers) {
-        if (typeof options.headers.forEach === 'function') {
-          options.headers.forEach((v, k) => {
+        const headers = options.headers as Headers | Record<string, string>;
+        if (typeof (headers as Headers).forEach === 'function') {
+          (headers as Headers).forEach((v, k) => {
             headersObj[k] = v;
           });
-        } else if (typeof options.headers === 'object') {
-          Object.assign(headersObj, options.headers);
+        } else if (typeof headers === 'object') {
+          Object.assign(headersObj, headers);
         }
       }
 
@@ -49,7 +71,7 @@ export function makeProxyFetch({ port, token, fetchImpl = globalThis.fetch } = {
         return fetchImpl(url, options);
       }
 
-      const data = await res.json();
+      const data = (await res.json()) as ProxyPayload | null;
       const status = Number(data?.status) || 500;
       const textVal = String(data?.text || '');
 
@@ -59,7 +81,7 @@ export function makeProxyFetch({ port, token, fetchImpl = globalThis.fetch } = {
         text: async () => textVal,
         json: async () => {
           try {
-            return JSON.parse(textVal);
+            return JSON.parse(textVal) as unknown;
           } catch {
             return {};
           }

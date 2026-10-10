@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import {
   normaliseSkins,
@@ -18,7 +17,7 @@ const raw = {
 describe('normaliseSkins', () => {
   it('keeps id, name and tile for each skin', () => {
     const list = normaliseSkins(raw);
-    const annie = list.find((s) => s.id === 1001);
+    const annie = list.find((s) => s.id === 1001)!;
     expect(annie.name).toBe('Goth Annie');
     expect(annie.tile).toBe('/a/annie_tile_1.jpg');
   });

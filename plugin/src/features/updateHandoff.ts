@@ -1,14 +1,31 @@
-// @ts-nocheck
 import { compareSemver } from '../ui/whatsNew';
+
+import type { PluginConfig } from '../settings';
 
 export const HANDOFF_TIMEOUT_MS = 3 * 60 * 1000;
 export const HANDOFF_POLL_MS = 2000;
 
-function plain(version) {
+export type HandoffConfig = Pick<PluginConfig, 'token' | 'version'>;
+
+export type HandoffOutcome<C extends HandoffConfig = HandoffConfig> =
+  | { status: 'updated' | 'same-version'; cfg: C }
+  | { status: 'timeout'; cfg?: undefined };
+
+export interface WaitForNewTrayOptions<C extends HandoffConfig> {
+  loadConfig: () => Promise<C | null | undefined>;
+  previousToken: string | null | undefined;
+  targetVersion: string | null | undefined;
+  timeoutMs?: number;
+  intervalMs?: number;
+  sleep?: (ms: number) => Promise<unknown>;
+  now?: () => number;
+}
+
+function plain(version: string | null | undefined): string {
   return String(version || '').trim().replace(/^v/i, '');
 }
 
-export async function waitForNewTray({
+export async function waitForNewTray<C extends HandoffConfig = HandoffConfig>({
   loadConfig,
   previousToken,
   targetVersion,
@@ -16,11 +33,11 @@ export async function waitForNewTray({
   intervalMs = HANDOFF_POLL_MS,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   now = () => Date.now(),
-}) {
+}: WaitForNewTrayOptions<C>): Promise<HandoffOutcome<C>> {
   const deadline = now() + timeoutMs;
   while (now() < deadline) {
     await sleep(intervalMs);
-    let cfg = null;
+    let cfg: C | null | undefined = null;
     try {
       cfg = await loadConfig();
     } catch {

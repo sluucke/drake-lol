@@ -1,10 +1,9 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { waitForNewTray } from '../src/features/updateHandoff';
 
 function clock() {
   let t = 0;
-  return { now: () => t, sleep: async (ms) => { t += ms; } };
+  return { now: () => t, sleep: async (ms: number) => { t += ms; } };
 }
 
 describe('waitForNewTray', () => {

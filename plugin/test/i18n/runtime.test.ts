@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { DEFAULT_LOCALE, createTranslator, resolveLocale, toLanguageTag, pickLocale } from '../../src/app/i18n/runtime';
 

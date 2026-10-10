@@ -1,4 +1,4 @@
-// @ts-nocheck
+/// <reference types="node" />
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { DURATION, EASE_OUT, EASE_SPRING, STAGGER, MAX_STAGGERED } from '../src/app/ui/motion';
@@ -20,7 +20,7 @@ const REQUIRED = [
   '--dur-fast', '--dur-base', '--dur-slow', '--ease-out', '--ease-spring',
 ];
 
-function tokenValue(name) {
+function tokenValue(name: string) {
   const match = css.match(new RegExp(`${name}:\\s*([^;]+);`));
   return match ? match[1].trim() : null;
 }

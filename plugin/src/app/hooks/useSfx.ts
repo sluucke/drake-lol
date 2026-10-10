@@ -1,10 +1,13 @@
-// @ts-nocheck
 import { createContext, useContext } from 'react';
 
-export const NOOP_SFX = { play() {} };
+export interface SfxPlayer {
+  play(name: string): void;
+}
 
-export const SfxContext = createContext(NOOP_SFX);
+export const NOOP_SFX: SfxPlayer = { play() {} };
 
-export function useSfx() {
+export const SfxContext = createContext<SfxPlayer>(NOOP_SFX);
+
+export function useSfx(): SfxPlayer {
   return useContext(SfxContext);
 }

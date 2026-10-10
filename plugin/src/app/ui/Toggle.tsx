@@ -1,9 +1,18 @@
-// @ts-nocheck
 import { useId } from 'react';
+import type { ReactNode } from 'react';
 import { SFX } from '../../ui/sfx';
 import { useSfx } from '../hooks/useSfx';
 
-export function Toggle({ checked, onChange, label, help, disabled = false, id }) {
+export interface ToggleProps {
+  checked: boolean;
+  onChange?: (checked: boolean) => void;
+  label?: ReactNode;
+  help?: ReactNode;
+  disabled?: boolean;
+  id?: string;
+}
+
+export function Toggle({ checked, onChange, label, help, disabled = false, id }: ToggleProps) {
   const sfx = useSfx();
   const autoId = useId();
   const boxId = id || autoId;

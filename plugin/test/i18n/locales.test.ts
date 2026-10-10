@@ -1,9 +1,8 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { AVAILABLE_LOCALES, DICTS } from '../../src/app/i18n/locales/index';
 import { createTranslator, resolveLocale } from '../../src/app/i18n/runtime';
 
-function flatten(node, prefix = '', out = {}) {
+function flatten(node: object, prefix = '', out: Record<string, unknown> = {}): Record<string, unknown> {
   for (const [key, value] of Object.entries(node)) {
     const path = prefix ? `${prefix}.${key}` : key;
     if (value && typeof value === 'object') flatten(value, path, out);
@@ -12,7 +11,7 @@ function flatten(node, prefix = '', out = {}) {
   return out;
 }
 
-function placeholders(text) {
+function placeholders(text: unknown) {
   return [...String(text).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 }
 
@@ -20,11 +19,11 @@ const base = flatten(DICTS.en_US);
 const LOCALES = ['en_US', 'es_MX', 'pt_BR', 'ru_RU', 'sv_SE', 'tr_TR'];
 const PLURAL_CATEGORY = /\.(zero|one|two|few|many|other)$/;
 
-function pluralSibling(key) {
+function pluralSibling(key: string) {
   return PLURAL_CATEGORY.test(key) ? key.replace(PLURAL_CATEGORY, '.other') : null;
 }
 
-function isExtraPluralForm(key) {
+function isExtraPluralForm(key: string) {
   const other = pluralSibling(key);
   return other !== null && other in base && !(key in base);
 }
@@ -62,13 +61,13 @@ describe('locale dictionaries', () => {
     it(`${locale} has only non-empty strings`, () => {
       for (const [key, value] of Object.entries(flat)) {
         expect(typeof value, key).toBe('string');
-        expect(value.trim().length, key).toBeGreaterThan(0);
+        expect(String(value).trim().length, key).toBeGreaterThan(0);
       }
     });
 
     it(`${locale} keeps the en_US placeholders`, () => {
       for (const [key, value] of Object.entries(flat)) {
-        const source = key in base ? base[key] : base[pluralSibling(key)];
+        const source = key in base ? base[key] : base[pluralSibling(key) ?? ''];
         expect(placeholders(value), key).toEqual(placeholders(source));
       }
     });

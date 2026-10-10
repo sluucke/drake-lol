@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -13,7 +12,7 @@ describe('Card', () => {
     );
     expect(screen.getByRole('heading', { name: 'Runes' })).toBeTruthy();
     expect(screen.getByText('act')).toBeTruthy();
-    expect(screen.getByText('body').closest('section').className).toContain('drk-card--glow');
+    expect(screen.getByText('body').closest('section')?.className).toContain('drk-card--glow');
   });
 
   it('omits the header without title or actions', () => {

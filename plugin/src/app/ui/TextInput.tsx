@@ -1,5 +1,16 @@
-// @ts-nocheck
-export function TextInput({ id, type = 'text', value, onChange, onCommit, placeholder, disabled = false, ariaLabel, maxLength }) {
+export interface TextInputProps {
+  id?: string;
+  type?: string;
+  value: string;
+  onChange?: (value: string) => void;
+  onCommit?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  ariaLabel?: string;
+  maxLength?: number;
+}
+
+export function TextInput({ id, type = 'text', value, onChange, onCommit, placeholder, disabled = false, ariaLabel, maxLength }: TextInputProps) {
   return (
     <input
       id={id}

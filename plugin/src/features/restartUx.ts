@@ -1,15 +1,25 @@
-// @ts-nocheck
 
 
 
 
 
+
+import type { Lcu } from '../lcu';
 
 export const RESTART_UX_ROUTE = '/riotclient/kill-and-restart-ux';
 
-export function makeRestartUx({ lcu }) {
+export interface RestartUxResult {
+  ok: boolean;
+  reason?: string;
+}
+
+export interface RestartUx {
+  restart(): Promise<RestartUxResult>;
+}
+
+export function makeRestartUx({ lcu }: { lcu: Pick<Lcu, 'post'> }): RestartUx {
   return {
-    async restart() {
+    async restart(): Promise<RestartUxResult> {
       try {
         const res = await lcu.post(RESTART_UX_ROUTE);
         if (res && res.ok === false) {
@@ -17,7 +27,7 @@ export function makeRestartUx({ lcu }) {
         }
         return { ok: true };
       } catch (e) {
-        return { ok: false, reason: `could not reach the client (${e.message})` };
+        return { ok: false, reason: `could not reach the client (${(e as Error).message})` };
       }
     },
   };

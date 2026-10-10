@@ -1,4 +1,81 @@
-// @ts-nocheck
+import type {
+  OpggChampionResponse,
+  OpggCounter,
+  OpggRunePage,
+  OpggSkillMastery,
+  OpggStatEntry,
+  OpggSummary,
+} from './opggApi';
+
+export interface BuildEntry {
+  ids: number[];
+  play: number;
+  winRate: number | null;
+  pickRate: number | null;
+}
+
+export interface BuildStats {
+  winRate: number | null;
+  pickRate: number | null;
+  banRate: number | null;
+  kda: number | null;
+  play: number;
+  tier: number | null;
+  rank: number | null;
+}
+
+export interface BuildItems {
+  starter: BuildEntry[];
+  boots: BuildEntry[];
+  core: BuildEntry[];
+  last: BuildEntry[];
+}
+
+export type ItemBucket = keyof BuildItems;
+
+export interface BuildRunePage {
+  primaryStyleId: number;
+  subStyleId: number;
+  selectedPerkIds: number[];
+  play: number;
+  winRate: number | null;
+  pickRate: number | null;
+}
+
+export interface BuildSkills {
+  masteries: string[];
+  order: string[];
+  winRate?: number | null;
+  play?: number;
+}
+
+export interface CounterEntry {
+  championId: number;
+  play: number;
+  winRate: number;
+}
+
+export interface BuildCounters {
+  strong: CounterEntry[];
+  weak: CounterEntry[];
+}
+
+export interface ChampionBuild {
+  patch: string;
+  cachedAt: string;
+  stats: BuildStats | null;
+  spells: BuildEntry[];
+  items: BuildItems;
+  runePages: BuildRunePage[];
+  skills: BuildSkills;
+  counters: BuildCounters;
+  hasData: boolean;
+}
+
+export interface NormalizeBuildOptions {
+  mode?: string;
+}
+
 export const MIN_COUNTER_GAMES = 50;
 export const COUNTER_PLAY_RATIO = 0.01;
 export const COUNTER_LIMIT = 5;
@@ -7,7 +84,7 @@ const ITEM_BUCKET_LIMIT = 3;
 const RUNE_PAGE_LIMIT = 3;
 const SPELL_LIMIT = 3;
 
-export const EMPTY_BUILD = Object.freeze({
+export const EMPTY_BUILD: Readonly<ChampionBuild> = Object.freeze({
   patch: '',
   cachedAt: '',
   stats: null,
@@ -19,28 +96,28 @@ export const EMPTY_BUILD = Object.freeze({
   hasData: false,
 });
 
-function toPercent(rate) {
+function toPercent(rate: unknown): number | null {
   const num = Number(rate);
   if (!Number.isFinite(num)) return null;
   return Math.round(num * 1000) / 10;
 }
 
-function ratio(win, play) {
+function ratio(win: unknown, play: unknown): number | null {
   const w = Number(win);
   const p = Number(play);
   if (!Number.isFinite(w) || !Number.isFinite(p) || p <= 0) return null;
   return Math.round((w / p) * 1000) / 10;
 }
 
-function toIds(raw) {
+function toIds(raw: unknown): number[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0);
 }
 
-function normalizeEntries(list, limit) {
+function normalizeEntries(list: OpggStatEntry[] | null | undefined, limit: number): BuildEntry[] {
   if (!Array.isArray(list)) return [];
   return list
-    .map((entry) => ({
+    .map((entry): BuildEntry => ({
       ids: toIds(entry?.ids),
       play: Number(entry?.play) || 0,
       winRate: ratio(entry?.win, entry?.play),
@@ -51,7 +128,7 @@ function normalizeEntries(list, limit) {
     .slice(0, limit);
 }
 
-function normalizeStats(summary) {
+function normalizeStats(summary: OpggSummary | null | undefined): BuildStats | null {
   const raw = summary?.average_stats;
   if (!raw || typeof raw !== 'object') return null;
   return {
@@ -65,7 +142,7 @@ function normalizeStats(summary) {
   };
 }
 
-function normalizeRunePages(runePages) {
+function normalizeRunePages(runePages: OpggRunePage[] | null | undefined): BuildRunePage[] {
   if (!Array.isArray(runePages)) return [];
 
   // A build's own pick_rate is relative to its parent page (how often that
@@ -79,7 +156,7 @@ function normalizeRunePages(runePages) {
   // fixture's own top-level `runes` global-frequency list, e.g.
   // 0.4226 * 0.7757 = 0.3278) and sort on that instead. winRate and play
   // stay build-level so each row's numbers describe the exact perks shown.
-  const flattened = [];
+  const flattened: BuildRunePage[] = [];
   for (const page of runePages) {
     const primaryStyleId = Number(page?.primary_page_id) || 0;
     const subStyleId = Number(page?.secondary_page_id) || 0;
@@ -110,7 +187,7 @@ function normalizeRunePages(runePages) {
   return flattened.sort((a, b) => (b.pickRate ?? 0) - (a.pickRate ?? 0)).slice(0, RUNE_PAGE_LIMIT);
 }
 
-function normalizeSkills(skillMasteries) {
+function normalizeSkills(skillMasteries: OpggSkillMastery[] | null | undefined): BuildSkills {
   const first = Array.isArray(skillMasteries) ? skillMasteries[0] : null;
   if (!first) return { masteries: [], order: [], winRate: null, play: 0 };
 
@@ -126,7 +203,7 @@ function normalizeSkills(skillMasteries) {
   return { masteries, order, winRate, play };
 }
 
-function normalizeCounters(counters, totalPlay) {
+function normalizeCounters(counters: OpggCounter[] | null | undefined, totalPlay: number | undefined): BuildCounters {
   if (!Array.isArray(counters) || counters.length === 0) {
     return { strong: [], weak: [] };
   }
@@ -139,7 +216,7 @@ function normalizeCounters(counters, totalPlay) {
       play: Number(entry?.play) || 0,
       winRate: ratio(entry?.win, entry?.play),
     }))
-    .filter((entry) => entry.championId > 0 && entry.winRate !== null && entry.play >= floor);
+    .filter((entry): entry is CounterEntry => entry.championId > 0 && entry.winRate !== null && entry.play >= floor);
 
   const strong = entries
     .filter((entry) => entry.winRate >= 50)
@@ -154,14 +231,15 @@ function normalizeCounters(counters, totalPlay) {
   return { strong, weak };
 }
 
-export function normalizeChampionBuild(json, { mode = 'ranked' } = {}) {
+export function normalizeChampionBuild(json: unknown, { mode = 'ranked' }: NormalizeBuildOptions = {}): ChampionBuild {
   if (!json || typeof json !== 'object') return EMPTY_BUILD;
 
-  const data = json.data;
+  const response = json as OpggChampionResponse;
+  const data = response.data;
   if (!data || typeof data !== 'object') return EMPTY_BUILD;
 
   const stats = normalizeStats(data.summary);
-  const items = {
+  const items: BuildItems = {
     starter: normalizeEntries(data.starter_items, ITEM_BUCKET_LIMIT),
     boots: normalizeEntries(data.boots, ITEM_BUCKET_LIMIT),
     core: normalizeEntries(data.core_items, ITEM_BUCKET_LIMIT),
@@ -182,8 +260,8 @@ export function normalizeChampionBuild(json, { mode = 'ranked' } = {}) {
   );
 
   return {
-    patch: String(json.meta?.version || ''),
-    cachedAt: String(json.meta?.cached_at || ''),
+    patch: String(response.meta?.version || ''),
+    cachedAt: String(response.meta?.cached_at || ''),
     stats,
     spells,
     items,

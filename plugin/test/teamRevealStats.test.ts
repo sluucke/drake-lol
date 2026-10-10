@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { obfuscateChampSelectPuuid } from '../src/features/champSelectPuuid';
 import {
@@ -28,6 +27,20 @@ import {
   TEAM_REVEAL_SAMPLE_SIZES,
   TEAM_REVEAL_FETCH_CONCURRENCIES,
 } from '../src/features/teamRevealStats';
+import type {
+  FetchTimingInput,
+  RevealDurationInput,
+  TeamRevealRow,
+  TeamRevealSnapshotOptions,
+} from '../src/features/teamRevealStats';
+
+type LooseSnapshotOptions = Omit<TeamRevealSnapshotOptions, 'lcu' | 'fetchImpl' | 'session'> & {
+  lcu: object;
+  fetchImpl?: unknown;
+  session: unknown;
+};
+const snapshot = (opts: LooseSnapshotOptions): Promise<(TeamRevealRow & { sharedGames?: unknown })[]> =>
+  buildTeamRevealSnapshot(opts as unknown as TeamRevealSnapshotOptions);
 
 const NOW = new Date('2026-08-18T14:00:00.000Z').getTime();
 const QUEUE_ID = 420;
@@ -44,6 +57,16 @@ function game({
   deaths = 1,
   assists = 1,
   seasonId = 0,
+}: {
+  puuid: string;
+  queueId?: number;
+  hoursAgo?: number;
+  championId?: number;
+  win?: boolean;
+  kills?: number;
+  deaths?: number;
+  assists?: number;
+  seasonId?: number;
 }) {
   return {
     gameCreation: NOW - hoursAgo * 60 * 60 * 1000,
@@ -129,10 +152,10 @@ describe('match pool helpers', () => {
   });
 
   it('recommends concurrency from the last reveal duration', () => {
-    expect(recommendFetchConcurrency({ lastMs: 12000, lastConcurrency: 1, teamSize: 5 })).toBe(2);
-    expect(recommendFetchConcurrency({ lastMs: 2500, lastConcurrency: 2, teamSize: 5 })).toBe(2);
-    expect(recommendFetchConcurrency({ lastMs: 20000, lastConcurrency: 3, teamSize: 5 })).toBe(2);
-    expect(estimateRevealDurationMs({ concurrency: 2, teamSize: 5, lastMs: 10000, lastConcurrency: 1 })).toBe(
+    expect(recommendFetchConcurrency({ lastMs: 12000, lastConcurrency: 1, teamSize: 5 } as FetchTimingInput)).toBe(2);
+    expect(recommendFetchConcurrency({ lastMs: 2500, lastConcurrency: 2, teamSize: 5 } as FetchTimingInput)).toBe(2);
+    expect(recommendFetchConcurrency({ lastMs: 20000, lastConcurrency: 3, teamSize: 5 } as FetchTimingInput)).toBe(2);
+    expect(estimateRevealDurationMs({ concurrency: 2, teamSize: 5, lastMs: 10000, lastConcurrency: 1 } as RevealDurationInput)).toBe(
       5000,
     );
   });
@@ -201,7 +224,7 @@ describe('buildTeamRevealSnapshot', () => {
       ],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(out.map((row) => row.cellId)).toEqual([1, 3]);
   });
@@ -216,7 +239,7 @@ describe('buildTeamRevealSnapshot', () => {
       ],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(out.find((row) => row.cellId === 1)?.assignedPosition).toBe('TOP');
     expect(out.find((row) => row.cellId === 2)?.assignedPosition).toBe('UTILITY');
@@ -237,7 +260,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 2, gameName: '', tagLine: '', nameVisibilityType: 'HIDDEN', obfuscatedPuuid: obfuscated }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(out[0].riotId).toBe('HiddenReal#TAG');
   });
@@ -260,7 +283,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({
+    const out = await snapshot({
       session,
       lcu,
       now: NOW,
@@ -302,7 +325,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(out[0].recentGames).toEqual([
       { championId: 11, win: true, kills: 8, deaths: 2, assists: 4 },
@@ -334,7 +357,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(out[0].seasonMostPlayedChampionId).toBe(12);
     expect(out[0].seasonMostPlayedCount).toBe(3);
@@ -386,7 +409,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({
+    const out = await snapshot({
       session,
       lcu,
       fetchImpl,
@@ -435,7 +458,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(out[0].mostPlayedChampionId).toBe(11);
   });
@@ -450,7 +473,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(out[0].kda).toBe(12);
   });
@@ -470,7 +493,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 7, summonerId: 77 }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(out[0].riotId).toBe('Fallback#BR1');
     expect(out[0].wins).toBe(1);
@@ -490,7 +513,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({
+    const out = await snapshot({
       session,
       lcu,
       now: NOW,
@@ -502,7 +525,7 @@ describe('buildTeamRevealSnapshot', () => {
     expect(out[0].losses).toBe(0);
     expect(out[0].matchesUsed).toBe(0);
 
-    const mixed = await buildTeamRevealSnapshot({
+    const mixed = await snapshot({
       session,
       lcu,
       now: NOW,
@@ -524,7 +547,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({
+    const out = await snapshot({
       session,
       lcu,
       now: NOW,
@@ -641,7 +664,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, fetchImpl, now: NOW, sampleSize: 20 });
+    const out = await snapshot({ session, lcu, fetchImpl, now: NOW, sampleSize: 20 });
 
     expect(lcu.get).not.toHaveBeenCalledWith(leagueLaddersRoute(PUUID_A));
     expect(out[0].soloRank.tier).toBe('DIAMOND');
@@ -671,7 +694,7 @@ describe('buildTeamRevealSnapshot', () => {
       ],
     };
 
-    await buildTeamRevealSnapshot({ session, lcu, fetchImpl, now: NOW });
+    await snapshot({ session, lcu, fetchImpl, now: NOW });
 
     expect(lcu.get.mock.calls.filter(([route]) => route === '/entitlements/v1/token')).toHaveLength(1);
     expect(lcu.get.mock.calls.filter(([route]) => route === '/lol-chat/v1/me')).toHaveLength(1);
@@ -686,7 +709,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({
+    const out = await snapshot({
       session,
       lcu,
       now: NOW,
@@ -698,7 +721,7 @@ describe('buildTeamRevealSnapshot', () => {
   });
 
   it('reports rank rows before match history finishes', async () => {
-    const progress = [];
+    const progress: TeamRevealRow[][] = [];
     const fetchImpl = vi.fn(async () => {
       expect(progress.length).toBeGreaterThan(0);
       expect(progress[0][0].soloRank.tier).toBe('DIAMOND');
@@ -730,7 +753,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    await buildTeamRevealSnapshot({
+    await snapshot({
       session,
       lcu,
       fetchImpl,
@@ -773,7 +796,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({
+    const out = await snapshot({
       session,
       lcu,
       fetchImpl,
@@ -807,7 +830,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    await snapshot({ session, lcu, now: NOW });
 
     expect(lcu.get).toHaveBeenCalledWith(matchHistoryRoute(PUUID_A, 100));
     expect(lcu.get).not.toHaveBeenCalledWith(matchHistoryRoute(PUUID_A, 180));
@@ -838,7 +861,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(lcu.get).toHaveBeenCalledWith(rankedStatsRoute(PUUID_A));
     expect(out[0].seasonWins).toBe(120);
@@ -884,7 +907,7 @@ describe('buildTeamRevealSnapshot', () => {
       myTeam: [{ cellId: 1, gameName: 'A', tagLine: 'BR', puuid: PUUID_A }],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(lcu.get).toHaveBeenCalledWith(rankedStatsRoute(PUUID_A));
     expect(out[0].soloRank.tier).toBe('GOLD');
@@ -910,7 +933,7 @@ describe('buildTeamRevealSnapshot', () => {
       ],
     };
 
-    const out = await buildTeamRevealSnapshot({ session, lcu, now: NOW });
+    const out = await snapshot({ session, lcu, now: NOW });
 
     expect(out[0].isLocalPlayer).toBe(true);
     expect(out[1].isLocalPlayer).toBe(false);

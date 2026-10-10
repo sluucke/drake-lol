@@ -1,5 +1,32 @@
-// @ts-nocheck
-export function createUiSlice() {
+import type { SliceCreator } from './types';
+
+export interface ChampionQueries {
+  'auto-pick': string;
+  'auto-ban': string;
+}
+
+export interface UiState {
+  panelOpen: boolean;
+  screen: string;
+  overlay: string;
+  tourIndex: number;
+  creditsOpen: boolean;
+  escapeLayers: number;
+  autoPickRole: string;
+  championQueries: ChampionQueries;
+  skinQuery: string;
+}
+
+export interface UiSlice {
+  ui: UiState;
+  setPanelOpen(open: boolean): void;
+  setUi(partial: Partial<UiState>): void;
+  setCreditsOpen(open: boolean): void;
+  pushEscapeLayer(): void;
+  popEscapeLayer(): void;
+}
+
+export function createUiSlice(): SliceCreator<UiSlice> {
   return (set) => ({
     ui: {
       panelOpen: false,

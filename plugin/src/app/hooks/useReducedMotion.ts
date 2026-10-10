@@ -1,14 +1,13 @@
-// @ts-nocheck
 import { useEffect, useState } from 'react';
 
 const QUERY = '(prefers-reduced-motion: reduce)';
 
-function query() {
+function query(): MediaQueryList | null {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return null;
   return window.matchMedia(QUERY);
 }
 
-export function useReducedMotion() {
+export function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(() => !!query()?.matches);
   useEffect(() => {
     const mql = query();

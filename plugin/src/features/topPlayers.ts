@@ -1,7 +1,54 @@
-// @ts-nocheck
+import type { HttpFetch } from './proxyFetch';
+
 const TAG = '[Drake]';
 
-const MCP_CHAMPION_NAME_MAP = {
+export interface LeaderboardPlayer {
+  ranking: number;
+  name: string;
+  region: string;
+  tier: string;
+  winRate: number | null;
+  played: number | null;
+}
+
+export interface PlayerBuildRunePage {
+  primaryStyleId: number;
+  subStyleId: number;
+  selectedPerkIds: number[];
+  winRate: number | null;
+}
+
+export interface PlayerBuild {
+  runePages: PlayerBuildRunePage[];
+  items: number[];
+}
+
+export interface TopPlayersResult<T> {
+  ok: boolean;
+  data: T;
+  reason: string;
+}
+
+export interface TopPlayersRequestOptions {
+  fetchFn?: HttpFetch | null;
+}
+
+export interface LeaderboardQuery {
+  championName?: string | null;
+  region?: string | null;
+}
+
+export interface PlayerBuildQuery {
+  riotId?: string | null;
+  region?: string | null;
+  championId?: number | string | null;
+}
+
+interface McpResponse {
+  result?: { content?: { text?: string }[] };
+}
+
+const MCP_CHAMPION_NAME_MAP: Record<string, string> = {
   "Cho'Gath": 'CHOGATH',
   "Kai'Sa": 'KAISA',
   "Kha'Zix": 'KHAZIX',
@@ -22,7 +69,7 @@ const MCP_CHAMPION_NAME_MAP = {
   LeBlanc: 'LEBLANC',
 };
 
-export function formatMcpChampionName(name) {
+export function formatMcpChampionName(name: string | number | null | undefined): string {
   if (!name && name !== 0) return '';
   const raw = String(name).trim();
   if (MCP_CHAMPION_NAME_MAP[raw]) {
@@ -39,17 +86,17 @@ export const OP_GG_MCP_URL = 'https://mcp-api.op.gg/mcp';
 
 const LEADERBOARD_LIMIT = 5;
 
-function fail(reason, empty) {
+function fail<T>(reason: string, empty: T): TopPlayersResult<T> {
   return { ok: false, data: empty, reason };
 }
 
-function succeed(data) {
+function succeed<T>(data: T): TopPlayersResult<T> {
   return { ok: true, data, reason: '' };
 }
 
 // Moved verbatim from the former leagueOfGraphs.js. The regex encodes the
 // MCP text layout; do not "simplify" it without a captured payload to test against.
-export function parseMcpLeaderboard(text, defaultRegion = 'KR') {
+export function parseMcpLeaderboard(text: unknown, defaultRegion: string | null = 'KR'): LeaderboardPlayer[] {
   if (typeof text !== 'string' || !text.trim()) {
     return [];
   }
@@ -58,8 +105,8 @@ export function parseMcpLeaderboard(text, defaultRegion = 'KR') {
 
   const playerRegex =
     /Leaderboard\((\d+),Summoner\(\d+,"[^"]*","[^"]*","[^"]*","([^"]*)","([^"]*)",[^,]*,"[^"]*","[^"]*",\d+,"[^"]*",\[LeagueStat\("[^"]*",TierInfo\("([^"]*)",(\d+),(\d+),[^)]*\),(\d+),(\d+),/g;
-  let pm;
-  const players = [];
+  let pm: RegExpExecArray | null;
+  const players: LeaderboardPlayer[] = [];
 
   while ((pm = playerRegex.exec(text)) !== null) {
     if (players.length >= LEADERBOARD_LIMIT) break;
@@ -90,8 +137,8 @@ export function parseMcpLeaderboard(text, defaultRegion = 'KR') {
 }
 
 // Extracted from teamRevealDom.handleFetchPlayerBuild. Same regex, now pure.
-export function parsePlayerBuild(text, championId) {
-  const empty = { runePages: [], items: [] };
+export function parsePlayerBuild(text: unknown, championId: number | string | null | undefined): PlayerBuild {
+  const empty: PlayerBuild = { runePages: [], items: [] };
   if (typeof text !== 'string' || !text.trim()) return empty;
 
   const champId = Number(championId) || 0;
@@ -100,9 +147,9 @@ export function parsePlayerBuild(text, championId) {
   const participantRegex =
     /Participant\(Summoner\([^)]+\),(\d+),"([^"]*)","[^"]*","([^"]*)",\[([^\]]*)\],\[([^\]]*)\],Rune\((\d+),(\d+),(\d+)\),\[([^\]]*)\],Stats\([^)]*?"(WIN|LOSE)"/g;
 
-  const runePages = [];
-  let items = [];
-  let match;
+  const runePages: PlayerBuildRunePage[] = [];
+  let items: number[] = [];
+  let match: RegExpExecArray | null;
 
   while ((match = participantRegex.exec(text)) !== null) {
     if (Number(match[1]) !== champId) continue;
@@ -137,7 +184,11 @@ export function parsePlayerBuild(text, championId) {
   return { runePages, items };
 }
 
-async function callMcp(name, args, { fetchFn, id }) {
+async function callMcp(
+  name: string,
+  args: Record<string, unknown>,
+  { fetchFn, id }: { fetchFn: HttpFetch; id: number },
+): Promise<string> {
   const res = await fetchFn(OP_GG_MCP_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -153,20 +204,20 @@ async function callMcp(name, args, { fetchFn, id }) {
     throw new Error(`MCP returned ${res?.status ?? 'no response'}`);
   }
 
-  const data = await res.json();
+  const data = (await res.json()) as McpResponse | null;
   return data?.result?.content?.[0]?.text || '';
 }
 
 export async function fetchChampionLeaderboard(
-  { championName, region = 'br' } = {},
-  { fetchFn = globalThis.fetch } = {}
-) {
-  if (!championName) return fail('No champion selected', []);
-  if (typeof fetchFn !== 'function') return fail('No network client available', []);
+  { championName, region = 'br' }: LeaderboardQuery = {},
+  { fetchFn = globalThis.fetch }: TopPlayersRequestOptions = {}
+): Promise<TopPlayersResult<LeaderboardPlayer[]>> {
+  if (!championName) return fail<LeaderboardPlayer[]>('No champion selected', []);
+  if (typeof fetchFn !== 'function') return fail<LeaderboardPlayer[]>('No network client available', []);
 
   const reg = String(region || 'br').toLowerCase();
   const mcpName = formatMcpChampionName(championName);
-  if (!mcpName) return fail('No ranking data available', []);
+  if (!mcpName) return fail<LeaderboardPlayer[]>('No ranking data available', []);
 
   try {
     const text = await callMcp(
@@ -179,17 +230,17 @@ export async function fetchChampionLeaderboard(
       return succeed(players);
     }
   } catch (err) {
-    console.warn(TAG, 'MCP leaderboard fetch failed:', err?.message || err);
+    console.warn(TAG, 'MCP leaderboard fetch failed:', (err as Error | null)?.message || err);
   }
 
-  return fail('No ranking data available', []);
+  return fail<LeaderboardPlayer[]>('No ranking data available', []);
 }
 
 export async function fetchPlayerBuild(
-  { riotId, region = 'kr', championId } = {},
-  { fetchFn = globalThis.fetch } = {}
-) {
-  const empty = { runePages: [], items: [] };
+  { riotId, region = 'kr', championId }: PlayerBuildQuery = {},
+  { fetchFn = globalThis.fetch }: TopPlayersRequestOptions = {}
+): Promise<TopPlayersResult<PlayerBuild>> {
+  const empty: PlayerBuild = { runePages: [], items: [] };
   const parts = String(riotId || '').split('#');
   const gameName = parts[0] || '';
   const tagLine = parts[1] || '';
@@ -209,7 +260,7 @@ export async function fetchPlayerBuild(
     }
     return succeed(build);
   } catch (err) {
-    console.warn(TAG, 'player build fetch failed:', err?.message || err);
+    console.warn(TAG, 'player build fetch failed:', (err as Error | null)?.message || err);
     return fail('Match history unavailable', empty);
   }
 }

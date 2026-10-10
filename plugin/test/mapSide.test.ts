@@ -1,6 +1,7 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { readMapSide, formatMapSideBadge } from '../src/features/mapSide';
+import type { ChampSelectSession } from '../src/features/champSelect';
+import type { MapSideInfo } from '../src/features/mapSide';
 
 describe('readMapSide', () => {
   it('identifies Blue Side by team 1 or 100', () => {
@@ -75,7 +76,7 @@ describe('readMapSide', () => {
       label: '',
       color: '',
     });
-    expect(readMapSide({ myTeam: [{ cellId: 'invalid' }] })).toEqual({
+    expect(readMapSide({ myTeam: [{ cellId: 'invalid' }] } as unknown as ChampSelectSession)).toEqual({
       side: '',
       label: '',
       color: '',
@@ -87,7 +88,7 @@ describe('readMapSide', () => {
     expect(readMapSide(undefined)).toEqual({ side: '', label: '', color: '' });
     expect(readMapSide({})).toEqual({ side: '', label: '', color: '' });
     expect(readMapSide({ myTeam: [] })).toEqual({ side: '', label: '', color: '' });
-    expect(readMapSide({ myTeam: null })).toEqual({ side: '', label: '', color: '' });
+    expect(readMapSide({ myTeam: null } as unknown as ChampSelectSession)).toEqual({ side: '', label: '', color: '' });
   });
 });
 
@@ -105,6 +106,6 @@ describe('formatMapSideBadge', () => {
     expect(formatMapSideBadge(null)).toBe('');
     expect(formatMapSideBadge(undefined)).toBe('');
     expect(formatMapSideBadge({ side: '', label: '', color: '' })).toBe('');
-    expect(formatMapSideBadge({ side: 'BLUE' })).toBe('');
+    expect(formatMapSideBadge({ side: 'BLUE' } as MapSideInfo)).toBe('');
   });
 });

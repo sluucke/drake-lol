@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { CHAT_ME } from '../src/features/presence';
 import {
@@ -9,6 +8,9 @@ import {
   readEquippedChallengeIds,
   makeChallenges,
 } from '../src/features/challenges';
+import type { Lcu } from '../src/lcu';
+
+const asLcu = (fake: object): Lcu => fake as unknown as Lcu;
 
 describe('readChallengeIdSlots', () => {
   it('reads preference ids from client state', () => {
@@ -56,7 +58,7 @@ describe('readEquippedChallengeIds', () => {
 describe('makeChallenges', () => {
   it('clears equipped badges', async () => {
     const lcu = { post: vi.fn().mockResolvedValue({ ok: true }) };
-    const result = await makeChallenges({ lcu }).removeBadges();
+    const result = await makeChallenges({ lcu: asLcu(lcu) }).removeBadges();
     expect(result.ok).toBe(true);
     expect(lcu.post).toHaveBeenCalledWith(CHALLENGE_PREFS_ROUTE, { challengeIds: [] });
   });
@@ -66,7 +68,7 @@ describe('makeChallenges', () => {
       get: vi.fn().mockResolvedValue({ challengeIds: [42, 99, 7] }),
       post: vi.fn().mockResolvedValue({ ok: true }),
     };
-    const result = await makeChallenges({ lcu }).cloneFirstBadge();
+    const result = await makeChallenges({ lcu: asLcu(lcu) }).cloneFirstBadge();
     expect(result.ok).toBe(true);
     expect(lcu.get).toHaveBeenCalledWith(CHALLENGE_CLIENT_STATE_ROUTE);
     expect(lcu.post).toHaveBeenCalledWith(CHALLENGE_PREFS_ROUTE, { challengeIds: [42, 42, 42] });
@@ -74,14 +76,14 @@ describe('makeChallenges', () => {
 
   it('falls back to chat presence when client state has no first slot badge', async () => {
     const lcu = {
-      get: vi.fn(async (route) => {
+      get: vi.fn(async (route: string) => {
         if (route === CHALLENGE_CLIENT_STATE_ROUTE) return { challengeIds: [0, 99, 7] };
         if (route === CHAT_ME) return { lol: { challengeTokensSelected: '504001,301301' } };
         return {};
       }),
       post: vi.fn().mockResolvedValue({ ok: true }),
     };
-    const result = await makeChallenges({ lcu }).cloneFirstBadge();
+    const result = await makeChallenges({ lcu: asLcu(lcu) }).cloneFirstBadge();
     expect(result.ok).toBe(true);
     expect(lcu.post).toHaveBeenCalledWith(CHALLENGE_PREFS_ROUTE, {
       challengeIds: [504001, 504001, 504001],
@@ -93,7 +95,7 @@ describe('makeChallenges', () => {
       get: vi.fn().mockResolvedValue({ challengeIds: [] }),
       post: vi.fn(),
     };
-    const result = await makeChallenges({ lcu }).cloneFirstBadge();
+    const result = await makeChallenges({ lcu: asLcu(lcu) }).cloneFirstBadge();
     expect(result.ok).toBe(false);
     expect(lcu.post).not.toHaveBeenCalled();
   });

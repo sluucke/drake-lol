@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, afterEach } from 'vitest';
 import { gameDataUrl } from '../src/features/assetUrl';
 import { iconUrl } from '../src/features/champions';
@@ -35,7 +34,7 @@ describe('gameDataUrl', () => {
 describe('asset builders use the proxy', () => {
   it('covers champion, skin, item, spell and rune icons', () => {
     globalThis.__DRAKE_ASSET_PROXY__ = PROXY;
-    const proxied = (url) => expect(url.startsWith(PROXY)).toBe(true);
+    const proxied = (url: string | null | undefined) => expect(String(url).startsWith(PROXY)).toBe(true);
     proxied(iconUrl(1));
     proxied(normaliseSkins({ 1: { id: 1, name: 'A', tilePath: '/lol-game-data/assets/x.jpg' } })[0].tile);
     proxied(itemIconUrl(3153));

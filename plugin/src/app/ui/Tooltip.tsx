@@ -1,14 +1,21 @@
-// @ts-nocheck
 import { useEffect, useId, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import type { MotionStyle } from 'motion/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Layer } from './Layer';
 import { DURATION } from './motion';
 
-export function Tooltip({ content, delay = 250, children }) {
+export interface TooltipProps {
+  content: ReactNode;
+  delay?: number;
+  children?: ReactNode;
+}
+
+export function Tooltip({ content, delay = 250, children }: TooltipProps) {
   const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState(null);
-  const anchorRef = useRef(null);
-  const timer = useRef(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const id = useId();
 
   const show = () => {
@@ -28,7 +35,7 @@ export function Tooltip({ content, delay = 250, children }) {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const visible = open && content != null;
-  const style = rect
+  const style: MotionStyle = rect
     ? { position: 'fixed', left: rect.left + rect.width / 2, top: rect.top - 8, x: '-50%', y: '-100%' }
     : { position: 'fixed', x: '-50%', y: '-100%' };
 

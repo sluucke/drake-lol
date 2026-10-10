@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import {
   splitRiotId,
@@ -88,20 +87,20 @@ describe('normaliseFriends', () => {
       { gameName: 'Busy', gameTag: 'X', availability: 'dnd' },
       { gameName: 'Gone', gameTag: 'X', availability: 'offline' },
     ]);
-    expect(list.find((f) => f.name === 'Busy').online).toBe(true);
-    expect(list.find((f) => f.name === 'Gone').online).toBe(false);
+    expect(list.find((f) => f.name === 'Busy')!.online).toBe(true);
+    expect(list.find((f) => f.name === 'Gone')!.online).toBe(false);
   });
 
   it('builds the display name from gameName#gameTag', () => {
-    expect(normaliseFriends(raw).find((f) => f.name === 'B').riotId).toBe('B#BR1');
+    expect(normaliseFriends(raw).find((f) => f.name === 'B')!.riotId).toBe('B#BR1');
   });
 
   it('falls back to the legacy name field', () => {
-    expect(normaliseFriends(raw).find((f) => f.name === 'Legacy').riotId).toBe('Legacy');
+    expect(normaliseFriends(raw).find((f) => f.name === 'Legacy')!.riotId).toBe('Legacy');
   });
 
   it('keeps the personal note, which is the point of the screen', () => {
-    expect(normaliseFriends(raw).find((f) => f.name === 'A').note).toBe('duo partner');
+    expect(normaliseFriends(raw).find((f) => f.name === 'A')!.note).toBe('duo partner');
   });
 
   it('is safe on nothing', () => {

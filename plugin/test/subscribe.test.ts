@@ -1,6 +1,7 @@
-// @ts-nocheck
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { socketPushAvailable, subscribe } from '../src/subscribe';
+
+const g = globalThis as unknown as { socket?: unknown };
 
 describe('subscribe', () => {
   beforeEach(() => {
@@ -9,7 +10,7 @@ describe('subscribe', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    delete globalThis.socket;
+    delete g.socket;
   });
 
   it('polls the route when no push global is present', async () => {
@@ -65,7 +66,7 @@ describe('subscribe', () => {
     // unobserve, so relying on one left every observer attached for good.
     const disconnect = vi.fn();
     const observe = vi.fn().mockReturnValue({ disconnect });
-    globalThis.socket = { observe };
+    g.socket = { observe };
     const fetchImpl = vi.fn();
     const handler = vi.fn();
 
@@ -85,7 +86,7 @@ describe('subscribe', () => {
   it('detaches by route and listener when no subscription is handed back', () => {
     const observe = vi.fn().mockReturnValue(undefined);
     const disconnect = vi.fn();
-    globalThis.socket = { observe, disconnect };
+    g.socket = { observe, disconnect };
     const handler = vi.fn();
 
     const unsubscribe = subscribe('/route', handler, { fetchImpl: vi.fn() });
@@ -97,7 +98,7 @@ describe('subscribe', () => {
 
   it('survives a loader that offers no way to detach', () => {
     const observe = vi.fn().mockReturnValue(undefined);
-    globalThis.socket = { observe };
+    g.socket = { observe };
 
     const unsubscribe = subscribe('/route', vi.fn(), { fetchImpl: vi.fn() });
     expect(() => unsubscribe()).not.toThrow();
@@ -105,13 +106,13 @@ describe('subscribe', () => {
 
   it('reports whether the loader gave us a push socket', () => {
     expect(socketPushAvailable()).toBe(false);
-    globalThis.socket = { observe: vi.fn() };
+    g.socket = { observe: vi.fn() };
     expect(socketPushAvailable()).toBe(true);
   });
 
   it('tells the handler the resource is gone on a delete event', () => {
     const observe = vi.fn();
-    globalThis.socket = { observe };
+    g.socket = { observe };
     const handler = vi.fn();
 
     subscribe('/lol-champ-select/v1/session', handler, { fetchImpl: vi.fn() });

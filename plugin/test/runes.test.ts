@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Lcu } from '../src/lcu';
 import {
   formatRunePagePayload,
   applyRunePage,
@@ -56,12 +56,12 @@ describe('loadRuneAssets', () => {
 
   function makeLcu({ perks = PERKS, styles = STYLES } = {}) {
     return {
-      get: vi.fn(async (route) => {
+      get: vi.fn(async (route: string) => {
         if (route === PERKS_ROUTE) return perks;
         if (route === PERK_STYLES_ROUTE) return styles;
         throw new Error(`unexpected route ${route}`);
       }),
-    };
+    } as unknown as Pick<Lcu, 'get'>;
   }
 
   beforeEach(() => {
@@ -277,7 +277,7 @@ describe('applyRunePage', () => {
       }),
     };
 
-    const res = await applyRunePage(lcu, samplePageData);
+    const res = await applyRunePage(lcu as unknown as Pick<Lcu, 'get' | 'put' | 'post'>, samplePageData);
 
     expect(res).toEqual({ success: true, pageId: 303 });
   });
@@ -288,7 +288,7 @@ describe('applyRunePage', () => {
       post: vi.fn().mockResolvedValue({ ok: false, status: 400 }),
     };
 
-    const res = await applyRunePage(lcu, samplePageData);
+    const res = await applyRunePage(lcu as unknown as Pick<Lcu, 'get' | 'put' | 'post'>, samplePageData);
 
     expect(res.success).toBe(false);
     expect(res.error).toContain('400');
@@ -300,7 +300,7 @@ describe('applyRunePage', () => {
       post: vi.fn().mockRejectedValue(new Error('Network error')),
     };
 
-    const res = await applyRunePage(lcu, samplePageData);
+    const res = await applyRunePage(lcu as unknown as Pick<Lcu, 'get' | 'put' | 'post'>, samplePageData);
 
     expect(res.success).toBe(false);
     expect(res.error).toBe('Network error');

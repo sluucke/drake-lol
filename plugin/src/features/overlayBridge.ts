@@ -1,9 +1,28 @@
-// @ts-nocheck
-export function overlayBase(port) {
+import type { FetchLike } from '../lcu';
+
+export interface ClientBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface OverlayResponse {
+  actions?: string[];
+  [key: string]: unknown;
+}
+
+export function overlayBase(port: number | string | null | undefined): string {
   return `http://127.0.0.1:${Number(port) || 48151}`;
 }
 
-export async function postOverlay(port, token, path, body = {}, fetchImpl = fetch) {
+export async function postOverlay(
+  port: number | string | null | undefined,
+  token: string,
+  path: string,
+  body: Record<string, unknown> = {},
+  fetchImpl: FetchLike = fetch,
+): Promise<OverlayResponse | null> {
   const res = await fetchImpl(`${overlayBase(port)}${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -11,10 +30,12 @@ export async function postOverlay(port, token, path, body = {}, fetchImpl = fetc
   });
   if (!res.ok) return null;
   const text = await res.text();
-  return text ? JSON.parse(text) : {};
+  return text ? (JSON.parse(text) as OverlayResponse) : {};
 }
 
-export function clientBoundsFromWindow(win = window) {
+export type BoundsSource = Pick<Window, 'screenX' | 'screenY' | 'outerWidth' | 'outerHeight'>;
+
+export function clientBoundsFromWindow(win: BoundsSource = window): ClientBounds | null {
   try {
     const x = Math.round(Number(win.screenX) || 0);
     const y = Math.round(Number(win.screenY) || 0);

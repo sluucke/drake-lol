@@ -1,8 +1,21 @@
-// @ts-nocheck
+import type { ReactNode } from 'react';
 import { SFX } from '../../ui/sfx';
 import { useSfx } from '../hooks/useSfx';
 
-export function Segmented({ options, value, onChange, ariaLabel, disabled = false }) {
+export interface SegmentedOption<V extends string | number = string> {
+  value: V;
+  label: ReactNode;
+}
+
+export interface SegmentedProps<V extends string | number = string> {
+  options: readonly SegmentedOption<V>[];
+  value: V;
+  onChange?: (value: V) => void;
+  ariaLabel?: string;
+  disabled?: boolean;
+}
+
+export function Segmented<V extends string | number = string>({ options, value, onChange, ariaLabel, disabled = false }: SegmentedProps<V>) {
   const sfx = useSfx();
   return (
     <div role="radiogroup" aria-label={ariaLabel} className={['drk-segmented', disabled && 'is-disabled'].filter(Boolean).join(' ')}>

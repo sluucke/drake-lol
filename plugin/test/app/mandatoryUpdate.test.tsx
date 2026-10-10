@@ -1,8 +1,14 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { startApp } from '../../src/app/main';
 import { createDrakeStore } from '../../src/app/store/createDrakeStore';
+import type { AppActions } from '../../src/app/AppProviders';
+import type { RequiredUpdate, RequiredUpdatePhase } from '../../src/app/store/sessionSlice';
+
+interface SetupOptions {
+  installRequiredUpdate?: () => Promise<void>;
+  locale?: string;
+}
 
 function makeShadow() {
   const host = document.createElement('div');
@@ -10,15 +16,15 @@ function makeShadow() {
   return host.attachShadow({ mode: 'open' });
 }
 
-function setup({ installRequiredUpdate = vi.fn(async () => {}), locale } = {}) {
+function setup({ installRequiredUpdate = vi.fn(async () => {}), locale }: SetupOptions = {}) {
   const shadow = makeShadow();
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   const actions = { navigate: vi.fn(), close: vi.fn(), openUrl: vi.fn(), installRequiredUpdate };
-  const app = startApp(shadow, { store, actions });
-  const require = (patch = {}) =>
+  const app = startApp(shadow, { store, actions: actions as unknown as AppActions });
+  const require = (patch: Partial<RequiredUpdate> = {}) =>
     act(() => store.getState().setSession({ updateRequired: { version: 'v0.4.4', phase: 'required', ...patch } }));
-  return { shadow, store, actions, app, require, view: within(shadow) };
+  return { shadow, store, actions, app, require, view: within(shadow as unknown as HTMLElement) };
 }
 
 describe('mandatory update', () => {
@@ -45,10 +51,10 @@ describe('mandatory update', () => {
       ['restarting', 'Drake is restarting with the new version…'],
       ['reloading', 'Reloading the client…'],
     ]) {
-      require({ phase });
+      require({ phase: phase as RequiredUpdatePhase });
       expect(view.getByRole('status').textContent).toBe(text);
-      expect(view.getByRole('button', { name: 'Update now' }).disabled).toBe(true);
-      expect(view.getByRole('button', { name: 'Continue without Drake' }).disabled).toBe(true);
+      expect(view.getByRole<HTMLButtonElement>('button', { name: 'Update now' }).disabled).toBe(true);
+      expect(view.getByRole<HTMLButtonElement>('button', { name: 'Continue without Drake' }).disabled).toBe(true);
     }
     act(() => app.unmount());
   });
@@ -72,7 +78,7 @@ describe('mandatory update', () => {
     fireEvent.click(view.getByRole('button', { name: 'Continue without Drake' }));
     await waitFor(() => expect(view.queryByRole('dialog')).toBeNull());
     expect(shadow.querySelector('.drk-panel')).toBeNull();
-    expect(store.getState().session.updateRequired.phase).toBe('dismissed');
+    expect(store.getState().session.updateRequired?.phase).toBe('dismissed');
     act(() => app.unmount());
   });
 

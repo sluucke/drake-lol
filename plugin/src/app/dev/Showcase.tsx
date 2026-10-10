@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -26,7 +25,13 @@ const TABS = [
   { id: 'build', label: 'Build' },
 ];
 
-export function matchesShowcaseToggle(event) {
+export interface ShowcaseKeyEvent {
+  ctrlKey?: boolean;
+  shiftKey?: boolean;
+  key: string;
+}
+
+export function matchesShowcaseToggle(event: ShowcaseKeyEvent): boolean {
   return !!event.ctrlKey && !!event.shiftKey && event.key === 'F12';
 }
 
@@ -71,7 +76,7 @@ export function Showcase() {
 export function DevShowcase() {
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    const onKeyDown = (event) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (!matchesShowcaseToggle(event)) return;
       event.preventDefault();
       setOpen((value) => !value);

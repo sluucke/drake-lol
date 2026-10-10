@@ -1,8 +1,23 @@
-// @ts-nocheck
+import type { CSSProperties } from 'react';
 import { SFX } from '../../ui/sfx';
 import { useSfx } from '../hooks/useSfx';
 
 const COMMIT_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']);
+
+export interface SliderProps {
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange?: (value: number) => void;
+  onCommit?: (value: number) => void;
+  format?: (value: number) => string;
+  disabled?: boolean;
+  ariaLabel?: string;
+  id?: string;
+}
+
+type SliderStyle = CSSProperties & { '--drk-slider-fill': string };
 
 export function Slider({
   value,
@@ -15,9 +30,10 @@ export function Slider({
   disabled = false,
   ariaLabel,
   id,
-}) {
+}: SliderProps) {
   const sfx = useSfx();
   const pct = max === min ? 0 : ((value - min) / (max - min)) * 100;
+  const fillStyle: SliderStyle = { '--drk-slider-fill': `${pct}%` };
   return (
     <div className={['drk-slider', disabled && 'is-disabled'].filter(Boolean).join(' ')}>
       <input
@@ -30,7 +46,7 @@ export function Slider({
         value={value}
         disabled={disabled}
         aria-label={ariaLabel}
-        style={{ '--drk-slider-fill': `${pct}%` }}
+        style={fillStyle}
         onChange={(event) => onChange?.(Number(event.target.value))}
         onPointerUp={(event) => {
           if (disabled) return;

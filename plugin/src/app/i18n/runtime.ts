@@ -1,17 +1,34 @@
-// @ts-nocheck
 export const DEFAULT_LOCALE = 'en_US';
 
 const TAG = '[Drake]';
 
-export function toLanguageTag(locale) {
+export type LocaleNode = string | readonly LocaleNode[] | LocaleDict;
+
+export interface LocaleDict {
+  [key: string]: LocaleNode;
+}
+
+export type LocaleDicts = Readonly<Record<string, LocaleDict>>;
+
+export type TranslateVars = Readonly<Record<string, string | number | null | undefined>>;
+
+export type Translate = (key: string, vars?: TranslateVars) => string;
+
+export type WarnFn = (...args: unknown[]) => void;
+
+export interface TranslatorOptions {
+  warn?: WarnFn;
+}
+
+export function toLanguageTag(locale: string | null | undefined): string {
   return String(locale || DEFAULT_LOCALE).replace('_', '-');
 }
 
-function languageOf(locale) {
+function languageOf(locale: string): string {
   return String(locale).split('_')[0].toLowerCase();
 }
 
-export function resolveLocale(raw, available) {
+export function resolveLocale(raw: string | null | undefined, available: readonly string[]): string {
   const wanted = String(raw || '').replace('-', '_');
   if (!wanted) return DEFAULT_LOCALE;
   if (available.includes(wanted)) return wanted;
@@ -19,22 +36,28 @@ export function resolveLocale(raw, available) {
   return available.find((locale) => languageOf(locale) === lang) || DEFAULT_LOCALE;
 }
 
-export function pickLocale(preference, clientLocale, available) {
+export function pickLocale(
+  preference: string | null | undefined,
+  clientLocale: string | null | undefined,
+  available: readonly string[],
+): string {
   if (preference && preference !== 'auto' && available.includes(preference)) return preference;
   return clientLocale || DEFAULT_LOCALE;
 }
 
-function lookup(dict, key) {
-  const value = key.split('.').reduce((node, part) => (node && typeof node === 'object' ? node[part] : undefined), dict);
+function lookup(dict: LocaleDict, key: string): string | undefined {
+  const value = key
+    .split('.')
+    .reduce<unknown>((node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined), dict);
   return typeof value === 'string' ? value : undefined;
 }
 
-function interpolate(text, vars) {
+function interpolate(text: string, vars: TranslateVars | undefined): string {
   if (!vars) return text;
-  return text.replace(/\{(\w+)\}/g, (match, name) => (vars[name] == null ? match : String(vars[name])));
+  return text.replace(/\{(\w+)\}/g, (match, name: string) => (vars[name] == null ? match : String(vars[name])));
 }
 
-function pluralRules(locale) {
+function pluralRules(locale: string): Intl.PluralRules {
   try {
     return new Intl.PluralRules(toLanguageTag(locale));
   } catch {
@@ -42,19 +65,19 @@ function pluralRules(locale) {
   }
 }
 
-export function createTranslator(locale, dicts, { warn = console.warn } = {}) {
-  const primary = dicts[locale] || {};
-  const fallback = dicts[DEFAULT_LOCALE] || {};
+export function createTranslator(locale: string, dicts: LocaleDicts, { warn = console.warn }: TranslatorOptions = {}): Translate {
+  const primary: LocaleDict = dicts[locale] || {};
+  const fallback: LocaleDict = dicts[DEFAULT_LOCALE] || {};
   const rules = pluralRules(locale);
-  const warned = new Set();
+  const warned = new Set<string>();
 
-  function report(key) {
+  function report(key: string) {
     if (warned.has(key)) return;
     warned.add(key);
     warn(TAG, `missing translation "${key}" for ${locale}`);
   }
 
-  function find(key) {
+  function find(key: string): string | undefined {
     const own = lookup(primary, key);
     if (own !== undefined) return own;
     const base = lookup(fallback, key);
@@ -62,7 +85,7 @@ export function createTranslator(locale, dicts, { warn = console.warn } = {}) {
     return base;
   }
 
-  function pick(key, vars) {
+  function pick(key: string, vars: TranslateVars | undefined): string | undefined {
     if (vars && typeof vars.count === 'number') {
       for (const candidate of [`${key}.${rules.select(vars.count)}`, `${key}.other`]) {
         const value = find(candidate);
@@ -72,7 +95,7 @@ export function createTranslator(locale, dicts, { warn = console.warn } = {}) {
     return find(key);
   }
 
-  return function t(key, vars) {
+  return function t(key: string, vars?: TranslateVars): string {
     const value = pick(key, vars);
     if (value === undefined) {
       report(key);

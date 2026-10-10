@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SESSION_ROUTE } from '../src/features/champSelect';
 import {
@@ -9,7 +8,6 @@ import {
   GAMEFLOW_DODGE_ROUTE,
   GAMEFLOW_PHASE_ROUTE,
   GAMEFLOW_SESSION_ROUTE,
-  DODGE_ATTEMPTS,
   DODGE_VERIFY_DELAY_MS,
   withTimeout,
   hasChampSelectSession,
@@ -21,13 +19,18 @@ import {
   dodgeSteps,
 } from '../src/features/dodge';
 
-function response({ ok = true, status = 200, text = '', json = null } = {}) {
+function response({
+  ok = true,
+  status = 200,
+  text = '',
+  json = null,
+}: { ok?: boolean; status?: number; text?: string; json?: unknown } = {}): Response {
   return {
     ok,
     status,
     text: async () => text,
     json: async () => json,
-  };
+  } as unknown as Response;
 }
 
 describe('buildGameflowDodgeBody', () => {
@@ -65,7 +68,7 @@ describe('postLcdsDodge', () => {
 
 describe('leftChampSelect', () => {
   it('requires both session exit and a non-champ-select phase', async () => {
-    const fetchImpl = vi.fn(async (route) => {
+    const fetchImpl = vi.fn(async (route: string) => {
       if (route === SESSION_ROUTE) return response({ ok: false, status: 404 });
       if (route === GAMEFLOW_PHASE_ROUTE) return response({ json: 'Lobby' });
       return response();
@@ -89,9 +92,9 @@ describe('makeDodge', () => {
     vi.useRealTimers();
   });
 
-  function exitAfterDodge(fetchImpl) {
+  function exitAfterDodge(_fetchImpl: unknown) {
     let checks = 0;
-    return vi.fn(async (route) => {
+    return vi.fn(async (route: string) => {
       if (route === SESSION_ROUTE) {
         checks += 1;
         return response({ ok: checks < 2, status: checks < 2 ? 200 : 404 });
@@ -148,7 +151,7 @@ describe('makeDodge', () => {
 
   it('retries when practice-style exits are slow', async () => {
     let posts = 0;
-    const fetchImpl = vi.fn(async (route) => {
+    const fetchImpl = vi.fn(async (route: string) => {
       if (route.startsWith('/lol-login/v1/session/invoke')) {
         posts += 1;
         return response();
@@ -182,7 +185,7 @@ describe('withTimeout', () => {
   it('rejects when the promise takes too long', async () => {
     vi.useFakeTimers();
     const pending = withTimeout(new Promise(() => {}), 500, 'slow');
-    const settled = pending.catch((e) => e.message);
+    const settled = pending.catch((e: Error) => e.message);
     await vi.advanceTimersByTimeAsync(500);
     await expect(settled).resolves.toBe('slow');
     vi.useRealTimers();
@@ -215,7 +218,7 @@ describe('waitForChampSelectExit', () => {
 
   it('waits for stable exit reads', async () => {
     let checks = 0;
-    const fetchImpl = vi.fn(async (route) => {
+    const fetchImpl = vi.fn(async (route: string) => {
       if (route === SESSION_ROUTE) {
         checks += 1;
         return response({ ok: checks < 3, status: checks < 3 ? 200 : 404 });

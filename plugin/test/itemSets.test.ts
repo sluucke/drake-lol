@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import {
   ITEM_SETS_ROUTE,
@@ -26,7 +25,7 @@ const build = {
 
 describe('buildItemSet', () => {
   it('creates one block per bucket, in build order', () => {
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build })!;
     expect(set.blocks.map((b) => b.type)).toEqual([
       'Starter Items',
       'Core Build',
@@ -37,8 +36,8 @@ describe('buildItemSet', () => {
   });
 
   it('flattens the last-items bucket into distinct ids from across every entry', () => {
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
-    const finalItems = set.blocks.find((b) => b.type === 'Final Items');
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build })!;
+    const finalItems = set.blocks.find((b) => b.type === 'Final Items')!;
     expect(finalItems.items.map((i) => i.id)).toEqual(['3072', '3036', '3026']);
     expect(finalItems.items.every((i) => i.count === 1)).toBe(true);
   });
@@ -59,13 +58,13 @@ describe('buildItemSet', () => {
         ],
       },
     };
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build: manyLast });
-    const finalItems = set.blocks.find((b) => b.type === 'Final Items');
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build: manyLast })!;
+    const finalItems = set.blocks.find((b) => b.type === 'Final Items')!;
     expect(finalItems.items.map((i) => i.id)).toEqual(['1', '2', '3', '4', '5', '6']);
   });
 
   it('marks the set as Drake-owned and binds it to the champion', () => {
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build })!;
     expect(set.title).toContain(DRAKE_SET_MARKER);
     expect(set.title).toContain('Yasuo');
     expect(set.associatedChampions).toEqual([157]);
@@ -75,7 +74,7 @@ describe('buildItemSet', () => {
 
   it('deduplicates item ids inside a block and sets a count', () => {
     const withDupes = { items: { ...build.items, starter: [{ ids: [2003, 2003, 1086], winRate: 50, pickRate: 70, play: 10 }] } };
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build: withDupes });
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build: withDupes })!;
     const starter = set.blocks[0].items;
     expect(starter.map((i) => i.id)).toEqual(['2003', '1086']);
     expect(starter[0].count).toBe(2);
@@ -83,7 +82,7 @@ describe('buildItemSet', () => {
 
   it('skips empty buckets rather than emitting empty blocks', () => {
     const sparse = { items: { starter: [], boots: [], core: build.items.core, last: [] } };
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build: sparse });
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build: sparse })!;
     expect(set.blocks.map((b) => b.type)).toEqual(['Core Build']);
   });
 
@@ -109,7 +108,7 @@ describe('applyItemSet', () => {
       put: vi.fn().mockResolvedValue({ ok: true, status: 200 }),
     };
 
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build })!;
     const res = await applyItemSet(lcu, 42, set);
 
     expect(res.success).toBe(true);
@@ -117,9 +116,9 @@ describe('applyItemSet', () => {
 
     const [route, payload] = lcu.put.mock.calls[0];
     expect(route).toBe(ITEM_SETS_ROUTE(42));
-    const titles = payload.itemSets.map((s) => s.title);
+    const titles = payload.itemSets.map((s: { title: string }) => s.title);
     expect(titles).toContain('My own set');
-    expect(titles.filter((t) => t.includes(DRAKE_SET_MARKER)).length).toBe(1);
+    expect(titles.filter((t: string) => t.includes(DRAKE_SET_MARKER)).length).toBe(1);
     expect(titles).toContain(set.title);
   });
 
@@ -128,13 +127,13 @@ describe('applyItemSet', () => {
       get: vi.fn().mockResolvedValue({ itemSets: [] }),
       put: vi.fn().mockResolvedValue({ ok: true, status: 200 }),
     };
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build })!;
     expect((await applyItemSet(lcu, 42, set)).success).toBe(true);
     expect(lcu.put.mock.calls[0][1].itemSets.length).toBe(1);
   });
 
   it('fails cleanly without an lcu, a summoner id, or a set', async () => {
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build })!;
     expect((await applyItemSet(null, 42, set)).success).toBe(false);
     expect((await applyItemSet({ get: vi.fn(), put: vi.fn() }, 0, set)).success).toBe(false);
     expect((await applyItemSet({ get: vi.fn(), put: vi.fn() }, 42, null)).success).toBe(false);
@@ -145,7 +144,7 @@ describe('applyItemSet', () => {
       get: vi.fn().mockRejectedValue(new Error('client restarting')),
       put: vi.fn(),
     };
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build })!;
     const res = await applyItemSet(lcu, 42, set);
     expect(res.success).toBe(false);
     expect(res.error).toBeTruthy();
@@ -157,7 +156,7 @@ describe('applyItemSet', () => {
       get: vi.fn().mockResolvedValue({ itemSets: [] }),
       put: vi.fn().mockResolvedValue({ ok: false, status: 500 }),
     };
-    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build });
+    const set = buildItemSet({ championId: 157, championName: 'Yasuo', build })!;
     const res = await applyItemSet(lcu, 42, set);
     expect(res.success).toBe(false);
     expect(res.error).toBeTruthy();

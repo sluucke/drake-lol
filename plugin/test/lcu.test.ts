@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { makeLcu, METHODS } from '../src/lcu';
 import { STATUS_ROUTE } from '../src/features/status';

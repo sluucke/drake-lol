@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { CHAT_ME } from '../src/features/presence';
 import { GAMEFLOW_PHASE_ROUTE } from '../src/features/dodge';

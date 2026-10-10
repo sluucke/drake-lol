@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 
 
@@ -13,6 +12,39 @@
 
 
 
+
+import type { FetchLike } from './lcu';
+
+export interface ClientInfo {
+  region?: string;
+  locale?: string;
+}
+
+export interface CheckInDataStore {
+  set(key: string, value: unknown): unknown;
+}
+
+export interface TransportOptions {
+  port: number;
+  token: string;
+  fetchImpl?: FetchLike;
+  dataStore?: CheckInDataStore | null;
+  reloadConfig?: (() => Promise<{ token?: string } | null | undefined>) | null;
+  pluginBuild?: string;
+  clientInfo?: () => ClientInfo | null | undefined;
+}
+
+export interface CheckInBody {
+  token: string;
+  host: string;
+  plugin_build: string;
+  region?: string;
+  locale?: string;
+}
+
+export interface Transport {
+  checkIn(host: string): Promise<boolean>;
+}
 
 export function makeTransport({
   port,
@@ -22,20 +54,20 @@ export function makeTransport({
   reloadConfig = null,
   pluginBuild = '',
   clientInfo = () => null,
-}) {
+}: TransportOptions): Transport {
   let currentToken = token;
   let refreshed = false;
   const loadedBuild = pluginBuild;
 
-  function checkInBody(host) {
-    const body = { token: currentToken, host, plugin_build: loadedBuild };
-    const info = clientInfo() || {};
+  function checkInBody(host: string): CheckInBody {
+    const body: CheckInBody = { token: currentToken, host, plugin_build: loadedBuild };
+    const info: ClientInfo = clientInfo() || {};
     if (info.region) body.region = info.region;
     if (info.locale) body.locale = info.locale;
     return body;
   }
 
-  async function viaLocalhost(host) {
+  async function viaLocalhost(host: string): Promise<Response> {
     return fetchImpl(`http://127.0.0.1:${port}/checkin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -43,15 +75,15 @@ export function makeTransport({
     });
   }
 
-  function viaDataStore(host) {
+  function viaDataStore(host: string): boolean {
     if (!dataStore) return false;
     dataStore.set('drake_checkin', JSON.stringify({ host, at: Date.now() }));
     return true;
   }
 
   return {
-    async checkIn(host) {
-      let res;
+    async checkIn(host: string) {
+      let res: Response;
       try {
         res = await viaLocalhost(host);
       } catch {
@@ -84,7 +116,9 @@ export function makeTransport({
   };
 }
 
-async function loadFreshToken(reloadConfig) {
+async function loadFreshToken(
+  reloadConfig: NonNullable<TransportOptions['reloadConfig']>,
+): Promise<string | null> {
   try {
     const cfg = await reloadConfig();
     return cfg && cfg.token ? cfg.token : null;

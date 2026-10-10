@@ -1,5 +1,60 @@
-// @ts-nocheck
+import type { FetchLike } from '../lcu';
 import { SESSION_ROUTE } from './champSelect';
+
+export interface DodgeResponseLike {
+  ok?: boolean;
+  status?: number;
+  text?: () => Promise<string>;
+  json?: () => Promise<unknown>;
+}
+
+export interface GameDodge {
+  state?: string;
+  dodgeIds?: unknown[];
+  phase?: string;
+}
+
+export interface GameflowSession {
+  phase?: string;
+  gameDodge?: GameDodge | null;
+}
+
+export interface GameflowDodgeBody {
+  dodgeData: GameDodge;
+  state: string;
+  dodgeIds: unknown[];
+  phase: string;
+}
+
+export interface DodgeStep {
+  name: string;
+  run: () => Promise<DodgeResponseLike | null | undefined>;
+}
+
+export interface ChampSelectExitOptions {
+  attempts?: number;
+  delayMs?: number;
+  stableReads?: number;
+}
+
+export interface DodgeOptions {
+  fetchImpl?: FetchLike;
+  steps?: DodgeStep[];
+  attempts?: number;
+  delayMs?: number;
+  postTimeoutMs?: number;
+  onStatus?: (detail: string) => void;
+}
+
+export interface DodgeResult {
+  ok: boolean;
+  detail?: string;
+  reason?: string;
+}
+
+export interface Dodge {
+  dodge(): Promise<DodgeResult>;
+}
 
 export const GAMEFLOW_DODGE_ROUTE = '/lol-gameflow/v1/session/dodge';
 export const GAMEFLOW_SESSION_ROUTE = '/lol-gameflow/v1/session';
@@ -14,10 +69,10 @@ export const DODGE_VERIFY_ATTEMPTS = 16;
 export const DODGE_VERIFY_INTERVAL_MS = 300;
 export const DODGE_VERIFY_STABLE_READS = 2;
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-export function withTimeout(promise, ms, message = 'timed out') {
-  return new Promise((resolve, reject) => {
+export function withTimeout<T>(promise: T | PromiseLike<T>, ms: number, message = 'timed out'): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(message)), ms);
     Promise.resolve(promise).then(
       (value) => {
@@ -35,7 +90,7 @@ export function withTimeout(promise, ms, message = 'timed out') {
 export const DODGE_ATTEMPTS = 5;
 const DEFAULT_DELAY_MS = 250;
 
-export function lcdsDodgeRoute(body = LCDS_DODGE_BODY) {
+export function lcdsDodgeRoute(body: string[] = LCDS_DODGE_BODY): string {
   const params = new URLSearchParams({
     destination: 'lcdsServiceProxy',
     method: 'call',
@@ -46,14 +101,14 @@ export function lcdsDodgeRoute(body = LCDS_DODGE_BODY) {
 
 export const DODGE_ROUTE = lcdsDodgeRoute();
 
-function explain(status) {
+function explain(status: number): string {
   if (status === 404 || status === 400) {
     return 'you have to be in champ select to dodge';
   }
   return `the client refused (${status})`;
 }
 
-export async function readJson(res) {
+export async function readJson(res: DodgeResponseLike | null | undefined): Promise<unknown> {
   if (!res || typeof res.json !== 'function') return null;
   try {
     return await withTimeout(res.json(), 500, 'json timed out');
@@ -62,7 +117,7 @@ export async function readJson(res) {
   }
 }
 
-export async function hasChampSelectSession(fetchImpl = fetch) {
+export async function hasChampSelectSession(fetchImpl: FetchLike = fetch): Promise<boolean> {
   try {
     const res = await fetchImpl(SESSION_ROUTE);
     return res.ok;
@@ -71,51 +126,51 @@ export async function hasChampSelectSession(fetchImpl = fetch) {
   }
 }
 
-export async function readGameflowPhase(fetchImpl = fetch) {
+export async function readGameflowPhase(fetchImpl: FetchLike = fetch): Promise<string | null> {
   try {
     const res = await fetchImpl(GAMEFLOW_PHASE_ROUTE);
     if (!res.ok) return null;
     const body = await readJson(res);
     if (typeof body === 'string') return body;
-    return body?.phase ?? null;
+    return (body as { phase?: string } | null)?.phase ?? null;
   } catch {
     return null;
   }
 }
 
-export async function readGameflowSession(fetchImpl = fetch) {
+export async function readGameflowSession(fetchImpl: FetchLike = fetch): Promise<GameflowSession | null> {
   try {
     const res = await fetchImpl(GAMEFLOW_SESSION_ROUTE);
     if (!res.ok) return null;
-    return readJson(res);
+    return (await readJson(res)) as GameflowSession | null;
   } catch {
     return null;
   }
 }
 
-export function buildGameflowDodgeBody(session) {
+export function buildGameflowDodgeBody(session: GameflowSession | null | undefined): GameflowDodgeBody | null {
   const dodge = session?.gameDodge;
   if (!dodge || typeof dodge !== 'object') return null;
   return {
     dodgeData: dodge,
     state: dodge.state ?? 'Invalid',
     dodgeIds: dodge.dodgeIds ?? [],
-    phase: session.phase ?? dodge.phase ?? 'ChampSelect',
+    phase: session?.phase ?? dodge.phase ?? 'ChampSelect',
   };
 }
 
-export async function leftChampSelect(fetchImpl = fetch) {
+export async function leftChampSelect(fetchImpl: FetchLike = fetch): Promise<boolean> {
   if (await hasChampSelectSession(fetchImpl)) return false;
   const phase = await readGameflowPhase(fetchImpl);
   if (!phase) return true;
   return phase !== 'ChampSelect' && phase !== 'ReadyCheck';
 }
 
-export async function waitForChampSelectExit(fetchImpl = fetch, {
+export async function waitForChampSelectExit(fetchImpl: FetchLike = fetch, {
   attempts = DODGE_VERIFY_ATTEMPTS,
   delayMs = DODGE_VERIFY_INTERVAL_MS,
   stableReads = DODGE_VERIFY_STABLE_READS,
-} = {}) {
+}: ChampSelectExitOptions = {}): Promise<boolean> {
   let stable = 0;
   for (let i = 0; i < attempts; i += 1) {
     if (await leftChampSelect(fetchImpl)) {
@@ -129,11 +184,11 @@ export async function waitForChampSelectExit(fetchImpl = fetch, {
   return false;
 }
 
-export function postAccepted(res) {
+export function postAccepted(res: DodgeResponseLike | null | undefined): boolean {
   return !res || res.ok !== false;
 }
 
-export async function readResponseHint(res) {
+export async function readResponseHint(res: DodgeResponseLike | null | undefined): Promise<string> {
   if (!res || typeof res.text !== 'function') return '';
   try {
     const text = await withTimeout(res.text(), 500, '');
@@ -144,14 +199,14 @@ export async function readResponseHint(res) {
   }
 }
 
-export function postLcdsDodge(fetchImpl = fetch, body = LCDS_DODGE_BODY) {
+export function postLcdsDodge(fetchImpl: FetchLike = fetch, body: string[] = LCDS_DODGE_BODY): Promise<Response> {
   return fetchImpl(lcdsDodgeRoute(body), {
     method: 'POST',
     body: JSON.stringify(body),
   });
 }
 
-export async function postGameflowDodge(fetchImpl = fetch) {
+export async function postGameflowDodge(fetchImpl: FetchLike = fetch): Promise<Response | null> {
   const session = await readGameflowSession(fetchImpl);
   const payload = buildGameflowDodgeBody(session);
   if (!payload) return null;
@@ -162,7 +217,7 @@ export async function postGameflowDodge(fetchImpl = fetch) {
   });
 }
 
-export function dodgeSteps(fetchImpl = fetch) {
+export function dodgeSteps(fetchImpl: FetchLike = fetch): DodgeStep[] {
   return [
     {
       name: 'lcds',
@@ -190,9 +245,9 @@ export function makeDodge({
   delayMs = DEFAULT_DELAY_MS,
   postTimeoutMs = DODGE_POST_TIMEOUT_MS,
   onStatus = () => {},
-}) {
+}: DodgeOptions): Dodge {
   return {
-    async dodge() {
+    async dodge(): Promise<DodgeResult> {
       let reason = 'still in champ select';
 
       for (let i = 0; i < attempts; i += 1) {
@@ -213,9 +268,10 @@ export function makeDodge({
               `attempt ${i + 1}: ${step.name} HTTP ${httpStatus || 200}${hint ? ` (${hint})` : ''}`,
             );
           } catch (e) {
-            reason = e.message === 'post timed out'
+            const message = (e as Error).message;
+            reason = message === 'post timed out'
               ? 'the client did not respond in time'
-              : `could not reach the client (${e.message})`;
+              : `could not reach the client (${message})`;
             onStatus(`attempt ${i + 1}: ${step.name} ${reason}`);
           }
         }

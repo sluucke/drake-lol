@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { renderWithProviders } from './renderWithProviders';

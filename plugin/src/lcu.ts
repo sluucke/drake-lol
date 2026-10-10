@@ -1,31 +1,31 @@
-// @ts-nocheck
+export const METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 
+export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
+export interface Lcu {
+  get<T = unknown>(route: string): Promise<T>;
+  post(route: string, body?: unknown): Promise<Response>;
+  put(route: string, body?: unknown): Promise<Response>;
+  patch(route: string, body?: unknown): Promise<Response>;
+  delete(route: string, body?: unknown): Promise<Response>;
+}
 
-
-
-
-
-
-
-
-
-export const METHODS = ['get', 'post', 'put', 'patch', 'delete'];
-
-export function makeLcu(fetchImpl = fetch) {
-  const send = (method) => (route, body) =>
-    fetchImpl(route, {
-      method,
-      ...(body === undefined
-        ? {}
-        : {
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          }),
-    });
+export function makeLcu(fetchImpl: FetchLike = fetch): Lcu {
+  const send =
+    (method: string) =>
+    (route: string, body?: unknown): Promise<Response> =>
+      fetchImpl(route, {
+        method,
+        ...(body === undefined
+          ? {}
+          : {
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            }),
+      });
 
   return {
-    get: (route) => fetchImpl(route).then((r) => r.json()),
+    get: <T = unknown>(route: string): Promise<T> => fetchImpl(route).then((r) => r.json() as Promise<T>),
     post: send('POST'),
     put: send('PUT'),
     patch: send('PATCH'),
