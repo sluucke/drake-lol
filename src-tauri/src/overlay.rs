@@ -19,8 +19,24 @@ pub struct OverlayUiState {
     pub show_hint: bool,
     pub ready_check: bool,
     pub dodge: bool,
+    pub loot: Option<LootAnchor>,
     pub bounds: Option<ClientBounds>,
     pub positions: OverlayPositions,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct LootAnchor {
+    pub top: i32,
+    pub right: i32,
+}
+
+pub const LOOT_SIZE: (i32, i32) = (40, 40);
+
+pub fn loot_piece(client: &ClientBounds, anchor: LootAnchor) -> ClientBounds {
+    let right_edge = client.x + client.width as i32;
+    let x = (right_edge - anchor.right - LOOT_SIZE.0).clamp(client.x, (right_edge - LOOT_SIZE.0).max(client.x));
+    let y = (client.y + anchor.top).clamp(client.y, client.y + (client.height as i32 - LOOT_SIZE.1).max(0));
+    ClientBounds { x, y, width: LOOT_SIZE.0 as u32, height: LOOT_SIZE.1 as u32 }
 }
 
 impl OverlayUiState {
@@ -259,6 +275,10 @@ pub fn chrome_pieces(client: &ClientBounds, ui: &OverlayUiState) -> Vec<ClientBo
             DODGE_SIZE,
         );
         pieces.push(rect(dodge, DODGE_SIZE));
+    }
+
+    if let Some(anchor) = ui.loot {
+        pieces.push(loot_piece(client, anchor));
     }
 
     pieces
@@ -806,6 +826,21 @@ mod tests {
             ..OverlayUiState::default()
         };
         assert_eq!(chrome_bounds(&client, &ui).width, 800);
+    }
+
+    #[test]
+    fn the_loot_button_takes_clicks_on_the_loot_screen() {
+        let client = client_1280();
+        let ui = OverlayUiState {
+            loot: Some(LootAnchor { top: 166, right: 104 }),
+            ..OverlayUiState::default()
+        };
+        let pieces = chrome_pieces(&client, &ui);
+        let loot = pieces.last().unwrap();
+        assert_eq!(loot.width as i32, LOOT_SIZE.0);
+        assert_eq!(loot.x + loot.width as i32, client.x + client.width as i32 - 104);
+        assert_eq!(loot.y, client.y + 166);
+        assert_eq!(hit_region(&client, &ui).unwrap().len(), 2);
     }
 
     #[test]

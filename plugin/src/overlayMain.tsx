@@ -9,6 +9,7 @@ import type { PluginConfig, SettingsValues } from './settings';
 import type { SubscribeFn, Unsubscribe } from './subscribe';
 import type { OverlayRect } from './app/store/sessionSlice';
 import type { LegacyActions } from './app/shell/LegacyActions';
+import { parseLootAnchor, sameLootAnchor } from './features/loot';
 
 export interface OverlaySnapshot {
   version?: string;
@@ -20,6 +21,7 @@ export interface OverlaySnapshot {
   ready_check?: unknown;
   dodge?: unknown;
   panel_open?: unknown;
+  loot?: unknown;
 }
 
 interface OverlayLcuReply {
@@ -161,8 +163,10 @@ async function boot() {
   }
 
   store.subscribe((state, prev) => {
-    if (state.teamReveal.open !== prev.teamReveal.open) {
-      void post('/overlay/ui', { modal_open: !!state.teamReveal.open }).catch(() => {});
+    const modalOpen = !!state.teamReveal.open || state.ui.lootOpen;
+    const wasOpen = !!prev.teamReveal.open || prev.ui.lootOpen;
+    if (modalOpen !== wasOpen) {
+      void post('/overlay/ui', { modal_open: modalOpen }).catch(() => {});
     }
   });
 
@@ -170,7 +174,11 @@ async function boot() {
     syncSession(!!snap.effective);
     for (const view of snap.views || []) ui.toggleView(view);
     const state = store.getState();
-    state.setSession({ overlayGeometry: { client: snap.client || null, chrome: snap.chrome || null } });
+    const loot = parseLootAnchor(snap.loot);
+    state.setSession({
+      overlayGeometry: { client: snap.client || null, chrome: snap.chrome || null },
+      overlayLoot: sameLootAnchor(state.session.overlayLoot, loot) ? state.session.overlayLoot : loot,
+    });
     state.patchChampSelect({
       cancelable: !!snap.ready_check,
       active: !!snap.dodge,

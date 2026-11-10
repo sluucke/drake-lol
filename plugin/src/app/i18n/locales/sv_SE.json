@@ -632,6 +632,108 @@
     "hint": {
       "text": "Tips: du kan dra Drake- och Dodge-knapparna var du vill.",
       "dismiss": "Uppfattat"
+    },
+    "loot": {
+      "button": "Disenchanta flera",
+      "title": "Disenchanta flera",
+      "tabs": {
+        "champion": "Champions",
+        "skin": "Skins"
+      },
+      "search": "Sök på namn",
+      "filters": {
+        "scope": "Föremålstyp",
+        "shardsOnly": "Endast shards",
+        "includePermanents": "Inkludera permanenta",
+        "rarity": "Sällsynthet",
+        "ownedChampions": "Endast champions jag äger",
+        "ownedSkins": "Endast skins jag äger",
+        "legacyOnly": "Endast Legacy",
+        "keepOne": "Behåll 1 av varje"
+      },
+      "rarity": {
+        "all": "Alla sällsyntheter",
+        "standard": "Standard",
+        "epic": "Epic",
+        "legendary": "Legendary",
+        "mythic": "Mythic",
+        "ultimate": "Ultimate",
+        "transcendent": "Transcendent",
+        "exalted": "Exalted",
+        "other": "Övrigt"
+      },
+      "kinds": {
+        "championShard": "Champion Shard",
+        "championPermanent": "Champion Permanent",
+        "skinShard": "Skin Shard",
+        "skinPermanent": "Skin Permanent"
+      },
+      "tile": {
+        "count": "×{amount}",
+        "legacy": "Legacy",
+        "owned": "Ägs",
+        "ownedHint": "Du äger redan detta, så den här kopian är extra."
+      },
+      "essence": {
+        "blue": "Blue Essence",
+        "orange": "Orange Essence"
+      },
+      "selected": {
+        "one": "{count} föremål valt",
+        "other": "{count} föremål valda"
+      },
+      "selectAll": "Välj alla som visas",
+      "clear": "Rensa",
+      "disenchant": "Disenchanta",
+      "empty": "Inget matchar filtren.",
+      "emptyInventory": "Inga champion- eller skin-shards i din loot.",
+      "error": "Kunde inte ladda din loot.",
+      "confirm": {
+        "title": "Bekräfta disenchant",
+        "summary": {
+          "one": "Du kommer att disenchanta {count} exemplar:",
+          "other": "Du kommer att disenchanta {count} exemplar:"
+        },
+        "gain": "Du får",
+        "warning": "Det här går inte att ångra.",
+        "back": "Tillbaka",
+        "go": "Disenchanta nu",
+        "copies": {
+          "one": "{count} exemplar",
+          "other": "{count} exemplar"
+        },
+        "remove": "Ta bort {name} från urvalet"
+      },
+      "running": {
+        "title": "Disenchantar",
+        "progress": "{current} av {total}",
+        "current": "Nu: {name}",
+        "stop": "Stoppa",
+        "stopping": "Stoppar…"
+      },
+      "result": {
+        "title": "Disenchant klar",
+        "disenchanted": {
+          "one": "{count} föremål disenchantat.",
+          "other": "{count} föremål disenchantade."
+        },
+        "failed": {
+          "one": "{count} föremål misslyckades:",
+          "other": "{count} föremål misslyckades:"
+        },
+        "cancelled": {
+          "one": "Stoppades i förtid. {count} föremål lämnades orört.",
+          "other": "Stoppades i förtid. {count} föremål lämnades orörda."
+        },
+        "gained": "Mottaget",
+        "refreshFailed": "Kunde inte uppdatera din loot. Öppna fönstret igen för att se den.",
+        "back": "Tillbaka till loot",
+        "reasons": {
+          "noRecipe": "Inget disenchant-recept för det här föremålet",
+          "refused": "Klienten nekade ({status})",
+          "network": "Kunde inte nå klienten"
+        }
+      }
     }
   }
 }

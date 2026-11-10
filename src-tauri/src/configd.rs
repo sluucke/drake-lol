@@ -1085,6 +1085,7 @@ struct OverlaySnapshot {
     panel_open: bool,
     ready_check: bool,
     dodge: bool,
+    loot: Option<crate::overlay::LootAnchor>,
     client: Option<crate::overlay::ClientBounds>,
     chrome: Option<crate::overlay::ClientBounds>,
     views: Vec<String>,
@@ -1116,6 +1117,7 @@ async fn overlay_snapshot(
         panel_open: ui.panel_open,
         ready_check: ui.ready_check,
         dodge: ui.dodge,
+        loot: ui.loot,
         client: ui.bounds,
         chrome,
         views,
@@ -1178,11 +1180,21 @@ async fn overlay_action(
     }
 }
 
+fn deserialize_present<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Option::<T>::deserialize(deserializer).map(Some)
+}
+
 #[derive(Deserialize)]
 struct OverlayPluginBody {
     token: String,
     ready_check: Option<bool>,
     dodge: Option<bool>,
+    #[serde(default, deserialize_with = "deserialize_present")]
+    loot: Option<Option<crate::overlay::LootAnchor>>,
     bounds: Option<ClientBounds>,
     toggle_panel: Option<bool>,
     open_view: Option<String>,
@@ -1201,6 +1213,9 @@ async fn overlay_plugin(
     }
     if let Some(v) = body.dodge {
         bridge.ui.dodge = v;
+    }
+    if let Some(v) = body.loot {
+        bridge.ui.loot = v;
     }
     if let Some(b) = body.bounds {
         if bridge.ui.bounds.is_none() {
@@ -1655,7 +1670,7 @@ mod tests {
         assert!(is_openable("https://github.com/sluucke"));
         assert!(is_openable("https://github.com/sluucke/drake-lol"));
         assert!(is_openable("https://github.com/369gabriel/tiamat"));
-        assert!(is_openable("https://twitch.tv/bieelyi"));
+        assert!(is_openable("https://www.twitch.tv/speedlol_"));
         assert!(is_openable("https://www.communitydragon.org"));
         assert!(!is_openable("https://github.com@evil.com/"));
         assert!(!is_openable("https://gist.github.com.evil.com/"));
@@ -1743,6 +1758,20 @@ mod tests {
             .header("content-type", "application/json")
             .body(Body::from(body))
             .unwrap()
+    }
+
+    #[tokio::test]
+    async fn the_loot_screen_anchor_is_kept_until_the_plugin_clears_it() {
+        let state = Arc::new(ConfigdState::new_with_settings(48151, Settings::default(), "0.0.0"));
+        let token = state.token.clone();
+        let post = |body: String| router(state.clone()).oneshot(json_post("/overlay/plugin", body));
+        post(format!(r#"{{"token":"{token}","loot":{{"top":152,"right":24}}}}"#)).await.unwrap();
+        let anchor = Some(crate::overlay::LootAnchor { top: 152, right: 24 });
+        assert_eq!(state.overlay.lock().unwrap().ui.loot, anchor);
+        post(format!(r#"{{"token":"{token}","dodge":true}}"#)).await.unwrap();
+        assert_eq!(state.overlay.lock().unwrap().ui.loot, anchor);
+        post(format!(r#"{{"token":"{token}","loot":null}}"#)).await.unwrap();
+        assert_eq!(state.overlay.lock().unwrap().ui.loot, None);
     }
 
     #[tokio::test]

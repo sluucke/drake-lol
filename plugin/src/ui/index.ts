@@ -16,6 +16,9 @@ import { makeDodge } from '../features/dodge';
 import { makeRestartUx } from '../features/restartUx';
 import { makeOpener } from '../features/openUrl';
 import { loadChampions } from '../features/champions';
+import { makeLootService, sameLootAnchor } from '../features/loot';
+import type { LootAnchor } from '../features/loot';
+import { findLootScreen, lootAnchor } from '../app/overlays/loot/useLootScreen';
 import { makePresence, readLol, CHAT_ME, QUEUES } from '../features/presence';
 import { makeChallenges } from '../features/challenges';
 import {
@@ -169,6 +172,7 @@ export function startUI({
   let teamRevealLastLoadMs = 0;
   let teamRevealLastConcurrency = 1;
   let inGameIdle = false;
+  let pushedLoot: LootAnchor | null | undefined;
   
   const status = makeStatus({ lcu });
   let dodgeStatus = (detail: string) => console.log(TAG, 'dodge', detail);
@@ -187,6 +191,7 @@ export function startUI({
   let skins: SkinTile[] = [];
   let backgroundId = 0;
   const background = makeBackground({ lcu });
+  const loot = makeLootService({ lcu });
   const sfx = makeSfx();
   
   
@@ -228,6 +233,8 @@ export function startUI({
         console.log(TAG, 'could not cancel the queue');
       }
     },
+    loadLoot: () => loot.load(),
+    disenchantLoot: (plan, options) => loot.disenchant(plan, options),
   };
   const legacyActions = baseActions as LegacyActions;
 
@@ -372,14 +379,34 @@ export function startUI({
     void pushOverlayPluginState();
   }
 
+  function currentLootAnchor(): LootAnchor | null {
+    if (inGameIdle) return null;
+    try {
+      const anchor = lootAnchor(findLootScreen(document), window);
+      if (!anchor) return null;
+      const scale = window.devicePixelRatio || 1;
+      return { top: Math.round(anchor.top * scale), right: Math.round(anchor.right * scale) };
+    } catch {
+      return null;
+    }
+  }
+
   async function pushOverlayPluginState() {
-    if (overlayHost || desiredEffective !== 'overlay') return;
+    if (overlayHost || desiredEffective !== 'overlay') {
+      pushedLoot = undefined;
+      return;
+    }
     const { champSelect } = store.getState();
+    const loot = currentLootAnchor();
+    const lootChanged = pushedLoot === undefined || !sameLootAnchor(pushedLoot, loot);
+    if (lootChanged) pushedLoot = loot;
     const result = await postOverlay(cfg.port, cfg.token, '/overlay/plugin', {
       ready_check: !inGameIdle && !!champSelect.cancelable,
       dodge: !inGameIdle && !!champSelect.active && settings.queue_dodge_in_client !== false,
       bounds: clientBoundsFromWindow(window),
+      ...(lootChanged ? { loot } : {}),
     }).catch(() => null);
+    if (result === null && lootChanged) pushedLoot = undefined;
     trayHealth.record(result !== null);
     refreshStreamingEffective();
   }

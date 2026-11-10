@@ -18,6 +18,10 @@ const assets = {
   CHECKBOX_SPRITE: ['assets/checkbox-spritesheet.png', 'image/png'],
   // The client's own '#' glyph, so the Riot ID field matches theirs exactly.
   HASHTAG: ['assets/hashtag.svg', 'image/svg+xml'],
+  BLUE_ESSENCE_ICON: ['assets/loot/blue-essence.png', 'image/png'],
+  ORANGE_ESSENCE_ICON: ['assets/loot/orange-essence.png', 'image/png'],
+  LEGACY_ICON: ['assets/loot/legacy.png', 'image/png'],
+  DISENCHANT_ICON: ['assets/loot/disenchant.svg', 'image/svg+xml'],
 };
 
 // The client serves no ranked emblem we can reach -- measured 400 on both

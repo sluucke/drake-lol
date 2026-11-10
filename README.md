@@ -1,6 +1,6 @@
 # Drake
 
-League of Legends client overlay for auto accept, champ select, and profile tools. A tray app on Windows keeps the plugin injected.
+League of Legends client overlay for auto accept, champ select, loot, and profile tools. A tray app on Windows keeps the plugin injected.
 
 Drake is unofficial and is not endorsed by Riot Games. Using it may violate the League of Legends Terms of Use. You run it at your own risk.
 
@@ -25,15 +25,18 @@ Open the overlay with **Ctrl + D**, or click the duck button in the **bottom-rig
 | 🔍 | Lobby Reveal | Open team scouting on Porofessor / op.gg / etc. |
 | 👁️ | In-client Team Reveal | Ally rows + stats cards in champ select |
 | 🚪 | Dodge | Champ-select dodge button (with usual penalty) |
+| ✨ | Bulk Disenchant | Disenchant many champion and skin shards at once from the Loot screen |
 | 💬 | Status | Custom status message and availability |
 | 🏅 | Profile | Rank crest, banner skins, Riot ID tools |
 | 👥 | Friends | Friends list tools |
 | 🎥 | Streaming mode | Moves Drake into a window OBS / Streamlabs / Discord cannot capture (On, Off or Auto) |
-| ⚙️ | Settings | Start with Windows, auto reload, auto updates, language |
+| ⚙️ | Settings | Start with Windows, auto reload, auto updates, language, anonymous usage stats |
 
-The overlay is built with React and follows the League client language: English and Brazilian Portuguese are fully translated, and other languages fall back to English.
+The overlay is built with React and TypeScript and follows the League client language. It is translated into English, Brazilian Portuguese, Latin American Spanish, Russian, Turkish and Swedish; other languages fall back to English, and Swedish can be picked in Settings.
 
-The tray is the source of truth for settings. The overlay reads and writes them through the tray, so they survive a client restart. With automatic updates on, Drake checks GitHub for a newer release, downloads the installer, and runs it. Windows will ask for permission because the app lives in Program Files.
+The tray is the source of truth for settings. The overlay reads and writes them through the tray, so they survive a client restart. With automatic updates on, Drake checks GitHub for a newer release, downloads the installer, and runs it. Windows will ask for permission because the app lives in Program Files. Some releases are required: Drake then pauses in the client and asks you to update, while League itself keeps working.
+
+Drake also runs inside other loaders built on Pengu Loader. If that loader keeps its plugins in a folder only administrators can change, Drake asks once whether to restart as administrator.
 
 ## Screenshots
 
@@ -78,6 +81,14 @@ The tray is the source of truth for settings. The overlay reads and writes them 
 </p>
 
 <p align="center">
+  <strong>Bulk Disenchant</strong><br>
+  On the Loot screen, the button above the help icon opens Drake's disenchanter. Filter champion and skin shards (owned, legacy, rarity, keep one of each), see the Blue and Orange Essence you will get, review the selection, and disenchant everything at once.
+</p>
+<p align="center">
+  <img src="docs/assets/bulk-disenchant.webp" alt="Bulk disenchant button on the Loot screen and the champion and skin selection" width="720">
+</p>
+
+<p align="center">
   <strong>Status and rank crest</strong><br>
   Set a custom status (including ASCII art) and change the profile rank crest from the overlay.
 </p>
@@ -94,7 +105,9 @@ The tray is the source of truth for settings. The overlay reads and writes them 
 5. Open the overlay with **Ctrl + D**, or click the duck button in the bottom-right corner of the client.
 6. Turn on the features you want. Settings are saved by the tray and survive a client restart.
 
-In champ select, **Ctrl + Shift + D** opens the in-client team stats cards when that feature is enabled. Uninstall from the tray menu when you no longer want Drake.
+In champ select, **Ctrl + Shift + D** opens the in-client team stats cards when that feature is enabled. On the Loot screen, the button above the help icon opens Bulk Disenchant. Disenchanting cannot be undone, so review the selection before you confirm.
+
+To remove Drake, quit it from the tray menu and uninstall it from Windows Settings > Apps.
 
 ## Requirements
 
@@ -111,7 +124,7 @@ npm test
 npm run build
 ```
 
-`npm test` runs Vitest (React components under jsdom). `npm run build` bundles and minifies the overlay into `plugin/dist/index.js`.
+The plugin is strict TypeScript. `npm test` runs Vitest (React components under jsdom), `npm run typecheck` runs the TypeScript compiler, and `npm run build` bundles and minifies the overlay into `plugin/dist/index.js` and the streaming window into `plugin/dist/overlay.js`.
 
 ```bash
 cargo test --manifest-path src-tauri/Cargo.toml
@@ -120,13 +133,17 @@ cargo build --release --manifest-path src-tauri/Cargo.toml
 
 The tray binary is `src-tauri/target/release/drake.exe`. If League is already open after a plugin change, use **Reload client to apply** in the tray (or restart client UX) so the new bundle loads.
 
-`plugin/dist/index.js` is committed on purpose. The Rust build embeds that file, so a clone can build without Node.
+`plugin/dist/` is committed on purpose. The Rust build embeds those files, so a clone can build without Node.
 
 ## Layout
 
-* `plugin/` in-client overlay (React) and its tests
+* `plugin/` in-client overlay (React + TypeScript) and its tests
 * `src-tauri/` tray app, installer, and injection
 * `vendor/pengu-loader/` pinned loader core shipped with the installer
+
+## Privacy
+
+With **Share anonymous usage stats and error reports** on (Settings > Updates), Drake sends a random install ID, the Drake version, your League server region and language, session start and stop, and error reports with Windows user names, tokens and Riot IDs removed. It never sends your summoner name, account or match data. Turn the setting off to send nothing.
 
 ## Contributing
 

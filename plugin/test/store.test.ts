@@ -35,6 +35,7 @@ describe('createDrakeStore', () => {
       autoPickRole: 'TOP',
       championQueries: { 'auto-pick': '', 'auto-ban': '' },
       skinQuery: '',
+      lootOpen: false,
     });
   });
 

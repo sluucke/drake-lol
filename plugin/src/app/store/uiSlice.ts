@@ -15,6 +15,7 @@ export interface UiState {
   autoPickRole: string;
   championQueries: ChampionQueries;
   skinQuery: string;
+  lootOpen: boolean;
 }
 
 export interface UiSlice {
@@ -38,6 +39,7 @@ export function createUiSlice(): SliceCreator<UiSlice> {
       autoPickRole: 'TOP',
       championQueries: { 'auto-pick': '', 'auto-ban': '' },
       skinQuery: '',
+      lootOpen: false,
     },
 
     setPanelOpen(open) {

@@ -632,6 +632,108 @@
     "hint": {
       "text": "Consejo: puedes arrastrar los botones de Drake y Esquivar a cualquier parte.",
       "dismiss": "Entendido"
+    },
+    "loot": {
+      "button": "Desencantar en masa",
+      "title": "Desencantar en masa",
+      "tabs": {
+        "champion": "Campeones",
+        "skin": "Aspectos"
+      },
+      "search": "Buscar por nombre",
+      "filters": {
+        "scope": "Tipo de objeto",
+        "shardsOnly": "Solo fragmentos",
+        "includePermanents": "Incluir permanentes",
+        "rarity": "Rareza",
+        "ownedChampions": "Solo campeones que tengo",
+        "ownedSkins": "Solo aspectos que tengo",
+        "legacyOnly": "Solo Legado",
+        "keepOne": "Conservar 1 de cada"
+      },
+      "rarity": {
+        "all": "Todas las rarezas",
+        "standard": "Estándar",
+        "epic": "Épico",
+        "legendary": "Legendario",
+        "mythic": "Mítico",
+        "ultimate": "Definitivo",
+        "transcendent": "Trascendente",
+        "exalted": "Exaltado",
+        "other": "Otra"
+      },
+      "kinds": {
+        "championShard": "Fragmento de campeón",
+        "championPermanent": "Campeón permanente",
+        "skinShard": "Fragmento de aspecto",
+        "skinPermanent": "Aspecto permanente"
+      },
+      "tile": {
+        "count": "×{amount}",
+        "legacy": "Legado",
+        "owned": "Ya lo tienes",
+        "ownedHint": "Ya lo posees; esta copia es extra."
+      },
+      "essence": {
+        "blue": "Esencia azul",
+        "orange": "Esencia naranja"
+      },
+      "selected": {
+        "one": "{count} objeto seleccionado",
+        "other": "{count} objetos seleccionados"
+      },
+      "selectAll": "Seleccionar todo lo visible",
+      "clear": "Limpiar",
+      "disenchant": "Desencantar",
+      "empty": "Nada coincide con estos filtros.",
+      "emptyInventory": "No hay fragmentos de campeón ni de aspecto en tu Botín.",
+      "error": "No se pudo cargar tu Botín.",
+      "confirm": {
+        "title": "Confirmar desencantamiento",
+        "summary": {
+          "one": "Vas a desencantar {count} copia:",
+          "other": "Vas a desencantar {count} copias:"
+        },
+        "gain": "Recibirás",
+        "warning": "Esto no se puede deshacer.",
+        "back": "Volver",
+        "go": "Desencantar ahora",
+        "copies": {
+          "one": "{count} copia",
+          "other": "{count} copias"
+        },
+        "remove": "Quitar {name} de la selección"
+      },
+      "running": {
+        "title": "Desencantando",
+        "progress": "{current} de {total}",
+        "current": "Ahora: {name}",
+        "stop": "Detener",
+        "stopping": "Deteniendo…"
+      },
+      "result": {
+        "title": "Desencantamiento completo",
+        "disenchanted": {
+          "one": "{count} objeto desencantado.",
+          "other": "{count} objetos desencantados."
+        },
+        "failed": {
+          "one": "{count} objeto falló:",
+          "other": "{count} objetos fallaron:"
+        },
+        "cancelled": {
+          "one": "Detenido antes de terminar. {count} objeto quedó sin tocar.",
+          "other": "Detenido antes de terminar. {count} objetos quedaron sin tocar."
+        },
+        "gained": "Recibido",
+        "refreshFailed": "No se pudo actualizar tu Botín. Vuelve a abrir esta ventana para verlo.",
+        "back": "Volver al Botín",
+        "reasons": {
+          "noRecipe": "No hay receta de desencantar para este objeto",
+          "refused": "El cliente lo rechazó ({status})",
+          "network": "No se pudo conectar con el cliente"
+        }
+      }
     }
   }
 }
