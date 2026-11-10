@@ -35,7 +35,7 @@ export const SCREENS: ScreenDef[] = [
 
 export const CREDITS: Credits = {
   createdBy: { label: 'David William', href: 'https://github.com/sluucke' },
-  specialThanks: { label: 'Bieelyi', href: 'https://twitch.tv/bieelyi' },
+  specialThanks: { label: 'SpeedLOL', href: 'https://www.twitch.tv/speedlol_' },
   inspiredBy: [
     { label: 'Tiamat', href: 'https://github.com/369gabriel/tiamat' },
     { label: 'Sona', href: 'https://github.com/WJZ-P/sona' },

@@ -1670,7 +1670,7 @@ mod tests {
         assert!(is_openable("https://github.com/sluucke"));
         assert!(is_openable("https://github.com/sluucke/drake-lol"));
         assert!(is_openable("https://github.com/369gabriel/tiamat"));
-        assert!(is_openable("https://twitch.tv/bieelyi"));
+        assert!(is_openable("https://www.twitch.tv/speedlol_"));
         assert!(is_openable("https://www.communitydragon.org"));
         assert!(!is_openable("https://github.com@evil.com/"));
         assert!(!is_openable("https://gist.github.com.evil.com/"));

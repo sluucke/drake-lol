@@ -16,8 +16,8 @@ describe('CREDITS', () => {
       href: 'https://github.com/sluucke',
     });
     expect(CREDITS.specialThanks).toEqual({
-      label: 'Bieelyi',
-      href: 'https://twitch.tv/bieelyi',
+      label: 'SpeedLOL',
+      href: 'https://www.twitch.tv/speedlol_',
     });
     expect(CREDITS.inspiredBy).toEqual([
       { label: 'Tiamat', href: 'https://github.com/369gabriel/tiamat' },
