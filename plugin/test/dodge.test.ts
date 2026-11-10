@@ -17,6 +17,8 @@ import {
   postLcdsDodge,
   buildGameflowDodgeBody,
   dodgeSteps,
+  postTeamBuilderQuit,
+  TEAM_BUILDER_QUIT_ROUTE,
 } from '../src/features/dodge';
 
 function response({
@@ -78,8 +80,17 @@ describe('leftChampSelect', () => {
 });
 
 describe('dodgeSteps', () => {
-  it('tries lcds, gameflow, then legacy lcds', () => {
-    expect(dodgeSteps(fetch).map((step) => step.name)).toEqual(['lcds', 'gameflow', 'lcds-legacy']);
+  it('tries the team builder quit first, then lcds, gameflow and legacy lcds', () => {
+    expect(dodgeSteps(fetch).map((step) => step.name)).toEqual(['team-builder', 'lcds', 'gameflow', 'lcds-legacy']);
+  });
+});
+
+describe('postTeamBuilderQuit', () => {
+  it('posts to the team builder quit route with no body', async () => {
+    const fetchImpl = vi.fn(async (_route: string, _init?: RequestInit) => new Response(null, { status: 204 }));
+    await postTeamBuilderQuit(fetchImpl);
+    expect(fetchImpl).toHaveBeenCalledWith(TEAM_BUILDER_QUIT_ROUTE, { method: 'POST' });
+    expect(TEAM_BUILDER_QUIT_ROUTE).toBe('/lol-lobby-team-builder/champ-select/v1/session/quit');
   });
 });
 

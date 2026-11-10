@@ -56,6 +56,7 @@ export interface Dodge {
   dodge(): Promise<DodgeResult>;
 }
 
+export const TEAM_BUILDER_QUIT_ROUTE = '/lol-lobby-team-builder/champ-select/v1/session/quit';
 export const GAMEFLOW_DODGE_ROUTE = '/lol-gameflow/v1/session/dodge';
 export const GAMEFLOW_SESSION_ROUTE = '/lol-gameflow/v1/session';
 export const GAMEFLOW_PHASE_ROUTE = '/lol-gameflow/v1/gameflow-phase';
@@ -199,6 +200,10 @@ export async function readResponseHint(res: DodgeResponseLike | null | undefined
   }
 }
 
+export function postTeamBuilderQuit(fetchImpl: FetchLike = fetch): Promise<Response> {
+  return fetchImpl(TEAM_BUILDER_QUIT_ROUTE, { method: 'POST' });
+}
+
 export function postLcdsDodge(fetchImpl: FetchLike = fetch, body: string[] = LCDS_DODGE_BODY): Promise<Response> {
   return fetchImpl(lcdsDodgeRoute(body), {
     method: 'POST',
@@ -219,6 +224,10 @@ export async function postGameflowDodge(fetchImpl: FetchLike = fetch): Promise<R
 
 export function dodgeSteps(fetchImpl: FetchLike = fetch): DodgeStep[] {
   return [
+    {
+      name: 'team-builder',
+      run: () => postTeamBuilderQuit(fetchImpl),
+    },
     {
       name: 'lcds',
       run: () => postLcdsDodge(fetchImpl, LCDS_DODGE_BODY),
