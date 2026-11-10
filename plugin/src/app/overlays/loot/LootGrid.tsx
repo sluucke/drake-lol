@@ -3,7 +3,6 @@ import { useSfx } from '../../hooks/useSfx';
 import { LEGACY_ICON } from '../../../ui/assets';
 import { useT } from '../../i18n/I18nProvider';
 import { Skeleton } from '../../ui/Skeleton';
-import { Tooltip } from '../../ui/Tooltip';
 import { disenchantCount } from '../../../features/loot';
 import type { LootItem } from '../../../features/loot';
 import { EssenceAmount } from './Essence';
@@ -36,7 +35,7 @@ function LootTile({ item, selected, keepOne, onToggle }: LootTileProps) {
       }}
     >
       <span className="drk-loot-tile__art">
-        {item.tile ? <img src={item.tile} alt="" loading="lazy" draggable={false} /> : null}
+        {item.tile ? <img className="drk-loot-tile__photo" src={item.tile} alt="" loading="lazy" draggable={false} /> : null}
         <span className="drk-loot-tile__count">{t('overlays.loot.tile.count', { amount: item.count })}</span>
         {item.legacy ? (
           <img
@@ -48,10 +47,8 @@ function LootTile({ item, selected, keepOne, onToggle }: LootTileProps) {
           />
         ) : null}
         {item.owned ? (
-          <span className="drk-loot-tile__owned" data-owned="true">
-            <Tooltip content={t('overlays.loot.tile.owned')}>
-              <span className="drk-loot-tile__owned-mark" />
-            </Tooltip>
+          <span className="drk-loot-tile__owned" data-owned="true" title={t('overlays.loot.tile.ownedHint')}>
+            {t('overlays.loot.tile.owned')}
           </span>
         ) : null}
         <span className="drk-loot-tile__check" aria-hidden="true" />

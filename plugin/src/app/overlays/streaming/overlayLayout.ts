@@ -20,7 +20,7 @@ export const OVERLAY_SIZES: Record<OverlayPieceName, OverlaySize> = {
   cancel: { width: 120, height: 48 },
   dodge: { width: 96, height: 32 },
   hint: { width: 200, height: 56 },
-  loot: { width: 220, height: 40 },
+  loot: { width: 40, height: 40 },
 };
 
 export const REL_SCALE = 10000;

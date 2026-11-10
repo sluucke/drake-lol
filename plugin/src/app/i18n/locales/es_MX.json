@@ -671,7 +671,8 @@
       "tile": {
         "count": "×{amount}",
         "legacy": "Legado",
-        "owned": "Ya lo tienes"
+        "owned": "Ya lo tienes",
+        "ownedHint": "Ya lo posees; esta copia es extra."
       },
       "essence": {
         "blue": "Esencia azul",

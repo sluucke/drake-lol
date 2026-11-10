@@ -671,7 +671,8 @@
       "tile": {
         "count": "×{amount}",
         "legacy": "Miras",
-        "owned": "Sahipsin"
+        "owned": "Sende var",
+        "ownedHint": "Buna zaten sahipsin, bu kopya fazladan."
       },
       "essence": {
         "blue": "Mavi Öz",

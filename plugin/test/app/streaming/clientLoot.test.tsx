@@ -52,12 +52,12 @@ describe('client loot anchor push', () => {
     };
     startUI({ cfg, lcu: fakeLcu(), reloadConfig: async () => ({ ...cfg }) });
     const lootPosts = () => posts.filter((body) => 'loot' in body).map((body) => body.loot);
-    const right = Math.max(0, window.innerWidth - 1000) + 24;
-    await waitFor(() => expect(lootPosts()[0]).toEqual({ top: 80 + 120 + 14, right }), { timeout: 3000 });
+    const right = window.innerWidth - 8 - 40;
+    await waitFor(() => expect(lootPosts()[0]).toEqual({ top: 720 - 64 - 40, right }), { timeout: 3000 });
     const pushes = posts.filter((body) => 'ready_check' in body).length;
     await waitFor(() => expect(posts.filter((body) => 'ready_check' in body).length).toBeGreaterThan(pushes + 1), { timeout: 4000 });
     expect(lootPosts()).toHaveLength(1);
     loot.hide();
-    await waitFor(() => expect(lootPosts()).toEqual([{ top: 214, right }, null]), { timeout: 3000 });
+    await waitFor(() => expect(lootPosts()).toEqual([{ top: 616, right }, null]), { timeout: 3000 });
   }, 60000);
 });

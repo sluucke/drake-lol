@@ -671,7 +671,8 @@
       "tile": {
         "count": "×{amount}",
         "legacy": "Legacy",
-        "owned": "Owned"
+        "owned": "Owned",
+        "ownedHint": "You already own this, so this copy is a spare."
       },
       "essence": {
         "blue": "Blue Essence",

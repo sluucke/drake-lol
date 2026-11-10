@@ -50,16 +50,16 @@ describe('loot screen detection', () => {
     expect(findLootScreen(document)).not.toBeNull();
   });
 
-  it('anchors at the right of the loot content, below the client menu, level with the inventory', () => {
+  it('anchors at the bottom left of the loot screen, above the client help button', () => {
     const { root } = makeLootRoot();
     const win = { innerWidth: 1280 } as Window;
-    expect(lootAnchor(root, win)).toEqual({ top: 166, right: 104 });
+    expect(lootAnchor(root, win)).toEqual({ top: 720 - 64 - 40, right: 1280 - 8 - 40 });
     expect(lootAnchor(null, win)).toBeNull();
   });
 
-  it('keeps clear of the client menu when the inventory is not on screen yet', () => {
+  it('falls back to the loot screen edge when the inventory is not on screen yet', () => {
     const { root } = makeLootRoot({ inventoryTop: null });
-    expect(lootAnchor(root, { innerWidth: 1280 } as Window)).toEqual({ top: 134, right: 104 });
+    expect(lootAnchor(root, { innerWidth: 1280 } as Window)).toEqual({ top: 616, right: 1232 });
   });
 });
 
@@ -81,7 +81,7 @@ describe('LootDock', () => {
     const btn = button();
     expect(btn).not.toBeNull();
     const dock = portalTarget.querySelector<HTMLElement>('.drk-dock--loot');
-    expect(dock?.style.top).toBe('166px');
+    expect(dock?.style.top).toBe('616px');
     fireEvent.click(btn as HTMLElement);
     const dialog = within(portalTarget).getByRole('dialog', { name: 'Bulk disenchant' });
     await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Ahri' })).toBeTruthy());
@@ -146,14 +146,14 @@ describe('LootDock in the streaming overlay', () => {
     return { ...utils, store, actions, button };
   }
 
-  it('places the button at the tray anchor, inside the 220x40 click area', () => {
+  it('places the button at the tray anchor, inside the 40x40 click area', () => {
     makeLootRoot();
     const { portalTarget, button } = overlaySetup({ top: 166, right: 104 });
     expect(button()).not.toBeNull();
     const dock = portalTarget.querySelector<HTMLElement>('.drk-dock--overlay-loot');
-    expect(dock?.style.left).toBe(`${1280 - 104 - 220}px`);
+    expect(dock?.style.left).toBe(`${1280 - 104 - 40}px`);
     expect(dock?.style.top).toBe('166px');
-    expect(dock?.style.width).toBe('220px');
+    expect(dock?.style.width).toBe('40px');
     expect(dock?.style.height).toBe('40px');
   });
 

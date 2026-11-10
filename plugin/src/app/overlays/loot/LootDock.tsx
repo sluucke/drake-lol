@@ -11,7 +11,7 @@ import { DURATION, EASE_OUT } from '../../ui/motion';
 import { OVERLAY_SIZES, lootPiece } from '../streaming/overlayLayout';
 import type { OverlayPoint, OverlaySize } from '../streaming/overlayLayout';
 import { DisenchantModal } from './DisenchantModal';
-import { EssenceIcon } from './Essence';
+import { DISENCHANT_ICON } from '../../../ui/assets';
 import { lootButtonStyle, useLootScreen } from './useLootScreen';
 
 const FADE = {
@@ -57,13 +57,14 @@ function LaunchButton({ className = '', onOpen }: LaunchButtonProps) {
       className={['drk-hextech-btn', 'drk-loot-launch', className].filter(Boolean).join(' ')}
       data-drake-loot="true"
       onMouseEnter={() => sfx.play(SFX.goldHover)}
+      aria-label={t('overlays.loot.button')}
+      title={t('overlays.loot.button')}
       onClick={() => {
         sfx.play(SFX.click);
         onOpen();
       }}
     >
-      <EssenceIcon essence="blue" />
-      <span className="drk-loot-launch__label">{t('overlays.loot.button')}</span>
+      <img className="drk-loot-launch__icon" src={DISENCHANT_ICON} alt="" draggable={false} />
     </button>
   );
 }

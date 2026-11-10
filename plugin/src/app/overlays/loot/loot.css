@@ -10,24 +10,33 @@
 }
 
 .drk-loot-launch {
-  gap: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
   min-width: 0;
+  padding: 0;
   box-shadow: 0 0 1px 1px #010a13, inset 0 0 1px 1px #010a13, 0 4px 14px rgba(0, 0, 0, 0.55);
 }
 
-.drk-loot-launch--overlay {
-  box-sizing: border-box;
-  max-width: 100%;
-  height: 100%;
-  min-height: 0;
-  padding: 0 12px;
-  font-size: 13px;
-  white-space: nowrap;
+.drk-loot-launch__icon {
+  width: 20px;
+  height: 22px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px rgba(10, 203, 230, 0.45));
+  transition: filter var(--dur-fast) var(--ease-out);
 }
 
-.drk-loot-launch__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.drk-loot-launch:hover .drk-loot-launch__icon {
+  filter: drop-shadow(0 0 7px rgba(10, 203, 230, 0.8));
+}
+
+.drk-loot-launch--overlay {
+  width: 100%;
+  height: 100%;
 }
 
 .drk-essence {
@@ -38,11 +47,6 @@
   object-fit: contain;
   vertical-align: middle;
   pointer-events: none;
-}
-
-.drk-loot-launch .drk-essence {
-  width: 16px;
-  height: 16px;
 }
 
 .drk-essence-amount {
@@ -210,7 +214,7 @@
   border: 1px solid rgba(0, 0, 0, 0.6);
 }
 
-.drk-loot-tile__art img {
+.drk-loot-tile__photo {
   display: block;
   width: 100%;
   height: 100%;
@@ -219,11 +223,11 @@
   transition: filter var(--dur-base) var(--ease-out);
 }
 
-.drk-loot-tile.is-shard .drk-loot-tile__art img {
+.drk-loot-tile.is-shard .drk-loot-tile__photo {
   filter: saturate(0.85);
 }
 
-.drk-loot-tile.is-on .drk-loot-tile__art img {
+.drk-loot-tile.is-on .drk-loot-tile__photo {
   filter: brightness(0.8) saturate(1);
 }
 
@@ -255,30 +259,18 @@
 
 .drk-loot-tile__owned {
   position: absolute;
-  top: 4px;
   left: 4px;
-}
-
-.drk-loot-tile__owned-mark {
-  position: relative;
-  display: block;
-  width: 16px;
-  height: 16px;
+  top: 4px;
+  padding: 2px 5px;
+  font-family: var(--font-heading);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--win);
   background: rgba(1, 10, 19, 0.88);
-  border: 1px solid var(--win);
-  border-radius: 50%;
-}
-
-.drk-loot-tile__owned-mark::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 5px;
-  width: 4px;
-  height: 7px;
-  border: solid var(--win);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  border: 1px solid rgba(31, 184, 106, 0.6);
 }
 
 .drk-loot-tile__check {

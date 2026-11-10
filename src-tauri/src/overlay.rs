@@ -30,7 +30,7 @@ pub struct LootAnchor {
     pub right: i32,
 }
 
-pub const LOOT_SIZE: (i32, i32) = (220, 40);
+pub const LOOT_SIZE: (i32, i32) = (40, 40);
 
 pub fn loot_piece(client: &ClientBounds, anchor: LootAnchor) -> ClientBounds {
     let right_edge = client.x + client.width as i32;
