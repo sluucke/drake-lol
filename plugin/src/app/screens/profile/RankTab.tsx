@@ -1,31 +1,40 @@
-// @ts-nocheck
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import type { ActionResult } from '../../../features/presence';
 import { CRYSTALS, DIVISIONS, QUEUES, TIERS } from '../../../features/presence';
 import { RANK_ICONS } from '../../../ui/assets';
 import { SFX } from '../../../ui/sfx';
 import { useSfx } from '../../hooks/useSfx';
 import { useT } from '../../i18n/I18nProvider';
 import { useLegacyActions } from '../../shell/LegacyActions';
+import type { ProfileRankDraft } from '../../store/sessionSlice';
 import { useDrake, useDrakeStore } from '../../store/StoreContext';
 import { Button } from '../../ui/Button';
 import { Card } from '../../ui/Card';
 import { Select } from '../../ui/Select';
 import { Help } from '../common';
 
+const RANK_ICON_BY_TIER: Partial<Record<string, string>> = RANK_ICONS;
+
 function useRunner() {
   const t = useT();
   const store = useDrakeStore();
   const [busy, setBusy] = useState('');
-  const run = async (id, action, okKey) => {
+  const run = async (id: string, action: () => Promise<ActionResult>, okKey: string) => {
     setBusy(id);
     const result = await action();
     setBusy('');
-    store.getState().setStatusLine(result.ok ? { text: t(okKey), tone: 'good' } : { text: result.reason, tone: 'bad' });
+    store.getState().setStatusLine(result.ok ? { text: t(okKey), tone: 'good' } : { text: result.reason ?? '', tone: 'bad' });
   };
   return { busy, run };
 }
 
-function Row({ label, children }) {
+interface RowProps {
+  label: ReactNode;
+  children?: ReactNode;
+}
+
+function Row({ label, children }: RowProps) {
   return (
     <div className="drk-field__row">
       <span className="drk-field__label">{label}</span>
@@ -39,13 +48,13 @@ export function RankTab() {
   const sfx = useSfx();
   const actions = useLegacyActions();
   const synced = useDrake((state) => state.session.profileRank);
-  const [draft, setDraft] = useState(synced);
+  const [draft, setDraft] = useState<ProfileRankDraft>(synced);
   const { busy, run } = useRunner();
   const syncedKey = `${synced.tier}|${synced.division}|${synced.queue}|${synced.crystal}`;
 
   useEffect(() => setDraft(synced), [syncedKey]);
 
-  const tierLabel = (tier) => t(`ranks.tiers.${tier}`);
+  const tierLabel = (tier: string) => t(`ranks.tiers.${tier}`);
 
   return (
     <div className="drk-screen__stack">
@@ -66,7 +75,7 @@ export function RankTab() {
                   setDraft({ ...draft, tier });
                 }}
               >
-                <img src={RANK_ICONS[tier] || RANK_ICONS.UNRANKED} alt="" />
+                <img src={RANK_ICON_BY_TIER[tier] || RANK_ICONS.UNRANKED} alt="" />
                 <span>{tierLabel(tier)}</span>
               </button>
             );

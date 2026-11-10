@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { iconUrl } from '../../../features/champions';
 import { OPGG_REGIONS, OPGG_TIERS } from '../../../features/opggApi';
 import { RANK_ICONS } from '../../../ui/assets';

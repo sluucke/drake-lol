@@ -1,6 +1,6 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
-import { makeBuildPanel } from '../src/ui/buildPanel';
+import { makeBuildPanel, type BuildPanelOptions } from '../src/ui/buildPanel';
+import type { BuildState } from '../src/app/store/buildSlice';
 
 const BUILD = {
   hasData: true,
@@ -27,9 +27,9 @@ const BUILD = {
   counters: { strong: [{ championId: 82, winRate: 57.5, play: 163 }], weak: [] },
 };
 
-const NAMES = { 157: 'Yasuo', 82: 'Mordekaiser' };
+const NAMES: Record<number, string> = { 157: 'Yasuo', 82: 'Mordekaiser' };
 
-function setup(extra = {}) {
+function setup(extra: Record<string, unknown> = {}) {
   const overlayRoot = { appendChild: vi.fn(), querySelector: vi.fn(() => null), ownerDocument: null };
   const deps = {
     fetchChampionBuildImpl: vi.fn(async () => ({ meta: { version: '14.1' } })),
@@ -48,16 +48,16 @@ function setup(extra = {}) {
     doc: {},
     overlayRoot,
     lcu: {},
-    getChampName: (id) => names[id] || '',
+    getChampName: (id: number) => names[id] || '',
     getSettings: () => ({}),
     saveSettings,
     getSummonerId: () => 42,
     ...deps,
     ...extra,
-  });
-  const updates = [];
+  } as unknown as BuildPanelOptions);
+  const updates: BuildState[] = [];
   panel.onUpdate(() => updates.push(panel.getSnapshot()));
-  return { panel, deps, saveSettings, overlayRoot, updates, setNames: (next) => (names = next) };
+  return { panel, deps, saveSettings, overlayRoot, updates, setNames: (next: Record<number, string>) => (names = next) };
 }
 
 async function flush() {
@@ -69,8 +69,8 @@ describe('build panel api', () => {
     const { panel, overlayRoot, updates } = setup();
     panel.setSession({ championId: 157, position: 'MIDDLE', mode: 'ranked' });
     expect(overlayRoot.appendChild).not.toHaveBeenCalled();
-    expect(updates.at(-1).championId).toBe(157);
-    expect(updates.at(-1).championName).toBe('Yasuo');
+    expect(updates.at(-1)?.championId).toBe(157);
+    expect(updates.at(-1)?.championName).toBe('Yasuo');
   });
 
   it('loads a build into the snapshot', async () => {
@@ -83,7 +83,7 @@ describe('build panel api', () => {
     expect(snap.loading).toBe(false);
     expect(snap.topPlayers.ok).toBe(true);
     expect(snap.championNames).toEqual({ 82: 'Mordekaiser' });
-    expect(snap.getChampName).toBeUndefined();
+    expect((snap as { getChampName?: unknown }).getChampName).toBeUndefined();
   });
 
   it('changes tier and region through methods', async () => {
@@ -109,7 +109,7 @@ describe('build panel api', () => {
     await panel.loadBuild();
     await panel.viewPlayer('Hide on bush#KR1', 'KR');
     expect(panel.getSnapshot().viewingPlayer).toBe('Hide on bush#KR1');
-    expect(panel.getSnapshot().build.items.core[0].ids).toEqual([3078]);
+    expect(panel.getSnapshot().build?.items?.core?.[0]?.ids).toEqual([3078]);
     panel.clearPlayer();
     expect(panel.getSnapshot().viewingPlayer).toBe('');
     expect(panel.getSnapshot().build).toBe(BUILD);

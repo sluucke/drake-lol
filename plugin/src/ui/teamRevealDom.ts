@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { GAMEFLOW_PHASE_ROUTE } from '../features/dodge';
 import { readGameflowPhase } from '../features/inGameIdle';
 import {
@@ -8,10 +7,111 @@ import {
   remapSnapshotToSession,
   refreshPickedChampionOnRows,
 } from '../features/teamRevealStats';
+import type { RevealSession, TeamRevealRow } from '../features/teamRevealStats';
 import { collectRevealChatPairs, makeTeamRevealChat } from './teamRevealChat';
+import type { ChatDataset, ChatDoc, ChatObserverCtor } from './teamRevealChat';
 import { readMapSide } from '../features/mapSide';
 import { muteTeammates } from '../features/muteAll';
 import { sendChampSelectMessage } from '../features/champSelectChat';
+import type { Lcu } from '../lcu';
+import type { SubscribeFn, Unsubscribe } from '../subscribe';
+import type { ScoutGame, ScoutRow } from '../app/store/types';
+import type {
+  MuteStatus,
+  TeamRevealState,
+  TeamRevealStatusPhase,
+  TeamRevealTab,
+} from '../app/store/teamRevealSlice';
+
+export interface RevealLabel {
+  dataset: ChatDataset;
+  textContent?: string | null;
+  innerHTML?: string;
+  style?: { cssText: string } | null;
+  parentElement?: { style?: { overflow: string; maxHeight: string; height: string } | null } | null;
+  isConnected?: boolean;
+  querySelector?(selectors: string): RevealLabel | null;
+  getAttribute?(name: string): string | null;
+  setAttribute?(name: string, value: string): void;
+  removeAttribute?(name: string): void;
+}
+
+export interface RevealDoc {
+  querySelectorAll(selectors: string): Iterable<RevealLabel>;
+}
+
+export type RevealSnapshotRow = TeamRevealRow & {
+  summonerId?: number;
+  obfuscatedPuuid?: string;
+};
+
+export type RevealViewRow = Omit<Partial<RevealSnapshotRow>, 'historyGames' | 'recentGames'> &
+  ScoutRow & {
+    pickedChampionName: string;
+    seasonMostPlayedChampionName: string;
+    recentGames: ScoutGame[];
+  };
+
+export interface RevealLoadHooks {
+  signal?: AbortSignal;
+  onProgress(rows: RevealSnapshotRow[]): void;
+}
+
+export interface RevealTiming {
+  durationMs: number;
+  teamSize: number;
+}
+
+export interface RevealBuildPanel {
+  getStateSig?(): string;
+  onUpdate?(listener: () => void): unknown;
+  loadBuild?(): Promise<unknown>;
+}
+
+export type ChampNameLookup = (id: number) => string | null | undefined;
+
+export interface TeamRevealDomOptions {
+  doc: RevealDoc & ChatDoc;
+  subscribe: SubscribeFn;
+  loadSnapshot: (
+    session: RevealSession,
+    hooks: RevealLoadHooks,
+  ) => Promise<RevealSnapshotRow[] | null | undefined>;
+  lcu?: Pick<Lcu, 'get' | 'post'> | null;
+  buildPanel?: RevealBuildPanel | null;
+  muteTeammatesImpl?: typeof muteTeammates;
+  sendChampSelectMessageImpl?: typeof sendChampSelectMessage;
+  getChampName?: ChampNameLookup;
+  getRecentPool?: () => string;
+  getShowMapSide?: () => boolean;
+  getAutoMute?: () => boolean;
+  getAutoMessage?: () => string | null | undefined;
+  onRevealTiming?: ((timing: RevealTiming) => void) | null;
+  MutationObserverImpl?: ChatObserverCtor | null;
+  publishView?: (view: TeamRevealState) => void;
+}
+
+export interface TeamRevealDom {
+  setEnabled(next: boolean): void;
+  handleSession(session: unknown): Promise<void>;
+  toggleCards(tab?: TeamRevealTab | null): void;
+  closeCards(): void;
+  openCards(tab?: TeamRevealTab | null): void;
+  isOpen(): boolean;
+  getActiveTab(): TeamRevealTab;
+  setActiveTab(tab: TeamRevealTab | null | undefined): void;
+  muteAll(): Promise<void>;
+  teardown(): void;
+}
+
+interface TeamIdentity {
+  cellId: number;
+  summonerId: number;
+  puuid: string;
+  obf: string;
+}
+
+type WlSource = Partial<Pick<RevealSnapshotRow, 'wins' | 'losses' | 'winRate' | 'matchesUsed' | 'riotId'>>;
 
 const ORIGINAL_NAME_KEY = 'drakeTeamRevealOriginal';
 const APPLIED_KEY = 'drakeTeamRevealApplied';
@@ -21,7 +121,7 @@ const ROOT_KEY = 'drakeRevealRoot';
 
 export const STATUS_READY_MS = 8000;
 
-function toLabelNode(row) {
+function toLabelNode(row: RevealLabel | null | undefined): RevealLabel | null {
   if (!row?.querySelector) return null;
   return (
     row.querySelector('[data-drake-summoner-name]') ||
@@ -33,11 +133,11 @@ function toLabelNode(row) {
   );
 }
 
-function readCellId(row) {
+function readCellId(row: RevealLabel | null | undefined): number {
   return Number(row?.dataset?.cellId ?? row?.getAttribute?.('data-cell-id') ?? -1);
 }
 
-function readRowWl(row) {
+function readRowWl(row: WlSource) {
   return {
     wins: row.wins,
     losses: row.losses,
@@ -45,15 +145,16 @@ function readRowWl(row) {
   };
 }
 
-function hasMatchWl(row) {
+function hasMatchWl(row: WlSource | null | undefined): boolean {
   return Number(row?.matchesUsed) > 0 || Number(row?.wins) + Number(row?.losses) > 0;
 }
 
-function isLiveRevealSession(session) {
-  return Boolean(session && Array.isArray(session.myTeam) && session.myTeam.length);
+function isLiveRevealSession(session: unknown): session is RevealSession {
+  const live = session as RevealSession | null | undefined;
+  return Boolean(live && Array.isArray(live.myTeam) && live.myTeam.length);
 }
 
-function formatWlHtml(wins, losses, winRate) {
+function formatWlHtml(wins: number | undefined, losses: number | undefined, winRate: number | undefined): string {
   const w = wins ?? 0;
   const l = losses ?? 0;
   const total = w + l;
@@ -61,15 +162,15 @@ function formatWlHtml(wins, losses, winRate) {
   return `<span class="wl-win">${w}W</span>/<span class="wl-loss">${l}L</span> · ${rate}%`;
 }
 
-function formatRowName(_maskedName, snapshot) {
+function formatRowName(_maskedName: string, snapshot: WlSource): string {
   if (!hasMatchWl(snapshot)) return snapshot.riotId || '';
   const wl = readRowWl(snapshot);
   return `${snapshot.riotId} (${formatWl(wl.wins, wl.losses, wl.winRate)})`;
 }
 
-function readLabelNodes(doc) {
-  const seen = new Set();
-  const out = [];
+function readLabelNodes(doc: RevealDoc): RevealLabel[] {
+  const seen = new Set<RevealLabel>();
+  const out: RevealLabel[] = [];
   const selectors = [
     '[data-testid="summoner-name"]',
     '[data-testid*="summoner-name"]',
@@ -87,14 +188,17 @@ function readLabelNodes(doc) {
   return out;
 }
 
-function findLabelsByCurrentNames(doc, snapshot) {
+function findLabelsByCurrentNames(
+  doc: RevealDoc,
+  snapshot: RevealSnapshotRow[],
+): { row: RevealSnapshotRow; label: RevealLabel }[] {
   const pool = readLabelNodes(doc).filter((node) => {
     if (node?.dataset?.[APPLIED_KEY]) return false;
     const text = String(node?.textContent || '').trim();
     return Boolean(text) && text.length <= 48;
   });
-  const matched = [];
-  const used = new Set();
+  const matched: { row: RevealSnapshotRow; label: RevealLabel }[] = [];
+  const used = new Set<RevealLabel>();
   for (const row of snapshot) {
     const riotId = String(row?.riotId || '').trim().toLowerCase();
     const nameOnly = riotId.split('#')[0] || '';
@@ -113,17 +217,17 @@ function findLabelsByCurrentNames(doc, snapshot) {
 
 const LABEL_SIG_KEY = 'drakeRevealSig';
 
-function stillShowsOurReveal(label) {
+function stillShowsOurReveal(label: RevealLabel | null | undefined): boolean {
   if (!label?.dataset?.[APPLIED_KEY] && !label?.dataset?.[LABEL_SIG_KEY]) return false;
-  if (label.querySelector?.('.drake-reveal-name')) return true;
-  const sig = String(label.dataset?.[LABEL_SIG_KEY] || '');
+  if (label?.querySelector?.('.drake-reveal-name')) return true;
+  const sig = String(label?.dataset?.[LABEL_SIG_KEY] || '');
   const riotId = sig.split('|')[0] || '';
   if (!riotId) return false;
-  const text = String(label.textContent || '').trim();
+  const text = String(label?.textContent || '').trim();
   return text === riotId || text.startsWith(`${riotId} `) || text.startsWith(`${riotId}(`);
 }
 
-function applyLabel(label, info) {
+function applyLabel(label: RevealLabel, info: RevealSnapshotRow): void {
   if (!label.dataset) label.dataset = {};
   const wl = readRowWl(info);
   const showWl = hasMatchWl(info);
@@ -161,9 +265,12 @@ function applyLabel(label, info) {
   label.dataset[LABEL_SIG_KEY] = sig;
 }
 
-export function withChampionNames(row, getChampName) {
-  const { historyGames, ...rest } = row || {};
-  const name = (id) => (id ? getChampName(Number(id)) || '' : '');
+export function withChampionNames(
+  row: Partial<RevealSnapshotRow> | null | undefined,
+  getChampName: ChampNameLookup,
+): RevealViewRow {
+  const { historyGames, ...rest }: Partial<RevealSnapshotRow> = row || {};
+  const name = (id: number | undefined) => (id ? getChampName(Number(id)) || '' : '');
   return {
     ...rest,
     pickedChampionName: name(rest.pickedChampionId),
@@ -188,25 +295,25 @@ export function makeTeamRevealDom({
   onRevealTiming,
   MutationObserverImpl,
   publishView = () => {},
-}) {
+}: TeamRevealDomOptions): TeamRevealDom {
   const chat = makeTeamRevealChat({ doc, MutationObserverImpl });
   let enabled = false;
-  let stopSession = null;
-  let snapshot = [];
-  let currentSession = null;
+  let stopSession: Unsubscribe | null = null;
+  let snapshot: RevealSnapshotRow[] = [];
+  let currentSession: RevealSession | null = null;
   let open = false;
-  let activeTab = 'scouting';
-  let boundLabels = new Map();
+  let activeTab: TeamRevealTab = 'scouting';
+  let boundLabels = new Map<number, RevealLabel>();
   let lastSessionSig = '';
   let lastLobbyKey = '';
-  let lastTeam = [];
-  let statusPhase = 'hidden';
+  let lastTeam: TeamIdentity[] = [];
+  let statusPhase: TeamRevealStatusPhase = 'hidden';
   let lastPhase = '';
   let pendingScrub = false;
   let loadGen = 0;
-  let loadAbort = null;
-  let stopPhase = null;
-  let muteStatus = 'idle';
+  let loadAbort: AbortController | null = null;
+  let stopPhase: Unsubscribe | null = null;
+  let muteStatus: MuteStatus = 'idle';
   let autoMutedLobbyKey = '';
   let lastAutoMessageLobbyKey = '';
   let statusSeq = 0;
@@ -258,7 +365,7 @@ export function makeTeamRevealDom({
     pendingScrub = false;
   }
 
-  function handlePhase(payload) {
+  function handlePhase(payload: unknown) {
     if (!enabled) return;
     const phase = readGameflowPhase(payload);
     if (!phase) return;
@@ -285,7 +392,7 @@ export function makeTeamRevealDom({
     return false;
   }
 
-  function applyPickRefresh(session) {
+  function applyPickRefresh(session: RevealSession) {
     if (!snapshot.length) return false;
     const { rows, changed } = refreshPickedChampionOnRows(snapshot, session, getRecentPool());
     if (!changed) return false;
@@ -294,7 +401,7 @@ export function makeTeamRevealDom({
     return true;
   }
 
-  function mergeRowsByCell(session) {
+  function mergeRowsByCell(session: RevealSession) {
     if (!snapshot.length) return false;
     const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
     const localCellId = Number(session?.localPlayerCellId ?? -1);
@@ -339,7 +446,7 @@ export function makeTeamRevealDom({
     return true;
   }
 
-  function applyRemappedSnapshot(session) {
+  function applyRemappedSnapshot(session: RevealSession) {
     if (!snapshot.length) return false;
     const { rows, changed, ok } = remapSnapshotToSession(snapshot, session);
     if (!ok) return false;
@@ -351,7 +458,7 @@ export function makeTeamRevealDom({
     return true;
   }
 
-  function teamFingerprint(session) {
+  function teamFingerprint(session: RevealSession): TeamIdentity[] {
     const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
     return team
       .map((player) => ({
@@ -363,7 +470,7 @@ export function makeTeamRevealDom({
       .sort((a, b) => a.cellId - b.cellId);
   }
 
-  function sameTeamIdentity(prev, next) {
+  function sameTeamIdentity(prev: TeamIdentity[], next: TeamIdentity[]): boolean {
     if (!prev.length || prev.length !== next.length) return false;
     return prev.every((left, index) => {
       const right = next[index];
@@ -385,7 +492,7 @@ export function makeTeamRevealDom({
     });
   }
 
-  function sessionSignature(session) {
+  function sessionSignature(session: RevealSession): string {
     return JSON.stringify(teamFingerprint(session));
   }
 
@@ -410,7 +517,7 @@ export function makeTeamRevealDom({
     });
   }
 
-  function setStatus(phase) {
+  function setStatus(phase: TeamRevealStatusPhase) {
     statusPhase = phase;
     statusSeq += 1;
     publish();
@@ -421,8 +528,8 @@ export function makeTeamRevealDom({
   }
 
   function restoreRows() {
-    const seen = new Set();
-    const restore = (label) => {
+    const seen = new Set<RevealLabel>();
+    const restore = (label: RevealLabel | null | undefined) => {
       if (!label || seen.has(label)) return;
       seen.add(label);
       if (label.dataset?.[ORIGINAL_NAME_KEY] || label.dataset?.[APPLIED_KEY]) restoreLabel(label);
@@ -433,7 +540,7 @@ export function makeTeamRevealDom({
     boundLabels = new Map();
   }
 
-  function restoreLabel(label) {
+  function restoreLabel(label: RevealLabel) {
     if (stillShowsOurReveal(label)) {
       if (typeof label.innerHTML === 'string') {
         label.innerHTML = label.dataset[ORIGINAL_HTML_KEY] || label.dataset[ORIGINAL_NAME_KEY] || '';
@@ -453,9 +560,9 @@ export function makeTeamRevealDom({
     delete label.dataset[LABEL_SIG_KEY];
   }
 
-  function applyRows(rows) {
+  function applyRows(rows: RevealSnapshotRow[]) {
     const byCell = new Map(rows.map((row) => [Number(row.cellId), row]));
-    const used = new Set();
+    const used = new Set<RevealSnapshotRow>();
 
     for (const row of rows) {
       const key = Number(row?.cellId);
@@ -510,7 +617,7 @@ export function makeTeamRevealDom({
     chat.setEntries(collectRevealChatPairs(boundLabels, snapshot, ORIGINAL_NAME_KEY));
   }
 
-  async function handleSession(session) {
+  async function handleSession(session: unknown): Promise<void> {
     if (!enabled) return;
     if (!isLiveRevealSession(session)) {
       clearReveal();
@@ -586,7 +693,7 @@ export function makeTeamRevealDom({
       setStatus('loading');
       const next = await loadSnapshot(session, {
         signal: loadAbort?.signal,
-        onProgress(rows) {
+        onProgress(rows: RevealSnapshotRow[]) {
           if (gen !== loadGen) return;
           snapshot = Array.isArray(rows) ? rows : [];
           mergeRowsByCell(session);
@@ -613,7 +720,7 @@ export function makeTeamRevealDom({
     }
   }
 
-  function setEnabled(next) {
+  function setEnabled(next: boolean) {
     if (next === enabled) return;
     enabled = next;
     if (enabled) {
@@ -636,7 +743,7 @@ export function makeTeamRevealDom({
     clearReveal();
   }
 
-  function setActiveTab(tab) {
+  function setActiveTab(tab: TeamRevealTab | null | undefined) {
     activeTab = tab || 'scouting';
     if (activeTab === 'build' && buildPanel?.loadBuild) {
       void buildPanel.loadBuild();
@@ -644,7 +751,7 @@ export function makeTeamRevealDom({
     renderVisibility();
   }
 
-  function openCards(tab) {
+  function openCards(tab?: TeamRevealTab | null) {
     if (!enabled) return;
     if (tab) activeTab = tab;
     open = true;
@@ -662,7 +769,7 @@ export function makeTeamRevealDom({
     setStatus(statusPhase === 'loading' ? 'loading' : snapshot.length ? 'ready' : 'hidden');
   }
 
-  function toggleCards(tab) {
+  function toggleCards(tab?: TeamRevealTab | null) {
     if (!enabled) return;
     if (open) {
       if (tab && tab !== activeTab) {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   matchesToggle,
   matchesClose,
@@ -12,6 +11,31 @@ export const HOST_ID = 'drake-ui-host';
 
 
 const SENTINEL = '__drakeUIMounted';
+
+export interface MountedUI {
+  isOpen: () => boolean;
+  toggle: () => void;
+  open: () => void;
+  close: () => void;
+  host: () => HTMLDivElement | null;
+}
+
+export type MountWindow = Window & { [SENTINEL]?: MountedUI };
+
+export interface MountOptions {
+  doc: Document;
+  win: MountWindow;
+  render?: (() => string) | null;
+  onOpenChange?: ((open: boolean) => void) | null;
+  onMount?: ((shadow: ShadowRoot, api: MountedUI) => void) | null;
+  onTeamRevealCardsToggle?: (() => void) | null;
+  onBuildPanelToggle?: (() => void) | null;
+  isIdle?: (() => boolean) | null;
+  onEscape?: (() => boolean | void) | null;
+  onToggleIntent?: (() => boolean | void) | null;
+  mountParent?: Element | null;
+  hostId?: string;
+}
 
 
 
@@ -39,7 +63,7 @@ export function mountUI({
   onToggleIntent,
   mountParent,
   hostId = HOST_ID,
-}) {
+}: MountOptions): MountedUI {
   if (win[SENTINEL]) return win[SENTINEL];
   const ui = createUI({
     doc,
@@ -72,11 +96,11 @@ function createUI({
   onToggleIntent,
   mountParent,
   hostId = HOST_ID,
-}) {
-  let host = null;
+}: MountOptions): MountedUI {
+  let host: HTMLDivElement | null = null;
   let open = false;
 
-  const api = {
+  const api: MountedUI = {
     isOpen: () => open,
     toggle: () => setOpen(!open),
     open: () => setOpen(true),
@@ -84,13 +108,13 @@ function createUI({
     host: () => host,
   };
 
-  function setOpen(next) {
+  function setOpen(next: boolean) {
     if (next === open) return;
     open = next;
     if (onOpenChange) onOpenChange(open);
   }
 
-  function parentNode() {
+  function parentNode(): Element {
     return mountParent || doc.documentElement;
   }
 
@@ -99,12 +123,13 @@ function createUI({
   }
 
   function attach() {
-    host = doc.createElement('div');
-    host.id = hostId;
-    host.style.cssText = hostCss();
-    const shadow = host.attachShadow({ mode: 'open' });
+    const el = doc.createElement('div');
+    host = el;
+    el.id = hostId;
+    el.style.cssText = hostCss();
+    const shadow = el.attachShadow({ mode: 'open' });
     if (render) shadow.innerHTML = render();
-    parentNode().appendChild(host);
+    parentNode().appendChild(el);
     if (onMount) onMount(shadow, api);
   }
 

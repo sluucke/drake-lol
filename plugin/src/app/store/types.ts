@@ -63,8 +63,9 @@ export interface BuildStats {
 }
 
 export interface BuildData {
+  hasData?: boolean;
   patch?: string;
-  stats?: BuildStats;
+  stats?: BuildStats | null;
   runePages?: BuildRunePage[];
   items?: BuildItems;
   spells?: BuildEntry[];

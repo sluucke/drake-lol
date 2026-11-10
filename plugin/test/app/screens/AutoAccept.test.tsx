@@ -1,28 +1,29 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
+import type { SettingsValues } from '../../../src/settings';
+import type { LegacyActions } from '../../../src/app/shell/LegacyActions';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { AutoAcceptScreen } from '../../../src/app/screens/AutoAccept';
 import { isReactScreen } from '../../../src/app/screens/registry';
 
-function makeActions(overrides = {}) {
+function makeActions(overrides: Partial<LegacyActions> = {}) {
   return {
-    navigate: vi.fn(),
-    close: vi.fn(),
-    openUrl: vi.fn(),
-    setSettings: vi.fn(async () => ({ ok: true })),
-    saveStatus: vi.fn(async () => ({ ok: true })),
-    revealLobby: vi.fn(async () => ({ ok: true, count: 3 })),
-    dodge: vi.fn(async () => ({ ok: true })),
-    checkUpdates: vi.fn(async () => {}),
-    installUpdate: vi.fn(async () => ({ ok: true, installing: true })),
-    restartClient: vi.fn(async () => ({ ok: true })),
+    navigate: vi.fn<LegacyActions['navigate']>(),
+    close: vi.fn<LegacyActions['close']>(),
+    openUrl: vi.fn<LegacyActions['openUrl']>(),
+    setSettings: vi.fn<LegacyActions['setSettings']>(async () => ({ ok: true })),
+    saveStatus: vi.fn<LegacyActions['saveStatus']>(async () => ({ ok: true })),
+    revealLobby: vi.fn<LegacyActions['revealLobby']>(async () => ({ ok: true, count: 3 })),
+    dodge: vi.fn<LegacyActions['dodge']>(async () => ({ ok: true })),
+    checkUpdates: vi.fn<LegacyActions['checkUpdates']>(async () => {}),
+    installUpdate: vi.fn<LegacyActions['installUpdate']>(async () => ({ ok: true, installing: true, upToDate: false })),
+    restartClient: vi.fn<LegacyActions['restartClient']>(async () => ({ ok: true })),
     ...overrides,
   };
 }
 
-function setup(settings, locale) {
+function setup(settings: SettingsValues, locale?: string) {
   const store = createDrakeStore({ settings });
   if (locale) store.getState().setLocale(locale);
   const actions = makeActions();
@@ -64,14 +65,14 @@ describe('AutoAcceptScreen', () => {
   it('shows Instant for zero and disables the delay when off', () => {
     setup({ auto_accept: false });
     expect(screen.getByText('Instant')).toBeTruthy();
-    expect(screen.getByRole('slider', { name: 'Accept after' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLInputElement>('slider', { name: 'Accept after' }).disabled).toBe(true);
   });
 
   it('disables everything while the tray is down', () => {
     const { store } = setup({ auto_accept: true });
     act(() => store.getState().syncLegacy({ trayDown: true }));
-    expect(screen.getByRole('checkbox').disabled).toBe(true);
-    expect(screen.getByRole('slider').disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('checkbox').disabled).toBe(true);
+    expect(screen.getByRole<HTMLInputElement>('slider').disabled).toBe(true);
   });
 
   it('is translated', () => {

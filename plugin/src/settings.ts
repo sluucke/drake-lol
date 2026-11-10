@@ -1,3 +1,5 @@
+import type { StreamingEffective } from './features/streaming';
+
 export interface RelativePosition {
   x: number;
   y: number;
@@ -31,6 +33,7 @@ export interface DrakeSettings {
   queue_auto_message: string;
   queue_team_reveal_sample_size: number;
   queue_team_reveal_recent_pool: string;
+  queue_team_reveal_last5_pool: string;
   queue_team_reveal_fetch_concurrency: number;
   profile_rank_tier: string;
   profile_rank_division: string;
@@ -55,6 +58,6 @@ export interface PluginConfig {
   port: number;
   version: string;
   settings: SettingsValues;
-  streaming_effective?: string;
+  streaming_effective?: StreamingEffective;
   streaming_tool_running?: boolean;
 }

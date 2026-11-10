@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createPortal } from 'react-dom';
 import { useSocialHost } from '../../hooks/useSocialHost';
 import { useInClientChromeHidden } from '../../hooks/useStreaming';

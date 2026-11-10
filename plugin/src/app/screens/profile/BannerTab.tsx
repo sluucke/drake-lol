@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useMemo } from 'react';
 import { searchSkins } from '../../../features/skins';
 import { useT } from '../../i18n/I18nProvider';
@@ -10,7 +9,11 @@ import { TextInput } from '../../ui/TextInput';
 import { Help } from '../common';
 import { SkinGrid } from './SkinGrid';
 
-export function BannerTab({ loading = false }) {
+export interface BannerTabProps {
+  loading?: boolean;
+}
+
+export function BannerTab({ loading = false }: BannerTabProps) {
   const t = useT();
   const store = useDrakeStore();
   const actions = useLegacyActions();
@@ -19,12 +22,12 @@ export function BannerTab({ loading = false }) {
   const query = useDrake((state) => state.ui.skinQuery);
   const filtered = useMemo(() => searchSkins(skins, query), [skins, query]);
 
-  async function pick(id) {
+  async function pick(id: number) {
     const result = await actions.setBackground(id);
     store
       .getState()
       .setStatusLine(
-        result.ok ? { text: t('screens.profile.backgroundSet'), tone: 'good' } : { text: result.reason, tone: 'bad' },
+        result.ok ? { text: t('screens.profile.backgroundSet'), tone: 'good' } : { text: result.reason ?? '', tone: 'bad' },
       );
   }
 

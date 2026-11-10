@@ -1,4 +1,5 @@
 import type { FetchLike, Lcu } from '../lcu';
+import type { HttpFetch } from './proxyFetch';
 import type { ChampSelectPlayer, ChampSelectSession } from './champSelect';
 import { resolveChampSelectPuuid } from './champSelectPuuid';
 import { formatRiotId, SUMMONER_BY_PUUID_ROUTE, SUMMONER_BY_ID_ROUTE } from './reveal';
@@ -181,7 +182,7 @@ export interface PlayerStatsOptions {
 export interface TeamRevealSnapshotOptions {
   session: RevealSession | null | undefined;
   lcu: Pick<Lcu, 'get'>;
-  fetchImpl?: FetchLike;
+  fetchImpl?: FetchLike | HttpFetch;
   sampleSize?: number;
   seasonSampleSize?: number;
   recentPool?: string;

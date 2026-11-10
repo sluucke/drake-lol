@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -7,8 +6,9 @@ import { ScoutCard } from '../../../src/app/overlays/scouting/ScoutCard';
 import { formatRank, winRate } from '../../../src/app/overlays/scouting/format';
 import { createTranslator } from '../../../src/app/i18n/runtime';
 import { DICTS } from '../../../src/app/i18n/locales/index';
+import type { ScoutRow } from '../../../src/app/store/types';
 
-const ROW = {
+const ROW: ScoutRow = {
   cellId: 1,
   riotId: 'Me#TAG',
   isLocalPlayer: true,
@@ -39,7 +39,7 @@ const ROW = {
   ],
 };
 
-function render(row, locale) {
+function render(row: ScoutRow, locale?: string) {
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   return renderWithProviders(<ScoutCard row={row} index={0} />, { store });
@@ -64,14 +64,14 @@ describe('scouting format', () => {
 describe('ScoutCard', () => {
   it('renders the player summary', () => {
     const { container } = render(ROW);
-    const card = container.querySelector('.drk-scout-card');
+    const card = container.querySelector('.drk-scout-card')!;
     expect(card.className).toContain('is-you');
     expect(screen.getByRole('heading').textContent).toContain('Me#TAG');
     expect(screen.getByRole('heading').textContent).toContain('(You)');
     expect(screen.getByText('Gold II · 45 LP')).toBeTruthy();
     expect(screen.getByText('Recent W/L · last 10 games')).toBeTruthy();
-    expect(card.querySelector('.drk-wl .is-win').textContent).toBe('8W');
-    expect(card.querySelector('.drk-wl .is-loss').textContent).toBe('2L');
+    expect(card.querySelector('.drk-wl .is-win')!.textContent).toBe('8W');
+    expect(card.querySelector('.drk-wl .is-loss')!.textContent).toBe('2L');
     expect(card.textContent).toContain('80%');
     expect(screen.getByText('3.25')).toBeTruthy();
     expect(screen.getByText('2W/1L')).toBeTruthy();
@@ -86,7 +86,7 @@ describe('ScoutCard', () => {
 
   it('shows skeletons while matches load', () => {
     const { container } = render({ ...ROW, matchesPending: true });
-    expect(container.querySelector('.drk-scout-card').className).toContain('is-loading');
+    expect(container.querySelector('.drk-scout-card')!.className).toContain('is-loading');
     expect(container.querySelectorAll('.drk-skel').length).toBeGreaterThan(3);
     expect(container.querySelector('.drk-wl')).toBeNull();
   });
@@ -114,7 +114,7 @@ describe('ScoutCard', () => {
   it('is translated', () => {
     const { container } = render(ROW, 'pt_BR');
     expect(screen.getByText('Ouro II · 45 PDL')).toBeTruthy();
-    expect(container.querySelector('.drk-wl .is-win').textContent).toBe('8V');
+    expect(container.querySelector('.drk-wl .is-win')!.textContent).toBe('8V');
     expect(screen.getByRole('heading').textContent).toContain('(Você)');
   });
 });

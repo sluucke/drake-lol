@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { AnimatePresence, motion } from 'motion/react';
 import { SFX } from '../../../ui/sfx';
 import { useDockStyle } from '../../hooks/useDockStyle';
@@ -10,8 +9,9 @@ import { useDrake } from '../../store/StoreContext';
 import { Button } from '../../ui/Button';
 import { Layer } from '../../ui/Layer';
 import { DURATION, EASE_OUT } from '../../ui/motion';
+import type { DodgeStatus } from '../../store/champSelectSlice';
 
-const DODGE_LABELS = { idle: 'dodgeButton', busy: 'dodging', done: 'dodged', failed: 'dodgeFailed' };
+const DODGE_LABELS: Record<DodgeStatus, string> = { idle: 'dodgeButton', busy: 'dodging', done: 'dodged', failed: 'dodgeFailed' };
 
 const RISE = {
   initial: { opacity: 0, y: 10 },
@@ -20,7 +20,12 @@ const RISE = {
   transition: { duration: DURATION.base, ease: EASE_OUT },
 };
 
-function DodgeDock({ dodge, onDodge }) {
+interface DodgeDockProps {
+  dodge: DodgeStatus;
+  onDodge: () => void;
+}
+
+function DodgeDock({ dodge, onDodge }: DodgeDockProps) {
   const t = useT();
   const sfx = useSfx();
   const style = useDockStyle(dodge !== 'busy');
@@ -44,7 +49,11 @@ function DodgeDock({ dodge, onDodge }) {
   );
 }
 
-function CancelDock({ onCancel }) {
+interface CancelDockProps {
+  onCancel: () => void;
+}
+
+function CancelDock({ onCancel }: CancelDockProps) {
   const t = useT();
   return (
     <div className="drk-dock drk-dock--cancel">

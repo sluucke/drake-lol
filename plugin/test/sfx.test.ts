@@ -1,11 +1,14 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { makeSfx, SFX, soundUrl } from '../src/ui/sfx';
 
 function fakeAudio() {
-  const made = [];
+  const made: FakeAudio[] = [];
   class FakeAudio {
-    constructor(src) {
+    src: string;
+    volume: number;
+    currentTime: number;
+    plays: number;
+    constructor(src: string) {
       this.src = src;
       this.volume = 1;
       this.currentTime = 0;
@@ -81,6 +84,8 @@ describe('makeSfx', () => {
 
 
     class Hostile {
+      volume = 1;
+      currentTime = 0;
       play() {
         return Promise.reject(new Error('NotAllowedError'));
       }

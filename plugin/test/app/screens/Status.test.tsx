@@ -1,30 +1,38 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
+import type { SettingsValues } from '../../../src/settings';
+import type { LegacyActions } from '../../../src/app/shell/LegacyActions';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { StatusScreen, describeStatusText } from '../../../src/app/screens/Status';
 import { isReactScreen } from '../../../src/app/screens/registry';
 import { createTranslator } from '../../../src/app/i18n/runtime';
 import { DICTS } from '../../../src/app/i18n/locales/index';
 
-function makeActions(overrides = {}) {
+function makeActions(overrides: Partial<LegacyActions> = {}) {
   return {
-    navigate: vi.fn(),
-    close: vi.fn(),
-    openUrl: vi.fn(),
-    setSettings: vi.fn(async () => ({ ok: true })),
-    saveStatus: vi.fn(async () => ({ ok: true })),
-    revealLobby: vi.fn(async () => ({ ok: true, count: 3 })),
-    dodge: vi.fn(async () => ({ ok: true })),
-    checkUpdates: vi.fn(async () => {}),
-    installUpdate: vi.fn(async () => ({ ok: true, installing: true })),
-    restartClient: vi.fn(async () => ({ ok: true })),
+    navigate: vi.fn<LegacyActions['navigate']>(),
+    close: vi.fn<LegacyActions['close']>(),
+    openUrl: vi.fn<LegacyActions['openUrl']>(),
+    setSettings: vi.fn<LegacyActions['setSettings']>(async () => ({ ok: true })),
+    saveStatus: vi.fn<LegacyActions['saveStatus']>(async () => ({ ok: true })),
+    revealLobby: vi.fn<LegacyActions['revealLobby']>(async () => ({ ok: true, count: 3 })),
+    dodge: vi.fn<LegacyActions['dodge']>(async () => ({ ok: true })),
+    checkUpdates: vi.fn<LegacyActions['checkUpdates']>(async () => {}),
+    installUpdate: vi.fn<LegacyActions['installUpdate']>(async () => ({ ok: true, installing: true, upToDate: false })),
+    restartClient: vi.fn<LegacyActions['restartClient']>(async () => ({ ok: true })),
     ...overrides,
   };
 }
 
-function setup({ settings = {}, statusText = '', locale, actions = makeActions() } = {}) {
+interface SetupOptions {
+  settings?: SettingsValues;
+  statusText?: string;
+  locale?: string;
+  actions?: Partial<LegacyActions>;
+}
+
+function setup({ settings = {}, statusText = '', locale, actions = makeActions() }: SetupOptions = {}) {
   const store = createDrakeStore({ settings });
   if (locale) store.getState().setLocale(locale);
   store.getState().syncLegacy({ statusText });
@@ -48,7 +56,7 @@ describe('StatusScreen', () => {
 
   it('edits the draft and shows the count', () => {
     setup({ statusText: 'hello\nworld' });
-    const box = screen.getByRole('textbox', { name: 'Status Message' });
+    const box = screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Status Message' });
     expect(box.value).toBe('hello\nworld');
     expect(screen.getByText('11 chars · 2 lines')).toBeTruthy();
     fireEvent.change(box, { target: { value: 'gg' } });
@@ -61,7 +69,7 @@ describe('StatusScreen', () => {
     const { store } = setup({ statusText: 'old' });
     fireEvent.change(screen.getByRole('textbox', { name: 'Status Message' }), { target: { value: 'draft' } });
     act(() => store.getState().syncLegacy({ statusText: 'fresh' }));
-    expect(screen.getByRole('textbox', { name: 'Status Message' }).value).toBe('fresh');
+    expect(screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Status Message' }).value).toBe('fresh');
   });
 
   it('saves and reports success', async () => {

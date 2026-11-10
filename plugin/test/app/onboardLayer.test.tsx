@@ -1,11 +1,16 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from './renderWithProviders';
 import { createDrakeStore } from '../../src/app/store/createDrakeStore';
 import { OnboardLayer } from '../../src/app/shell/OnboardLayer';
 
-function setup({ overlay = '', tourIndex = -1, locale } = {}) {
+interface SetupOptions {
+  overlay?: string;
+  tourIndex?: number;
+  locale?: string;
+}
+
+function setup({ overlay = '', tourIndex = -1, locale }: SetupOptions = {}) {
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   store.getState().syncLegacy({ overlay, tourIndex });
@@ -25,7 +30,7 @@ describe('OnboardLayer', () => {
     expect(screen.getByText('Tools that sit beside the client. A short tour covers the screens you will use most.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Take the tour' }));
     expect(actions.onboard).toHaveBeenCalledWith('tour');
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Skip' }).disabled).toBe(false));
+    await waitFor(() => expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Skip' }).disabled).toBe(false));
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
     expect(actions.onboard).toHaveBeenLastCalledWith('skip');
   });

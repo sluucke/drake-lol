@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { WHATS_NEW } from '../../src/ui/whatsNew';
 import { TOUR_STEPS } from '../../src/ui/onboarding';
@@ -7,8 +6,8 @@ import { createTranslator } from '../../src/app/i18n/runtime';
 import { tourText, versionKey, whatsNewText } from '../../src/app/onboarding/content';
 
 function translators() {
-  const warnings = [];
-  const warn = (...args) => warnings.push(args.join(' '));
+  const warnings: string[] = [];
+  const warn = (...args: unknown[]) => warnings.push(args.join(' '));
   return {
     en: createTranslator('en_US', DICTS, { warn }),
     pt: createTranslator('pt_BR', DICTS, { warn }),

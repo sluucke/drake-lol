@@ -1,28 +1,37 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
+import type { SettingsValues } from '../../../src/settings';
+import type { UpdateUiState } from '../../../src/app/store/sessionSlice';
+import type { LegacyActions } from '../../../src/app/shell/LegacyActions';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { SettingsScreen } from '../../../src/app/screens/Settings';
 import { isReactScreen } from '../../../src/app/screens/registry';
 
-function makeActions(overrides = {}) {
+function makeActions(overrides: Partial<LegacyActions> = {}) {
   return {
-    navigate: vi.fn(),
-    close: vi.fn(),
-    openUrl: vi.fn(),
-    setSettings: vi.fn(async () => ({ ok: true })),
-    saveStatus: vi.fn(async () => ({ ok: true })),
-    revealLobby: vi.fn(async () => ({ ok: true, count: 3 })),
-    dodge: vi.fn(async () => ({ ok: true })),
-    checkUpdates: vi.fn(async () => {}),
-    installUpdate: vi.fn(async () => ({ ok: true, installing: true })),
-    restartClient: vi.fn(async () => ({ ok: true })),
+    navigate: vi.fn<LegacyActions['navigate']>(),
+    close: vi.fn<LegacyActions['close']>(),
+    openUrl: vi.fn<LegacyActions['openUrl']>(),
+    setSettings: vi.fn<LegacyActions['setSettings']>(async () => ({ ok: true })),
+    saveStatus: vi.fn<LegacyActions['saveStatus']>(async () => ({ ok: true })),
+    revealLobby: vi.fn<LegacyActions['revealLobby']>(async () => ({ ok: true, count: 3 })),
+    dodge: vi.fn<LegacyActions['dodge']>(async () => ({ ok: true })),
+    checkUpdates: vi.fn<LegacyActions['checkUpdates']>(async () => {}),
+    installUpdate: vi.fn<LegacyActions['installUpdate']>(async () => ({ ok: true, installing: true, upToDate: false })),
+    restartClient: vi.fn<LegacyActions['restartClient']>(async () => ({ ok: true })),
     ...overrides,
   };
 }
 
-function setup({ settings = {}, updateUi, locale, actions = makeActions() } = {}) {
+interface SetupOptions {
+  settings?: SettingsValues;
+  updateUi?: UpdateUiState;
+  locale?: string;
+  actions?: Partial<LegacyActions>;
+}
+
+function setup({ settings = {}, updateUi, locale, actions = makeActions() }: SetupOptions = {}) {
   const store = createDrakeStore({ settings, appVersion: '0.3.25' });
   if (locale) store.getState().setLocale(locale);
   if (updateUi) store.getState().syncLegacy({ updateUi });
@@ -54,7 +63,7 @@ describe('SettingsScreen', () => {
 
   it('shows the checking state', () => {
     setup({ updateUi: { phase: 'checking' } });
-    expect(screen.getByRole('button', { name: 'Checking…' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Checking…' }).disabled).toBe(true);
   });
 
   it('describes each update phase', () => {
@@ -76,17 +85,17 @@ describe('SettingsScreen', () => {
     await waitFor(() =>
       expect(store.getState().session.statusLine).toEqual({ text: 'Installing update…', tone: 'good' }),
     );
-    expect(screen.getByRole('button', { name: 'Install now' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Install now' }).disabled).toBe(true);
   });
 
   it('re-enables install and reports a failure', async () => {
-    const actions = makeActions({ installUpdate: vi.fn(async () => ({ ok: false, reason: 'could not install the update (500)' })) });
+    const actions = makeActions({ installUpdate: vi.fn<LegacyActions['installUpdate']>(async () => ({ ok: false, reason: 'could not install the update (500)' })) });
     const { store } = setup({ updateUi: { phase: 'available', version: 'v0.4.0' }, actions });
     fireEvent.click(screen.getByRole('button', { name: 'Install now' }));
     await waitFor(() =>
       expect(store.getState().session.statusLine).toEqual({ text: 'could not install the update (500)', tone: 'bad' }),
     );
-    expect(screen.getByRole('button', { name: 'Install now' }).disabled).toBe(false);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Install now' }).disabled).toBe(false);
   });
 
   it('restarts the client', async () => {
@@ -101,9 +110,9 @@ describe('SettingsScreen', () => {
   it('disables settings and update checks while the tray is down', () => {
     const { store } = setup();
     act(() => store.getState().syncLegacy({ trayDown: true }));
-    expect(screen.getByRole('checkbox', { name: 'Start Drake with Windows' }).disabled).toBe(true);
-    expect(screen.getByRole('button', { name: 'Check for updates' }).disabled).toBe(true);
-    expect(screen.getByRole('button', { name: 'Restart client' }).disabled).toBe(false);
+    expect(screen.getByRole<HTMLButtonElement>('checkbox', { name: 'Start Drake with Windows' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Check for updates' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Restart client' }).disabled).toBe(false);
   });
 
   it('is translated', () => {
@@ -151,7 +160,7 @@ describe('SettingsScreen', () => {
 
   it('disables the reset while nothing was moved', () => {
     setup();
-    expect(screen.getByRole('button', { name: 'Reset overlay button positions' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Reset overlay button positions' }).disabled).toBe(true);
   });
 });
 

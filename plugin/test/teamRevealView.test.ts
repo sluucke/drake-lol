@@ -1,11 +1,16 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
-import { makeTeamRevealDom, withChampionNames } from '../src/ui/teamRevealDom';
+import {
+  makeTeamRevealDom,
+  withChampionNames,
+  type RevealSnapshotRow,
+  type TeamRevealDomOptions,
+} from '../src/ui/teamRevealDom';
+import type { TeamRevealState } from '../src/app/store/teamRevealSlice';
 
-const NAMES = { 103: 'Ahri', 157: 'Yasuo' };
+const NAMES: Record<number, string> = { 103: 'Ahri', 157: 'Yasuo' };
 
-function setup(extra = {}) {
-  const views = [];
+function setup(extra: Record<string, unknown> = {}) {
+  const views: TeamRevealState[] = [];
   const overlayRoot = { appendChild: vi.fn(), querySelector: vi.fn(() => null), ownerDocument: null };
   const ctl = makeTeamRevealDom({
     doc: { querySelectorAll: () => [] },
@@ -26,11 +31,11 @@ function setup(extra = {}) {
         historyGames: [{ any: 1 }],
       },
     ]),
-    getChampName: (id) => NAMES[id] || '',
+    getChampName: (id: number) => NAMES[id] || '',
     muteTeammatesImpl: vi.fn(async () => ({ success: true })),
-    publishView: (view) => views.push(view),
+    publishView: (view: TeamRevealState) => views.push(view),
     ...extra,
-  });
+  } as unknown as TeamRevealDomOptions);
   return { ctl, views, overlayRoot, last: () => views[views.length - 1] };
 }
 
@@ -39,13 +44,18 @@ const SESSION = { myTeam: [{ cellId: 1, team: 1, championId: 103 }] };
 describe('withChampionNames', () => {
   it('adds champion names and drops raw history', () => {
     const row = withChampionNames(
-      { pickedChampionId: 103, seasonMostPlayedChampionId: 157, recentGames: [{ championId: 103 }], historyGames: [1] },
-      (id) => NAMES[id],
+      {
+        pickedChampionId: 103,
+        seasonMostPlayedChampionId: 157,
+        recentGames: [{ championId: 103 }],
+        historyGames: [1],
+      } as unknown as Partial<RevealSnapshotRow>,
+      (id: number) => NAMES[id],
     );
     expect(row.pickedChampionName).toBe('Ahri');
     expect(row.seasonMostPlayedChampionName).toBe('Yasuo');
     expect(row.recentGames[0].championName).toBe('Ahri');
-    expect(row.historyGames).toBeUndefined();
+    expect((row as { historyGames?: unknown }).historyGames).toBeUndefined();
   });
 });
 
@@ -73,8 +83,8 @@ describe('teamRevealDom view mode', () => {
     expect(view.activeTab).toBe('scouting');
     expect(view.rows[0].riotId).toBe('Me#TAG');
     expect(view.rows[0].pickedChampionName).toBe('Ahri');
-    expect(view.rows[0].recentGames[0].championName).toBe('Yasuo');
-    expect(view.rows[0].historyGames).toBeUndefined();
+    expect(view.rows[0].recentGames?.[0]?.championName).toBe('Yasuo');
+    expect((view.rows[0] as { historyGames?: unknown }).historyGames).toBeUndefined();
     expect(view.side).toEqual({ side: 'BLUE', color: 'blue' });
   });
 

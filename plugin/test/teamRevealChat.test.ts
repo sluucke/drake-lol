@@ -1,11 +1,13 @@
-// @ts-nocheck
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   buildChatNameEntries,
   collectRevealChatPairs,
   formatChatMapMessage,
   makeTeamRevealChat,
+  type ChatDoc,
 } from '../src/ui/teamRevealChat';
+
+const asChatDoc = (doc: object) => doc as unknown as ChatDoc;
 
 describe('buildChatNameEntries', () => {
   it('keeps masked name to riot id pairs and drops identical full ids', () => {
@@ -54,47 +56,66 @@ describe('collectRevealChatPairs', () => {
   });
 });
 
-function makeDoc(authors = []) {
-  const children = [];
-  const listeners = [];
+interface FakeNode {
+  tagName: string;
+  className: string;
+  textContent: string;
+  innerHTML: string;
+  dataset: Record<string, string | undefined>;
+  style: { whiteSpace: string; opacity: string; fontSize: string; padding: string };
+  parentNode: FakeNode | null;
+  children: FakeNode[];
+  isConnected: boolean;
+  setAttribute(name: string, value: string): void;
+  getAttribute(name: string): string | null;
+  removeAttribute(name: string): void;
+  appendChild(child: FakeNode): FakeNode;
+  remove(): void;
+  querySelector(sel: string): FakeNode | null;
+  querySelectorAll(sel: string): FakeNode[];
+}
 
-  function createElement(tag) {
-    const node = {
+function makeDoc(authors: string[] = []) {
+  const children: FakeNode[] = [];
+  const listeners: unknown[] = [];
+
+  function createElement(tag: string): FakeNode {
+    const node: FakeNode = {
       tagName: String(tag || 'div').toUpperCase(),
       className: '',
       textContent: '',
       innerHTML: '',
       dataset: {},
-      style: {},
+      style: {} as FakeNode['style'],
       parentNode: null,
       children: [],
       isConnected: true,
-      setAttribute(name, value) {
+      setAttribute(name: string, value: string) {
         if (name.startsWith('data-')) {
           const key = name
             .slice(5)
-            .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+            .replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
           this.dataset[key] = value;
         }
       },
-      getAttribute(name) {
+      getAttribute(name: string) {
         if (name.startsWith('data-')) {
           const key = name
             .slice(5)
-            .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+            .replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
           return this.dataset[key] ?? null;
         }
         return null;
       },
-      removeAttribute(name) {
+      removeAttribute(name: string) {
         if (name.startsWith('data-')) {
           const key = name
             .slice(5)
-            .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+            .replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
           delete this.dataset[key];
         }
       },
-      appendChild(child) {
+      appendChild(child: FakeNode) {
         this.children.push(child);
         child.parentNode = this;
         return child;
@@ -105,12 +126,12 @@ function makeDoc(authors = []) {
         this.parentNode = null;
         this.isConnected = false;
       },
-      querySelector(sel) {
+      querySelector(sel: string) {
         return this.querySelectorAll(sel)[0] || null;
       },
-      querySelectorAll(sel) {
-        const out = [];
-        const walk = (n) => {
+      querySelectorAll(sel: string) {
+        const out: FakeNode[] = [];
+        const walk = (n: FakeNode) => {
           if (matches(n, sel)) out.push(n);
           for (const c of n.children || []) walk(c);
         };
@@ -121,7 +142,7 @@ function makeDoc(authors = []) {
     return node;
   }
 
-  function matches(node, sel) {
+  function matches(node: FakeNode, sel: string) {
     if (sel.startsWith('.')) return node.className === sel.slice(1);
     const attr = sel.match(/^\[([^=\]]+)(?:="([^"]*)")?\]$/);
     if (attr) {
@@ -130,7 +151,7 @@ function makeDoc(authors = []) {
       if (raw.startsWith('data-')) {
         const key = raw
           .slice(5)
-          .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+          .replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
         const got = node.dataset?.[key];
         if (want === undefined) return got != null;
         return got === want;
@@ -169,12 +190,12 @@ function makeDoc(authors = []) {
   const doc = {
     body,
     createElement,
-    querySelector(sel) {
+    querySelector(sel: string) {
       return this.querySelectorAll(sel)[0] || null;
     },
-    querySelectorAll(sel) {
-      const out = [];
-      const walk = (n) => {
+    querySelectorAll(sel: string) {
+      const out: FakeNode[] = [];
+      const walk = (n: FakeNode) => {
         if (matches(n, sel)) out.push(n);
         for (const c of n.children || []) walk(c);
       };
@@ -193,7 +214,7 @@ describe('makeTeamRevealChat', () => {
 
   it('injects a local-only map message and rewrites matching author names', () => {
     const { doc, chatRoot } = makeDoc(['arongejo', 'bob']);
-    const chat = makeTeamRevealChat({ doc, MutationObserverImpl: null });
+    const chat = makeTeamRevealChat({ doc: asChatDoc(doc), MutationObserverImpl: null });
 
     chat.setEntries([
       { from: 'arongejo', to: 'xyz#br1' },
@@ -202,8 +223,8 @@ describe('makeTeamRevealChat', () => {
 
     const mapNode = doc.querySelector('[data-drake-chat-map]');
     expect(mapNode).toBeTruthy();
-    expect(mapNode.parentNode).toBe(chatRoot);
-    expect(mapNode.textContent).toBe('arongejo → xyz#br1\nbob → bob#na1');
+    expect(mapNode?.parentNode).toBe(chatRoot);
+    expect(mapNode?.textContent).toBe('arongejo → xyz#br1\nbob → bob#na1');
 
     const authors = doc.querySelectorAll('.name');
     expect(authors[0].textContent).toBe('xyz#br1');
@@ -213,26 +234,26 @@ describe('makeTeamRevealChat', () => {
 
   it('restores authors and removes the map message on clear', () => {
     const { doc } = makeDoc(['arongejo']);
-    const chat = makeTeamRevealChat({ doc, MutationObserverImpl: null });
+    const chat = makeTeamRevealChat({ doc: asChatDoc(doc), MutationObserverImpl: null });
     chat.setEntries([{ from: 'arongejo', to: 'xyz#br1' }]);
-    expect(doc.querySelector('.name').textContent).toBe('xyz#br1');
+    expect(doc.querySelector('.name')?.textContent).toBe('xyz#br1');
 
     chat.clear();
 
     expect(doc.querySelector('[data-drake-chat-map]')).toBeNull();
-    expect(doc.querySelector('.name').textContent).toBe('arongejo');
+    expect(doc.querySelector('.name')?.textContent).toBe('arongejo');
   });
 
   it('updates the map message when entries change', () => {
     const { doc } = makeDoc(['arongejo']);
-    const chat = makeTeamRevealChat({ doc, MutationObserverImpl: null });
+    const chat = makeTeamRevealChat({ doc: asChatDoc(doc), MutationObserverImpl: null });
     chat.setEntries([{ from: 'arongejo', to: 'xyz#br1' }]);
     chat.setEntries([{ from: 'arongejo', to: 'other#br1' }]);
 
-    expect(doc.querySelector('[data-drake-chat-map]').textContent).toBe(
+    expect(doc.querySelector('[data-drake-chat-map]')?.textContent).toBe(
       'arongejo → other#br1',
     );
-    expect(doc.querySelector('.name').textContent).toBe('other#br1');
+    expect(doc.querySelector('.name')?.textContent).toBe('other#br1');
   });
 
   it('retries until the champ select chat connects after setEntries', () => {
@@ -241,7 +262,7 @@ describe('makeTeamRevealChat', () => {
     body.children = [];
 
     const chat = makeTeamRevealChat({
-      doc,
+      doc: asChatDoc(doc),
       MutationObserverImpl: null,
       pollMs: 250,
     });

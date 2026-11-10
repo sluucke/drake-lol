@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../../i18n/I18nProvider';
 import { useLegacyActions } from '../../shell/LegacyActions';
@@ -12,7 +12,12 @@ import { MatchupsCard, TopPlayersCard } from './BuildSidebar';
 
 const OPGG_ERROR = 'Could not reach OP.GG';
 
-function Placeholder({ children, error = false }) {
+interface PlaceholderProps {
+  children?: ReactNode;
+  error?: boolean;
+}
+
+function Placeholder({ children, error = false }: PlaceholderProps) {
   return <div className={['drk-build-placeholder', error && 'is-error'].filter(Boolean).join(' ')}>{children}</div>;
 }
 
@@ -37,7 +42,11 @@ export function BuildBody() {
   );
 }
 
-export function BuildTab({ body = <BuildBody /> }) {
+export interface BuildTabProps {
+  body?: ReactNode;
+}
+
+export function BuildTab({ body = <BuildBody /> }: BuildTabProps) {
   const t = useT();
   const actions = useLegacyActions();
   const state = useDrake((s) => s.build);
@@ -51,7 +60,7 @@ export function BuildTab({ body = <BuildBody /> }) {
     if (state.championId) void actions.loadBuild();
   }, [state.championId]);
 
-  let content;
+  let content: ReactNode;
   if (!state.championId) {
     content = <Placeholder>{t('overlays.build.pickChampion')}</Placeholder>;
   } else if (state.loading) {

@@ -1,24 +1,25 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { ScoutingModal } from '../../../src/app/overlays/scouting/ScoutingModal';
+import type { TeamRevealState, TeamRevealTab } from '../../../src/app/store/teamRevealSlice';
+import type { ScoutRow } from '../../../src/app/store/types';
 
-const ROWS = [
+const ROWS: ScoutRow[] = [
   { cellId: 0, riotId: 'Ally#ONE', matchesPending: false, recentGames: [] },
   { cellId: 1, riotId: 'Me#TAG', isLocalPlayer: true, matchesPending: false, recentGames: [] },
 ];
 
 function makeActions() {
   return {
-    closeScouting: vi.fn(),
-    setScoutingTab: vi.fn(),
-    muteScouting: vi.fn(async () => {}),
+    closeScouting: vi.fn<() => void>(),
+    setScoutingTab: vi.fn<(tab: TeamRevealTab) => void>(),
+    muteScouting: vi.fn<() => Promise<void>>(async () => {}),
   };
 }
 
-function setup(view = {}, locale) {
+function setup(view: Partial<TeamRevealState> = {}, locale?: string) {
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   store.getState().setTeamReveal({ enabled: true, open: true, rows: ROWS, ...view });
@@ -52,7 +53,7 @@ describe('ScoutingModal', () => {
     fireEvent.click(within(portalTarget).getByRole('button', { name: 'Mute All' }));
     expect(actions.muteScouting).toHaveBeenCalledTimes(1);
     act(() => store.getState().setTeamReveal({ muteStatus: 'muting' }));
-    expect(within(portalTarget).getByRole('button', { name: 'Muting…' }).disabled).toBe(true);
+    expect(within(portalTarget).getByRole<HTMLButtonElement>('button', { name: 'Muting…' }).disabled).toBe(true);
     act(() => store.getState().setTeamReveal({ muteStatus: 'muted' }));
     expect(within(portalTarget).getByRole('button', { name: '✓ Muted' })).toBeTruthy();
   });

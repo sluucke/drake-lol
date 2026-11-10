@@ -1,9 +1,10 @@
-// @ts-nocheck
 import { itemIconUrl, itemName, spellIconUrl, spellName } from '../../../features/gameAssets';
 import { perkIconUrl, perkName, perkStyleIconUrl, perkStyleName } from '../../../features/runes';
 import { useFormat, useT } from '../../i18n/I18nProvider';
 import { useLegacyActions } from '../../shell/LegacyActions';
 import { useDrake } from '../../store/StoreContext';
+import type { BuildActionStatus, BuildState } from '../../store/buildSlice';
+import type { BuildEntry, BuildPickStats } from '../../store/types';
 import { Button } from '../../ui/Button';
 import { Card } from '../../ui/Card';
 import { pct, statusKey, WinRate } from './format';
@@ -11,17 +12,26 @@ import { pct, statusKey, WinRate } from './format';
 const SKILL_KEYS = ['Q', 'W', 'E', 'R'];
 const LEVELS = Array.from({ length: 15 }, (_, i) => i + 1);
 
-function useBuild() {
+function useBuild(): BuildState {
   return useDrake((s) => s.build);
 }
 
-function PickRate({ entry }) {
+interface PickRateProps {
+  entry: BuildPickStats | undefined;
+}
+
+function PickRate({ entry }: PickRateProps) {
   const format = useFormat();
-  const games = Number(entry?.play) > 0 ? ` (${format.number(entry.play)})` : '';
+  const games = Number(entry?.play) > 0 ? ` (${format.number(Number(entry?.play))})` : '';
   return <span className="drk-build-pr">{`${pct(entry?.pickRate)}${games}`}</span>;
 }
 
-function ItemIcons({ ids, hextechFirst = false }) {
+interface ItemIconsProps {
+  ids: number[];
+  hextechFirst?: boolean;
+}
+
+function ItemIcons({ ids, hextechFirst = false }: ItemIconsProps) {
   return (
     <div className="drk-build-icons">
       {ids.map((id, index) => (
@@ -39,7 +49,13 @@ function ItemIcons({ ids, hextechFirst = false }) {
   );
 }
 
-function ActionButton({ status, idleKey, onClick }) {
+interface ActionButtonProps {
+  status: BuildActionStatus;
+  idleKey: string;
+  onClick: () => void;
+}
+
+function ActionButton({ status, idleKey, onClick }: ActionButtonProps) {
   const t = useT();
   return (
     <Button size="sm" variant="secondary" disabled={status === 'applying'} onClick={onClick}>
@@ -96,7 +112,12 @@ export function RunesCard() {
   );
 }
 
-function PhaseRow({ label, entry }) {
+interface PhaseRowProps {
+  label: string;
+  entry: BuildEntry | undefined;
+}
+
+function PhaseRow({ label, entry }: PhaseRowProps) {
   if (!entry?.ids?.length) return null;
   return (
     <div className="drk-build-phase">
@@ -129,7 +150,7 @@ export function ItemsCard() {
         <>
           <PhaseRow label={t('overlays.build.phases.starter')} entry={items.starter?.[0]} />
           <PhaseRow label={t('overlays.build.phases.boots')} entry={items.boots?.[0]} />
-          {items.core?.length > 0 && (
+          {items.core && items.core.length > 0 && (
             <>
               <span className="drk-build-phase__label">{t('overlays.build.phases.core')}</span>
               {items.core.map((entry, index) => (
@@ -149,7 +170,7 @@ export function ItemsCard() {
               ))}
             </>
           )}
-          {items.last?.length > 0 && (
+          {items.last && items.last.length > 0 && (
             <div className="drk-build-phase">
               <span className="drk-build-phase__label">{t('overlays.build.phases.situational')}</span>
               <div className="drk-build-trend">

@@ -1,25 +1,32 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
+import type { ProfileRankDraft } from '../../../src/app/store/sessionSlice';
+import type { LegacyActions } from '../../../src/app/shell/LegacyActions';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { RankTab } from '../../../src/app/screens/profile/RankTab';
 
-function makeActions(overrides = {}) {
+function makeActions(overrides: Partial<LegacyActions> = {}) {
   return {
-    selectProfileTab: vi.fn(async () => {}),
-    applyProfileRank: vi.fn(async () => ({ ok: true })),
-    resetProfileRank: vi.fn(async () => ({ ok: true })),
-    removeBadges: vi.fn(async () => ({ ok: true })),
-    cloneBadge: vi.fn(async () => ({ ok: true })),
-    saveRiotId: vi.fn(async () => ({ ok: true })),
-    setBackground: vi.fn(async () => ({ ok: true })),
-    removeAllFriends: vi.fn(async () => ({ removed: 3, failed: 0 })),
+    selectProfileTab: vi.fn<LegacyActions['selectProfileTab']>(async () => {}),
+    applyProfileRank: vi.fn<LegacyActions['applyProfileRank']>(async () => ({ ok: true })),
+    resetProfileRank: vi.fn<LegacyActions['resetProfileRank']>(async () => ({ ok: true })),
+    removeBadges: vi.fn<LegacyActions['removeBadges']>(async () => ({ ok: true })),
+    cloneBadge: vi.fn<LegacyActions['cloneBadge']>(async () => ({ ok: true })),
+    saveRiotId: vi.fn<LegacyActions['saveRiotId']>(async () => ({ ok: true })),
+    setBackground: vi.fn<LegacyActions['setBackground']>(async () => ({ ok: true })),
+    removeAllFriends: vi.fn<LegacyActions['removeAllFriends']>(async () => ({ removed: 3, failed: 0 })),
     ...overrides,
   };
 }
 
-function setup({ rank, locale, actions = makeActions() } = {}) {
+interface SetupOptions {
+  rank?: ProfileRankDraft;
+  locale?: string;
+  actions?: ReturnType<typeof makeActions>;
+}
+
+function setup({ rank, locale, actions = makeActions() }: SetupOptions = {}) {
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   if (rank) store.getState().syncLegacy({ profileRank: rank });

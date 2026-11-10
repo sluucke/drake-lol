@@ -1,17 +1,25 @@
-// @ts-nocheck
 import { useEffect, useRef, useState } from 'react';
 import { visibleWindow } from '../../../ui/virtualGrid';
 import { SFX } from '../../../ui/sfx';
 import { useSfx } from '../../hooks/useSfx';
+import type { Skin } from '../../store/types';
 
 export const SKIN_TILE = { perRow: 5, rowHeight: 92, viewportHeight: 300 };
 
-const nextFrame = (fn) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(fn) : setTimeout(fn, 16));
+type FrameHandle = number | ReturnType<typeof setTimeout>;
 
-export function SkinGrid({ skins, selectedId, onPick }) {
+const nextFrame = (fn: () => void): FrameHandle => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(fn) : setTimeout(fn, 16));
+
+export interface SkinGridProps {
+  skins: Skin[];
+  selectedId: number;
+  onPick: (id: number) => void;
+}
+
+export function SkinGrid({ skins, selectedId, onPick }: SkinGridProps) {
   const sfx = useSfx();
-  const viewportRef = useRef(null);
-  const frameRef = useRef(0);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<FrameHandle>(0);
   const [scrollTop, setScrollTop] = useState(0);
 
   useEffect(() => {

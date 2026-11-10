@@ -1,21 +1,26 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { OVERLAY_SIZES, overlayPieces, toRelative } from '../src/app/overlays/streaming/overlayLayout';
+import type { OverlayClientRect, OverlayPieces } from '../src/app/overlays/streaming/overlayLayout';
 
-const client = { x: 100, y: 50, width: 1280, height: 720 };
+const client: OverlayClientRect = { x: 100, y: 50, width: 1280, height: 720 };
+
+function pieces(value: OverlayPieces | null): OverlayPieces {
+  if (!value) throw new Error('expected overlay pieces');
+  return value;
+}
 
 describe('overlayPieces', () => {
   it('uses the tray defaults when nothing was moved', () => {
-    const pieces = overlayPieces(client, {});
-    expect(pieces.fab).toEqual({ x: 100 + 1280 - 14 - 52, y: 50 + 720 - 14 - 52 });
-    expect(pieces.cancel).toEqual({ x: 100 + 640 - 60, y: 50 + 720 - 48 - 48 });
-    expect(pieces.dodge).toEqual({ x: 100 + 1280 - 72 - 96, y: 50 + 720 - 14 - 32 });
+    const placed = pieces(overlayPieces(client, {}));
+    expect(placed.fab).toEqual({ x: 100 + 1280 - 14 - 52, y: 50 + 720 - 14 - 52 });
+    expect(placed.cancel).toEqual({ x: 100 + 640 - 60, y: 50 + 720 - 48 - 48 });
+    expect(placed.dodge).toEqual({ x: 100 + 1280 - 72 - 96, y: 50 + 720 - 14 - 32 });
   });
 
   it('places moved pieces from their relative position, kept inside the client', () => {
-    const pieces = overlayPieces(client, { fab: { x: 5000, y: 5000 }, dodge: { x: 10000, y: 10000 } });
-    expect(pieces.fab).toEqual({ x: 740, y: 410 });
-    expect(pieces.dodge).toEqual({ x: 100 + 1280 - 96, y: 50 + 720 - 32 });
+    const placed = pieces(overlayPieces(client, { fab: { x: 5000, y: 5000 }, dodge: { x: 10000, y: 10000 } }));
+    expect(placed.fab).toEqual({ x: 740, y: 410 });
+    expect(placed.dodge).toEqual({ x: 100 + 1280 - 96, y: 50 + 720 - 32 });
   });
 
   it('matches the sizes the tray reserves', () => {
@@ -28,12 +33,12 @@ describe('overlayPieces', () => {
   });
 
   it('places the first-time hint above the Drake button, inside the client', () => {
-    const pieces = overlayPieces(client, {}, { hint: true });
-    const fab = pieces.fab;
-    expect(pieces.hint).toEqual({ x: fab.x + 52 - 200, y: fab.y - 8 - 56 });
-    const top = overlayPieces(client, { fab: { x: 0, y: 0 } }, { hint: true });
+    const placed = pieces(overlayPieces(client, {}, { hint: true }));
+    const fab = placed.fab;
+    expect(placed.hint).toEqual({ x: fab.x + 52 - 200, y: fab.y - 8 - 56 });
+    const top = pieces(overlayPieces(client, { fab: { x: 0, y: 0 } }, { hint: true }));
     expect(top.hint).toEqual({ x: 100, y: 50 });
-    expect(overlayPieces(client, {}).hint).toBeUndefined();
+    expect(pieces(overlayPieces(client, {})).hint).toBeUndefined();
   });
 
   it('returns null without bounds', () => {

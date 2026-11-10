@@ -1,4 +1,4 @@
-// @ts-nocheck
+import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { iconUrl } from '../../../features/champions';
 import { RANK_ICONS } from '../../../ui/assets';
@@ -6,16 +6,24 @@ import { roleIconUrl, roleLabel } from '../../../ui/roleIcons';
 import { useT } from '../../i18n/I18nProvider';
 import { Skeleton } from '../../ui/Skeleton';
 import { DURATION, staggerDelay } from '../../ui/motion';
+import type { ScoutGame, ScoutRank, ScoutRow } from '../../store/types';
 import { formatRank, winRate } from './format';
+
+const RANK_ICON_BY_TIER: Readonly<Record<string, string | undefined>> = RANK_ICONS;
 
 const ROLE_KEYS = new Set(['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']);
 
-function RankBlock({ label, rank }) {
+interface RankBlockProps {
+  label: string;
+  rank: ScoutRank | undefined;
+}
+
+function RankBlock({ label, rank }: RankBlockProps) {
   const t = useT();
   const tier = String(rank?.tier || '').toUpperCase();
   return (
     <div className="drk-scout-rank">
-      <img className="drk-scout-rank__icon" src={RANK_ICONS[tier] || RANK_ICONS.UNRANKED} alt="" />
+      <img className="drk-scout-rank__icon" src={RANK_ICON_BY_TIER[tier] || RANK_ICONS.UNRANKED} alt="" />
       <div className="drk-scout-rank__meta">
         <span className="drk-scout-rank__queue">{label}</span>
         <span className="drk-scout-rank__tier">{formatRank(rank, t)}</span>
@@ -24,7 +32,13 @@ function RankBlock({ label, rank }) {
   );
 }
 
-function WinLoss({ wins, losses, rate }) {
+interface WinLossProps {
+  wins: number | undefined;
+  losses: number | undefined;
+  rate: number | null | undefined;
+}
+
+function WinLoss({ wins, losses, rate }: WinLossProps) {
   const t = useT();
   return (
     <span className="drk-wl">
@@ -35,7 +49,13 @@ function WinLoss({ wins, losses, rate }) {
   );
 }
 
-function ChampChip({ id, name, detail }) {
+interface ChampChipProps {
+  id: number;
+  name: string | undefined;
+  detail: string;
+}
+
+function ChampChip({ id, name, detail }: ChampChipProps) {
   const t = useT();
   return (
     <span className="drk-scout-champ">
@@ -45,7 +65,12 @@ function ChampChip({ id, name, detail }) {
   );
 }
 
-function Row({ label, children }) {
+interface RowProps {
+  label: string;
+  children?: ReactNode;
+}
+
+function Row({ label, children }: RowProps) {
   return (
     <div className="drk-scout-card__row">
       <dt className="drk-scout-card__row-label">{label}</dt>
@@ -54,7 +79,12 @@ function Row({ label, children }) {
   );
 }
 
-function RecentGames({ games, pending }) {
+interface RecentGamesProps {
+  games: ScoutGame[] | undefined;
+  pending: boolean;
+}
+
+function RecentGames({ games, pending }: RecentGamesProps) {
   if (pending) {
     return (
       <span className="drk-scout-games" aria-busy="true">
@@ -81,15 +111,20 @@ function RecentGames({ games, pending }) {
   );
 }
 
-export function ScoutCard({ row, index = 0 }) {
+export interface ScoutCardProps {
+  row: ScoutRow;
+  index?: number;
+}
+
+export function ScoutCard({ row, index = 0 }: ScoutCardProps) {
   const t = useT();
   const pending = !!row.matchesPending;
   const position = String(row.assignedPosition || '').toUpperCase();
   const roleIcon = position ? roleIconUrl(position) : '';
   const roleName = ROLE_KEYS.has(position) ? t(`roles.${position}`) : roleLabel(position);
   const skel = <Skeleton width={88} />;
-  const wl = (w, l) => `${t('overlays.scouting.winsShort', { count: w || 0 })}/${t('overlays.scouting.lossesShort', { count: l || 0 })}`;
-  const games = (count) => t('overlays.scouting.games', { count });
+  const wl = (w: number | undefined, l: number | undefined) => `${t('overlays.scouting.winsShort', { count: w || 0 })}/${t('overlays.scouting.lossesShort', { count: l || 0 })}`;
+  const games = (count: number) => t('overlays.scouting.games', { count });
 
   const season = row.seasonMostPlayedChampionId ? (
     <ChampChip

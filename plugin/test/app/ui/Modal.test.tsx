@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -32,7 +31,7 @@ describe('Modal', () => {
     const { portalTarget, onClose } = renderModal();
     fireEvent.mouseDown(within(portalTarget).getByRole('dialog'));
     expect(onClose).not.toHaveBeenCalled();
-    fireEvent.mouseDown(portalTarget.querySelector('.drk-modal__backdrop'));
+    fireEvent.mouseDown(portalTarget.querySelector('.drk-modal__backdrop') as Element);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

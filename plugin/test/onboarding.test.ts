@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import {
   decideOpenMode,
@@ -127,11 +126,11 @@ describe('withOnboardLock', () => {
     const lock = { busy: false };
     let started = 0;
     let finished = 0;
-    let release;
+    let release: () => void = () => {};
     const first = withOnboardLock(lock, async () => {
       started += 1;
-      await new Promise((resolve) => {
-        release = resolve;
+      await new Promise<void>((resolve) => {
+        release = () => resolve();
       });
       finished += 1;
     });
@@ -161,12 +160,12 @@ describe('withOnboardLock', () => {
 
 describe('runWhatsNewDismiss', () => {
   it('marks seen before navigating', async () => {
-    const order = [];
+    const order: string[] = [];
     await runWhatsNewDismiss('queue', [{ id: 'queue' }], {
       mark: async () => {
         order.push('mark');
       },
-      go: async (screen) => {
+      go: async (screen: string) => {
         order.push(screen);
       },
     });
@@ -174,12 +173,12 @@ describe('runWhatsNewDismiss', () => {
   });
 
   it('marks seen even when the jump target is unknown', async () => {
-    const order = [];
+    const order: string[] = [];
     await runWhatsNewDismiss('missing', [{ id: 'queue' }], {
       mark: async () => {
         order.push('mark');
       },
-      go: async (screen) => {
+      go: async (screen: string) => {
         order.push(screen);
       },
     });

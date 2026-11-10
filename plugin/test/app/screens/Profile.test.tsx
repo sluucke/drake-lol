@@ -1,26 +1,32 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
+import type { LegacyActions } from '../../../src/app/shell/LegacyActions';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { ProfileScreen } from '../../../src/app/screens/Profile';
 import { isReactScreen } from '../../../src/app/screens/registry';
 
-function makeActions(overrides = {}) {
+function makeActions(overrides: Partial<LegacyActions> = {}) {
   return {
-    selectProfileTab: vi.fn(async () => {}),
-    applyProfileRank: vi.fn(async () => ({ ok: true })),
-    resetProfileRank: vi.fn(async () => ({ ok: true })),
-    removeBadges: vi.fn(async () => ({ ok: true })),
-    cloneBadge: vi.fn(async () => ({ ok: true })),
-    saveRiotId: vi.fn(async () => ({ ok: true })),
-    setBackground: vi.fn(async () => ({ ok: true })),
-    removeAllFriends: vi.fn(async () => ({ removed: 3, failed: 0 })),
+    selectProfileTab: vi.fn<LegacyActions['selectProfileTab']>(async () => {}),
+    applyProfileRank: vi.fn<LegacyActions['applyProfileRank']>(async () => ({ ok: true })),
+    resetProfileRank: vi.fn<LegacyActions['resetProfileRank']>(async () => ({ ok: true })),
+    removeBadges: vi.fn<LegacyActions['removeBadges']>(async () => ({ ok: true })),
+    cloneBadge: vi.fn<LegacyActions['cloneBadge']>(async () => ({ ok: true })),
+    saveRiotId: vi.fn<LegacyActions['saveRiotId']>(async () => ({ ok: true })),
+    setBackground: vi.fn<LegacyActions['setBackground']>(async () => ({ ok: true })),
+    removeAllFriends: vi.fn<LegacyActions['removeAllFriends']>(async () => ({ removed: 3, failed: 0 })),
     ...overrides,
   };
 }
 
-function setup({ tab = 'rank', locale, actions = makeActions() } = {}) {
+interface SetupOptions {
+  tab?: string;
+  locale?: string;
+  actions?: ReturnType<typeof makeActions>;
+}
+
+function setup({ tab = 'rank', locale, actions = makeActions() }: SetupOptions = {}) {
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   store.getState().syncLegacy({ profileTab: tab });
@@ -50,8 +56,8 @@ describe('ProfileScreen', () => {
 
   it('saves the riot id and clears the inputs', async () => {
     const { actions, store } = setup({ tab: 'riot-id' });
-    const name = screen.getByRole('textbox', { name: 'Name' });
-    const tag = screen.getByRole('textbox', { name: 'TAG' });
+    const name = screen.getByRole<HTMLInputElement>('textbox', { name: 'Name' });
+    const tag = screen.getByRole<HTMLInputElement>('textbox', { name: 'TAG' });
     expect(tag.getAttribute('maxlength')).toBe('5');
     fireEvent.change(name, { target: { value: 'Faker' } });
     fireEvent.change(tag, { target: { value: 'KR1' } });

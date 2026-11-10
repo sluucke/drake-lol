@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { useT } from '../i18n/I18nProvider';

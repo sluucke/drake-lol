@@ -1,17 +1,28 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { OverlayChrome } from '../../../src/app/overlays/streaming/OverlayChrome';
 import { ClientDocks } from '../../../src/app/overlays/docks/ClientDocks';
+import type { ChampSelectState } from '../../../src/app/store/champSelectSlice';
+import type { StreamingHost } from '../../../src/app/store/sessionSlice';
+import type { OverlayPositions, SettingsPatch } from '../../../src/settings';
+import type { ActionResult } from '../../../src/features/presence';
 
 const GEOMETRY = {
   client: { x: 0, y: 0, width: 1280, height: 720 },
   chrome: { x: 0, y: 0, width: 1280, height: 720 },
 };
 
-function setup({ host = 'overlay', champSelect = {}, panelOpen = false, positions, hintSeen = true } = {}) {
+interface SetupOptions {
+  host?: StreamingHost;
+  champSelect?: Partial<ChampSelectState>;
+  panelOpen?: boolean;
+  positions?: OverlayPositions;
+  hintSeen?: boolean;
+}
+
+function setup({ host = 'overlay', champSelect = {}, panelOpen = false, positions, hintSeen = true }: SetupOptions = {}) {
   const store = createDrakeStore({
     settings: { queue_dodge_in_client: true, overlay_positions: positions, overlay_hint_seen: hintSeen },
   });
@@ -19,11 +30,11 @@ function setup({ host = 'overlay', champSelect = {}, panelOpen = false, position
   store.getState().patchChampSelect(champSelect);
   store.getState().setPanelOpen(panelOpen);
   const actions = {
-    togglePanel: vi.fn(),
-    cancelQueue: vi.fn(async () => {}),
+    togglePanel: vi.fn<() => void>(),
+    cancelQueue: vi.fn<() => Promise<void>>(async () => {}),
     dodge: vi.fn(async () => ({ ok: true })),
-    setSettings: vi.fn(async () => ({ ok: true })),
-    setOverlayDragging: vi.fn(),
+    setSettings: vi.fn<(patch: SettingsPatch) => Promise<ActionResult>>(async () => ({ ok: true })),
+    setOverlayDragging: vi.fn<(dragging: boolean) => void>(),
   };
   const utils = renderWithProviders(
     <>

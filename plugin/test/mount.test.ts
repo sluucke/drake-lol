@@ -1,11 +1,40 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mountUI, HOST_ID } from '../src/ui/mount';
+import { mountUI as realMountUI, HOST_ID, type MountOptions } from '../src/ui/mount';
+
+interface FakeShadow {
+  innerHTML: string;
+  host: FakeEl;
+  getElementById: () => null;
+}
+
+interface FakeEl {
+  tagName: string;
+  id: string;
+  style: { cssText: string };
+  children: FakeEl[];
+  parentNode: FakeEl | null;
+  shadow: FakeShadow | null;
+  attachShadow(): FakeShadow;
+  appendChild(child: FakeEl): FakeEl;
+  removeChild(child: FakeEl): FakeEl;
+}
+
+type FakeDoc = ReturnType<typeof fakeDom>;
+type FakeWin = ReturnType<typeof fakeWindow>;
+type Handler = (event?: unknown) => void;
+
+type FakeMountOptions = Omit<MountOptions, 'doc' | 'win' | 'mountParent'> & {
+  doc: FakeDoc;
+  win: FakeWin;
+  mountParent?: FakeEl;
+};
+
+const mountUI = (opts: FakeMountOptions) => realMountUI(opts as unknown as MountOptions);
 
 function fakeDom({ withBody = true } = {}) {
-  const listeners = {};
-  const makeEl = (tag) => {
-    const el = {
+  const listeners: Record<string, Handler[]> = {};
+  const makeEl = (tag: string): FakeEl => {
+    const el: FakeEl = {
       tagName: tag.toUpperCase(),
       id: '',
       style: { cssText: '' },
@@ -16,13 +45,13 @@ function fakeDom({ withBody = true } = {}) {
         this.shadow = { innerHTML: '', host: this, getElementById: () => null };
         return this.shadow;
       },
-      appendChild(child) {
+      appendChild(child: FakeEl) {
         child.parentNode = this;
         this.children.push(child);
         doc._notify();
         return child;
       },
-      removeChild(child) {
+      removeChild(child: FakeEl) {
         this.children = this.children.filter((c) => c !== child);
         child.parentNode = null;
         doc._notify();
@@ -35,15 +64,15 @@ function fakeDom({ withBody = true } = {}) {
   const doc = {
     body: withBody ? makeEl('body') : null,
     documentElement: makeEl('html'),
-    createElement: (tag) => makeEl(tag),
-    addEventListener: (type, fn) => {
+    createElement: (tag: string) => makeEl(tag),
+    addEventListener: (type: string, fn: Handler) => {
       (listeners[type] ||= []).push(fn);
     },
-    _observers: [],
+    _observers: [] as Array<() => void>,
     _notify() {
       for (const cb of this._observers) cb();
     },
-    fire(type) {
+    fire(type: string) {
       for (const fn of listeners[type] || []) fn();
     },
   };
@@ -51,21 +80,22 @@ function fakeDom({ withBody = true } = {}) {
 }
 
 function fakeWindow() {
-  const listeners = {};
+  const listeners: Record<string, Array<{ fn: Handler; opts: unknown }>> = {};
   return {
-    addEventListener: (type, fn, opts) => {
+    addEventListener: (type: string, fn: Handler, opts?: unknown) => {
       (listeners[type] ||= []).push({ fn, opts });
     },
-    dispatch(type, event) {
+    dispatch(type: string, event: object) {
       for (const { fn } of listeners[type] || []) fn(event);
     },
-    listenerCount: (type) => (listeners[type] || []).length,
+    listenerCount: (type: string) => (listeners[type] || []).length,
   };
 }
 
-function installObserver(doc) {
+function installObserver(doc: FakeDoc) {
   return class {
-    constructor(cb) {
+    cb: () => void;
+    constructor(cb: () => void) {
       this.cb = cb;
     }
     observe() {
@@ -75,11 +105,11 @@ function installObserver(doc) {
   };
 }
 
-let doc, win;
+let doc: FakeDoc, win: FakeWin;
 beforeEach(() => {
   doc = fakeDom();
   win = fakeWindow();
-  globalThis.MutationObserver = installObserver(doc);
+  globalThis.MutationObserver = installObserver(doc) as unknown as typeof MutationObserver;
 });
 
 describe('mountUI', () => {
@@ -87,8 +117,8 @@ describe('mountUI', () => {
     const onMount = vi.fn();
     mountUI({ doc, win, onMount });
     const host = doc.documentElement.children.find((c) => c.id === HOST_ID);
-    expect(host.shadow).not.toBeNull();
-    expect(onMount).toHaveBeenCalledWith(host.shadow, expect.anything());
+    expect(host?.shadow).not.toBeNull();
+    expect(onMount).toHaveBeenCalledWith(host?.shadow, expect.anything());
   });
 
   it('attaches the host to documentElement, not body', () => {
@@ -97,7 +127,7 @@ describe('mountUI', () => {
     mountUI({ doc, win, render: () => '<div></div>' });
 
     expect(doc.documentElement.children.map((c) => c.id)).toContain(HOST_ID);
-    expect(doc.body.children).toHaveLength(0);
+    expect(doc.body?.children).toHaveLength(0);
   });
 
   it('mounts only once when the plugin is evaluated twice', () => {
@@ -116,7 +146,7 @@ describe('mountUI', () => {
     mountUI({ doc, win, render: () => '<div></div>' });
     const host = doc.documentElement.children.find((c) => c.id === HOST_ID);
 
-    doc.documentElement.removeChild(host);
+    doc.documentElement.removeChild(host as FakeEl);
 
     const after = doc.documentElement.children.filter((c) => c.id === HOST_ID);
     expect(after).toHaveLength(1);
@@ -126,7 +156,7 @@ describe('mountUI', () => {
 
 
     const early = fakeDom({ withBody: false });
-    globalThis.MutationObserver = installObserver(early);
+    globalThis.MutationObserver = installObserver(early) as unknown as typeof MutationObserver;
 
     mountUI({ doc: early, win, render: () => '<div></div>' });
     expect(early.documentElement.children.filter((c) => c.id === HOST_ID)).toHaveLength(0);

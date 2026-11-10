@@ -1,15 +1,24 @@
-// @ts-nocheck
 import { AnimatePresence, motion } from 'motion/react';
+import type { ReactNode } from 'react';
+import type { Champion } from '../../../features/champions';
 import { iconUrl } from '../../../features/champions';
 import { SFX } from '../../../ui/sfx';
 import { useSfx } from '../../hooks/useSfx';
 import { useT } from '../../i18n/I18nProvider';
 import { DURATION } from '../../ui/motion';
 
-export function PickSummary({ ids, champions, numbered = false, emptyLabel, onRemove }) {
+export interface PickSummaryProps {
+  ids: number[];
+  champions: Champion[];
+  numbered?: boolean;
+  emptyLabel?: ReactNode;
+  onRemove: (id: number) => void;
+}
+
+export function PickSummary({ ids, champions, numbered = false, emptyLabel, onRemove }: PickSummaryProps) {
   const t = useT();
   const sfx = useSfx();
-  const nameOf = (id) => champions.find((c) => c.id === id)?.name || t('champions.noneChosen');
+  const nameOf = (id: number) => champions.find((c) => c.id === id)?.name || t('champions.noneChosen');
   if (ids.length === 0) return <p className="drk-pick-summary is-empty">{emptyLabel}</p>;
   return (
     <ul className="drk-pick-summary">

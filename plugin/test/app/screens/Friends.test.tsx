@@ -1,7 +1,8 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
+import type { LegacyActions } from '../../../src/app/shell/LegacyActions';
+import type { Friend } from '../../../src/app/store/types';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { FriendsScreen } from '../../../src/app/screens/Friends';
 import { isReactScreen } from '../../../src/app/screens/registry';
@@ -10,13 +11,19 @@ const FRIENDS = [
   { id: 'a', riotId: 'Ahri#EUW', online: true, note: 'duo', statusMessage: '' },
   { id: 'b', riotId: 'Bard#BR1', online: true, note: '', statusMessage: 'in game' },
   { id: 'c', riotId: 'Cait#NA1', online: false, note: '', statusMessage: '' },
-];
+] as Friend[];
 
-function setup({ friends = FRIENDS, locale, actions } = {}) {
+interface SetupOptions {
+  friends?: Friend[];
+  locale?: string;
+  actions?: Partial<LegacyActions>;
+}
+
+function setup({ friends = FRIENDS, locale, actions }: SetupOptions = {}) {
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   store.getState().syncLegacy({ friends });
-  const acts = actions || { removeAllFriends: vi.fn(async () => ({ removed: 3, failed: 0 })) };
+  const acts = actions || { removeAllFriends: vi.fn<LegacyActions['removeAllFriends']>(async () => ({ removed: 3, failed: 0 })) };
   const utils = renderWithProviders(<FriendsScreen />, { store, actions: acts });
   return { ...utils, store, actions: acts };
 }
@@ -34,8 +41,8 @@ describe('FriendsScreen', () => {
     expect(items[0].textContent).toContain('Ahri#EUW');
     expect(items[0].textContent).toContain('duo');
     expect(items[1].textContent).toContain('in game');
-    expect(items[0].querySelector('.drk-friend__dot').className).toContain('is-online');
-    expect(items[2].querySelector('.drk-friend__dot').className).not.toContain('is-online');
+    expect(items[0].querySelector('.drk-friend__dot')?.className).toContain('is-online');
+    expect(items[2].querySelector('.drk-friend__dot')?.className).not.toContain('is-online');
   });
 
   it('shows the empty state without the remove button', () => {

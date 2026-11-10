@@ -1,13 +1,14 @@
-// @ts-nocheck
+import type { ReactNode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { ScreenHeader, SettingToggle } from '../../../src/app/screens/common';
+import type { SettingsValues } from '../../../src/settings';
 
-function setup(ui, settings = {}) {
+function setup(ui: ReactNode, settings: SettingsValues = {}) {
   const store = createDrakeStore({ settings });
-  const actions = { setSettings: vi.fn(async () => ({ ok: true })) };
+  const actions = { setSettings: vi.fn(async (_patch: SettingsValues) => ({ ok: true })) };
   const utils = renderWithProviders(ui, { store, actions });
   return { ...utils, store, actions };
 }
@@ -35,6 +36,6 @@ describe('screen building blocks', () => {
   it('disables toggles while the tray is down', () => {
     const { store } = setup(<SettingToggle id="auto_accept" label="Accept" />);
     act(() => store.getState().syncLegacy({ trayDown: true }));
-    expect(screen.getByRole('checkbox', { name: 'Accept' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('checkbox', { name: 'Accept' }).disabled).toBe(true);
   });
 });

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -7,7 +6,12 @@ import { WhatsNewScreen } from '../../../src/app/screens/WhatsNew';
 import { isReactScreen } from '../../../src/app/screens/registry';
 import { WHATS_NEW } from '../../../src/ui/whatsNew';
 
-function setup({ version = WHATS_NEW[0].version, locale, seen } = {}) {
+function must<T>(value: T | null | undefined): T {
+  if (value == null) throw new Error('missing test fixture');
+  return value;
+}
+
+function setup({ version = WHATS_NEW[0].version, locale, seen }: { version?: string; locale?: string; seen?: string } = {}) {
   const store = createDrakeStore({ appVersion: version, settings: seen ? { whats_new_seen_version: seen } : {} });
   if (locale) store.getState().setLocale(locale);
   const actions = { dismissWhatsNew: vi.fn(async () => {}) };
@@ -24,15 +28,15 @@ describe('WhatsNewScreen', () => {
     setup();
     const latest = WHATS_NEW[0];
     expect(screen.getByText(`Changes in v${latest.version}`)).toBeTruthy();
-    const notes = document.querySelector('.drk-whats-new');
+    const notes = must(document.querySelector<HTMLElement>('.drk-whats-new'));
     expect(within(notes).getAllByRole('listitem')).toHaveLength(latest.items.length);
     expect(screen.getByText(latest.items[0].body)).toBeTruthy();
   });
 
   it('jumps to the screen of a note and marks it seen', () => {
-    const entry = WHATS_NEW.find((e) => e.items.some((i) => i.screen));
+    const entry = must(WHATS_NEW.find((e) => e.items.some((i) => i.screen)));
     const { actions } = setup({ version: entry.version, seen: entry.version });
-    const item = entry.items.find((i) => i.screen);
+    const item = must(entry.items.find((i) => i.screen));
     fireEvent.click(screen.getByRole('button', { name: item.title }));
     expect(actions.dismissWhatsNew).toHaveBeenCalledWith(item.screen);
   });
@@ -44,9 +48,9 @@ describe('WhatsNewScreen', () => {
   });
 
   it('renders notes without a screen as plain titles', () => {
-    const entry = WHATS_NEW.find((e) => e.items.some((i) => !i.screen));
+    const entry = must(WHATS_NEW.find((e) => e.items.some((i) => !i.screen)));
     setup({ version: entry.version });
-    const item = entry.items.find((i) => !i.screen);
+    const item = must(entry.items.find((i) => !i.screen));
     expect(screen.getByText(item.title).tagName).toBe('SPAN');
   });
 

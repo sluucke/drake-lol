@@ -1,14 +1,15 @@
-// @ts-nocheck
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { makeBuildPanel, CACHE_TTL_MS } from '../src/ui/buildPanel';
+import { describe, it, expect, vi } from 'vitest';
+import { makeBuildPanel as realMakeBuildPanel, CACHE_TTL_MS, type BuildPanelOptions } from '../src/ui/buildPanel';
+
+const makeBuildPanel = (deps: object) => realMakeBuildPanel(deps as unknown as BuildPanelOptions);
 
 const SESSION = { championId: 157, position: 'MIDDLE', mode: 'ranked' };
 
-function makeDeps(overrides = {}) {
+function makeDeps(overrides: Record<string, unknown> = {}) {
   return {
     lcu: { get: vi.fn(), put: vi.fn(), patch: vi.fn() },
     fetchFn: vi.fn(),
-    getChampName: (id) => (id === 157 ? 'Yasuo' : `Champion ${id}`),
+    getChampName: (id: number) => (id === 157 ? 'Yasuo' : `Champion ${id}`),
     getSettings: () => ({ build_tier: 'emerald_plus', build_region: 'global' }),
     saveSettings: vi.fn().mockResolvedValue({ ok: true }),
     fetchChampionBuildImpl: vi.fn().mockResolvedValue({ data: {}, meta: { version: '16.17' } }),
@@ -223,7 +224,7 @@ describe('makeBuildPanel', () => {
 
   it('does not let a stale player-build fetch overwrite a cleared selection', async () => {
     const deps = makeDeps();
-    let resolvePlayerBuild;
+    let resolvePlayerBuild: (value: unknown) => void = () => {};
     deps.fetchPlayerBuildImpl = vi.fn().mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -277,10 +278,10 @@ describe('makeBuildPanel', () => {
 describe('makeBuildPanel late champion names', () => {
   // The champion list loads lazily and is shared with team reveal, so it can
   // still be empty when champ select hands us a session.
-  function makeLateNameDeps(overrides = {}) {
-    const champs = [];
+  function makeLateNameDeps(overrides: Record<string, unknown> = {}) {
+    const champs: { id: number; name: string }[] = [];
     const deps = makeDeps({
-      getChampName: (id) => champs.find((c) => c.id === id)?.name || '',
+      getChampName: (id: number) => champs.find((c) => c.id === id)?.name || '',
       ...overrides,
     });
     return { deps, arrive: () => champs.push({ id: 157, name: 'Yasuo' }) };

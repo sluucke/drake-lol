@@ -1,10 +1,11 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { BuildTab } from '../../../src/app/overlays/build/BuildTab';
 import { pct, rankIconKey, statusKey, wrTone } from '../../../src/app/overlays/build/format';
+import type { BuildState } from '../../../src/app/store/buildSlice';
+import type { BuildData } from '../../../src/app/store/types';
 
 const BUILD = {
   hasData: true,
@@ -15,20 +16,20 @@ const BUILD = {
   runePages: [],
   skills: { masteries: [], order: [] },
   counters: { strong: [], weak: [] },
-};
+} satisfies BuildData;
 
 function makeActions() {
   return {
-    loadBuild: vi.fn(async () => {}),
-    setBuildTier: vi.fn(),
-    setBuildRegion: vi.fn(),
-    retryBuild: vi.fn(async () => {}),
-    showAllRanks: vi.fn(),
-    clearPlayerBuild: vi.fn(),
+    loadBuild: vi.fn<() => Promise<void>>(async () => {}),
+    setBuildTier: vi.fn<(value: string) => void>(),
+    setBuildRegion: vi.fn<(value: string) => void>(),
+    retryBuild: vi.fn<() => Promise<void>>(async () => {}),
+    showAllRanks: vi.fn<() => void>(),
+    clearPlayerBuild: vi.fn<() => void>(),
   };
 }
 
-function setup(build = {}, locale) {
+function setup(build: Partial<BuildState> = {}, locale?: string) {
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   store.getState().setBuild({

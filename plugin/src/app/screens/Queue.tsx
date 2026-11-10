@@ -1,23 +1,34 @@
-// @ts-nocheck
 import { useEffect, useRef, useState } from 'react';
 import { PROVIDERS } from '../../features/reveal';
+import type { SettingsValues } from '../../settings';
 import { estimateRevealDurationMs, recommendFetchConcurrency } from '../../features/teamRevealStats';
 import { useT } from '../i18n/I18nProvider';
 import { useLegacyActions } from '../shell/LegacyActions';
+import type { DodgeStatus } from '../store/champSelectSlice';
 import { useDrake, useDrakeStore } from '../store/StoreContext';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Segmented } from '../ui/Segmented';
 import { Select } from '../ui/Select';
+import type { SelectOption } from '../ui/Select';
 import { TextInput } from '../ui/TextInput';
 import { Field, Help, ScreenHeader, SettingToggle, useSettings } from './common';
 
 const SAMPLE_SIZES = [20, 50, 100];
 const CONCURRENCIES = [1, 2, 3, 5];
 const POOLS = ['ranked_both', 'current_queue', 'any'];
-const DODGE_LABELS = { idle: 'dodgeButton', busy: 'dodging', done: 'dodged', failed: 'dodgeFailed' };
 
-function RevealSelect({ label, value, options, disabled, onChange }) {
+const DODGE_LABELS: Record<DodgeStatus, string> = { idle: 'dodgeButton', busy: 'dodging', done: 'dodged', failed: 'dodgeFailed' };
+
+export interface RevealSelectProps<V extends string | number> {
+  label: string;
+  value: V;
+  options: readonly SelectOption<V>[];
+  disabled?: boolean;
+  onChange: (value: V) => void;
+}
+
+function RevealSelect<V extends string | number>({ label, value, options, disabled, onChange }: RevealSelectProps<V>) {
   return (
     <div className="drk-field__row">
       <span className="drk-field__label">{label}</span>
@@ -30,14 +41,15 @@ export function QueueScreen() {
   const t = useT();
   const store = useDrakeStore();
   const actions = useLegacyActions();
-  const { values, trayDown, save } = useSettings();
+  const { values: settingsValues, trayDown, save } = useSettings();
+  const values = settingsValues;
   const timing = useDrake((state) => state.session.revealTiming);
   const [provider, setProvider] = useState('porofessor');
   const [revealing, setRevealing] = useState(false);
-  const [dodge, setDodge] = useState('idle');
+  const [dodge, setDodge] = useState<DodgeStatus>('idle');
   const savedMessage = values.queue_auto_message || '';
   const [message, setMessage] = useState(savedMessage);
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => setMessage(savedMessage), [savedMessage]);
   useEffect(() => () => clearTimeout(timerRef.current), []);
@@ -54,7 +66,7 @@ export function QueueScreen() {
   const estimateSeconds = Math.max(1, Math.round(estimateRevealDurationMs({ concurrency, lastMs, lastConcurrency }) / 1000));
 
   const poolOptions = POOLS.map((id) => ({ value: id, label: t(`screens.queue.pool.${id}`) }));
-  const numberOptions = (list) => list.map((n) => ({ value: n, label: String(n) }));
+  const numberOptions = (list: number[]): SelectOption<number>[] => list.map((n) => ({ value: n, label: String(n) }));
 
   async function onReveal() {
     setRevealing(true);
@@ -65,7 +77,7 @@ export function QueueScreen() {
       .setStatusLine(
         result.ok
           ? { text: t('screens.queue.lookingUp', { count: result.count }), tone: 'good' }
-          : { text: result.reason, tone: 'bad' },
+          : { text: result.reason ?? '', tone: 'bad' },
       );
   }
 
@@ -124,7 +136,10 @@ export function QueueScreen() {
             value={last5Pool}
             options={poolOptions}
             disabled={optionsDisabled}
-            onChange={(next) => save({ queue_team_reveal_last5_pool: next })}
+            onChange={(next) => {
+              const patch: SettingsValues = { queue_team_reveal_last5_pool: next };
+              return save(patch);
+            }}
           />
           <RevealSelect
             label={t('screens.queue.concurrency')}

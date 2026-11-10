@@ -1,4 +1,5 @@
 import type { FetchLike, Lcu } from '../lcu';
+import type { HttpFetch } from './proxyFetch';
 
 export const ENTITLEMENTS_ROUTE = '/entitlements/v1/token';
 export const CHAT_ME_ROUTE = '/lol-chat/v1/me';
@@ -169,7 +170,7 @@ export interface SlimMatchGame {
 
 export interface FetchQueueMatchHistoryOptions {
   lcu?: Pick<Lcu, 'get'> | null;
-  fetchImpl?: FetchLike;
+  fetchImpl?: FetchLike | HttpFetch;
   puuid: string;
   queueId?: number | string;
   count?: number;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { AnimatePresence, motion } from 'motion/react';
 import { useT } from '../i18n/I18nProvider';
 import { useDrake } from '../store/StoreContext';

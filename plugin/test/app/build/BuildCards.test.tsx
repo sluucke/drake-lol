@@ -1,9 +1,11 @@
-// @ts-nocheck
+import type { ReactElement } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { ItemsCard, RunesCard, SkillOrderCard, SpellsCard } from '../../../src/app/overlays/build/BuildCards';
+import type { BuildState } from '../../../src/app/store/buildSlice';
+import type { BuildData } from '../../../src/app/store/types';
 
 const BUILD = {
   hasData: true,
@@ -34,15 +36,15 @@ const BUILD = {
   ],
   skills: { masteries: ['Q', 'E', 'W'], order: ['Q', 'E', 'W', 'Q', 'Q', 'R', 'Q', 'E', 'Q', 'E', 'R', 'E', 'E', 'W', 'W'], winRate: 50.1, play: 321 },
   counters: { strong: [], weak: [] },
-};
+} satisfies BuildData;
 
-function setup(ui, build = {}) {
+function setup(ui: ReactElement, build: Partial<BuildState> = {}) {
   const store = createDrakeStore();
   store.getState().setBuild({ ...store.getState().build, championId: 157, championName: 'Yasuo', build: BUILD, ...build });
   const actions = {
-    applyBuildRunes: vi.fn(async () => {}),
-    applyBuildSpells: vi.fn(async () => {}),
-    applyBuildItems: vi.fn(async () => {}),
+    applyBuildRunes: vi.fn<(index: number) => Promise<void>>(async () => {}),
+    applyBuildSpells: vi.fn<(index: number) => Promise<void>>(async () => {}),
+    applyBuildItems: vi.fn<() => Promise<void>>(async () => {}),
   };
   const utils = renderWithProviders(ui, { store, actions });
   return { ...utils, store, actions };
@@ -51,7 +53,7 @@ function setup(ui, build = {}) {
 describe('RunesCard', () => {
   it('renders the page and applies it', () => {
     const { container, actions, store } = setup(<RunesCard />);
-    const card = container.querySelector('.drk-card');
+    const card = container.querySelector<HTMLElement>('.drk-card')!;
     expect(within(card).getByRole('heading', { name: 'Runes' })).toBeTruthy();
     expect(card.querySelectorAll('.drk-build-shard')).toHaveLength(3);
     expect(card.querySelectorAll('.drk-build-perk')).toHaveLength(5);
@@ -60,7 +62,7 @@ describe('RunesCard', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Apply' }));
     expect(actions.applyBuildRunes).toHaveBeenCalledWith(0);
     act(() => store.getState().setBuild({ ...store.getState().build, runeStatus: 'applying' }));
-    expect(within(card).getByRole('button', { name: 'Applying…' }).disabled).toBe(true);
+    expect(within(card).getByRole<HTMLButtonElement>('button', { name: 'Applying…' }).disabled).toBe(true);
   });
 
   it('shows the empty state', () => {
@@ -80,8 +82,8 @@ describe('ItemsCard', () => {
     expect(coreRows[0].querySelectorAll('.drk-build-icon.is-hextech')).toHaveLength(1);
     expect(coreRows[0].textContent).toContain('1.');
     expect(coreRows[0].textContent).toContain('55.2% WR');
-    expect(coreRows[0].querySelector('.drk-build-wr').className).toContain('is-positive');
-    expect(coreRows[1].querySelector('.drk-build-wr').className).toContain('is-negative');
+    expect(coreRows[0].querySelector('.drk-build-wr')!.className).toContain('is-positive');
+    expect(coreRows[1].querySelector('.drk-build-wr')!.className).toContain('is-negative');
     expect(container.querySelectorAll('.drk-build-trend__cell')).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: 'Create Item Set' }));
     expect(actions.applyBuildItems).toHaveBeenCalledTimes(1);

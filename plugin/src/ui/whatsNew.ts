@@ -1,5 +1,25 @@
-// @ts-nocheck
-export const WHATS_NEW = [
+export interface WhatsNewItem {
+  title: string;
+  body: string;
+  highlight?: boolean;
+  screen?: string;
+}
+
+export interface WhatsNewEntry {
+  version: string;
+  items: WhatsNewItem[];
+}
+
+export interface VersionedEntry {
+  version: string;
+}
+
+export interface WhatsNewHistory<E extends VersionedEntry = WhatsNewEntry> {
+  kind: 'missed' | 'recent';
+  entries: E[];
+}
+
+export const WHATS_NEW: WhatsNewEntry[] = [
   {
     version: '0.4.5',
     items: [
@@ -262,7 +282,7 @@ export const WHATS_NEW = [
   },
 ];
 
-export function compareSemver(a, b) {
+export function compareSemver(a: string | null | undefined, b: string | null | undefined): number {
   const pa = String(a || '').split('.').map((n) => Number(n) || 0);
   const pb = String(b || '').split('.').map((n) => Number(n) || 0);
   const len = Math.max(pa.length, pb.length);
@@ -276,7 +296,11 @@ export function compareSemver(a, b) {
 export const HISTORY_LIMIT = 3;
 export const MISSED_LIMIT = 6;
 
-export function whatsNewHistory(entries, version, seenVersion) {
+export function whatsNewHistory<E extends VersionedEntry>(
+  entries: readonly E[] | null | undefined,
+  version: string | null | undefined,
+  seenVersion: string | null | undefined,
+): WhatsNewHistory<E> {
   const list = Array.isArray(entries) ? entries : [];
   const current = pickWhatsNew(list, version);
   const older = list
@@ -287,11 +311,11 @@ export function whatsNewHistory(entries, version, seenVersion) {
   return { kind: 'recent', entries: older.slice(0, HISTORY_LIMIT) };
 }
 
-export function pickWhatsNew(entries, version) {
+export function pickWhatsNew<E extends VersionedEntry>(entries: readonly E[] | null | undefined, version: string | null | undefined): E | null {
   const list = Array.isArray(entries) ? entries : [];
   const exact = list.find((e) => e.version === version);
   if (exact) return exact;
-  let best = null;
+  let best: E | null = null;
   for (const e of list) {
     if (compareSemver(e.version, version) <= 0) {
       if (!best || compareSemver(e.version, best.version) > 0) best = e;

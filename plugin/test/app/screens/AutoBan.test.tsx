@@ -1,7 +1,7 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
+import type { SettingsValues } from '../../../src/settings';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { AutoBanScreen } from '../../../src/app/screens/AutoBan';
 import { isReactScreen } from '../../../src/app/screens/registry';
@@ -13,7 +13,12 @@ const CHAMPIONS = [
   { id: 157, name: 'Yasuo', alias: 'Yasuo' },
 ];
 
-function setup({ settings, locale } = {}) {
+interface SetupOptions {
+  settings?: SettingsValues;
+  locale?: string;
+}
+
+function setup({ settings, locale }: SetupOptions = {}) {
   const store = createDrakeStore({ settings });
   if (locale) store.getState().setLocale(locale);
   store.getState().syncLegacy({ champions: CHAMPIONS });

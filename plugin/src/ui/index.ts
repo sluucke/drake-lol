@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { mountUI } from './mount';
 import { SCREENS, formatHostLabel } from '../app/shell/shellData';
 import {
@@ -44,26 +43,71 @@ import { makeSummonerIdLoader } from '../features/summonerId';
 import { startApp } from '../app/main';
 import { createDrakeStore } from '../app/store/createDrakeStore';
 import { loadLocale } from '../app/i18n/loadLocale';
+import type { Lcu } from '../lcu';
+import type { PluginConfig, SettingsPatch, SettingsValues } from '../settings';
+import type { SubscribeFn } from '../subscribe';
+import type { ReadyCheckPayload } from '../autoAccept';
+import type { Champion } from '../features/champions';
+import type { ChatMeResponse, LolPresence, ActionResult } from '../features/presence';
+import type { Friend } from '../features/profile';
+import type { SkinTile } from '../features/skins';
+import type { StreamingEffective } from '../features/streaming';
+import type { UpdateStatusBody } from '../features/update';
+import type { RevealPlayer, RevealSession } from '../features/teamRevealStats';
+import type { DrakeStore } from '../app/store/types';
+import type {
+  RequiredUpdate,
+  StreamingHost,
+  UpdateUiState,
+} from '../app/store/sessionSlice';
+import type { DodgeActionResult, LegacyActions, OnboardAction } from '../app/shell/LegacyActions';
+import type { MountedUI } from './mount';
+import type { OpenMode } from './onboarding';
+import type { TeamRevealDom } from './teamRevealDom';
+import type { BuildPanel } from './buildPanel';
 
 const TAG = '[Drake]';
 
-function readLocalCell(session) {
+type UiChampSession = RevealSession & { benchEnabled?: boolean };
+
+export type StartUIConfig = Pick<PluginConfig, 'port' | 'token' | 'settings'> &
+  Partial<Pick<PluginConfig, 'version' | 'streaming_effective' | 'streaming_tool_running'>>;
+
+export interface StartUIOptions {
+  cfg: StartUIConfig;
+  onSettingsChanged?: ((settings: SettingsValues) => void) | null;
+  lcu: Lcu;
+  host?: StreamingHost;
+  mountParent?: Element | null;
+  reloadConfig?: () => Promise<PluginConfig | null | undefined>;
+  onPanelChange?: ((open: boolean) => void) | null;
+  onUpdateRequired?: ((version: string) => void) | null;
+  subscribeImpl?: SubscribeFn;
+}
+
+interface RankSteps {
+  'rank-div': string;
+  'rank-queue': string;
+  crystal: string;
+}
+
+function readLocalCell(session: UiChampSession | null | undefined): RevealPlayer | null {
   const cellId = Number(session?.localPlayerCellId ?? -1);
   const team = Array.isArray(session?.myTeam) ? session.myTeam : [];
   return team.find((p) => Number(p?.cellId) === cellId) || null;
 }
 
-function readLocalChampionId(session) {
+function readLocalChampionId(session: UiChampSession | null | undefined): number {
   return Number(readLocalCell(session)?.championId) || 0;
 }
 
-function readLocalPosition(session) {
+function readLocalPosition(session: UiChampSession | null | undefined): string {
   const cell = readLocalCell(session);
   return cell?.assignedPosition || cell?.position || '';
 }
 
 // ARAM champ select exposes the reroll bench; Summoner's Rift does not.
-function isAramSession(session) {
+function isAramSession(session: UiChampSession | null | undefined): boolean {
   return Boolean(session?.benchEnabled);
 }
 
@@ -85,20 +129,20 @@ export function startUI({
   onPanelChange,
   onUpdateRequired,
   subscribeImpl = subscribe,
-}) {
+}: StartUIOptions) {
   const overlayHost = host === 'overlay';
-  let settings = { ...cfg.settings };
+  let settings: SettingsValues = { ...cfg.settings };
   let appVersion = cfg.version || '0.0.0';
-  let updateUi = { phase: 'idle' };
+  let updateUi: UpdateUiState = { phase: 'idle' };
   let trayDown = false;
   let streamingToolRunning = !!cfg.streaming_tool_running;
-  let desiredEffective = overlayHost
+  let desiredEffective: StreamingEffective = overlayHost
     ? 'overlay'
     : cfg.streaming_effective || effectiveFrom(settings.streaming_mode, streamingToolRunning);
-  let streamingEffective = desiredEffective;
+  let streamingEffective: StreamingEffective = desiredEffective;
   const trayHealth = createTrayHealth();
-  let panelApi = null;
-  let openMode = overlayHost
+  let panelApi: MountedUI | null = null;
+  let openMode: OpenMode = overlayHost
     ? 'default'
     : decideOpenMode({
         onboardingDone: !!settings.onboarding_done,
@@ -107,28 +151,28 @@ export function startUI({
       });
   const opened = applyOpenMode(openMode);
   let screen = opened.screen;
-  let overlay = overlayHost ? '' : opened.overlay;
+  let overlay: string = overlayHost ? '' : opened.overlay;
   let tourIndex = -1;
-  let pendingOnboard = null;
+  let pendingOnboard: SettingsPatch | null = null;
   const onboardLock = { busy: false };
-  let shadowRoot = null;
+  let shadowRoot: ShadowRoot | null = null;
   let dodgeBusy = false;
   let champSelectActive = false;
-  let champSelectSession = null;
+  let champSelectSession: unknown = null;
   let statusText = '';
-  let champions = [];
-  let teamRevealChamps = [];
-  let teamRevealChampsLoading = null;
-  let teamRevealDom = null;
-  let buildPanel = null;
+  let champions: Champion[] = [];
+  let teamRevealChamps: Champion[] = [];
+  let teamRevealChampsLoading: Promise<Champion[]> | null = null;
+  let teamRevealDom: TeamRevealDom | null = null;
+  let buildPanel: BuildPanel | null = null;
   const summonerIdLoader = makeSummonerIdLoader({ lcu });
   let teamRevealLastLoadMs = 0;
   let teamRevealLastConcurrency = 1;
   let inGameIdle = false;
   
   const status = makeStatus({ lcu });
-  let dodgeStatus = (detail) => console.log(TAG, 'dodge', detail);
-  let say = (text, good) => console.log(TAG, text, good ? 'ok' : 'err');
+  let dodgeStatus = (detail: string) => console.log(TAG, 'dodge', detail);
+  let say = (text: string | undefined, good: boolean) => console.log(TAG, text, good ? 'ok' : 'err');
   const dodger = makeDodge({
     onStatus: (detail) => dodgeStatus(detail),
   });
@@ -137,16 +181,16 @@ export function startUI({
   const presence = makePresence({ lcu });
   const challenges = makeChallenges({ lcu });
   const riotId = makeRiotId({ lcu });
-  let lol = {};
-  let friends = [];
+  let lol: LolPresence = {};
+  let friends: Friend[] = [];
   let profileTab = 'rank';
-  let skins = [];
+  let skins: SkinTile[] = [];
   let backgroundId = 0;
   const background = makeBackground({ lcu });
   const sfx = makeSfx();
   
   
-  const steps = { 'rank-div': 'I', 'rank-queue': QUEUES[0].id, crystal: 'IRON' };
+  const steps: RankSteps = { 'rank-div': 'I', 'rank-queue': QUEUES[0].id, crystal: 'IRON' };
   let pickedTier = '';
 
   function syncRankUiFromSettings() {
@@ -171,10 +215,10 @@ export function startUI({
     reloadConfig,
   });
 
-  const legacyActions = {
+  const baseActions: Partial<LegacyActions> = {
     navigate: () => {},
     close: () => ui.close(),
-    openUrl: (url) => openCreditUrl(url),
+    openUrl: (url: string) => openCreditUrl(url),
     togglePanel: () => ui.toggle(),
     cancelQueue: async () => {
       store.getState().patchChampSelect({ cancelable: false });
@@ -185,9 +229,10 @@ export function startUI({
       }
     },
   };
+  const legacyActions = baseActions as LegacyActions;
 
   const store = createDrakeStore({ settings, appVersion, settingsClient: client });
-  if (__DRAKE_DEV__) window.__drakeStore = store;
+  if (__DRAKE_DEV__) (window as Window & { __drakeStore?: DrakeStore }).__drakeStore = store;
   void loadLocale(lcu).then((locale) => store.getState().setLocale(locale));
 
   function syncStore() {
@@ -279,7 +324,7 @@ export function startUI({
     store.getState().setCreditsOpen(false);
   }
 
-  function openCreditUrl(url) {
+  function openCreditUrl(url: string) {
     if (!url) return;
     void opener.open(url).then((r) => {
       if (!r.ok) say(r.reason, false);
@@ -289,12 +334,12 @@ export function startUI({
   
   
   
-  function setReadyCheck(payload) {
+  function setReadyCheck(payload: ReadyCheckPayload | null | undefined) {
     if (inGameIdle) return;
     store.getState().patchChampSelect({ cancelable: canCancel(payload) });
   }
 
-  function replaceSettings(next) {
+  function replaceSettings(next: SettingsValues) {
     settings = { ...settings, ...next };
     syncRankUiFromSettings();
     if (onSettingsChanged) onSettingsChanged(settings);
@@ -368,16 +413,16 @@ export function startUI({
     refreshStreamingEffective();
   }
 
-  function forwardView(view) {
+  function forwardView(view: string) {
     void postOverlay(cfg.port, cfg.token, '/overlay/plugin', { open_view: view }).catch(() => null);
   }
 
-  function toggleView(view) {
+  function toggleView(view: string) {
     if (!teamRevealDom || !revealAllowed()) return;
     teamRevealDom.toggleCards(view === 'build' ? 'build' : 'scouting');
   }
 
-  function setIdle(next) {
+  function setIdle(next: boolean) {
     if (next === inGameIdle) return;
     inGameIdle = next;
     syncStore();
@@ -398,7 +443,7 @@ export function startUI({
 
   // Champion names are shared with team reveal, but the build panel must not
   // depend on that feature being enabled - either caller may kick the load off.
-  function ensureChampNames() {
+  function ensureChampNames(): Promise<Champion[]> {
     if (teamRevealChamps.length) return Promise.resolve(teamRevealChamps);
     if (!teamRevealChampsLoading) {
       teamRevealChampsLoading = loadChampions(lcu)
@@ -408,7 +453,7 @@ export function startUI({
           return teamRevealChamps;
         })
         .catch((err) => {
-          console.log(TAG, 'could not load champion names -', err?.message || err);
+          console.log(TAG, 'could not load champion names -', (err as Error | null)?.message || err);
           teamRevealChampsLoading = null;
           return [];
         });
@@ -416,7 +461,7 @@ export function startUI({
     return teamRevealChampsLoading;
   }
 
-  function feedBuildPanel(session) {
+  function feedBuildPanel(session: unknown) {
     if (!buildPanel) return;
     const active = inChampSelect(session);
     if (!active) {
@@ -427,7 +472,7 @@ export function startUI({
     // Both of these are cheap no-ops once they have succeeded, and champ select
     // is the first moment the client is reliably logged in and answering.
     void summonerIdLoader.load();
-    const payload = {
+    const payload: { championId: number; position: string; mode: 'aram' | 'ranked' } = {
       championId: readLocalChampionId(session),
       position: readLocalPosition(session),
       mode: isAramSession(session) ? 'aram' : 'ranked',
@@ -442,7 +487,7 @@ export function startUI({
     }
   }
 
-  function setChampSelect(session) {
+  function setChampSelect(session: unknown) {
     if (inGameIdle) return;
     champSelectSession = session;
     champSelectActive = inChampSelect(session);
@@ -452,7 +497,7 @@ export function startUI({
     feedBuildPanel(session);
   }
 
-  async function runDodge() {
+  async function runDodge(): Promise<DodgeActionResult> {
     if (dodgeBusy) {
       console.log(TAG, 'dodge ignored', { dodgeBusy });
       return { ok: false, busy: true, reason: '' };
@@ -475,13 +520,13 @@ export function startUI({
     }
   }
 
-  function wire(shadow, api) {
+  function wire(shadow: ShadowRoot, api: MountedUI) {
     panelApi = api;
     shadowRoot = shadow;
     startApp(shadow, { sfx, store, actions: legacyActions });
 
-    function sayUi(text, good) {
-      store.getState().setStatusLine({ text, tone: good ? 'good' : 'bad' });
+    function sayUi(text: string | undefined, good: boolean) {
+      store.getState().setStatusLine({ text: text ?? '', tone: good ? 'good' : 'bad' });
     }
 
     say = sayUi;
@@ -502,7 +547,7 @@ export function startUI({
       fetchImpl: fetch,
     });
 
-    buildPanel = makeBuildPanel({
+    const panel = makeBuildPanel({
       lcu,
       fetchFn: proxyFetch,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
@@ -510,16 +555,17 @@ export function startUI({
       saveSettings: (patch) => client.save(patch),
       getSummonerId: () => summonerIdLoader.get(),
     });
+    buildPanel = panel;
     void summonerIdLoader.load();
 
-    buildPanel.onUpdate(() => store.getState().setBuild(buildPanel.getSnapshot()));
-    store.getState().setBuild(buildPanel.getSnapshot());
-    teamRevealDom = makeTeamRevealDom({
+    panel.onUpdate(() => store.getState().setBuild(panel.getSnapshot()));
+    store.getState().setBuild(panel.getSnapshot());
+    const reveal = makeTeamRevealDom({
       publishView: (view) => store.getState().setTeamReveal(view),
       doc: document,
       subscribe: subscribeImpl,
       lcu,
-      buildPanel,
+      buildPanel: panel,
       getChampName: (id) => teamRevealChamps.find((c) => c.id === id)?.name || '',
       getRecentPool: () => settings.queue_team_reveal_recent_pool || 'ranked_both',
       getShowMapSide: () => settings.queue_show_map_side !== false,
@@ -545,9 +591,10 @@ export function startUI({
         });
       },
     });
-    teamRevealDom.setEnabled(revealAllowed());
+    teamRevealDom = reveal;
+    reveal.setEnabled(revealAllowed());
 
-    if (champSelectSession) void teamRevealDom.handleSession(champSelectSession);
+    if (champSelectSession) void reveal.handleSession(champSelectSession);
     feedBuildPanel(champSelectSession);
 
     function paint() {
@@ -555,10 +602,10 @@ export function startUI({
       store.getState().setStatusLine(null);
     }
 
-    function requireUpdate(version) {
+    function requireUpdate(version: string | undefined) {
       if (store.getState().session.updateRequired?.version === version) return;
-      store.getState().setSession({ updateRequired: { version, phase: 'required' } });
-      if (onUpdateRequired) onUpdateRequired(version);
+      store.getState().setSession({ updateRequired: { version: version ?? '', phase: 'required' } });
+      if (onUpdateRequired) onUpdateRequired(version ?? '');
     }
 
     async function checkRequiredUpdate() {
@@ -566,7 +613,7 @@ export function startUI({
       if (result.ok && result.status === 'available' && result.mandatory) requireUpdate(result.version);
     }
 
-    function applyUpdateStatus(body) {
+    function applyUpdateStatus(body: UpdateStatusBody) {
       if (body.status === 'available' && body.mandatory) requireUpdate(body.version);
       if (body.status === 'current') updateUi = { phase: 'current' };
       else if (body.status === 'available') {
@@ -591,7 +638,7 @@ export function startUI({
 
     
     
-    async function commit(patch, revert) {
+    async function commit(patch: SettingsPatch, revert: () => void): Promise<ActionResult> {
       const payload = pendingOnboard ? { ...pendingOnboard, ...patch } : patch;
       const result = await client.save(payload);
       if (result.ok) {
@@ -609,7 +656,7 @@ export function startUI({
       return { ok: false, reason: result.reason };
     }
 
-    async function goToScreen(next) {
+    async function goToScreen(next: string) {
       screen = next;
       if (screen === 'status') statusText = await status.read();
       if ((screen === 'auto-pick' || screen === 'auto-ban') && champions.length === 0) {
@@ -620,7 +667,7 @@ export function startUI({
           syncRankUiFromSettings();
         } else {
           try {
-            lol = readLol(await lcu.get(CHAT_ME));
+            lol = readLol(await lcu.get<ChatMeResponse>(CHAT_ME));
           } catch {
             lol = {};
           }
@@ -635,14 +682,14 @@ export function startUI({
       if (screen === 'settings' && overlay !== 'tour' && updateUi.phase === 'idle') runUpdateCheck();
     }
 
-    async function commitOnboard(patch) {
+    async function commitOnboard(patch: SettingsPatch) {
       settings = { ...settings, ...patch };
       pendingOnboard = { ...pendingOnboard, ...patch };
       paint();
       return commit(patch, () => {});
     }
 
-    async function finishOnboarding(startTour) {
+    async function finishOnboarding(startTour: boolean) {
       openMode = 'default';
       if (startTour) {
         tourIndex = 0;
@@ -672,7 +719,7 @@ export function startUI({
       paint();
     }
 
-    async function dismissWhatsNew(target) {
+    async function dismissWhatsNew(target?: string) {
       openMode = 'default';
       await runWhatsNewDismiss(target, SCREENS, {
         mark: () => commitOnboard(markWhatsNewSeenPatch(appVersion)),
@@ -683,7 +730,7 @@ export function startUI({
       });
     }
 
-    async function handleOnboard(action) {
+    async function handleOnboard(action: OnboardAction) {
       await withOnboardLock(onboardLock, async () => {
         if (action === 'skip') {
           await finishOnboarding(false);
@@ -704,7 +751,7 @@ export function startUI({
       paint();
     };
 
-    function applySettingSideEffects(keys) {
+    function applySettingSideEffects(keys: string[]) {
       if (keys.includes('queue_team_reveal_in_client') && teamRevealDom) {
         teamRevealDom.setEnabled(revealAllowed());
       }
@@ -714,9 +761,9 @@ export function startUI({
       }
     }
 
-    function applySettingsPatch(patch) {
-      const keys = Object.keys(patch);
-      const previous = Object.fromEntries(keys.map((key) => [key, settings[key]]));
+    function applySettingsPatch(patch: SettingsPatch) {
+      const keys = Object.keys(patch) as (keyof SettingsValues)[];
+      const previous = Object.fromEntries(keys.map((key) => [key, settings[key]])) as SettingsPatch;
       settings = { ...settings, ...patch };
       applySettingSideEffects(keys);
       paint();
@@ -726,10 +773,10 @@ export function startUI({
       });
     }
 
-    async function revealLobby(providerId) {
+    async function revealLobby(providerId: string) {
       let region = '';
       try {
-        region = (await lcu.get('/riotclient/region-locale')).region || '';
+        region = (await lcu.get<{ region?: string }>('/riotclient/region-locale')).region || '';
       } catch {
       }
       const reveal = makeReveal({
@@ -743,7 +790,7 @@ export function startUI({
       return reveal.reveal(providerId);
     }
 
-    function setRequired(patch) {
+    function setRequired(patch: Partial<RequiredUpdate>) {
       const current = store.getState().session.updateRequired;
       if (current) store.getState().setSession({ updateRequired: { ...current, ...patch } });
     }
@@ -797,7 +844,7 @@ export function startUI({
       installUpdate,
       installRequiredUpdate: () => installRequiredUpdate(),
       restartClient: () => restarter.restart(),
-    });
+    } satisfies Partial<LegacyActions>);
 
     async function saveRankFromState() {
       const tier = pickedTier || lol.rankedLeagueTier || 'GOLD';
@@ -846,17 +893,17 @@ export function startUI({
       return presence.clearRank();
     }
 
-    async function runProfileAction(action) {
+    async function runProfileAction<T>(action: () => Promise<T>): Promise<T> {
       const result = await action();
       try {
-        lol = readLol(await lcu.get(CHAT_ME));
+        lol = readLol(await lcu.get<ChatMeResponse>(CHAT_ME));
       } catch {
       }
       paint();
       return result;
     }
 
-    async function selectProfileTab(tab) {
+    async function selectProfileTab(tab: string) {
       profileTab = tab;
       if (profileTab === 'banner' && skins.length === 0) skins = await loadSkins(lcu);
       paint();
@@ -886,19 +933,19 @@ export function startUI({
         paint();
         return result;
       },
-    });
+    } satisfies Partial<LegacyActions>);
 
     Object.assign(legacyActions, {
       onboard: (action) => handleOnboard(action),
       dismissWhatsNew: (target) => withOnboardLock(onboardLock, () => dismissWhatsNew(target)),
-    });
+    } satisfies Partial<LegacyActions>);
 
     Object.assign(legacyActions, {
       openScouting: () => teamRevealDom?.openCards(),
       closeScouting: () => teamRevealDom?.closeCards(),
       setScoutingTab: (tab) => teamRevealDom?.setActiveTab(tab),
       muteScouting: () => teamRevealDom?.muteAll(),
-    });
+    } satisfies Partial<LegacyActions>);
 
     Object.assign(legacyActions, {
       loadBuild: () => buildPanel?.loadBuild(),
@@ -911,7 +958,7 @@ export function startUI({
       applyBuildRunes: (index) => buildPanel?.applyRunes(index),
       applyBuildSpells: (index) => buildPanel?.applySpells(index),
       applyBuildItems: () => buildPanel?.applyItems(),
-    });
+    } satisfies Partial<LegacyActions>);
 
     paint();
     applyStreamingPolicy();
@@ -928,3 +975,5 @@ export function startUI({
 
   return { ...ui, setReadyCheck, setChampSelect, setIdle, replaceSettings, toggleView, store, actions: legacyActions };
 }
+
+export type DrakeUI = ReturnType<typeof startUI>;

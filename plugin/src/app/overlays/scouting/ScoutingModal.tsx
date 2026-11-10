@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useT } from '../../i18n/I18nProvider';
 import { useLegacyActions } from '../../shell/LegacyActions';
 import { useDrake } from '../../store/StoreContext';
@@ -6,9 +5,10 @@ import { Button } from '../../ui/Button';
 import { Modal } from '../../ui/Modal';
 import { Tabs } from '../../ui/Tabs';
 import { BuildTab } from '../build/BuildTab';
+import type { TeamRevealTab } from '../../store/teamRevealSlice';
 import { ScoutCard } from './ScoutCard';
 
-const TAB_IDS = ['scouting', 'build'];
+const TAB_IDS: readonly TeamRevealTab[] = ['scouting', 'build'];
 
 export function ScoutingModal() {
   const t = useT();

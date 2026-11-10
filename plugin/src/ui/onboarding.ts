@@ -1,5 +1,38 @@
-// @ts-nocheck
-export const TOUR_STEPS = [
+import type { SettingsPatch } from '../settings';
+
+export interface TourStep {
+  screen: string;
+  title: string;
+  body: string;
+}
+
+export type OpenMode = 'welcome' | 'whats-new' | 'default';
+
+export interface OpenModeInput {
+  onboardingDone: boolean;
+  seenVersion?: string | null;
+  currentVersion?: string | null;
+}
+
+export interface OpenModeState {
+  screen: string;
+  overlay: 'welcome' | '';
+}
+
+export interface OnboardLock {
+  busy: boolean;
+}
+
+export interface ScreenRef {
+  id: string;
+}
+
+export interface WhatsNewDismissSteps {
+  mark: () => Promise<unknown>;
+  go: (screen: string) => unknown;
+}
+
+export const TOUR_STEPS: TourStep[] = [
   {
     screen: 'auto-accept',
     title: 'Auto Accept',
@@ -27,48 +60,51 @@ export const TOUR_STEPS = [
   },
 ];
 
-export function decideOpenMode({ onboardingDone, seenVersion, currentVersion }) {
+export function decideOpenMode({ onboardingDone, seenVersion, currentVersion }: OpenModeInput): OpenMode {
   if (!onboardingDone) return 'welcome';
   if (String(seenVersion || '') !== String(currentVersion || '')) return 'whats-new';
   return 'default';
 }
 
-export function markOnboardingPatch(currentVersion) {
+export function markOnboardingPatch(currentVersion: string | null | undefined): SettingsPatch {
   return {
     onboarding_done: true,
     whats_new_seen_version: String(currentVersion || ''),
   };
 }
 
-export function markWhatsNewSeenPatch(currentVersion) {
+export function markWhatsNewSeenPatch(currentVersion: string | null | undefined): SettingsPatch {
   return { whats_new_seen_version: String(currentVersion || '') };
 }
 
-export function initialScreenForMode(mode) {
+export function initialScreenForMode(mode: OpenMode): string {
   if (mode === 'whats-new') return 'whats-new';
   return 'auto-accept';
 }
 
-export function applyOpenMode(mode) {
+export function applyOpenMode(mode: OpenMode): OpenModeState {
   return {
     screen: initialScreenForMode(mode),
     overlay: mode === 'welcome' ? 'welcome' : '',
   };
 }
 
-export function resolveWhatsNewTarget(screenId, screens) {
+export function resolveWhatsNewTarget(
+  screenId: string | null | undefined,
+  screens: readonly ScreenRef[] | null | undefined,
+): string | null {
   if (!screenId) return 'auto-accept';
   const ids = (screens || []).map((s) => s.id);
   if (ids.includes(screenId)) return screenId;
   return null;
 }
 
-export function nextTourIndex(index, total) {
+export function nextTourIndex(index: number, total: number): number {
   const next = Number(index) + 1;
   return next < Number(total) ? next : -1;
 }
 
-export async function withOnboardLock(lock, fn) {
+export async function withOnboardLock(lock: OnboardLock, fn: () => unknown): Promise<boolean> {
   if (lock.busy) return false;
   lock.busy = true;
   try {
@@ -79,7 +115,11 @@ export async function withOnboardLock(lock, fn) {
   }
 }
 
-export async function runWhatsNewDismiss(target, screens, { mark, go }) {
+export async function runWhatsNewDismiss(
+  target: string | null | undefined,
+  screens: readonly ScreenRef[] | null | undefined,
+  { mark, go }: WhatsNewDismissSteps,
+): Promise<void> {
   await mark();
   const next = resolveWhatsNewTarget(target, screens);
   if (next) await go(next);

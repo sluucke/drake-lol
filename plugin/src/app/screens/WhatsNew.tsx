@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { WHATS_NEW, pickWhatsNew, whatsNewHistory } from '../../ui/whatsNew';
@@ -26,7 +25,7 @@ export function WhatsNewScreen() {
   const shown = version || entry?.version || '';
   const items = entry?.items || [];
 
-  async function go(target) {
+  async function go(target?: string) {
     if (busy) return;
     setBusy(true);
     try {
@@ -48,8 +47,8 @@ export function WhatsNewScreen() {
         ) : (
           <ul className="drk-whats-new">
             {items.map((item, index) => {
-              const title = whatsNewText(t, entry.version, index, item, 'title');
-              const body = whatsNewText(t, entry.version, index, item, 'body');
+              const title = whatsNewText(t, entry?.version, index, item, 'title');
+              const body = whatsNewText(t, entry?.version, index, item, 'body');
               return (
                 <motion.li
                   key={index}

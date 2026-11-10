@@ -1,9 +1,13 @@
-// @ts-nocheck
 
 
 
 
-export function fittedHeight({ scrollHeight, min, max }) {
+export interface HeightBounds {
+  min: number;
+  max: number;
+}
+
+export function fittedHeight({ scrollHeight, min, max }: HeightBounds & { scrollHeight: number }): number {
   return Math.min(Math.max(scrollHeight, min), max);
 }
 
@@ -12,7 +16,7 @@ export function fittedHeight({ scrollHeight, min, max }) {
 
 
 
-export function autoSize(el, { min, max }) {
+export function autoSize(el: HTMLElement | null | undefined, { min, max }: HeightBounds): void {
   if (!el) return;
   
   
@@ -25,7 +29,7 @@ const MANUAL = 'manualHeight';
 
 
 
-export function markManual(el) {
+export function markManual(el: HTMLElement | null | undefined): void {
   if (!el || !el.dataset) return;
   el.dataset[MANUAL] = '1';
 }

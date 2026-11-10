@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { WHATS_NEW, pickWhatsNew, compareSemver, whatsNewHistory, HISTORY_LIMIT } from '../src/ui/whatsNew';
 
@@ -17,11 +16,11 @@ describe('pickWhatsNew', () => {
   ];
 
   it('returns the exact version entry when present', () => {
-    expect(pickWhatsNew(entries, '0.3.15').version).toBe('0.3.15');
+    expect(pickWhatsNew(entries, '0.3.15')?.version).toBe('0.3.15');
   });
 
   it('falls back to the newest entry with version <= current', () => {
-    expect(pickWhatsNew(entries, '0.3.17').version).toBe('0.3.16');
+    expect(pickWhatsNew(entries, '0.3.17')?.version).toBe('0.3.16');
   });
 
   it('returns null when every entry is newer than current', () => {
@@ -58,7 +57,7 @@ describe('whatsNewHistory', () => {
   });
 
   it('marks the notes worth repeating', () => {
-    const skLol = WHATS_NEW.find((e) => e.version === '0.4.2').items[0];
-    expect(skLol.highlight).toBe(true);
+    const skLol = WHATS_NEW.find((e) => e.version === '0.4.2')?.items[0];
+    expect(skLol?.highlight).toBe(true);
   });
 });

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { motion } from 'motion/react';
 import { SCREENS } from './shellData';
 import { TOUR_STEPS } from '../../ui/onboarding';

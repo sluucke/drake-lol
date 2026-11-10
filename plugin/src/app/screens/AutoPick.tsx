@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { normalizeAutoPickByRole, toggleAutoPickChampion } from '../../features/autoPickRoles';
 import { searchChampions } from '../../features/champions';
 import { useT } from '../i18n/I18nProvider';
@@ -19,17 +18,18 @@ export function AutoPickScreen() {
   const query = useDrake((state) => state.ui.championQueries['auto-pick']);
   const enabled = !!values.auto_pick;
   const byRole = normalizeAutoPickByRole(values.auto_pick_by_role);
-  const pickIds = byRole[role] || [];
+  const byRoleId: Partial<Record<string, number[]>> = byRole;
+  const pickIds = byRoleId[role] || [];
   const counts = Object.fromEntries(Object.entries(byRole).map(([key, ids]) => [key, ids.length]));
   const slots = new Map(pickIds.map((id, index) => [id, index + 1]));
   const filtered = searchChampions(champions, query);
 
-  const toggle = (id) => {
+  const toggle = (id: number) => {
     const next = toggleAutoPickChampion(values, role, id);
     if (next !== values) save({ auto_pick_by_role: next.auto_pick_by_role });
   };
 
-  const setQuery = (text) => {
+  const setQuery = (text: string) => {
     const { championQueries } = store.getState().ui;
     store.getState().setUi({ championQueries: { ...championQueries, 'auto-pick': text } });
   };

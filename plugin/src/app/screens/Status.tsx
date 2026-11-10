@@ -1,8 +1,8 @@
-// @ts-nocheck
 import { useEffect, useRef, useState } from 'react';
 import { AVAILABILITIES } from '../../features/presence';
 import { autoSize, markManual } from '../../ui/autoSize';
 import { useT } from '../i18n/I18nProvider';
+import type { Translate } from '../i18n/runtime';
 import { useLegacyActions } from '../shell/LegacyActions';
 import { useDrake, useDrakeStore } from '../store/StoreContext';
 import { Button } from '../ui/Button';
@@ -12,7 +12,7 @@ import { Field, Help, ScreenHeader, useSettings } from './common';
 
 const GRIP = 16;
 
-export function describeStatusText(text, t) {
+export function describeStatusText(text: string, t: Translate): string {
   const lines = text === '' ? 0 : text.split('\n').length;
   return t('screens.status.count', { chars: text.length, count: lines });
 }
@@ -25,7 +25,7 @@ export function StatusScreen() {
   const remote = useDrake((state) => state.session.statusText);
   const [draft, setDraft] = useState(remote);
   const [saving, setSaving] = useState(false);
-  const boxRef = useRef(null);
+  const boxRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => setDraft(remote), [remote]);
 

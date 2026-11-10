@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { watchAnchor } from './dodgeDock';
 import spriteUrl from '../../assets/drake-spritesheet.png';
 
@@ -8,7 +7,7 @@ export const STYLE_ID = 'drake-social-toggle-style';
 const BUG_BTN_SELECTOR =
   'button[data-dd-action-name="button.social.report_bug"], button.bug-report-button:not([data-drake-toggle])';
 
-export function socialToggleCss() {
+export function socialToggleCss(): string {
   return `
 button.bug-report-button[data-drake-toggle] {
   width: 34px !important;
@@ -42,13 +41,13 @@ button.bug-report-button[data-drake-toggle]:disabled {
 }`;
 }
 
-function isVisible(el) {
+function isVisible<T extends Element>(el: T | null | undefined): T | null {
   if (!el || typeof el.getBoundingClientRect !== 'function') return null;
   const rect = el.getBoundingClientRect();
   return rect.width > 0 && rect.height > 0 ? el : null;
 }
 
-function searchSocialBar(root) {
+function searchSocialBar(root: ParentNode | null | undefined): Element | null {
   if (!root?.querySelector) return null;
   const bar = isVisible(root.querySelector(SOCIAL_BAR_SELECTOR));
   if (bar) return bar;
@@ -57,7 +56,7 @@ function searchSocialBar(root) {
   return null;
 }
 
-function searchIframes(doc) {
+function searchIframes(doc: ParentNode): Element | null {
   if (typeof doc.querySelectorAll !== 'function') return null;
   for (const iframe of doc.querySelectorAll('iframe')) {
     try {
@@ -70,11 +69,11 @@ function searchIframes(doc) {
   return null;
 }
 
-export function findSocialBar(doc) {
+export function findSocialBar(doc: Document): Element | null {
   return searchSocialBar(doc) || searchIframes(doc);
 }
 
-export function injectSocialToggleStyles(doc) {
+export function injectSocialToggleStyles(doc: Document | null | undefined): void {
   if (!doc?.createElement) return;
   if (typeof doc.getElementById === 'function' && doc.getElementById(STYLE_ID)) return;
   const style = doc.createElement('style');
@@ -83,7 +82,7 @@ export function injectSocialToggleStyles(doc) {
   (doc.head || doc.documentElement)?.appendChild(style);
 }
 
-export function syncSocialToggle(doc, open) {
+export function syncSocialToggle(doc: Document, open: boolean): void {
   const bar = findSocialBar(doc);
   const btn =
     bar?.querySelector?.('[data-drake-toggle]') ||
@@ -93,14 +92,19 @@ export function syncSocialToggle(doc, open) {
   btn.setAttribute('aria-pressed', String(open));
 }
 
-export function mountSocialToggle(doc, { onToggle, isOpen }) {
+export interface SocialToggleHandlers {
+  onToggle: () => void;
+  isOpen: () => boolean;
+}
+
+export function mountSocialToggle(doc: Document, { onToggle, isOpen }: SocialToggleHandlers): boolean {
   const bar = findSocialBar(doc);
   if (!bar) return false;
 
   const owner = bar.ownerDocument || doc;
   injectSocialToggleStyles(owner);
 
-  let btn = bar.querySelector('[data-drake-toggle]');
+  let btn = bar.querySelector<HTMLButtonElement>('[data-drake-toggle]');
   if (btn && btn.parentNode !== bar) {
     bar.appendChild(btn);
   }
@@ -133,18 +137,19 @@ export function mountSocialToggle(doc, { onToggle, isOpen }) {
   }
   return true;
 }
+mountSocialToggle.logged = false;
 
-export function watchSocialToggle(doc, win, cb) {
+export function watchSocialToggle(doc: Document, win: Window, cb: () => void): () => void {
   injectSocialToggleStyles(doc);
   return watchAnchor(doc, win, cb);
 }
 
 export const TOGGLE_HOST_ATTR = 'data-drake-toggle-host';
 
-export function ensureToggleHost(bar) {
+export function ensureToggleHost(bar: Element | null | undefined): HTMLElement | null {
   if (!bar?.querySelector) return null;
   const owner = bar.ownerDocument;
-  let host = bar.querySelector(`[${TOGGLE_HOST_ATTR}]`);
+  let host = bar.querySelector<HTMLElement>(`[${TOGGLE_HOST_ATTR}]`);
   if (!host) {
     host = owner.createElement('span');
     host.setAttribute(TOGGLE_HOST_ATTR, '');

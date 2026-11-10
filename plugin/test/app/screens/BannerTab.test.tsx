@@ -1,7 +1,8 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
+import type { LegacyActions } from '../../../src/app/shell/LegacyActions';
+import type { Skin } from '../../../src/app/store/types';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { BannerTab } from '../../../src/app/screens/profile/BannerTab';
 
@@ -11,10 +12,17 @@ const SKINS = Array.from({ length: 200 }, (_, i) => ({
   tile: `/tile/${i}.jpg`,
 }));
 
-function setup({ skins = SKINS, backgroundId = 0, loading = false, actions } = {}) {
+interface SetupOptions {
+  skins?: Skin[];
+  backgroundId?: number;
+  loading?: boolean;
+  actions?: Partial<LegacyActions>;
+}
+
+function setup({ skins = SKINS, backgroundId = 0, loading = false, actions }: SetupOptions = {}) {
   const store = createDrakeStore();
   store.getState().syncLegacy({ skins, backgroundId });
-  const acts = actions || { setBackground: vi.fn(async () => ({ ok: true })) };
+  const acts = actions || { setBackground: vi.fn<LegacyActions['setBackground']>(async () => ({ ok: true })) };
   const utils = renderWithProviders(<BannerTab loading={loading} />, { store, actions: acts });
   return { ...utils, store, actions: acts };
 }
@@ -30,7 +38,8 @@ describe('BannerTab', () => {
 
   it('moves the window when scrolling', async () => {
     const { container } = setup();
-    const viewport = container.querySelector('.drk-skin-viewport');
+    const viewport = container.querySelector<HTMLElement>('.drk-skin-viewport');
+    if (!viewport) throw new Error('missing skin viewport');
     viewport.scrollTop = 92 * 30;
     fireEvent.scroll(viewport);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Skin 140' })).toBeTruthy());

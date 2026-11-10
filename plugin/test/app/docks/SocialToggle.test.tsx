@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, fireEvent } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -14,7 +13,7 @@ import {
 function makeBar() {
   const bar = document.createElement('div');
   bar.className = SOCIAL_BAR_SELECTOR.slice(1);
-  bar.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 40 });
+  bar.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 40 }) as DOMRect;
   const bug = document.createElement('button');
   bug.className = 'bug-report-button';
   bar.appendChild(bug);
@@ -40,19 +39,19 @@ describe('SocialToggle', () => {
     const { bar } = setup();
     const btn = bar.querySelector('button[data-drake-toggle]');
     expect(btn).not.toBeNull();
-    expect(btn.getAttribute('aria-label')).toBe('Open Drake');
-    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    expect(btn?.getAttribute('aria-label')).toBe('Open Drake');
+    expect(btn?.getAttribute('aria-pressed')).toBe('false');
     expect(document.getElementById(STYLE_ID)).not.toBeNull();
   });
 
   it('toggles the panel and reflects the open state', () => {
     const { bar, store, actions } = setup();
-    fireEvent.click(bar.querySelector('button[data-drake-toggle]'));
+    fireEvent.click(bar.querySelector('button[data-drake-toggle]') as Element);
     expect(actions.togglePanel).toHaveBeenCalledTimes(1);
     act(() => store.getState().setPanelOpen(true));
     const btn = bar.querySelector('button[data-drake-toggle]');
-    expect(btn.getAttribute('aria-label')).toBe('Close Drake');
-    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(btn?.getAttribute('aria-label')).toBe('Close Drake');
+    expect(btn?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('removes itself while the streaming overlay is active', () => {
@@ -76,7 +75,7 @@ describe('ensureToggleHost', () => {
     const other = document.createElement('span');
     bar.append(bug, other);
     const host = ensureToggleHost(bar);
-    expect(host.hasAttribute(TOGGLE_HOST_ATTR)).toBe(true);
+    expect(host?.hasAttribute(TOGGLE_HOST_ATTR)).toBe(true);
     expect(bug.nextSibling).toBe(host);
     expect(ensureToggleHost(bar)).toBe(host);
     expect(bar.querySelectorAll(`[${TOGGLE_HOST_ATTR}]`).length).toBe(1);

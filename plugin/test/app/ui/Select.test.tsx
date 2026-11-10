@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -27,7 +26,7 @@ describe('Select', () => {
 
   it('renders the selected option icon in the trigger', () => {
     renderWithProviders(<Select value="br1" options={OPTIONS} onChange={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Brazil' }).querySelector('img').getAttribute('src')).toBe('br.png');
+    expect(screen.getByRole('button', { name: 'Brazil' }).querySelector('img')?.getAttribute('src')).toBe('br.png');
   });
 
   it('picks an option, emits the value and closes', async () => {

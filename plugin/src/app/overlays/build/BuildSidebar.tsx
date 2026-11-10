@@ -1,4 +1,4 @@
-// @ts-nocheck
+import type { ReactNode } from 'react';
 import { iconUrl } from '../../../features/champions';
 import { RANK_ICONS } from '../../../ui/assets';
 import { SFX } from '../../../ui/sfx';
@@ -7,7 +7,8 @@ import { useFormat, useT } from '../../i18n/I18nProvider';
 import { useLegacyActions } from '../../shell/LegacyActions';
 import { useDrake } from '../../store/StoreContext';
 import { Card } from '../../ui/Card';
-import { pct, rankIconKey, WinRate } from './format';
+import type { BuildCounter } from '../../store/types';
+import { rankIconKey, WinRate } from './format';
 
 export function TopPlayersCard() {
   const t = useT();
@@ -17,7 +18,7 @@ export function TopPlayersCard() {
   const state = useDrake((s) => s.build);
   const top = state.topPlayers;
 
-  let body;
+  let body: ReactNode;
   if (top.loading) {
     body = (
       <div className="drk-build-placeholder">
@@ -58,7 +59,14 @@ export function TopPlayersCard() {
   return <Card title={t('overlays.build.cards.topPlayers')}>{body}</Card>;
 }
 
-function CounterList({ list, tone }) {
+export type CounterTone = 'strong' | 'weak';
+
+interface CounterListProps {
+  list: BuildCounter[];
+  tone: CounterTone;
+}
+
+function CounterList({ list, tone }: CounterListProps) {
   const t = useT();
   const format = useFormat();
   const names = useDrake((s) => s.build.championNames) || {};

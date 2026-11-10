@@ -1,4 +1,4 @@
-// @ts-nocheck
+import type { SettingsPatch } from '../settings';
 
 
 
@@ -8,10 +8,30 @@
 
 const TRAY_DOWN = 'the Drake tray is not running';
 
-export function makeSettingsClient({ port, token, fetchImpl = fetch, reloadConfig }) {
+export interface SettingsResponseLike {
+  ok: boolean;
+  status: number;
+}
+
+export type SettingsFetch = (url: string, init: RequestInit) => Promise<SettingsResponseLike>;
+
+export interface SettingsClientOptions {
+  port: number | string;
+  token: string;
+  fetchImpl?: SettingsFetch;
+  reloadConfig?: (() => Promise<{ token?: string } | null | undefined>) | null;
+}
+
+export type SaveResult = { ok: true } | { ok: false; reason: string };
+
+export interface SettingsClient {
+  save(settings: SettingsPatch): Promise<SaveResult>;
+}
+
+export function makeSettingsClient({ port, token, fetchImpl = fetch, reloadConfig }: SettingsClientOptions): SettingsClient {
   let currentToken = token;
 
-  async function post(settings) {
+  async function post(settings: SettingsPatch): Promise<SettingsResponseLike> {
     return fetchImpl(`http://127.0.0.1:${port}/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -20,8 +40,8 @@ export function makeSettingsClient({ port, token, fetchImpl = fetch, reloadConfi
   }
 
   return {
-    async save(settings) {
-      let res;
+    async save(settings: SettingsPatch): Promise<SaveResult> {
+      let res: SettingsResponseLike;
       try {
         res = await post(settings);
       } catch {

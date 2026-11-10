@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { HASHTAG } from '../../../ui/assets';
 import { useT } from '../../i18n/I18nProvider';
@@ -25,7 +24,7 @@ export function RiotIdTab() {
     setTag('');
     store
       .getState()
-      .setStatusLine(result.ok ? { text: t('screens.profile.applied'), tone: 'good' } : { text: result.reason, tone: 'bad' });
+      .setStatusLine(result.ok ? { text: t('screens.profile.applied'), tone: 'good' } : { text: result.reason ?? '', tone: 'bad' });
   }
 
   return (

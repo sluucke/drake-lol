@@ -1,16 +1,16 @@
-// @ts-nocheck
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { ScoutingToast } from '../../../src/app/overlays/scouting/ScoutingToast';
 import { STATUS_READY_MS } from '../../../src/ui/teamRevealDom';
+import type { TeamRevealState } from '../../../src/app/store/teamRevealSlice';
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
-function setup(view) {
+function setup(view: Partial<TeamRevealState>) {
   const store = createDrakeStore();
   store.getState().setTeamReveal({ enabled: true, ...view });
   const actions = { openScouting: vi.fn() };

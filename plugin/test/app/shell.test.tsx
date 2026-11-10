@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from './renderWithProviders';
@@ -8,7 +7,7 @@ import { SCREENS } from '../../src/app/shell/shellData';
 import { TOUR_STEPS } from '../../src/ui/onboarding';
 import { SFX } from '../../src/ui/sfx';
 
-function setup({ locale, open = true } = {}) {
+function setup({ locale, open = true }: { locale?: string; open?: boolean } = {}) {
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   if (open) store.getState().setPanelOpen(true);
@@ -21,16 +20,16 @@ describe('PanelFrame', () => {
   it('reflects the open state from the store', () => {
     const { store, container } = setup({ open: false });
     const panel = container.querySelector('.drk-panel');
-    expect(panel.getAttribute('data-open')).toBe('false');
+    expect(panel?.getAttribute('data-open')).toBe('false');
     act(() => store.getState().setPanelOpen(true));
-    expect(panel.getAttribute('data-open')).toBe('true');
+    expect(panel?.getAttribute('data-open')).toBe('true');
   });
 
   it('closes on backdrop mousedown only', () => {
     const { container, actions } = setup();
-    fireEvent.mouseDown(container.querySelector('.drk-panel__window'));
+    fireEvent.mouseDown(container.querySelector('.drk-panel__window') as Element);
     expect(actions.close).not.toHaveBeenCalled();
-    fireEvent.mouseDown(container.querySelector('.drk-panel'));
+    fireEvent.mouseDown(container.querySelector('.drk-panel') as Element);
     expect(actions.close).toHaveBeenCalledTimes(1);
   });
 
@@ -88,18 +87,18 @@ describe('ShellFooter', () => {
     const { store } = setup();
     act(() => store.getState().setSession({ hostLabel: 'Drake 0.3.25' }));
     expect(screen.getByText('Drake 0.3.25')).toBeTruthy();
-    expect(within(document.querySelector('.drk-footer')).getByRole('status').textContent).toContain('Connected to the tray');
+    expect(within(document.querySelector('.drk-footer') as HTMLElement).getByRole('status').textContent).toContain('Connected to the tray');
   });
 
   it('prefers the legacy status line and falls back to the tray state', async () => {
     const { store } = setup();
     act(() => store.getState().setStatusLine({ text: 'Saved', tone: 'good' }));
-    await waitFor(() => expect(within(document.querySelector('.drk-footer')).getByRole('status').textContent).toContain('Saved'));
+    await waitFor(() => expect(within(document.querySelector('.drk-footer') as HTMLElement).getByRole('status').textContent).toContain('Saved'));
     act(() => {
       store.getState().setStatusLine(null);
       store.getState().syncLegacy({ trayDown: true });
     });
-    await waitFor(() => expect(within(document.querySelector('.drk-footer')).getByRole('status').textContent).toContain('Drake tray is not running'));
-    expect(within(document.querySelector('.drk-footer')).getByRole('status').className).toContain('is-bad');
+    await waitFor(() => expect(within(document.querySelector('.drk-footer') as HTMLElement).getByRole('status').textContent).toContain('Drake tray is not running'));
+    expect(within(document.querySelector('.drk-footer') as HTMLElement).getByRole('status').className).toContain('is-bad');
   });
 });

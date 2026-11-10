@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { act, screen } from '@testing-library/react';
 import { renderWithProviders } from './renderWithProviders';
@@ -28,9 +27,10 @@ describe('screen host', () => {
   });
 
   it('exposes no-op legacy actions', async () => {
-    for (const name of ['setSettings', 'saveStatus', 'revealLobby', 'dodge', 'checkUpdates', 'installUpdate', 'restartClient']) {
+    const names = ['setSettings', 'saveStatus', 'revealLobby', 'dodge', 'checkUpdates', 'installUpdate', 'restartClient'] as const;
+    for (const name of names) {
       expect(typeof NOOP_ACTIONS[name]).toBe('function');
-      await NOOP_ACTIONS[name]();
+      await (NOOP_ACTIONS[name] as (...args: unknown[]) => Promise<unknown>)();
     }
   });
 });

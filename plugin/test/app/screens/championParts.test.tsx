@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -26,8 +25,8 @@ describe('ChampionGrid', () => {
     const ahri = screen.getByRole('button', { name: 'Ahri' });
     expect(ahri.getAttribute('aria-pressed')).toBe('true');
     expect(ahri.className).toContain('is-on');
-    expect(ahri.querySelector('.drk-champ__slot').textContent).toBe('1');
-    expect(ahri.querySelector('img').getAttribute('src')).toBe('/lol-game-data/assets/v1/champion-icons/103.png');
+    expect(ahri.querySelector('.drk-champ__slot')?.textContent).toBe('1');
+    expect(ahri.querySelector('img')?.getAttribute('src')).toBe('/lol-game-data/assets/v1/champion-icons/103.png');
     expect(screen.getByRole('button', { name: 'Yasuo' }).getAttribute('aria-pressed')).toBe('false');
   });
 

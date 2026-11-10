@@ -1,7 +1,8 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, screen } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
+import type { Champion } from '../../../src/features/champions';
+import type { SettingsValues } from '../../../src/settings';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { AutoPickScreen } from '../../../src/app/screens/AutoPick';
 import { isReactScreen } from '../../../src/app/screens/registry';
@@ -15,7 +16,13 @@ const CHAMPIONS = [
 
 const EMPTY = { TOP: [], JUNGLE: [], MIDDLE: [], BOTTOM: [], UTILITY: [] };
 
-function setup({ settings, champions = CHAMPIONS, locale } = {}) {
+interface SetupOptions {
+  settings?: SettingsValues;
+  champions?: Champion[];
+  locale?: string;
+}
+
+function setup({ settings, champions = CHAMPIONS, locale }: SetupOptions = {}) {
   const store = createDrakeStore({ settings });
   if (locale) store.getState().setLocale(locale);
   store.getState().syncLegacy({ champions });
@@ -33,7 +40,7 @@ describe('AutoPickScreen', () => {
 
   it('binds the toggles and gates insta lock', () => {
     const { actions } = setup({ settings: { auto_pick: false } });
-    expect(screen.getByRole('checkbox', { name: 'Insta Lock' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('checkbox', { name: 'Insta Lock' }).disabled).toBe(true);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Pick a champion automatically' }));
     expect(actions.setSettings).toHaveBeenCalledWith({ auto_pick: true });
   });
@@ -47,7 +54,7 @@ describe('AutoPickScreen', () => {
       expect.stringContaining('Ahri'),
       expect.stringContaining('Lee Sin'),
     ]);
-    expect(screen.getByRole('button', { name: 'Ahri' }).querySelector('.drk-champ__slot').textContent).toBe('1');
+    expect(screen.getByRole('button', { name: 'Ahri' }).querySelector('.drk-champ__slot')?.textContent).toBe('1');
   });
 
   it('replaces the backup when a third champion is picked', () => {
@@ -90,8 +97,8 @@ describe('AutoPickScreen', () => {
   it('never disables the picker while the tray is down', () => {
     const { store } = setup({ settings: BASE });
     act(() => store.getState().syncLegacy({ trayDown: true }));
-    expect(screen.getByRole('checkbox', { name: 'Pick a champion automatically' }).disabled).toBe(true);
-    expect(screen.getByRole('button', { name: 'Yasuo' }).disabled).toBe(false);
+    expect(screen.getByRole<HTMLButtonElement>('checkbox', { name: 'Pick a champion automatically' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Yasuo' }).disabled).toBe(false);
   });
 
   it('is translated', () => {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from './renderWithProviders';
@@ -6,7 +5,7 @@ import { createDrakeStore } from '../../src/app/store/createDrakeStore';
 import { CreditsModal } from '../../src/app/shell/CreditsModal';
 import { CREDITS } from '../../src/app/shell/shellData';
 
-function setup(locale) {
+function setup(locale?: string) {
   const store = createDrakeStore();
   if (locale) store.getState().setLocale(locale);
   const actions = { navigate: vi.fn(), close: vi.fn(), openUrl: vi.fn() };

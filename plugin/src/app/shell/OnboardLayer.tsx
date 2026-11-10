@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { TOUR_STEPS } from '../../ui/onboarding';
@@ -9,6 +8,7 @@ import { useDrake } from '../store/StoreContext';
 import { Button } from '../ui/Button';
 import { DURATION, EASE_OUT } from '../ui/motion';
 import { useLegacyActions } from './LegacyActions';
+import type { OnboardAction } from './LegacyActions';
 
 export function OnboardLayer() {
   const t = useT();
@@ -20,7 +20,7 @@ export function OnboardLayer() {
   const mode = overlay === 'welcome' ? 'welcome' : step ? 'tour' : null;
   const last = tourIndex === TOUR_STEPS.length - 1;
 
-  async function run(action) {
+  async function run(action: OnboardAction) {
     if (busy) return;
     setBusy(true);
     try {

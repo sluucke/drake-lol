@@ -1,5 +1,20 @@
-// @ts-nocheck
-export const OVERLAY_SIZES = {
+import type { OverlayPositions, RelativePosition } from '../../../settings';
+
+export interface OverlayPoint {
+  x: number;
+  y: number;
+}
+
+export interface OverlaySize {
+  width: number;
+  height: number;
+}
+
+export interface OverlayClientRect extends OverlayPoint, OverlaySize {}
+
+export type OverlayPieceName = 'fab' | 'cancel' | 'dodge' | 'hint';
+
+export const OVERLAY_SIZES: Record<OverlayPieceName, OverlaySize> = {
   fab: { width: 52, height: 52 },
   cancel: { width: 120, height: 48 },
   dodge: { width: 96, height: 32 },
@@ -13,18 +28,23 @@ const CANCEL_BOTTOM = 48;
 const DODGE_RIGHT = 72;
 const HINT_GAP = 8;
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
-export function clampToClient(client, point, size) {
+export function clampToClient(client: OverlayClientRect, point: OverlayPoint, size: OverlaySize): OverlayPoint {
   return {
     x: clamp(Math.round(point.x), client.x, client.x + client.width - size.width),
     y: clamp(Math.round(point.y), client.y, client.y + client.height - size.height),
   };
 }
 
-function placePiece(client, rel, fallback, size) {
+function placePiece(
+  client: OverlayClientRect,
+  rel: RelativePosition | null | undefined,
+  fallback: OverlayPoint,
+  size: OverlaySize,
+): OverlayPoint {
   if (!rel) return fallback;
   return clampToClient(
     client,
@@ -36,7 +56,22 @@ function placePiece(client, rel, fallback, size) {
   );
 }
 
-export function overlayPieces(client, positions, { hint = false } = {}) {
+export interface OverlayPieces {
+  fab: OverlayPoint;
+  hint?: OverlayPoint;
+  cancel: OverlayPoint;
+  dodge: OverlayPoint;
+}
+
+export interface OverlayPiecesOptions {
+  hint?: boolean;
+}
+
+export function overlayPieces(
+  client: OverlayClientRect | null | undefined,
+  positions: Partial<OverlayPositions> | null | undefined,
+  { hint = false }: OverlayPiecesOptions = {},
+): OverlayPieces | null {
   if (!client) return null;
   const right = client.x + client.width;
   const bottom = client.y + client.height;
@@ -71,7 +106,7 @@ export function overlayPieces(client, positions, { hint = false } = {}) {
   };
 }
 
-export function toRelative(client, point, size) {
+export function toRelative(client: OverlayClientRect, point: OverlayPoint, size: OverlaySize): RelativePosition {
   const inside = clampToClient(client, point, size);
   return {
     x: Math.round(((inside.x - client.x) / client.width) * REL_SCALE),

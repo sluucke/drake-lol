@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { loadConfig } from './config';
 import { makeLcu } from './lcu';
 import { makeTransport } from './transport';
@@ -15,6 +14,10 @@ import { startInGameIdle } from './features/inGameIdle';
 import { makePresence } from './features/presence';
 import { startProfileRankRefresh } from './features/profileRank';
 import { startPresenceLock } from './features/presenceLock';
+import type { SettingsValues } from './settings';
+import type { ClientInfo } from './transport';
+import type { ChampSelectAutomation } from './features/autoPick';
+import type { DrakeUI } from './ui/index';
 
 const TAG = '[Drake]';
 
@@ -28,9 +31,9 @@ const presence = makePresence({ lcu });
 
 let stopFeatures = () => {};
 let stopProfileRank = () => {};
-let champSelectCtl = null;
-let ui = null;
-let currentSettings = {};
+let champSelectCtl: ChampSelectAutomation | null = null;
+let ui: DrakeUI | null = null;
+let currentSettings: SettingsValues = {};
 let idleInGame = false;
 let updateRequired = false;
 
@@ -58,7 +61,7 @@ function wakePlugin() {
   wireFeatures(currentSettings);
 }
 
-function wireFeatures(settings) {
+function wireFeatures(settings: SettingsValues) {
   currentSettings = settings;
   stopFeatures();
   stopProfileRank();
@@ -139,10 +142,10 @@ async function start() {
     ownsError: ownedByPlugin,
   });
 
-  let clientInfo = null;
+  let clientInfo: ClientInfo | null = null;
   const readClientInfo = async () => {
     try {
-      const body = await lcu.get('/riotclient/region-locale');
+      const body = await lcu.get<{ region?: string; locale?: string } | null>('/riotclient/region-locale');
       if (body?.region || body?.locale) clientInfo = { region: body.region || '', locale: body.locale || '' };
     } catch {
     }

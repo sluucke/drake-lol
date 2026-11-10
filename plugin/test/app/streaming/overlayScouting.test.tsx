@@ -1,10 +1,15 @@
-// @ts-nocheck
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { act, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { clearIntervalsAfterEach } from './intervals';
+import type { SettingsValues } from '../../../src/settings';
 
-function fakeTray(settings = { queue_dodge_in_client: true }) {
-  const state = { panel_open: false, modal_open: false, views: [], posts: [] };
+function fakeTray(settings: SettingsValues = { queue_dodge_in_client: true }) {
+  const state = {
+    panel_open: false,
+    modal_open: false,
+    views: [] as string[],
+    posts: [] as { path: string; body: Record<string, unknown> }[],
+  };
   const snapshot = () => ({
     version: '0.4.0',
     settings,
@@ -16,14 +21,14 @@ function fakeTray(settings = { queue_dodge_in_client: true }) {
     views: state.views.splice(0),
     effective: true,
   });
-  const fetchImpl = vi.fn(async (url, init = {}) => {
+  const fetchImpl = vi.fn(async (url: string, init: RequestInit = {}) => {
     const path = new URL(url).pathname;
-    const body = init.body ? JSON.parse(init.body) : {};
+    const body = (init.body ? JSON.parse(String(init.body)) : {}) as Record<string, unknown>;
     state.posts.push({ path, body });
     if (path === '/overlay/snapshot') return new Response(JSON.stringify(snapshot()), { status: 200 });
     if (path === '/overlay/ui') {
-      if ('panel_open' in body) state.panel_open = body.panel_open;
-      if ('modal_open' in body) state.modal_open = body.modal_open;
+      if ('panel_open' in body) state.panel_open = body.panel_open as boolean;
+      if ('modal_open' in body) state.modal_open = body.modal_open as boolean;
       return new Response('', { status: 204 });
     }
     if (path === '/overlay/lcu') return new Response(JSON.stringify({ ok: true, status: 200, body: null }), { status: 200 });
@@ -49,7 +54,7 @@ describe('overlay scouting', () => {
 
     tray.state.views.push('scouting');
     await waitFor(() => expect(tray.state.modal_open).toBe(true), { timeout: 3000 });
-    const shadow = document.getElementById('drake-overlay-ui-host').shadowRoot;
+    const shadow = document.getElementById('drake-overlay-ui-host')?.shadowRoot as ShadowRoot;
     expect(shadow.querySelector('.drk-scout-toast')).toBeNull();
     expect(shadow.querySelector('.drk-scout-modal, [role="dialog"]')).not.toBeNull();
   }, 60000);

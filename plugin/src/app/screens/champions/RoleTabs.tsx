@@ -1,14 +1,21 @@
-// @ts-nocheck
 import { useId } from 'react';
 import { motion } from 'motion/react';
 import { AUTO_PICK_ROLES } from '../../../features/autoPickRoles';
+import type { AutoPickRoleId } from '../../../features/autoPickRoles';
 import { roleIconUrl } from '../../../ui/roleIcons';
 import { SFX } from '../../../ui/sfx';
 import { useSfx } from '../../hooks/useSfx';
 import { useT } from '../../i18n/I18nProvider';
 import { SPRING } from '../../ui/motion';
 
-export function RoleTabs({ value, counts, onChange, ariaLabel }) {
+export interface RoleTabsProps {
+  value: string;
+  counts: Partial<Record<string, number>>;
+  onChange: (role: AutoPickRoleId) => void;
+  ariaLabel?: string;
+}
+
+export function RoleTabs({ value, counts, onChange, ariaLabel }: RoleTabsProps) {
   const t = useT();
   const sfx = useSfx();
   const group = useId();

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -10,7 +9,7 @@ describe('Toggle', () => {
     renderWithProviders(<Toggle checked label="Auto accept" help="Accepts matches" onChange={() => {}} />);
     const sw = screen.getByRole('checkbox', { name: 'Auto accept' });
     expect(sw.getAttribute('aria-checked')).toBe('true');
-    expect(sw.querySelector('.drk-check__box').dataset.checked).toBe('true');
+    expect(sw.querySelector<HTMLElement>('.drk-check__box')?.dataset.checked).toBe('true');
     expect(screen.getByText('Accepts matches').id).toBe(sw.getAttribute('aria-describedby'));
   });
 

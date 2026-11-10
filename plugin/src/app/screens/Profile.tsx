@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { useLegacyActions } from '../shell/LegacyActions';
@@ -17,7 +16,7 @@ export function ProfileScreen() {
   const tab = useDrake((state) => state.session.profileTab);
   const [loading, setLoading] = useState(false);
 
-  async function change(next) {
+  async function change(next: string) {
     setLoading(true);
     await actions.selectProfileTab(next);
     setLoading(false);

@@ -1,12 +1,12 @@
-// @ts-nocheck
+import type { RequiredUpdatePhase } from '../store/sessionSlice';
 import { useT } from '../i18n/I18nProvider';
 import { useDrake, useDrakeStore } from '../store/StoreContext';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { useLegacyActions } from './LegacyActions';
 
-const BUSY = ['installing', 'restarting', 'reloading'];
-const ERROR_KEYS = {
+const BUSY: RequiredUpdatePhase[] = ['installing', 'restarting', 'reloading'];
+const ERROR_KEYS: Record<string, string> = {
   'same-version': 'mandatoryUpdate.cancelled',
   timeout: 'mandatoryUpdate.timeout',
 };
@@ -20,8 +20,9 @@ export function MandatoryUpdate() {
 
   const busy = BUSY.includes(required.phase);
   const failed = required.phase === 'error';
-  const errorText = ERROR_KEYS[required.reason]
-    ? t(ERROR_KEYS[required.reason])
+  const errorKey = required.reason ? ERROR_KEYS[required.reason] : undefined;
+  const errorText = errorKey
+    ? t(errorKey)
     : t('mandatoryUpdate.failed', { reason: required.message || '' });
 
   return (

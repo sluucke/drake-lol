@@ -1,17 +1,84 @@
-// @ts-nocheck
 export const CHAT_MAP_ATTR = 'data-drake-chat-map';
 export const CHAT_AUTHOR_ORIGINAL_KEY = 'drakeChatOriginal';
 export const CHAT_AUTHOR_APPLIED_KEY = 'drakeChatApplied';
 
-function normalizeName(value) {
+export interface ChatNameEntry {
+  from: string;
+  to: string;
+}
+
+export interface ChatNamePairInput {
+  from?: unknown;
+  to?: unknown;
+}
+
+export type ChatDataset = Record<string, string | undefined>;
+
+export interface ChatNode {
+  className?: string;
+  textContent?: string | null;
+  dataset?: ChatDataset;
+  children?: Iterable<ChatNode>;
+  parentNode?: unknown;
+  isConnected?: boolean;
+  style?: { whiteSpace: string; opacity: string; fontSize: string; padding: string } | null;
+  getAttribute?(name: string): string | null;
+  setAttribute?(name: string, value: string): void;
+  removeAttribute?(name: string): void;
+  remove?(): void;
+  querySelector?(selectors: string): ChatNode | null;
+  appendChild(node: Node): unknown;
+}
+
+export interface ChatDoc {
+  body?: ChatNode | null;
+  querySelector?(selectors: string): ChatNode | null;
+  querySelectorAll?(selectors: string): Iterable<ChatNode>;
+  createElement(tagName: 'div'): HTMLDivElement;
+}
+
+export interface ChatObserver {
+  observe(target: ChatNode, options: MutationObserverInit): void;
+  disconnect?(): void;
+}
+
+export type ChatObserverCtor = new (callback: () => void) => ChatObserver;
+
+export type IntervalHandle = ReturnType<typeof setInterval>;
+
+export interface TeamRevealChatOptions {
+  doc: ChatDoc;
+  MutationObserverImpl?: ChatObserverCtor | null;
+  pollMs?: number;
+  setIntervalImpl?: ((handler: () => void, ms: number) => IntervalHandle) | null;
+  clearIntervalImpl?: ((handle: IntervalHandle) => void) | null;
+}
+
+export interface TeamRevealChat {
+  setEntries(next: readonly ChatNamePairInput[] | null | undefined): void;
+  clear(): void;
+  sync(): void;
+}
+
+export interface ChatLabel {
+  dataset?: ChatDataset;
+}
+
+export interface ChatRevealRow {
+  cellId?: unknown;
+  riotId?: unknown;
+}
+
+function normalizeName(value: unknown): string {
   return String(value || '').trim().toLowerCase();
 }
 
-export function buildChatNameEntries(pairs) {
+export function buildChatNameEntries(pairs: readonly (ChatNamePairInput | null | undefined)[] | null | undefined): ChatNameEntry[] {
   if (!Array.isArray(pairs)) return [];
-  const out = [];
-  const seen = new Set();
-  for (const pair of pairs) {
+  const list: readonly (ChatNamePairInput | null | undefined)[] = pairs;
+  const out: ChatNameEntry[] = [];
+  const seen = new Set<string>();
+  for (const pair of list) {
     const from = String(pair?.from || '').trim();
     const to = String(pair?.to || '').trim();
     if (!from || !to) continue;
@@ -24,18 +91,22 @@ export function buildChatNameEntries(pairs) {
   return out;
 }
 
-export function formatChatMapMessage(entries) {
+export function formatChatMapMessage(entries: readonly ChatNamePairInput[] | null | undefined): string {
   return buildChatNameEntries(entries)
     .map((entry) => `${entry.from} → ${entry.to}`)
     .join('\n');
 }
 
-export function collectRevealChatPairs(boundLabels, rows, originalKey = 'drakeTeamRevealOriginal') {
+export function collectRevealChatPairs(
+  boundLabels: ReadonlyMap<unknown, ChatLabel | null | undefined> | null | undefined,
+  rows: readonly (ChatRevealRow | null | undefined)[] | null | undefined,
+  originalKey = 'drakeTeamRevealOriginal',
+): ChatNameEntry[] {
   if (!boundLabels || typeof boundLabels.entries !== 'function') return [];
   const byCell = new Map(
     (Array.isArray(rows) ? rows : []).map((row) => [Number(row?.cellId), row]),
   );
-  const pairs = [];
+  const pairs: ChatNameEntry[] = [];
   for (const [cellId, label] of boundLabels.entries()) {
     const from = String(label?.dataset?.[originalKey] || '').trim();
     const to = String(byCell.get(Number(cellId))?.riotId || '').trim();
@@ -45,11 +116,11 @@ export function collectRevealChatPairs(boundLabels, rows, originalKey = 'drakeTe
   return buildChatNameEntries(pairs);
 }
 
-function matchesClassContains(node, token) {
+function matchesClassContains(node: ChatNode | null | undefined, token: string): boolean {
   return String(node?.className || '').includes(token);
 }
 
-function isChatRoot(node) {
+function isChatRoot(node: ChatNode | null | undefined): boolean {
   if (!node) return false;
   if (matchesClassContains(node, 'chat-window')) return true;
   if (matchesClassContains(node, 'chat-room')) return true;
@@ -58,7 +129,7 @@ function isChatRoot(node) {
   return false;
 }
 
-function findChatRoot(doc) {
+function findChatRoot(doc: ChatDoc): ChatNode | null {
   const selectors = [
     '.chat-window',
     '[class*="chat-window"]',
@@ -76,13 +147,13 @@ function findChatRoot(doc) {
   return null;
 }
 
-function isMapNode(node) {
+function isMapNode(node: ChatNode | null | undefined): boolean {
   if (!node) return false;
   if (node.dataset?.drakeChatMap != null) return true;
   return node.getAttribute?.(CHAT_MAP_ATTR) != null;
 }
 
-function isAuthorLike(node) {
+function isAuthorLike(node: ChatNode | null | undefined): boolean {
   if (!node || isMapNode(node)) return false;
   const cls = String(node.className || '');
   if (!cls) return false;
@@ -93,20 +164,20 @@ function isAuthorLike(node) {
   return Boolean(text) && text.length <= 48;
 }
 
-function walkNodes(root, visit) {
+function walkNodes(root: ChatNode | null | undefined, visit: (node: ChatNode) => void): void {
   if (!root) return;
   visit(root);
   for (const child of root.children || []) walkNodes(child, visit);
 }
 
-function readAuthorCandidates(doc) {
-  const roots = [];
+function readAuthorCandidates(doc: ChatDoc): ChatNode[] {
+  const roots: ChatNode[] = [];
   const chatRoot = findChatRoot(doc);
   if (chatRoot) roots.push(chatRoot);
   if (!roots.length && doc.body) roots.push(doc.body);
 
-  const seen = new Set();
-  const out = [];
+  const seen = new Set<ChatNode>();
+  const out: ChatNode[] = [];
   for (const root of roots) {
     walkNodes(root, (node) => {
       if (seen.has(node) || !isAuthorLike(node)) return;
@@ -117,13 +188,13 @@ function readAuthorCandidates(doc) {
   return out;
 }
 
-function lookupEntry(entriesByFrom, text) {
+function lookupEntry(entriesByFrom: Map<string, ChatNameEntry>, text: unknown): ChatNameEntry | null {
   const key = normalizeName(text);
   if (!key) return null;
   return entriesByFrom.get(key) || null;
 }
 
-function applyAuthor(node, entry) {
+function applyAuthor(node: ChatNode | null | undefined, entry: ChatNameEntry | null | undefined): void {
   if (!node || !entry) return;
   if (!node.dataset) node.dataset = {};
   const current = String(node.textContent || '').trim();
@@ -143,7 +214,7 @@ function applyAuthor(node, entry) {
   node.setAttribute?.('data-drake-chat-applied', '1');
 }
 
-function restoreAuthor(node) {
+function restoreAuthor(node: ChatNode | null | undefined): void {
   if (!node?.dataset) return;
   if (node.dataset[CHAT_AUTHOR_ORIGINAL_KEY] != null) {
     node.textContent = node.dataset[CHAT_AUTHOR_ORIGINAL_KEY];
@@ -159,19 +230,19 @@ export function makeTeamRevealChat({
   pollMs = 500,
   setIntervalImpl = typeof setInterval !== 'undefined' ? setInterval : null,
   clearIntervalImpl = typeof clearInterval !== 'undefined' ? clearInterval : null,
-} = {}) {
-  let entries = [];
-  let entriesByFrom = new Map();
-  let mapNode = null;
-  let observer = null;
-  let pollTimer = null;
+}: TeamRevealChatOptions): TeamRevealChat {
+  let entries: ChatNameEntry[] = [];
+  let entriesByFrom = new Map<string, ChatNameEntry>();
+  let mapNode: ChatNode | null = null;
+  let observer: ChatObserver | null = null;
+  let pollTimer: IntervalHandle | null = null;
 
-  function indexEntries(list) {
+  function indexEntries(list: readonly ChatNamePairInput[] | null | undefined) {
     entries = buildChatNameEntries(list);
     entriesByFrom = new Map(entries.map((entry) => [normalizeName(entry.from), entry]));
   }
 
-  function ensureMapNode(root) {
+  function ensureMapNode(root: ChatNode): ChatNode {
     if (mapNode?.isConnected) {
       if (mapNode.parentNode === root) return mapNode;
       mapNode.remove?.();
@@ -201,7 +272,7 @@ export function makeTeamRevealChat({
     return mapNode;
   }
 
-  function syncMapMessage() {
+  function syncMapMessage(): boolean {
     const root = findChatRoot(doc);
     if (!root) return false;
     if (!entries.length) {
@@ -229,8 +300,8 @@ export function makeTeamRevealChat({
   }
 
   function restoreAuthors() {
-    const seen = new Set();
-    const visit = (node) => {
+    const seen = new Set<ChatNode>();
+    const visit = (node: ChatNode | null | undefined) => {
       if (!node || seen.has(node)) return;
       seen.add(node);
       if (node.dataset?.[CHAT_AUTHOR_APPLIED_KEY] || node.dataset?.[CHAT_AUTHOR_ORIGINAL_KEY]) {
@@ -293,7 +364,7 @@ export function makeTeamRevealChat({
     });
   }
 
-  function setEntries(next) {
+  function setEntries(next: readonly ChatNamePairInput[] | null | undefined) {
     indexEntries(next);
     if (!entries.length) {
       restoreAuthors();

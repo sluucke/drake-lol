@@ -1,13 +1,83 @@
-// @ts-nocheck
 import { fetchChampionBuild, DEFAULT_TIER, DEFAULT_REGION } from '../features/opggApi';
 import { normalizeChampionBuild } from '../features/buildData';
 import { fetchChampionLeaderboard, fetchPlayerBuild } from '../features/topPlayers';
 import { loadGameAssets } from '../features/gameAssets';
 import { applyRunePage, loadRuneAssets } from '../features/runes';
 import { buildItemSet, applyItemSet, applySummonerSpells } from '../features/itemSets';
+import type { Lcu } from '../lcu';
+import type { HttpFetch } from '../features/proxyFetch';
+import type { SettingsPatch, SettingsValues } from '../settings';
+import type { BuildData } from '../app/store/types';
+import type { BuildState, TopPlayersState } from '../app/store/buildSlice';
 
 const TAG = '[Drake]';
 export const CACHE_TTL_MS = 10 * 60 * 1000;
+
+export type BuildPanelLcu = Pick<Lcu, 'get' | 'put' | 'post' | 'patch'> & Partial<Pick<Lcu, 'delete'>>;
+
+export interface BuildPanelSession {
+  championId?: number | string | null;
+  position?: string | null;
+  mode?: string | null;
+}
+
+export interface BuildPanelOptions {
+  lcu: BuildPanelLcu;
+  fetchFn?: HttpFetch;
+  getChampName?: (id: number) => string;
+  getSettings?: () => SettingsValues | null | undefined;
+  saveSettings?: (patch: SettingsPatch) => Promise<unknown>;
+  getSummonerId?: () => number | string | null | undefined;
+  fetchChampionBuildImpl?: typeof fetchChampionBuild;
+  normalizeChampionBuildImpl?: typeof normalizeChampionBuild;
+  fetchChampionLeaderboardImpl?: typeof fetchChampionLeaderboard;
+  fetchPlayerBuildImpl?: typeof fetchPlayerBuild;
+  applyRunePageImpl?: typeof applyRunePage;
+  applyItemSetImpl?: typeof applyItemSet;
+  applySummonerSpellsImpl?: typeof applySummonerSpells;
+  loadGameAssetsImpl?: typeof loadGameAssets;
+  loadRuneAssetsImpl?: typeof loadRuneAssets;
+  nowFn?: () => number;
+}
+
+export type BuildPanelState = Omit<BuildState, 'championNames'> & {
+  getChampName: (id: number) => string;
+};
+
+export type BuildStatusKey = 'runeStatus' | 'itemSetStatus' | 'spellStatus';
+
+export type BuildPanelListener = (state: BuildPanelState) => void;
+
+interface BuildCacheEntry {
+  build: BuildData;
+  at: number;
+  topPlayers?: TopPlayersState;
+}
+
+export interface BuildPanel {
+  open(): void;
+  close(): void;
+  toggle(): void;
+  isOpen(): boolean;
+  setSession(session: BuildPanelSession | null | undefined): void;
+  setEnabled(value: unknown): void;
+  loadBuild(options?: { force?: boolean }): Promise<void>;
+  getState(): BuildPanelState;
+  getStateSig(): string;
+  setTier(value: string): void;
+  setRegion(value: string): void;
+  retry(): Promise<void>;
+  showAllRanks(): void;
+  viewPlayer(riotId: string, region?: string | null): Promise<void>;
+  clearPlayer(): void;
+  applyRunes(index: number | string): Promise<void>;
+  applySpells(index: number | string): Promise<void>;
+  applyItems(): Promise<void>;
+  getSnapshot(): BuildState;
+  onUpdate(fn: BuildPanelListener): () => boolean;
+  destroy(): void;
+  teardown(): void;
+}
 
 export function makeBuildPanel({
   lcu,
@@ -26,21 +96,21 @@ export function makeBuildPanel({
   loadGameAssetsImpl = loadGameAssets,
   loadRuneAssetsImpl = loadRuneAssets,
   nowFn = () => Date.now(),
-} = {}) {
-  const settings = getSettings() || {};
+}: BuildPanelOptions): BuildPanel {
+  const settings: SettingsValues = getSettings() || {};
 
   let open = false;
   let enabled = true;
   let generation = 0;
   let hasOpenedOnce = false;
-  const listeners = new Set();
+  const listeners = new Set<BuildPanelListener>();
 
   function notify() {
     for (const fn of listeners) {
       try {
         fn(state);
       } catch (err) {
-        console.warn(TAG, 'onUpdate listener failed:', err?.stack || err?.message || err);
+        console.warn(TAG, 'onUpdate listener failed:', (err as Error | null)?.stack || (err as Error | null)?.message || err);
       }
     }
   }
@@ -48,15 +118,15 @@ export function makeBuildPanel({
   function ensureSettingsRead() {
     if (!hasOpenedOnce) {
       hasOpenedOnce = true;
-      const fresh = getSettings() || {};
+      const fresh: SettingsValues = getSettings() || {};
       state.tier = fresh.build_tier || state.tier;
       state.region = fresh.build_region || state.region;
     }
   }
 
-  const cache = new Map();
+  const cache = new Map<string, BuildCacheEntry>();
 
-  let state = {
+  let state: BuildPanelState = {
     championId: 0,
     championName: '',
     position: '',
@@ -96,7 +166,7 @@ export function makeBuildPanel({
     notify();
   }
 
-  function setTier(value) {
+  function setTier(value: string) {
     if (!value || value === state.tier) return;
     state.tier = value;
     void saveSettings({ build_tier: state.tier });
@@ -104,7 +174,7 @@ export function makeBuildPanel({
     notify();
   }
 
-  function setRegion(value) {
+  function setRegion(value: string) {
     if (!value || value === state.region) return;
     state.region = value;
     void saveSettings({ build_region: state.region });
@@ -119,7 +189,7 @@ export function makeBuildPanel({
     paint();
   }
 
-  function applyRunes(index) {
+  function applyRunes(index: number | string): Promise<void> {
     const page = state.build?.runePages?.[Number(index) || 0];
     if (!page) return Promise.resolve();
     return runAction('runeStatus', () =>
@@ -132,7 +202,7 @@ export function makeBuildPanel({
     );
   }
 
-  function applySpells(index) {
+  function applySpells(index: number | string): Promise<void> {
     const entry = state.build?.spells?.[Number(index) || 0];
     if (!entry?.ids?.length) return Promise.resolve();
     return runAction('spellStatus', () =>
@@ -140,7 +210,7 @@ export function makeBuildPanel({
     );
   }
 
-  function applyItems() {
+  function applyItems(): Promise<void> {
     const itemSet = buildItemSet({
       championId: state.championId,
       championName: state.championName,
@@ -150,7 +220,7 @@ export function makeBuildPanel({
     return runAction('itemSetStatus', () => applyItemSetImpl(lcu, getSummonerId(), itemSet));
   }
 
-  function getSnapshot() {
+  function getSnapshot(): BuildState {
     const { getChampName: _getChampName, ...rest } = state;
     const counters = [...(state.build?.counters?.strong || []), ...(state.build?.counters?.weak || [])];
     const championNames = Object.fromEntries(
@@ -159,7 +229,7 @@ export function makeBuildPanel({
     return { ...rest, topPlayers: { ...state.topPlayers }, championNames };
   }
 
-  async function loadBuild({ force = false } = {}) {
+  async function loadBuild({ force = false }: { force?: boolean } = {}): Promise<void> {
     ensureSettingsRead();
     if (!state.championId) {
       state.build = null;
@@ -198,10 +268,10 @@ export function makeBuildPanel({
     try {
       await Promise.all([loadGameAssetsImpl(lcu), loadRuneAssetsImpl(lcu)]);
     } catch (err) {
-      console.warn(TAG, 'asset load failed:', err?.message || err);
+      console.warn(TAG, 'asset load failed:', (err as Error | null)?.message || err);
     }
 
-    let json = null;
+    let json: Awaited<ReturnType<typeof fetchChampionBuild>> = null;
     try {
       json = await fetchChampionBuildImpl(
         {
@@ -214,7 +284,7 @@ export function makeBuildPanel({
         { fetchFn }
       );
     } catch (err) {
-      console.warn(TAG, 'build fetch failed:', err?.message || err);
+      console.warn(TAG, 'build fetch failed:', (err as Error | null)?.message || err);
     }
 
     if (gen !== generation) return;
@@ -238,7 +308,7 @@ export function makeBuildPanel({
     void loadTopPlayers(gen, key);
   }
 
-  async function loadTopPlayers(gen, key) {
+  async function loadTopPlayers(gen: number, key: string): Promise<void> {
     refreshChampionName();
     state.topPlayers = { loading: true, ok: false, players: [], reason: '' };
     paint();
@@ -248,7 +318,7 @@ export function makeBuildPanel({
       { fetchFn }
     );
 
-    const topPlayers = { loading: false, ok: res.ok, players: res.data || [], reason: res.reason };
+    const topPlayers: TopPlayersState = { loading: false, ok: res.ok, players: res.data || [], reason: res.reason };
 
     const entry = cache.get(key);
     if (entry) entry.topPlayers = topPlayers;
@@ -258,7 +328,7 @@ export function makeBuildPanel({
     paint();
   }
 
-  async function handlePlayerBuild(riotId, playerRegion) {
+  async function handlePlayerBuild(riotId: string, playerRegion: string): Promise<void> {
     const gen = ++generation;
     const res = await fetchPlayerBuildImpl(
       { riotId, region: playerRegion, championId: state.championId },
@@ -272,7 +342,7 @@ export function makeBuildPanel({
       return;
     }
 
-    const base = state.averageBuild;
+    const base = state.averageBuild as BuildData;
     state.viewingPlayer = riotId;
     state.build = {
       ...base,
@@ -284,20 +354,23 @@ export function makeBuildPanel({
     paint();
   }
 
-  async function runAction(statusKey, fn) {
+  async function runAction(
+    statusKey: BuildStatusKey,
+    fn: () => Promise<{ success?: boolean } | null | undefined>,
+  ): Promise<void> {
     state[statusKey] = 'applying';
     paint();
     try {
       const res = await fn();
       state[statusKey] = res?.success ? 'applied' : 'failed';
     } catch (err) {
-      console.warn(TAG, 'action failed:', err?.message || err);
+      console.warn(TAG, 'action failed:', (err as Error | null)?.message || err);
       state[statusKey] = 'failed';
     }
     paint();
   }
 
-  function setSession(session) {
+  function setSession(session: BuildPanelSession | null | undefined) {
     const championId = Number(session?.championId) || 0;
     const position = session?.position || '';
     const mode = session?.mode === 'aram' ? 'aram' : 'ranked';
@@ -363,7 +436,7 @@ export function makeBuildPanel({
     toggle: () => (open ? close() : openPanel()),
     isOpen: () => open,
     setSession,
-    setEnabled: (value) => {
+    setEnabled: (value: unknown) => {
       enabled = !!value;
       if (!enabled) close();
     },
@@ -374,13 +447,13 @@ export function makeBuildPanel({
     setRegion,
     retry: () => loadBuild({ force: true }),
     showAllRanks: () => setTier('all'),
-    viewPlayer: (riotId, region) => handlePlayerBuild(riotId, region || 'kr'),
+    viewPlayer: (riotId: string, region?: string | null) => handlePlayerBuild(riotId, region || 'kr'),
     clearPlayer,
     applyRunes,
     applySpells,
     applyItems,
     getSnapshot,
-    onUpdate: (fn) => {
+    onUpdate: (fn: BuildPanelListener) => {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },

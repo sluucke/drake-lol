@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { STATUS_READY_MS } from '../../../ui/teamRevealDom';

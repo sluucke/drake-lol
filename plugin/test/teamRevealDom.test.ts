@@ -1,9 +1,52 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
-import { makeTeamRevealDom, STATUS_READY_MS } from '../src/ui/teamRevealDom';
+import {
+  makeTeamRevealDom as realMakeTeamRevealDom,
+  STATUS_READY_MS,
+  type RevealLoadHooks,
+  type RevealSnapshotRow,
+  type TeamRevealDomOptions,
+} from '../src/ui/teamRevealDom';
+import type { RevealSession } from '../src/features/teamRevealStats';
+import type { TeamRevealState } from '../src/app/store/teamRevealSlice';
 
-function makeRow(cellId, text) {
-  const label = { textContent: text, dataset: {} };
+type Dataset = Record<string, string | undefined>;
+
+interface FakeChatNode {
+  className?: string;
+  textContent?: string;
+  dataset?: Dataset;
+  style?: object;
+  children: FakeChatNode[];
+  parentNode?: FakeChatNode | null;
+  isConnected?: boolean;
+  appendChild?(child: FakeChatNode): FakeChatNode;
+  querySelector?(sel: string): FakeChatNode | null;
+  setAttribute?(name: string, value: string): void;
+  getAttribute?(name: string): string | null;
+  removeAttribute?(): void;
+  remove?(): void;
+}
+
+type FakeCreated = FakeChatNode & { dataset: Dataset; parentNode: FakeChatNode | null };
+
+type LooseOptions = Omit<
+  TeamRevealDomOptions,
+  'doc' | 'subscribe' | 'loadSnapshot' | 'lcu' | 'muteTeammatesImpl' | 'sendChampSelectMessageImpl' | 'buildPanel' | 'MutationObserverImpl'
+> & {
+  doc: object;
+  subscribe?: (route: string, fn: (payload: unknown) => void) => () => void;
+  loadSnapshot?: (session: RevealSession, hooks: RevealLoadHooks) => Promise<unknown>;
+  lcu?: object | null;
+  muteTeammatesImpl?: (...args: never[]) => Promise<unknown>;
+  sendChampSelectMessageImpl?: (...args: never[]) => Promise<unknown>;
+  buildPanel?: object | null;
+  MutationObserverImpl?: unknown;
+};
+
+const makeTeamRevealDom = (opts: LooseOptions) => realMakeTeamRevealDom(opts as unknown as TeamRevealDomOptions);
+
+function makeRow(cellId: number, text: string) {
+  const label = { textContent: text, dataset: {} as Dataset };
   return {
     dataset: { cellId: String(cellId) },
     querySelector: () => label,
@@ -12,8 +55,8 @@ function makeRow(cellId, text) {
 }
 
 function viewSpy() {
-  const views = [];
-  return { publishView: (view) => views.push(view), last: () => views.at(-1), views };
+  const views: TeamRevealState[] = [];
+  return { publishView: (view: TeamRevealState) => views.push(view), last: () => views[views.length - 1], views };
 }
 
 describe('teamRevealDom', () => {
@@ -147,8 +190,8 @@ describe('teamRevealDom', () => {
     const loadSnapshot = vi.fn(async () => [
       { cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
     ]);
-    let phase;
-    const subscribe = vi.fn((route, fn) => {
+    let phase: (payload: unknown) => void = () => {};
+    const subscribe = vi.fn((_route: string, fn: (payload: unknown) => void) => {
       phase = fn;
       return () => {};
     });
@@ -174,8 +217,8 @@ describe('teamRevealDom', () => {
     const loadSnapshot = vi.fn(async () => [
       { cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
     ]);
-    let phase;
-    const subscribe = vi.fn((route, fn) => {
+    let phase: (payload: unknown) => void = () => {};
+    const subscribe = vi.fn((_route: string, fn: (payload: unknown) => void) => {
       phase = fn;
       return () => {};
     });
@@ -203,8 +246,8 @@ describe('teamRevealDom', () => {
     const loadSnapshot = vi.fn(async () => [
       { cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
     ]);
-    let phase;
-    const subscribe = vi.fn((route, fn) => {
+    let phase: (payload: unknown) => void = () => {};
+    const subscribe = vi.fn((_route: string, fn: (payload: unknown) => void) => {
       phase = fn;
       return () => {};
     });
@@ -230,8 +273,8 @@ describe('teamRevealDom', () => {
     const loadSnapshot = vi.fn(async () => [
       { cellId: 0, riotId: 'RealOne#TAG', wins: 1, losses: 0, winRate: 100 },
     ]);
-    let phase;
-    const subscribe = vi.fn((route, fn) => {
+    let phase: (payload: unknown) => void = () => {};
+    const subscribe = vi.fn((_route: string, fn: (payload: unknown) => void) => {
       phase = fn;
       return () => {};
     });
@@ -255,8 +298,8 @@ describe('teamRevealDom', () => {
     const loadSnapshot = vi.fn(async () => [
       { cellId: 0, riotId: 'OldAlly#TAG', wins: 1, losses: 0, winRate: 100 },
     ]);
-    let phase;
-    const subscribe = vi.fn((route, fn) => {
+    let phase: (payload: unknown) => void = () => {};
+    const subscribe = vi.fn((_route: string, fn: (payload: unknown) => void) => {
       phase = fn;
       return () => {};
     });
@@ -282,8 +325,8 @@ describe('teamRevealDom', () => {
     const loadSnapshot = vi.fn(async () => [
       { cellId: 0, riotId: 'OldAlly#TAG', wins: 1, losses: 0, winRate: 100 },
     ]);
-    let phase;
-    const subscribe = vi.fn((route, fn) => {
+    let phase: (payload: unknown) => void = () => {};
+    const subscribe = vi.fn((_route: string, fn: (payload: unknown) => void) => {
       phase = fn;
       return () => {};
     });
@@ -308,9 +351,9 @@ describe('teamRevealDom', () => {
     const label = {
       textContent: 'MaskedOne',
       innerHTML: 'MaskedOne',
-      dataset: {},
+      dataset: {} as Dataset,
       style: { cssText: '' },
-      querySelector(sel) {
+      querySelector(sel: string) {
         if (sel === '.drake-reveal-name' && String(this.innerHTML).includes('drake-reveal-name')) {
           return { textContent: 'OldAlly#TAG' };
         }
@@ -323,8 +366,8 @@ describe('teamRevealDom', () => {
     const loadSnapshot = vi.fn(async () => [
       { cellId: 0, riotId: 'OldAlly#TAG', wins: 1, losses: 0, winRate: 100, matchesUsed: 1 },
     ]);
-    let phase;
-    const subscribe = vi.fn((route, fn) => {
+    let phase: (payload: unknown) => void = () => {};
+    const subscribe = vi.fn((_route: string, fn: (payload: unknown) => void) => {
       phase = fn;
       return () => {};
     });
@@ -362,11 +405,11 @@ describe('teamRevealDom', () => {
 
   it('rewrites rows by visual order when data-cell-id is absent', async () => {
     const labels = [
-      { textContent: 'MaskedOne', dataset: {} },
-      { textContent: 'MaskedTwo', dataset: {} },
+      { textContent: 'MaskedOne', dataset: {} as Dataset },
+      { textContent: 'MaskedTwo', dataset: {} as Dataset },
     ];
     const doc = {
-      querySelectorAll: (selector) => {
+      querySelectorAll: (selector: string) => {
         if (selector === '[data-cell-id]') return [];
         if (selector === '[data-testid="summoner-name"]') return labels;
         return [];
@@ -393,13 +436,13 @@ describe('teamRevealDom', () => {
     // labels came first in the document, and the enemy rows come first, so the
     // ally names landed on the enemy team.
     const labels = [
-      { textContent: 'Summoner 1', dataset: {} },
-      { textContent: 'Summoner 2', dataset: {} },
-      { textContent: 'RealOne', dataset: {} },
-      { textContent: 'RealTwo', dataset: {} },
+      { textContent: 'Summoner 1', dataset: {} as Dataset },
+      { textContent: 'Summoner 2', dataset: {} as Dataset },
+      { textContent: 'RealOne', dataset: {} as Dataset },
+      { textContent: 'RealTwo', dataset: {} as Dataset },
     ];
     const doc = {
-      querySelectorAll: (selector) =>
+      querySelectorAll: (selector: string) =>
         selector === '[data-testid="summoner-name"]' ? labels : [],
     };
     const ctl = makeTeamRevealDom({
@@ -424,10 +467,10 @@ describe('teamRevealDom', () => {
     // Matched labels used to be collected without their rows, so a row that
     // matched nothing shifted every later row onto somebody else's label.
     const labels = [
-      { textContent: 'RealTwo', dataset: {} },
+      { textContent: 'RealTwo', dataset: {} as Dataset },
     ];
     const doc = {
-      querySelectorAll: (selector) =>
+      querySelectorAll: (selector: string) =>
         selector === '[data-testid="summoner-name"]' ? labels : [],
     };
     const ctl = makeTeamRevealDom({
@@ -471,7 +514,7 @@ describe('teamRevealDom', () => {
   it('does not restart reveal while a load is already in flight for the same lobby', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    const pending = [];
+    const pending: Array<(rows: unknown) => void> = [];
     const loadSnapshot = vi.fn(
       () =>
         new Promise((resolve) => {
@@ -507,8 +550,8 @@ describe('teamRevealDom', () => {
   it('paints names from snapshot progress before load finishes', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    let finish;
-    const loadSnapshot = vi.fn((_session, hooks) => {
+    let finish: (rows: unknown) => void = () => {};
+    const loadSnapshot = vi.fn((_session: unknown, hooks: RevealLoadHooks) => {
       hooks?.onProgress?.([
         {
           cellId: 0,
@@ -518,7 +561,7 @@ describe('teamRevealDom', () => {
           seasonLosses: 5,
           seasonWinRate: 67,
         },
-      ]);
+      ] as RevealSnapshotRow[]);
       return new Promise((resolve) => {
         finish = resolve;
       });
@@ -539,12 +582,12 @@ describe('teamRevealDom', () => {
   });
 
   it('adds wl below name after load when label uses innerHTML', async () => {
-    const label = { textContent: 'MaskedOne', innerHTML: 'MaskedOne', dataset: {}, style: {} };
+    const label = { textContent: 'MaskedOne', innerHTML: 'MaskedOne', dataset: {} as Dataset, style: {} };
     const rows = [{ dataset: { cellId: '0' }, querySelector: () => label, _label: label }];
     const doc = { querySelectorAll: () => rows };
-    let finish;
-    const loadSnapshot = vi.fn((_session, hooks) => {
-      hooks?.onProgress?.([{ cellId: 0, riotId: 'RealOne#TAG' }]);
+    let finish: (rows: unknown) => void = () => {};
+    const loadSnapshot = vi.fn((_session: unknown, hooks: RevealLoadHooks) => {
+      hooks?.onProgress?.([{ cellId: 0, riotId: 'RealOne#TAG' }] as RevealSnapshotRow[]);
       return new Promise((resolve) => {
         finish = resolve;
       });
@@ -571,7 +614,7 @@ describe('teamRevealDom', () => {
   it('publishes the loading then ready status around the snapshot load', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    let finish;
+    let finish: (rows: unknown) => void = () => {};
     const loadSnapshot = vi.fn(
       () =>
         new Promise((resolve) => {
@@ -617,7 +660,7 @@ describe('teamRevealDom', () => {
   it('does not resurrect the status after a dodge during reveal', async () => {
     const rows = [makeRow(0, 'MaskedOne')];
     const doc = { querySelectorAll: () => rows };
-    let finish;
+    let finish: (rows: unknown) => void = () => {};
     const loadSnapshot = vi.fn(
       () =>
         new Promise((resolve) => {
@@ -840,9 +883,9 @@ describe('teamRevealDom', () => {
   });
 
   it('reveals again for a new lobby after dodge without clearing session manually', async () => {
-    const label = { textContent: 'MaskedOne', innerHTML: 'MaskedOne', dataset: {}, style: {} };
+    const label = { textContent: 'MaskedOne', innerHTML: 'MaskedOne', dataset: {} as Dataset, style: {} };
     const rows = [{ dataset: { cellId: '0' }, querySelector: () => label, _label: label }];
-    const doc = { querySelectorAll: (sel) => (String(sel).includes('data-drake-reveal-root') ? [label] : rows) };
+    const doc = { querySelectorAll: (sel: string) => (String(sel).includes('data-drake-reveal-root') ? [label] : rows) };
     const loadSnapshot = vi
       .fn()
       .mockResolvedValueOnce([{ cellId: 0, riotId: 'OldAlly#TAG', wins: 1, losses: 0, winRate: 100, matchesUsed: 1 }])
@@ -879,43 +922,43 @@ describe('revealed status auto dismiss', () => {
 
   it('injects a local chat name map and rewrites chat authors from reveal originals', async () => {
     const rows = [makeRow(1, 'arongejo'), makeRow(2, 'bob')];
-    const chatRoot = {
+    const chatRoot: FakeChatNode = {
       className: 'chat-window',
       children: [],
       parentNode: null,
-      appendChild(child) {
+      appendChild(child: FakeChatNode) {
         this.children.push(child);
         child.parentNode = this;
         return child;
       },
-      querySelector(sel) {
+      querySelector(sel: string) {
         if (sel === '[data-drake-chat-map]') {
           return this.children.find((c) => c.dataset?.drakeChatMap === '1') || null;
         }
         return null;
       },
     };
-    const authorA = { className: 'name', textContent: 'arongejo', dataset: {}, children: [] };
-    const authorB = { className: 'name', textContent: 'bob', dataset: {}, children: [] };
-    const msgA = { className: 'chat-message', children: [authorA], dataset: {} };
-    const msgB = { className: 'chat-message', children: [authorB], dataset: {} };
+    const authorA: FakeChatNode = { className: 'name', textContent: 'arongejo', dataset: {} as Dataset, children: [] };
+    const authorB: FakeChatNode = { className: 'name', textContent: 'bob', dataset: {} as Dataset, children: [] };
+    const msgA: FakeChatNode = { className: 'chat-message', children: [authorA], dataset: {} as Dataset };
+    const msgB: FakeChatNode = { className: 'chat-message', children: [authorB], dataset: {} as Dataset };
     chatRoot.children.push(msgA, msgB);
     authorA.parentNode = msgA;
     authorB.parentNode = msgB;
 
-    const body = { children: [chatRoot], className: '', dataset: {} };
+    const body: FakeChatNode = { children: [chatRoot], className: '', dataset: {} as Dataset };
     chatRoot.parentNode = body;
 
-    function walk(node, visit) {
+    function walk(node: FakeChatNode, visit: (node: FakeChatNode) => void) {
       visit(node);
       for (const child of node.children || []) walk(child, visit);
     }
 
     const doc = {
       body,
-      querySelectorAll(sel) {
+      querySelectorAll(sel: string) {
         if (sel === '[data-cell-id]' || sel === undefined) return rows;
-        const out = [];
+        const out: FakeChatNode[] = [];
         walk(body, (node) => {
           if (sel === '.chat-window' && node.className === 'chat-window') out.push(node);
           if (sel === '.name' && node.className === 'name') out.push(node);
@@ -927,37 +970,37 @@ describe('revealed status auto dismiss', () => {
         if (sel === '[data-cell-id]') return rows;
         return out;
       },
-      querySelector(sel) {
+      querySelector(sel: string) {
         return this.querySelectorAll(sel)[0] || null;
       },
-      createElement() {
+      createElement(): FakeCreated {
         return {
           className: '',
           textContent: '',
-          dataset: {},
+          dataset: {} as Dataset,
           style: {},
           children: [],
           parentNode: null,
           isConnected: true,
-          setAttribute(name, value) {
+          setAttribute(name: string, value: string) {
             if (name.startsWith('data-')) {
               const key = name
                 .slice(5)
-                .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+                .replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
               this.dataset[key] = value;
             }
           },
-          getAttribute(name) {
+          getAttribute(name: string) {
             if (name.startsWith('data-')) {
               const key = name
                 .slice(5)
-                .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+                .replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
               return this.dataset[key] ?? null;
             }
             return null;
           },
           removeAttribute() {},
-          appendChild(child) {
+          appendChild(child: FakeChatNode) {
             this.children.push(child);
             child.parentNode = this;
             return child;
@@ -968,7 +1011,7 @@ describe('revealed status auto dismiss', () => {
             this.parentNode = null;
             this.isConnected = false;
           },
-          querySelector(sel) {
+          querySelector(sel: string) {
             if (sel === '[data-drake-chat-map]') {
               return this.children.find((c) => c.dataset?.drakeChatMap === '1') || null;
             }
@@ -980,7 +1023,7 @@ describe('revealed status auto dismiss', () => {
 
     // toLabelNode uses row.querySelector — makeRow already provides that.
     rows.forEach((row) => {
-      row.isConnected = true;
+      (row as { isConnected?: boolean }).isConnected = true;
     });
 
     const ctl = makeTeamRevealDom({

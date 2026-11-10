@@ -1,5 +1,6 @@
-// @ts-nocheck
+import type { ReactNode } from 'react';
 import { CREDITS } from './shellData';
+import type { CreditEntry } from './shellData';
 import { SFX } from '../../ui/sfx';
 import { useSfx } from '../hooks/useSfx';
 import { useT } from '../i18n/I18nProvider';
@@ -8,7 +9,12 @@ import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { useLegacyActions } from './LegacyActions';
 
-function CreditLink({ entry, large = false }) {
+interface CreditLinkProps {
+  entry: CreditEntry;
+  large?: boolean;
+}
+
+function CreditLink({ entry, large = false }: CreditLinkProps) {
   const sfx = useSfx();
   const actions = useLegacyActions();
   return (
@@ -26,7 +32,12 @@ function CreditLink({ entry, large = false }) {
   );
 }
 
-function CreditRow({ label, children }) {
+interface CreditRowProps {
+  label: string;
+  children?: ReactNode;
+}
+
+function CreditRow({ label, children }: CreditRowProps) {
   return (
     <div className="drk-credits__row">
       <dt className="drk-credits__label">{label}</dt>

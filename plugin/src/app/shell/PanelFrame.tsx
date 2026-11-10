@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { motion } from 'motion/react';
+import type { Variants } from 'motion/react';
 import { DRAKE_ICON } from '../../ui/assets';
 import { SFX } from '../../ui/sfx';
 import { useSfx } from '../hooks/useSfx';
@@ -12,12 +12,12 @@ import { ShellFooter } from './ShellFooter';
 import { CreditsModal } from './CreditsModal';
 import { Sidebar } from './Sidebar';
 
-const SCRIM = {
+const SCRIM: Variants = {
   open: { opacity: 1, visibility: 'visible', transition: { duration: DURATION.base } },
   closed: { opacity: 0, transition: { duration: DURATION.fast }, transitionEnd: { visibility: 'hidden' } },
 };
 
-const WINDOW = {
+const WINDOW: Variants = {
   open: { opacity: 1, scale: 1, y: 0, transition: { duration: DURATION.slow, ease: EASE_OUT } },
   closed: { opacity: 0, scale: 0.97, y: 8, transition: { duration: DURATION.fast } },
 };

@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, MouseEvent, PointerEvent, ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { DRAKE_ICON } from '../../../ui/assets';
 import { useStreaming } from '../../hooks/useStreaming';
@@ -8,9 +8,12 @@ import { useLegacyActions } from '../../shell/LegacyActions';
 import { useDrake } from '../../store/StoreContext';
 import { Layer } from '../../ui/Layer';
 import { DURATION, EASE_OUT } from '../../ui/motion';
+import type { DodgeStatus } from '../../store/champSelectSlice';
+import type { OverlayPositions, RelativePosition } from '../../../settings';
 import { OVERLAY_SIZES, clampToClient, overlayPieces, toRelative } from './overlayLayout';
+import type { OverlayClientRect, OverlayPoint, OverlaySize } from './overlayLayout';
 
-const DODGE_LABELS = { idle: 'dodgeButton', busy: 'dodging', done: 'dodged', failed: 'dodgeFailed' };
+const DODGE_LABELS: Record<DodgeStatus, string> = { idle: 'dodgeButton', busy: 'dodging', done: 'dodged', failed: 'dodgeFailed' };
 const DRAG_THRESHOLD = 4;
 const HINT_LIFETIME_MS = 12000;
 
@@ -21,16 +24,23 @@ const FADE = {
   transition: { duration: DURATION.base, ease: EASE_OUT },
 };
 
-function screenScale() {
+function screenScale(): number {
   return window.devicePixelRatio || 1;
 }
 
-function windowOrigin() {
+function windowOrigin(): OverlayPoint {
   const scale = screenScale();
   return { x: Math.round((window.screenX || 0) * scale), y: Math.round((window.screenY || 0) * scale) };
 }
 
-function place(point, size) {
+interface PlacedStyle {
+  left: string;
+  top: string;
+  width: string;
+  height: string;
+}
+
+function place(point: OverlayPoint, size: OverlaySize): PlacedStyle {
   const scale = screenScale();
   const origin = windowOrigin();
   return {
@@ -41,12 +51,31 @@ function place(point, size) {
   };
 }
 
-function useDrag({ client, at, size, onTap, onDrop }) {
-  const actions = useLegacyActions();
-  const drag = useRef(null);
-  const [dragAt, setDragAt] = useState(null);
+type DropHandler = (rel: RelativePosition) => Promise<void> | void;
 
-  function finish(event, cancelled) {
+interface DragOptions {
+  client: OverlayClientRect;
+  at: OverlayPoint;
+  size: OverlaySize;
+  onTap: () => void;
+  onDrop: DropHandler;
+}
+
+interface DragState {
+  start: OverlayPoint;
+  from: OverlayPoint;
+  last: OverlayPoint;
+  moved: boolean;
+}
+
+type ButtonPointerEvent = PointerEvent<HTMLButtonElement>;
+
+function useDrag({ client, at, size, onTap, onDrop }: DragOptions) {
+  const actions = useLegacyActions();
+  const drag = useRef<DragState | null>(null);
+  const [dragAt, setDragAt] = useState<OverlayPoint | null>(null);
+
+  function finish(event: ButtonPointerEvent, cancelled: boolean) {
     const current = drag.current;
     if (!current) return;
     drag.current = null;
@@ -65,7 +94,7 @@ function useDrag({ client, at, size, onTap, onDrop }) {
     at: dragAt || at,
     dragging: !!dragAt,
     handlers: {
-      onPointerDown(event) {
+      onPointerDown(event: ButtonPointerEvent) {
         if (event.button !== 0 || !client) return;
         event.currentTarget.setPointerCapture?.(event.pointerId);
         const scale = screenScale();
@@ -77,7 +106,7 @@ function useDrag({ client, at, size, onTap, onDrop }) {
         };
         actions.setOverlayDragging?.(true);
       },
-      onPointerMove(event) {
+      onPointerMove(event: ButtonPointerEvent) {
         const current = drag.current;
         if (!current) return;
         const scale = screenScale();
@@ -88,23 +117,32 @@ function useDrag({ client, at, size, onTap, onDrop }) {
         current.last = clampToClient(client, { x: current.from.x + dx, y: current.from.y + dy }, size);
         setDragAt(current.last);
       },
-      onPointerUp(event) {
+      onPointerUp(event: ButtonPointerEvent) {
         finish(event, false);
       },
-      onPointerCancel(event) {
+      onPointerCancel(event: ButtonPointerEvent) {
         finish(event, true);
       },
-      onLostPointerCapture(event) {
+      onLostPointerCapture(event: ButtonPointerEvent) {
         finish(event, true);
       },
-      onClick(event) {
+      onClick(event: MouseEvent<HTMLButtonElement>) {
         if (event.detail === 0) onTap();
       },
     },
   };
 }
 
-function DraggableButton({ client, at, size, onTap, onDrop, className, style, children, ...rest }) {
+interface DraggableButtonProps extends DragOptions {
+  className?: string;
+  style?: CSSProperties;
+  children?: ReactNode;
+  disabled?: boolean;
+  title?: string;
+  'aria-label'?: string;
+}
+
+function DraggableButton({ client, at, size, onTap, onDrop, className, style, children, ...rest }: DraggableButtonProps) {
   const drag = useDrag({ client, at, size, onTap, onDrop });
   return (
     <motion.button
@@ -151,7 +189,7 @@ export function OverlayChrome() {
 
   if (!overlayHost) return null;
 
-  const save = (kind) => async (rel) => {
+  const save = (kind: keyof OverlayPositions) => async (rel: RelativePosition) => {
     await actions.setSettings({
       overlay_positions: { fab: positions?.fab || null, dodge: positions?.dodge || null, [kind]: rel },
     });
@@ -161,7 +199,7 @@ export function OverlayChrome() {
   return (
     <Layer>
       <AnimatePresence>
-        {visible && showHint ? (
+        {visible && showHint && pieces.hint ? (
           <motion.div
             key="hint"
             role="note"
@@ -178,7 +216,7 @@ export function OverlayChrome() {
             </button>
           </motion.div>
         ) : null}
-        {visible ? (
+        {visible && client ? (
           <DraggableButton
             key="fab"
             className="drk-overlay-fab"
@@ -205,7 +243,7 @@ export function OverlayChrome() {
             {t('overlays.docks.cancelQueue')}
           </motion.button>
         ) : null}
-        {visible && champSelect.active && dodgeEnabled ? (
+        {visible && client && champSelect.active && dodgeEnabled ? (
           <DraggableButton
             key="dodge"
             className="drk-overlay-dock drk-hextech-btn drk-hextech-btn--danger drk-hextech-btn--compact"

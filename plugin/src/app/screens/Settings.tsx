@@ -1,15 +1,23 @@
-// @ts-nocheck
 import { useState } from 'react';
+import type { StreamingMode } from '../../settings';
 import { useT } from '../i18n/I18nProvider';
 import { AVAILABLE_LOCALES, LOCALE_NAMES } from '../i18n/locales/index';
 import { useLegacyActions } from '../shell/LegacyActions';
+import type { UpdateUiState } from '../store/sessionSlice';
 import { useDrake, useDrakeStore } from '../store/StoreContext';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Select } from '../ui/Select';
 import { Help, ScreenHeader, SettingToggle, useSettings } from './common';
 
-function UpdateNote({ update, installing, disabled, onInstall }) {
+interface UpdateNoteProps {
+  update: UpdateUiState;
+  installing: boolean;
+  disabled: boolean;
+  onInstall: () => void;
+}
+
+function UpdateNote({ update, installing, disabled, onInstall }: UpdateNoteProps) {
   const t = useT();
   if (update.phase === 'current') return <Help>{t('screens.settings.upToDate')}</Help>;
   if (update.phase === 'available') {
@@ -33,7 +41,7 @@ function LanguageCard() {
   const t = useT();
   const { values, trayDown, save } = useSettings();
   const clientLocale = useDrake((state) => state.session.locale);
-  const value = AVAILABLE_LOCALES.includes(values.ui_language) ? values.ui_language : 'auto';
+  const value = values.ui_language && AVAILABLE_LOCALES.includes(values.ui_language) ? values.ui_language : 'auto';
   const options = [
     { value: 'auto', label: t('screens.settings.languageAuto', { language: LOCALE_NAMES[clientLocale] || clientLocale }) },
     ...AVAILABLE_LOCALES.map((locale) => ({ value: locale, label: LOCALE_NAMES[locale] || locale })),
@@ -55,7 +63,7 @@ function LanguageCard() {
   );
 }
 
-const STREAMING_MODES = [
+const STREAMING_MODES: { value: StreamingMode; key: string }[] = [
   { value: 'off', key: 'streamingOff' },
   { value: 'on', key: 'streamingOn' },
   { value: 'auto', key: 'streamingAuto' },
@@ -64,7 +72,8 @@ const STREAMING_MODES = [
 function StreamingCard() {
   const t = useT();
   const { values, trayDown, save } = useSettings();
-  const current = STREAMING_MODES.some((m) => m.value === values.streaming_mode) ? values.streaming_mode : 'off';
+  const mode = values.streaming_mode;
+  const current: StreamingMode = mode && STREAMING_MODES.some((m) => m.value === mode) ? mode : 'off';
   const options = STREAMING_MODES.map((m) => ({ value: m.value, label: t(`screens.settings.${m.key}`) }));
   const moved = !!(values.overlay_positions?.fab || values.overlay_positions?.dodge);
   return (
@@ -100,12 +109,12 @@ export function SettingsScreen() {
   const actions = useLegacyActions();
   const { trayDown } = useSettings();
   const version = useDrake((state) => state.session.appVersion);
-  const update = useDrake((state) => state.session.updateUi) || { phase: 'idle' };
+  const update: UpdateUiState = useDrake((state) => state.session.updateUi) || { phase: 'idle' };
   const [installing, setInstalling] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const checking = update.phase === 'checking';
 
-  const say = (text, good) => store.getState().setStatusLine({ text, tone: good ? 'good' : 'bad' });
+  const say = (text: string, good: boolean) => store.getState().setStatusLine({ text, tone: good ? 'good' : 'bad' });
 
   async function onInstall() {
     setInstalling(true);
@@ -123,7 +132,7 @@ export function SettingsScreen() {
     setRestarting(true);
     const result = await actions.restartClient();
     setRestarting(false);
-    say(result.ok ? t('screens.settings.restarting') : result.reason, result.ok);
+    say(result.ok ? t('screens.settings.restarting') : result.reason ?? '', result.ok);
   }
 
   return (

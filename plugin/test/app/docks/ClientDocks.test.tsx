@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
@@ -36,7 +35,7 @@ describe('ClientDocks', () => {
     expect(actions.dodge).toHaveBeenCalledTimes(1);
     act(() => store.getState().patchChampSelect({ dodge: 'busy' }));
     const busy = within(portalTarget).getByRole('button', { name: 'Dodging…' });
-    expect(busy.disabled).toBe(true);
+    expect((busy as HTMLButtonElement).disabled).toBe(true);
     act(() => store.getState().patchChampSelect({ dodge: 'failed' }));
     expect(within(portalTarget).getByRole('button', { name: 'Failed' })).toBeTruthy();
   });
@@ -55,12 +54,12 @@ describe('ClientDocks', () => {
   it('places the dodge dock above the anchor', () => {
     const anchor = document.createElement('div');
     anchor.className = ROSE_BUTTON_SELECTOR.slice(1);
-    anchor.getBoundingClientRect = () => ({ left: 300, top: 500, width: 60, height: 30 });
+    anchor.getBoundingClientRect = () => ({ left: 300, top: 500, width: 60, height: 30 }) as DOMRect;
     document.body.appendChild(anchor);
     const { portalTarget } = setup({ active: true });
-    const dock = portalTarget.querySelector('.drk-dock--dodge');
-    expect(dock.style.left).toBe('330px');
-    expect(dock.style.transform).toBe('translateX(-50%)');
+    const dock = portalTarget.querySelector<HTMLElement>('.drk-dock--dodge');
+    expect(dock?.style.left).toBe('330px');
+    expect(dock?.style.transform).toBe('translateX(-50%)');
   });
 
   it('stays out of the client while the streaming overlay is active', () => {

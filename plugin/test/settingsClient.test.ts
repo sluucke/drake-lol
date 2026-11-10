@@ -1,8 +1,9 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from 'vitest';
-import { makeSettingsClient } from '../src/ui/settingsClient';
+import { makeSettingsClient, type SettingsResponseLike } from '../src/ui/settingsClient';
 
-const ok = () => Promise.resolve({ ok: true, status: 200 });
+type FetchArgs = [url: string, init: RequestInit];
+
+const ok = (..._args: FetchArgs) => Promise.resolve({ ok: true, status: 200 });
 
 describe('makeSettingsClient', () => {
   it('posts the settings with the token to the tray', async () => {
@@ -15,7 +16,7 @@ describe('makeSettingsClient', () => {
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe('http://127.0.0.1:48151/settings');
     expect(init.method).toBe('POST');
-    expect(JSON.parse(init.body)).toEqual({
+    expect(JSON.parse(String(init.body))).toEqual({
       token: 'abc',
       settings: { auto_accept: true },
     });
@@ -24,20 +25,20 @@ describe('makeSettingsClient', () => {
   it('reports failure instead of throwing when the tray is not running', async () => {
 
 
-    const fetchImpl = vi.fn(() => Promise.reject(new Error('connection refused')));
+    const fetchImpl = vi.fn((..._args: FetchArgs): Promise<SettingsResponseLike> => Promise.reject(new Error('connection refused')));
     const client = makeSettingsClient({ port: 48151, token: 'abc', fetchImpl });
 
     const result = await client.save({ auto_accept: true });
 
     expect(result.ok).toBe(false);
-    expect(result.reason).toMatch(/tray/i);
+    expect(result.ok ? '' : result.reason).toMatch(/tray/i);
   });
 
   it('refreshes the token once on 401 and retries', async () => {
 
 
     const fetchImpl = vi
-      .fn()
+      .fn<(...args: FetchArgs) => Promise<SettingsResponseLike>>()
       .mockResolvedValueOnce({ ok: false, status: 401 })
       .mockResolvedValueOnce({ ok: true, status: 200 });
     const reloadConfig = vi.fn(() =>
@@ -49,7 +50,7 @@ describe('makeSettingsClient', () => {
 
     expect(result.ok).toBe(true);
     expect(reloadConfig).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(fetchImpl.mock.calls[1][1].body).token).toBe('fresh');
+    expect(JSON.parse(String(fetchImpl.mock.calls[1][1].body)).token).toBe('fresh');
   });
 
   it('gives up after one refresh rather than looping', async () => {
@@ -73,7 +74,7 @@ describe('makeSettingsClient', () => {
     const result = await client.save({ auto_accept: true });
 
     expect(result.ok).toBe(false);
-    expect(result.reason).toContain('500');
+    expect(result.ok ? '' : result.reason).toContain('500');
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });

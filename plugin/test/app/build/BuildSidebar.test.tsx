@@ -1,10 +1,12 @@
-// @ts-nocheck
+import type { ReactElement } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, screen } from '@testing-library/react';
 import { renderWithProviders } from '../renderWithProviders';
 import { createDrakeStore } from '../../../src/app/store/createDrakeStore';
 import { MatchupsCard, TopPlayersCard } from '../../../src/app/overlays/build/BuildSidebar';
 import { BuildTab } from '../../../src/app/overlays/build/BuildTab';
+import type { BuildState } from '../../../src/app/store/buildSlice';
+import type { BuildData, TopPlayer } from '../../../src/app/store/types';
 
 const BUILD = {
   hasData: true,
@@ -17,14 +19,14 @@ const BUILD = {
     strong: [{ championId: 82, winRate: 57.5, play: 163 }],
     weak: [{ championId: 360, winRate: 44.2, play: 120 }],
   },
-};
+} satisfies BuildData;
 
-const PLAYERS = [
+const PLAYERS: TopPlayer[] = [
   { ranking: 1, name: 'Hide on bush#KR1', region: 'KR', tier: 'Challenger 1 (1543 LP)', winRate: 61.2, played: 210 },
   { ranking: 2, name: 'Other#EUW', region: '', tier: 'Grandmaster', winRate: 48, played: 99 },
 ];
 
-function setup(ui, state = {}) {
+function setup(ui: ReactElement, state: Partial<BuildState> = {}) {
   const store = createDrakeStore();
   store.getState().setBuild({
     ...store.getState().build,
@@ -35,7 +37,10 @@ function setup(ui, state = {}) {
     topPlayers: { loading: false, ok: true, players: PLAYERS, reason: '' },
     ...state,
   });
-  const actions = { viewPlayerBuild: vi.fn(async () => {}), loadBuild: vi.fn(async () => {}) };
+  const actions = {
+    viewPlayerBuild: vi.fn<(riotId: string, region: string) => Promise<void>>(async () => {}),
+    loadBuild: vi.fn<() => Promise<void>>(async () => {}),
+  };
   const utils = renderWithProviders(ui, { store, actions });
   return { ...utils, store, actions };
 }
@@ -85,7 +90,7 @@ describe('BuildTab assembly', () => {
     const main = container.querySelector('.drk-build-main');
     expect(sidebar).not.toBeNull();
     expect(main).not.toBeNull();
-    expect(sidebar.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(sidebar.textContent).toContain('Top Players (OP.GG)');
+    expect(sidebar!.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sidebar!.textContent).toContain('Top Players (OP.GG)');
   });
 });

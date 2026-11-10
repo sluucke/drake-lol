@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState } from 'react';
 import { useFormat, useT } from '../i18n/I18nProvider';
 import { Card } from '../ui/Card';
@@ -10,7 +9,7 @@ export const AUTO_ACCEPT_MAX_DELAY_MS = 8000;
 export function useDelayLabel() {
   const t = useT();
   const format = useFormat();
-  return (ms) =>
+  return (ms: number) =>
     ms === 0
       ? t('screens.autoAccept.instant')
       : t('screens.autoAccept.seconds', {

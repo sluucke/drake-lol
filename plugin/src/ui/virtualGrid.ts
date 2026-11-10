@@ -1,10 +1,25 @@
-// @ts-nocheck
 
 
 
 
 
 
+
+export interface VisibleWindowInput {
+  total: number;
+  perRow: number;
+  rowHeight: number;
+  viewportHeight: number;
+  scrollTop: number;
+  overscan?: number;
+}
+
+export interface VisibleWindow {
+  start: number;
+  end: number;
+  offsetY: number;
+  totalHeight: number;
+}
 
 export function visibleWindow({
   total,
@@ -13,7 +28,7 @@ export function visibleWindow({
   viewportHeight,
   scrollTop,
   overscan = 2,
-}) {
+}: VisibleWindowInput): VisibleWindow {
   const rows = Math.ceil(total / perRow);
   const totalHeight = rows * rowHeight;
 

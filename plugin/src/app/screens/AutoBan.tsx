@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { searchChampions } from '../../features/champions';
 import { useT } from '../i18n/I18nProvider';
 import { useDrake, useDrakeStore } from '../store/StoreContext';
@@ -19,7 +18,7 @@ export function AutoBanScreen() {
   const ids = banId ? [banId] : [];
   const filtered = searchChampions(champions, query);
 
-  const setQuery = (text) => {
+  const setQuery = (text: string) => {
     const { championQueries } = store.getState().ui;
     store.getState().setUi({ championQueries: { ...championQueries, 'auto-ban': text } });
   };
@@ -48,7 +47,7 @@ export function AutoBanScreen() {
           <ChampionGrid
             champions={filtered}
             slots={new Map(ids.map((id) => [id, true]))}
-            onPick={(id) => save({ auto_ban_champion_id: banId === id ? 0 : id })}
+            onPick={(id: number) => save({ auto_ban_champion_id: banId === id ? 0 : id })}
             emptyLabel={champions.length ? t('champions.noMatch') : t('champions.unavailable')}
           />
         </Field>

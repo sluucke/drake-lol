@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { SCREENS } from '../../src/app/shell/shellData';
 import { DICTS } from '../../src/app/i18n/locales/index';
@@ -24,7 +23,7 @@ const REQUIRED = [
 describe('shell keys', () => {
   for (const locale of ['en_US', 'pt_BR']) {
     it(`${locale} translates every shell key`, () => {
-      const missing = [];
+      const missing: string[] = [];
       const t = createTranslator(locale, DICTS, { warn: () => missing.push(locale) });
       for (const key of REQUIRED) expect(t(key), key).not.toBe(key);
       expect(missing).toEqual([]);

@@ -1,11 +1,20 @@
-// @ts-nocheck
 import { motion } from 'motion/react';
+import type { ReactNode } from 'react';
+import type { Champion } from '../../../features/champions';
 import { iconUrl } from '../../../features/champions';
 import { SFX } from '../../../ui/sfx';
 import { useSfx } from '../../hooks/useSfx';
 import { DURATION } from '../../ui/motion';
 
-export function ChampionGrid({ champions, slots, onPick, compact = false, emptyLabel }) {
+export interface ChampionGridProps {
+  champions: Champion[];
+  slots: ReadonlyMap<number, number | boolean>;
+  onPick: (id: number) => void;
+  compact?: boolean;
+  emptyLabel?: ReactNode;
+}
+
+export function ChampionGrid({ champions, slots, onPick, compact = false, emptyLabel }: ChampionGridProps) {
   const sfx = useSfx();
   if (champions.length === 0) return <p className="drk-help">{emptyLabel}</p>;
   return (
