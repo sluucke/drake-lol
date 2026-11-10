@@ -1,16 +1,14 @@
 import { SFX } from '../../../ui/sfx';
 import { useSfx } from '../../hooks/useSfx';
-import { useFormat, useT } from '../../i18n/I18nProvider';
+import { LEGACY_ICON } from '../../../ui/assets';
+import { useT } from '../../i18n/I18nProvider';
 import { Skeleton } from '../../ui/Skeleton';
 import { Tooltip } from '../../ui/Tooltip';
 import { disenchantCount } from '../../../features/loot';
-import type { Essence, LootItem } from '../../../features/loot';
+import type { LootItem } from '../../../features/loot';
+import { EssenceAmount } from './Essence';
 
 const SKELETON_TILES = 12;
-
-export function EssenceGem({ essence }: { essence: Essence }) {
-  return <span className={`drk-essence drk-essence--${essence}`} aria-hidden="true" />;
-}
 
 interface LootTileProps {
   item: LootItem;
@@ -21,7 +19,6 @@ interface LootTileProps {
 
 function LootTile({ item, selected, keepOne, onToggle }: LootTileProps) {
   const t = useT();
-  const format = useFormat();
   const sfx = useSfx();
   const copies = disenchantCount(item, keepOne);
   const classes = ['drk-loot-tile', `is-${item.essence}`, item.shard ? 'is-shard' : 'is-permanent', selected && 'is-on'];
@@ -41,7 +38,15 @@ function LootTile({ item, selected, keepOne, onToggle }: LootTileProps) {
       <span className="drk-loot-tile__art">
         {item.tile ? <img src={item.tile} alt="" loading="lazy" draggable={false} /> : null}
         <span className="drk-loot-tile__count">{t('overlays.loot.tile.count', { amount: item.count })}</span>
-        {item.legacy ? <span className="drk-loot-tile__legacy">{t('overlays.loot.tile.legacy')}</span> : null}
+        {item.legacy ? (
+          <img
+            className="drk-loot-tile__legacy"
+            src={LEGACY_ICON}
+            alt={t('overlays.loot.tile.legacy')}
+            title={t('overlays.loot.tile.legacy')}
+            draggable={false}
+          />
+        ) : null}
         {item.owned ? (
           <span className="drk-loot-tile__owned" data-owned="true">
             <Tooltip content={t('overlays.loot.tile.owned')}>
@@ -51,11 +56,10 @@ function LootTile({ item, selected, keepOne, onToggle }: LootTileProps) {
         ) : null}
         <span className="drk-loot-tile__check" aria-hidden="true" />
       </span>
-      <span className="drk-loot-tile__name">{item.name}</span>
-      <span className="drk-loot-tile__value">
-        <EssenceGem essence={item.essence} />
-        {format.number(item.value * copies)}
+      <span className="drk-loot-tile__name" title={item.name}>
+        {item.name}
       </span>
+      <EssenceAmount className="drk-loot-tile__value" essence={item.essence} amount={item.value * copies} />
     </button>
   );
 }

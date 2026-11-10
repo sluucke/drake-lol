@@ -696,7 +696,12 @@
         "gain": "Você vai receber",
         "warning": "Isso não pode ser desfeito.",
         "back": "Voltar",
-        "go": "Desencantar agora"
+        "go": "Desencantar agora",
+        "copies": {
+          "one": "{count} cópia",
+          "other": "{count} cópias"
+        },
+        "remove": "Remover {name} da seleção"
       },
       "running": {
         "title": "Desencantando",

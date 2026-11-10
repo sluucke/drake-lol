@@ -696,7 +696,12 @@
         "gain": "Du får",
         "warning": "Det här går inte att ångra.",
         "back": "Tillbaka",
-        "go": "Disenchanta nu"
+        "go": "Disenchanta nu",
+        "copies": {
+          "one": "{count} exemplar",
+          "other": "{count} exemplar"
+        },
+        "remove": "Ta bort {name} från urvalet"
       },
       "running": {
         "title": "Disenchantar",

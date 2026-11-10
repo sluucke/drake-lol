@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { OVERLAY_SIZES, overlayPieces, toRelative } from '../src/app/overlays/streaming/overlayLayout';
+import { OVERLAY_SIZES, lootPiece, overlayPieces, toRelative } from '../src/app/overlays/streaming/overlayLayout';
 import type { OverlayClientRect, OverlayPieces } from '../src/app/overlays/streaming/overlayLayout';
 
 const client: OverlayClientRect = { x: 100, y: 50, width: 1280, height: 720 };
@@ -29,7 +29,14 @@ describe('overlayPieces', () => {
       cancel: { width: 120, height: 48 },
       dodge: { width: 96, height: 32 },
       hint: { width: 200, height: 56 },
+      loot: { width: 220, height: 40 },
     });
+  });
+
+  it('places the loot button like the tray does, right-aligned at the anchor and kept inside the client', () => {
+    const rect = { x: 100, y: 50, width: 1280, height: 720 };
+    expect(lootPiece(rect, { top: 166, right: 104 })).toEqual({ x: 100 + 1280 - 104 - 220, y: 50 + 166 });
+    expect(lootPiece(rect, { top: 5000, right: 5000 })).toEqual({ x: 100, y: 50 + 720 - 40 });
   });
 
   it('places the first-time hint above the Drake button, inside the client', () => {

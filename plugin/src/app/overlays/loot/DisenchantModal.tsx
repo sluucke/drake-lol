@@ -4,7 +4,7 @@ import { useLegacyActions } from '../../shell/LegacyActions';
 import { Button } from '../../ui/Button';
 import { Modal } from '../../ui/Modal';
 import { Tabs } from '../../ui/Tabs';
-import { DEFAULT_FILTERS, EMPTY_TOTALS, LOOT_CATEGORIES, LOOT_KINDS, buildPlan, filterLoot, planTotals } from '../../../features/loot';
+import { DEFAULT_FILTERS, EMPTY_TOTALS, LOOT_CATEGORIES, buildPlan, filterLoot, planTotals } from '../../../features/loot';
 import type {
   DisenchantEntry,
   DisenchantFailure,
@@ -15,7 +15,9 @@ import type {
   LootFilters,
   LootItem,
 } from '../../../features/loot';
-import { EssenceGem, LootGrid, LootGridSkeleton } from './LootGrid';
+import { EssenceIcon } from './Essence';
+import { LootGrid, LootGridSkeleton } from './LootGrid';
+import { SelectionTree } from './SelectionTree';
 import { LootFiltersBar } from './LootFiltersBar';
 
 type LoadState = { status: 'loading' } | { status: 'ready'; items: LootItem[] } | { status: 'error' };
@@ -45,12 +47,12 @@ function EssenceTotalsView({ totals }: { totals: EssenceTotals }) {
   return (
     <div className="drk-loot-totals">
       <span className="drk-loot-totals__item is-blue" data-essence="blue">
-        <EssenceGem essence="blue" />
+        <EssenceIcon essence="blue" />
         <strong>{format.number(totals.blue)}</strong>
         <span>{t('overlays.loot.essence.blue')}</span>
       </span>
       <span className="drk-loot-totals__item is-orange" data-essence="orange">
-        <EssenceGem essence="orange" />
+        <EssenceIcon essence="orange" />
         <strong>{format.number(totals.orange)}</strong>
         <span>{t('overlays.loot.essence.orange')}</span>
       </span>
@@ -58,25 +60,23 @@ function EssenceTotalsView({ totals }: { totals: EssenceTotals }) {
   );
 }
 
-function ConfirmStep({ plan, onBack, onRun }: { plan: DisenchantEntry[]; onBack: () => void; onRun: () => void }) {
+function ConfirmStep({
+  plan,
+  onBack,
+  onRun,
+  onRemove,
+}: {
+  plan: DisenchantEntry[];
+  onBack: () => void;
+  onRun: () => void;
+  onRemove: (lootId: string) => void;
+}) {
   const t = useT();
-  const format = useFormat();
   const totals = planTotals(plan);
-  const rows = LOOT_KINDS.map((kind) => ({
-    kind,
-    copies: plan.filter((e) => e.item.kind === kind).reduce((sum, e) => sum + e.repeat, 0),
-  })).filter((row) => row.copies > 0);
   return (
     <div className="drk-loot-step drk-loot-confirm">
       <p className="drk-help">{t('overlays.loot.confirm.summary', { count: totals.copies })}</p>
-      <ul className="drk-loot-confirm__list">
-        {rows.map((row) => (
-          <li key={row.kind} data-kind={row.kind}>
-            <span>{t(`overlays.loot.kinds.${row.kind}`)}</span>
-            <strong>{format.number(row.copies)}</strong>
-          </li>
-        ))}
-      </ul>
+      <SelectionTree plan={plan} onRemove={onRemove} />
       <div className="drk-loot-confirm__gain">
         <span className="drk-field__label">{t('overlays.loot.confirm.gain')}</span>
         <EssenceTotalsView totals={totals} />
@@ -260,6 +260,19 @@ export function DisenchantModal({ open, onClose }: DisenchantModalProps) {
     setPhase({ step: 'result', result });
   };
 
+  const removeFromConfirm = (lootId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.delete(lootId);
+      return next;
+    });
+    setPhase((prev) => {
+      if (prev.step !== 'confirm') return prev;
+      const plan = prev.plan.filter((entry) => entry.item.lootId !== lootId);
+      return plan.length ? { ...prev, plan } : BROWSE;
+    });
+  };
+
   const cancel = () => {
     controllerRef.current?.abort();
     setPhase((prev) => (prev.step === 'running' ? { ...prev, cancelling: true } : prev));
@@ -304,7 +317,7 @@ export function DisenchantModal({ open, onClose }: DisenchantModalProps) {
       dismissible={phase.step !== 'running'}
     >
       {phase.step === 'confirm' ? (
-        <ConfirmStep plan={phase.plan} onBack={() => setPhase(BROWSE)} onRun={() => void run(phase.plan)} />
+        <ConfirmStep plan={phase.plan} onBack={() => setPhase(BROWSE)} onRun={() => void run(phase.plan)} onRemove={removeFromConfirm} />
       ) : phase.step === 'running' ? (
         <RunningStep plan={phase.plan} progress={phase.progress} cancelling={phase.cancelling} onCancel={cancel} />
       ) : phase.step === 'result' ? (

@@ -696,7 +696,12 @@
         "gain": "You will receive",
         "warning": "This cannot be undone.",
         "back": "Back",
-        "go": "Disenchant now"
+        "go": "Disenchant now",
+        "copies": {
+          "one": "{count} copy",
+          "other": "{count} copies"
+        },
+        "remove": "Remove {name} from the selection"
       },
       "running": {
         "title": "Disenchanting",

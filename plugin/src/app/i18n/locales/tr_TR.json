@@ -696,7 +696,12 @@
         "gain": "Alacakların",
         "warning": "Bu işlem geri alınamaz.",
         "back": "Geri",
-        "go": "Şimdi öze dönüştür"
+        "go": "Şimdi öze dönüştür",
+        "copies": {
+          "one": "{count} kopya",
+          "other": "{count} kopya"
+        },
+        "remove": "{name} öğesini seçimden çıkar"
       },
       "running": {
         "title": "Öze dönüştürülüyor",

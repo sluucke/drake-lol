@@ -3,10 +3,12 @@ import type { CSSProperties } from 'react';
 import type { DomScope } from '../../hooks/useDockStyle';
 
 export const LOOT_SCREEN_SELECTOR = '.screen-root[data-screen-name="rcp-fe-lol-loot"]';
+export const LOOT_INVENTORY_SELECTOR = '.loot-inventory';
 export const LOOT_POLL_MS = 1000;
 
 const OFFSET_TOP = 14;
 const OFFSET_RIGHT = 24;
+const FALLBACK_HEADER = 120;
 
 export interface LootAnchor {
   top: number;
@@ -21,8 +23,13 @@ export function findLootScreen(doc: Document): Element | null {
 export function lootAnchor(root: Element | null, win: Window): LootAnchor | null {
   if (!root) return null;
   const rect = root.getBoundingClientRect();
+  const inventory = root.querySelector(LOOT_INVENTORY_SELECTOR);
+  const contentTop =
+    inventory && inventory.getClientRects().length > 0
+      ? inventory.getBoundingClientRect().top
+      : rect.top + FALLBACK_HEADER;
   return {
-    top: Math.round(rect.top + OFFSET_TOP),
+    top: Math.round(Math.max(contentTop, rect.top) + OFFSET_TOP),
     right: Math.round(Math.max(0, win.innerWidth - rect.right) + OFFSET_RIGHT),
   };
 }

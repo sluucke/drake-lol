@@ -696,7 +696,12 @@
         "gain": "Recibirás",
         "warning": "Esto no se puede deshacer.",
         "back": "Volver",
-        "go": "Desencantar ahora"
+        "go": "Desencantar ahora",
+        "copies": {
+          "one": "{count} copia",
+          "other": "{count} copias"
+        },
+        "remove": "Quitar {name} de la selección"
       },
       "running": {
         "title": "Desencantando",

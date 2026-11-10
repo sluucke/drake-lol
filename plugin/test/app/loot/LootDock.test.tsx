@@ -8,14 +8,19 @@ import { startApp } from '../../../src/app/main';
 import type { AppActions } from '../../../src/app/AppProviders';
 import { lootItems } from './lootFixtures';
 
-function makeLootRoot({ visible = true } = {}) {
+function makeLootRoot({ visible = true, inventoryTop = 152 }: { visible?: boolean; inventoryTop?: number | null } = {}) {
   const root = document.createElement('div');
   root.className = 'screen-root';
   root.setAttribute('data-screen-name', 'rcp-fe-lol-loot');
   const inventory = document.createElement('div');
   inventory.className = 'loot-inventory';
   root.appendChild(inventory);
-  const rect = { left: 0, top: 80, right: 1200, bottom: 720, width: 1200, height: 640, x: 0, y: 80 } as DOMRect;
+  if (inventoryTop !== null) {
+    const inventoryRect = { left: 0, top: inventoryTop, right: 410, bottom: 720, width: 410, height: 720 - inventoryTop, x: 0, y: inventoryTop } as DOMRect;
+    inventory.getBoundingClientRect = () => inventoryRect;
+    inventory.getClientRects = () => [inventoryRect] as unknown as DOMRectList;
+  }
+  const rect = { left: 0, top: 0, right: 1200, bottom: 720, width: 1200, height: 720, x: 0, y: 0 } as DOMRect;
   root.getBoundingClientRect = () => rect;
   const state = { visible };
   root.getClientRects = () => (state.visible ? [rect] : []) as unknown as DOMRectList;
@@ -45,11 +50,16 @@ describe('loot screen detection', () => {
     expect(findLootScreen(document)).not.toBeNull();
   });
 
-  it('anchors near the top right of the loot screen', () => {
+  it('anchors at the right of the loot content, below the client menu, level with the inventory', () => {
     const { root } = makeLootRoot();
     const win = { innerWidth: 1280 } as Window;
-    expect(lootAnchor(root, win)).toEqual({ top: 94, right: 104 });
+    expect(lootAnchor(root, win)).toEqual({ top: 166, right: 104 });
     expect(lootAnchor(null, win)).toBeNull();
+  });
+
+  it('keeps clear of the client menu when the inventory is not on screen yet', () => {
+    const { root } = makeLootRoot({ inventoryTop: null });
+    expect(lootAnchor(root, { innerWidth: 1280 } as Window)).toEqual({ top: 134, right: 104 });
   });
 });
 
@@ -71,7 +81,7 @@ describe('LootDock', () => {
     const btn = button();
     expect(btn).not.toBeNull();
     const dock = portalTarget.querySelector<HTMLElement>('.drk-dock--loot');
-    expect(dock?.style.top).toBe('94px');
+    expect(dock?.style.top).toBe('166px');
     fireEvent.click(btn as HTMLElement);
     const dialog = within(portalTarget).getByRole('dialog', { name: 'Bulk disenchant' });
     await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Ahri' })).toBeTruthy());
@@ -117,5 +127,57 @@ describe('LootDock', () => {
     act(() => store.getState().setSession({ updateRequired: { version: 'v9', phase: 'required' } }));
     await waitFor(() => expect(find()).toBeNull());
     app.unmount();
+  });
+});
+
+describe('LootDock in the streaming overlay', () => {
+  const CLIENT = { x: 0, y: 0, width: 1280, height: 720 };
+
+  function overlaySetup(loot: { top: number; right: number } | null) {
+    const store = createDrakeStore();
+    store.getState().setSession({
+      streaming: { host: 'overlay', effective: 'overlay' },
+      overlayGeometry: { client: CLIENT, chrome: CLIENT },
+      overlayLoot: loot,
+    });
+    const actions = { loadLoot: vi.fn(async () => lootItems()) };
+    const utils = renderWithProviders(<LootDock />, { store, actions });
+    const button = () => within(utils.portalTarget).queryByRole('button', { name: 'Bulk disenchant' });
+    return { ...utils, store, actions, button };
+  }
+
+  it('places the button at the tray anchor, inside the 220x40 click area', () => {
+    makeLootRoot();
+    const { portalTarget, button } = overlaySetup({ top: 166, right: 104 });
+    expect(button()).not.toBeNull();
+    const dock = portalTarget.querySelector<HTMLElement>('.drk-dock--overlay-loot');
+    expect(dock?.style.left).toBe(`${1280 - 104 - 220}px`);
+    expect(dock?.style.top).toBe('166px');
+    expect(dock?.style.width).toBe('220px');
+    expect(dock?.style.height).toBe('40px');
+  });
+
+  it('hides the button when the client reports no loot screen', async () => {
+    const { button, store } = overlaySetup({ top: 166, right: 104 });
+    expect(button()).not.toBeNull();
+    act(() => store.getState().setSession({ overlayLoot: null }));
+    await waitFor(() => expect(button()).toBeNull());
+  });
+
+  it('opens the modal through the store so the window can take clicks', async () => {
+    const { button, store, portalTarget, actions } = overlaySetup({ top: 166, right: 104 });
+    fireEvent.click(button() as HTMLElement);
+    expect(store.getState().ui.lootOpen).toBe(true);
+    const dialog = within(portalTarget).getByRole('dialog', { name: 'Bulk disenchant' });
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Ahri' })).toBeTruthy());
+    expect(actions.loadLoot).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(store.getState().ui.lootOpen).toBe(false);
+  });
+
+  it('does not render the in-client button in the overlay host', () => {
+    makeLootRoot();
+    const { portalTarget } = overlaySetup(null);
+    expect(portalTarget.querySelector('.drk-dock--loot')).toBeNull();
   });
 });

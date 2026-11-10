@@ -1,3 +1,4 @@
+import type { LootAnchor } from '../../features/loot';
 import type { StreamingEffective } from '../../features/streaming';
 import { DEFAULT_LOCALE } from '../i18n/runtime';
 import type { Champion, Friend, Skin, SliceCreator } from './types';
@@ -75,6 +76,7 @@ export interface SessionState {
   friends: Friend[];
   streaming: StreamingInfo;
   overlayGeometry: OverlayGeometry | null;
+  overlayLoot: LootAnchor | null;
 }
 
 export interface SessionSlice {
@@ -108,6 +110,7 @@ export function createSessionSlice({ appVersion }: SessionSliceOptions): SliceCr
       friends: [],
       streaming: { host: 'client', effective: 'in-client' },
       overlayGeometry: null,
+      overlayLoot: null,
     },
 
     setLocale(locale) {

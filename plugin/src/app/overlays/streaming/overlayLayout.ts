@@ -1,4 +1,5 @@
 import type { OverlayPositions, RelativePosition } from '../../../settings';
+import type { LootAnchor } from '../../../features/loot';
 
 export interface OverlayPoint {
   x: number;
@@ -12,13 +13,14 @@ export interface OverlaySize {
 
 export interface OverlayClientRect extends OverlayPoint, OverlaySize {}
 
-export type OverlayPieceName = 'fab' | 'cancel' | 'dodge' | 'hint';
+export type OverlayPieceName = 'fab' | 'cancel' | 'dodge' | 'hint' | 'loot';
 
 export const OVERLAY_SIZES: Record<OverlayPieceName, OverlaySize> = {
   fab: { width: 52, height: 52 },
   cancel: { width: 120, height: 48 },
   dodge: { width: 96, height: 32 },
   hint: { width: 200, height: 56 },
+  loot: { width: 220, height: 40 },
 };
 
 export const REL_SCALE = 10000;
@@ -103,6 +105,15 @@ export function overlayPieces(
       { x: right - DODGE_RIGHT - dodge.width, y: bottom - MARGIN - dodge.height },
       dodge,
     ),
+  };
+}
+
+export function lootPiece(client: OverlayClientRect, anchor: LootAnchor): OverlayPoint {
+  const { width, height } = OVERLAY_SIZES.loot;
+  const right = client.x + client.width;
+  return {
+    x: clamp(right - anchor.right - width, client.x, right - width),
+    y: clamp(client.y + anchor.top, client.y, client.y + client.height - height),
   };
 }
 

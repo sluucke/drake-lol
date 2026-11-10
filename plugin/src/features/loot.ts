@@ -114,6 +114,11 @@ export interface RunDisenchantOptions extends DisenchantOptions {
   sleep?: SleepFn;
 }
 
+export interface LootAnchor {
+  top: number;
+  right: number;
+}
+
 export interface LootService {
   load(): Promise<LootItem[]>;
   disenchant(plan: readonly DisenchantEntry[], options?: DisenchantOptions): Promise<DisenchantResult>;
@@ -172,6 +177,18 @@ export function normalizeRarity(raw: unknown): Rarity {
   const key = text(raw).replace(/^k(?=[A-Z])/, '').toLowerCase();
   if (STANDARD_RARITIES.has(key)) return 'standard';
   return KNOWN_RARITIES.has(key) ? (key as Rarity) : 'other';
+}
+
+export function parseLootAnchor(raw: unknown): LootAnchor | null {
+  if (!isRecord(raw)) return null;
+  const { top, right } = raw;
+  if (typeof top !== 'number' || typeof right !== 'number' || !Number.isFinite(top) || !Number.isFinite(right)) return null;
+  return { top: Math.round(top), right: Math.round(right) };
+}
+
+export function sameLootAnchor(a: LootAnchor | null | undefined, b: LootAnchor | null | undefined): boolean {
+  if (!a || !b) return !a && !b;
+  return a.top === b.top && a.right === b.right;
 }
 
 export function classifyLoot(type: unknown): LootKind | null {

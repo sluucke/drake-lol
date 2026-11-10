@@ -6,6 +6,7 @@ import { DisenchantModal } from '../../../src/app/overlays/loot/DisenchantModal'
 import { EMPTY_TOTALS, planTotals } from '../../../src/features/loot';
 import type { DisenchantEntry, DisenchantOptions, DisenchantResult, LootItem } from '../../../src/features/loot';
 import { lootItems } from './lootFixtures';
+import { BLUE_ESSENCE_ICON, LEGACY_ICON, ORANGE_ESSENCE_ICON } from '../../../src/ui/assets';
 
 interface Deferred<T> {
   promise: Promise<T>;
@@ -95,7 +96,7 @@ describe('DisenchantModal', () => {
     const { dialog } = await ready();
     fireEvent.click(within(dialog()).getByRole('tab', { name: 'Skins' }));
     const goth = tile(dialog(), 'Goth Annie');
-    expect(goth.textContent).toContain('Legacy');
+    expect(goth.querySelector('img.drk-loot-tile__legacy')?.getAttribute('title')).toBe('Legacy');
     expect(goth.textContent).toContain('×3');
     expect(tile(dialog(), 'Spirit Blossom Ahri').querySelector('[data-owned="true"]')).not.toBeNull();
     fireEvent.click(within(dialog()).getByRole('checkbox', { name: 'Legacy only' }));
@@ -135,7 +136,8 @@ describe('DisenchantModal', () => {
     expect(actions.disenchantLoot).not.toHaveBeenCalled();
     expect(within(dialog()).getByText('Confirm disenchant')).toBeTruthy();
     expect(dialog().textContent).toContain('You are about to disenchant 3 copies:');
-    expect(dialog().querySelector('[data-kind="championShard"]')?.textContent).toBe('Champion Shard3');
+    const group = dialog().querySelector<HTMLElement>('[data-category="champion"]');
+    expect(group?.querySelector('[data-tree-count]')?.textContent).toBe('3 copies');
     expect(dialog().textContent).toContain('2,610');
     expect(dialog().textContent).toContain('This cannot be undone.');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Back' }));
@@ -150,6 +152,65 @@ describe('DisenchantModal', () => {
       ['CHAMPION_RENTAL_22', 1],
     ]);
     await waitFor(() => expect(within(dialog()).getByText('Disenchant complete')).toBeTruthy());
+  });
+
+  it('renders the bundled essence and legacy icons and keeps long names whole in a title', async () => {
+    const { dialog } = await ready();
+    const ahri = tile(dialog(), 'Ahri');
+    expect(ahri.querySelector('img[data-essence-icon="blue"]')?.getAttribute('src')).toBe(BLUE_ESSENCE_ICON);
+    expect(ahri.querySelector('.drk-loot-tile__value')?.getAttribute('title')).toBe('2,520 Blue Essence');
+    expect(ahri.querySelector('.drk-loot-tile__name')?.getAttribute('title')).toBe('Ahri');
+    expect(dialog().querySelector('.drk-loot-summary img[data-essence-icon="orange"]')?.getAttribute('src')).toBe(ORANGE_ESSENCE_ICON);
+    fireEvent.click(within(dialog()).getByRole('tab', { name: 'Skins' }));
+    const goth = tile(dialog(), 'Goth Annie');
+    const legacy = goth.querySelector<HTMLImageElement>('img.drk-loot-tile__legacy');
+    expect(legacy?.getAttribute('src')).toBe(LEGACY_ICON);
+    expect(legacy?.getAttribute('title')).toBe('Legacy');
+    expect(legacy?.getAttribute('alt')).toBe('Legacy');
+    expect(goth.querySelector('.drk-loot-tile__value img')?.getAttribute('src')).toBe(ORANGE_ESSENCE_ICON);
+    expect(tile(dialog(), 'Spirit Blossom Ahri').querySelector('.drk-loot-tile__name')?.getAttribute('title')).toBe('Spirit Blossom Ahri');
+  });
+
+  it('groups the confirmation into a tree with counts and subtotals', async () => {
+    const { dialog } = await ready();
+    fireEvent.click(tile(dialog(), 'Ahri'));
+    fireEvent.click(within(dialog()).getByRole('tab', { name: 'Skins' }));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Select all shown' }));
+    fireEvent.click(within(dialog()).getByRole('checkbox', { name: 'Keep 1 of each' }));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Disenchant' }));
+    const champions = () => dialog().querySelector<HTMLElement>('[data-category="champion"]');
+    const skins = () => dialog().querySelector<HTMLElement>('[data-category="skin"]');
+    expect(within(champions() as HTMLElement).getByRole('button', { expanded: true }).textContent).toContain('Champions');
+    expect(champions()?.querySelector('[data-tree-count]')?.textContent).toBe('1 copy');
+    expect(champions()?.querySelector('[data-tree-subtotal]')?.textContent).toBe('1,260');
+    expect(skins()?.querySelector('[data-tree-count]')?.textContent).toBe('2 copies');
+    expect(skins()?.querySelector('[data-tree-subtotal] img')?.getAttribute('src')).toBe(ORANGE_ESSENCE_ICON);
+    const goth = skins()?.querySelector<HTMLElement>('[data-loot-id="CHAMPION_SKIN_RENTAL_1001"]');
+    expect(goth?.textContent).toContain('×2');
+    expect(goth?.querySelector('.drk-loot-tree__value')?.getAttribute('title')).toBe('312 Orange Essence');
+    expect(goth?.querySelector('.drk-loot-tree__thumb img')).toBeNull();
+    expect(champions()?.querySelector('.drk-loot-tree__thumb img')?.getAttribute('src')).toBe('/lol-game-data/a/ahri.jpg');
+    fireEvent.click(within(skins() as HTMLElement).getByRole('button', { expanded: true }));
+    await waitFor(() => expect(skins()?.querySelector('[data-loot-id]')).toBeNull());
+    expect(within(skins() as HTMLElement).getByRole('button', { expanded: false })).toBeTruthy();
+  });
+
+  it('removes items from the confirmation tree, updating totals, and returns to browse when empty', async () => {
+    const { dialog, actions } = await ready();
+    fireEvent.click(tile(dialog(), 'Ahri'));
+    fireEvent.click(tile(dialog(), 'Ashe'));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Disenchant' }));
+    const gain = () => dialog().querySelector('.drk-loot-confirm__gain [data-essence="blue"] strong')?.textContent;
+    expect(gain()).toBe('2,610');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Remove Ahri from the selection' }));
+    await waitFor(() => expect(dialog().querySelector('[data-loot-id="CHAMPION_RENTAL_103"]')).toBeNull());
+    expect(gain()).toBe('90');
+    expect(dialog().textContent).toContain('You are about to disenchant 1 copy:');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Remove Ashe from the selection' }));
+    await waitFor(() => expect(tile(dialog(), 'Ahri')).toBeTruthy());
+    expect(tile(dialog(), 'Ahri').getAttribute('aria-pressed')).toBe('false');
+    expect(tile(dialog(), 'Ashe').getAttribute('aria-pressed')).toBe('false');
+    expect(actions.disenchantLoot).not.toHaveBeenCalled();
   });
 
   it('shows progress, can be stopped, then shows the result with failures', async () => {
