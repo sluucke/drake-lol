@@ -289,6 +289,16 @@
     "retry": "Försök igen"
   },
   "whatsNew": {
+    "v0_4_6": [
+      {
+        "title": "Massförtrollning",
+        "body": "På Loot-skärmen låter den nya knappen ovanför hjälpikonen dig filtrera champion- och skinfragment, se hur mycket essens du får, granska urvalet och förtrolla allt på en gång. Fungerar även i streamerläget."
+      },
+      {
+        "title": "Dodge fungerar igen",
+        "body": "Dodge-knappen tar dig ut ur champion select igen. Det vanliga dodge-straffet gäller fortfarande."
+      }
+    ],
     "v0_4_5": [
       {
         "title": "Smidigare obligatoriska uppdateringar",

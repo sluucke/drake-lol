@@ -289,6 +289,16 @@
     "retry": "Tekrar dene"
   },
   "whatsNew": {
+    "v0_4_6": [
+      {
+        "title": "Toplu öze dönüştürme",
+        "body": "Ganimet ekranında yardım simgesinin üstündeki yeni düğme; şampiyon ve kostüm parçalarını filtrelemeni, kazanacağın özü görmeni, seçimi gözden geçirmeni ve hepsini tek seferde öze dönüştürmeni sağlar. Yayıncı modunda da çalışır."
+      },
+      {
+        "title": "Dodge yeniden çalışıyor",
+        "body": "Dodge düğmesi seni yeniden Şampiyon Seçimi'nden çıkarıyor. Normal dodge cezası geçerliliğini koruyor."
+      }
+    ],
     "v0_4_5": [
       {
         "title": "Zorunlu güncellemeler daha sorunsuz",

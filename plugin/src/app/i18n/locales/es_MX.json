@@ -289,6 +289,16 @@
     "retry": "Intentar de nuevo"
   },
   "whatsNew": {
+    "v0_4_6": [
+      {
+        "title": "Desencantar en masa",
+        "body": "En la pantalla de Botín, el nuevo botón sobre el ícono de ayuda te deja filtrar fragmentos de campeones y aspectos, ver la esencia que vas a obtener, revisar la selección y desencantar todo de una vez. También funciona en modo streamer."
+      },
+      {
+        "title": "El dodge vuelve a funcionar",
+        "body": "El botón de Dodge vuelve a sacarte de la selección de campeones. La penalización normal por dodge sigue aplicando."
+      }
+    ],
     "v0_4_5": [
       {
         "title": "Actualizaciones obligatorias más fluidas",

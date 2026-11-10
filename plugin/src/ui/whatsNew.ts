@@ -21,6 +21,21 @@ export interface WhatsNewHistory<E extends VersionedEntry = WhatsNewEntry> {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    version: '0.4.6',
+    items: [
+      {
+        title: 'Bulk disenchant',
+        highlight: true,
+        body: 'On the Loot screen, the new button above the help icon lets you filter champion and skin shards, see the essence you will get, review the selection and disenchant everything at once. It works in streaming mode too.',
+      },
+      {
+        title: 'Dodge works again',
+        highlight: true,
+        body: 'The Dodge button takes you out of champ select again. The usual dodge penalty still applies.',
+      },
+    ],
+  },
+  {
     version: '0.4.5',
     items: [
       {
