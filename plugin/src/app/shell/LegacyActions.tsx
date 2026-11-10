@@ -1,5 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { DodgeResult } from '../../features/dodge';
+import { EMPTY_TOTALS } from '../../features/loot';
+import type { DisenchantEntry, DisenchantOptions, DisenchantResult, LootItem } from '../../features/loot';
 import type { ActionResult } from '../../features/presence';
 import type { removeAllFriends } from '../../features/profile';
 import type { RestartUxResult } from '../../features/restartUx';
@@ -52,6 +54,8 @@ export interface LegacyActions {
   applyBuildSpells(index: number): void | Promise<void>;
   applyBuildItems(): void | Promise<void>;
   cancelQueue(): Promise<void>;
+  loadLoot(): Promise<LootItem[]>;
+  disenchantLoot(plan: readonly DisenchantEntry[], options?: DisenchantOptions): Promise<DisenchantResult>;
   togglePanel(): void;
   setOverlayDragging?(dragging: boolean): void;
 }
@@ -95,6 +99,8 @@ export const NOOP_ACTIONS: LegacyActions = {
   applyBuildSpells: async () => {},
   applyBuildItems: async () => {},
   cancelQueue: async () => {},
+  loadLoot: async () => [],
+  disenchantLoot: async () => ({ done: [], failed: [], skipped: [], cancelled: false, gained: { ...EMPTY_TOTALS }, inventory: [] }),
   togglePanel() {},
   setOverlayDragging() {},
 };

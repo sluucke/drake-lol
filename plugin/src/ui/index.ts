@@ -16,6 +16,7 @@ import { makeDodge } from '../features/dodge';
 import { makeRestartUx } from '../features/restartUx';
 import { makeOpener } from '../features/openUrl';
 import { loadChampions } from '../features/champions';
+import { makeLootService } from '../features/loot';
 import { makePresence, readLol, CHAT_ME, QUEUES } from '../features/presence';
 import { makeChallenges } from '../features/challenges';
 import {
@@ -187,6 +188,7 @@ export function startUI({
   let skins: SkinTile[] = [];
   let backgroundId = 0;
   const background = makeBackground({ lcu });
+  const loot = makeLootService({ lcu });
   const sfx = makeSfx();
   
   
@@ -228,6 +230,8 @@ export function startUI({
         console.log(TAG, 'could not cancel the queue');
       }
     },
+    loadLoot: () => loot.load(),
+    disenchantLoot: (plan, options) => loot.disenchant(plan, options),
   };
   const legacyActions = baseActions as LegacyActions;
 

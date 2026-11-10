@@ -632,6 +632,102 @@
     "hint": {
       "text": "İpucu: Drake ve Dodge butonlarını istediğin yere sürükleyebilirsin.",
       "dismiss": "Anladım"
+    },
+    "loot": {
+      "button": "Toplu Öze Dönüştür",
+      "title": "Toplu Öze Dönüştür",
+      "tabs": {
+        "champion": "Şampiyonlar",
+        "skin": "Kostümler"
+      },
+      "search": "İsme göre ara",
+      "filters": {
+        "scope": "Eşya türü",
+        "shardsOnly": "Sadece parçalar",
+        "includePermanents": "Kalıcıları dahil et",
+        "rarity": "Nadirlik",
+        "ownedChampions": "Sadece sahip olduğum şampiyonlar",
+        "ownedSkins": "Sadece sahip olduğum kostümler",
+        "legacyOnly": "Sadece Miras",
+        "keepOne": "Her birinden 1 tane sakla"
+      },
+      "rarity": {
+        "all": "Tüm nadirlikler",
+        "standard": "Standart",
+        "epic": "Destansı",
+        "legendary": "Efsanevi",
+        "mythic": "Mitik",
+        "ultimate": "Nihai",
+        "transcendent": "Aşkın",
+        "exalted": "Yüce",
+        "other": "Diğer"
+      },
+      "kinds": {
+        "championShard": "Şampiyon Parçası",
+        "championPermanent": "Kalıcı Şampiyon",
+        "skinShard": "Kostüm Parçası",
+        "skinPermanent": "Kalıcı Kostüm"
+      },
+      "tile": {
+        "count": "×{amount}",
+        "legacy": "Miras",
+        "owned": "Sahipsin"
+      },
+      "essence": {
+        "blue": "Mavi Öz",
+        "orange": "Turuncu Öz"
+      },
+      "selected": {
+        "one": "{count} eşya seçildi",
+        "other": "{count} eşya seçildi"
+      },
+      "selectAll": "Gösterilenlerin hepsini seç",
+      "clear": "Temizle",
+      "disenchant": "Öze Dönüştür",
+      "empty": "Bu filtrelere uyan bir şey yok.",
+      "emptyInventory": "Ganimetinde şampiyon ya da kostüm parçası yok.",
+      "error": "Ganimetin yüklenemedi.",
+      "confirm": {
+        "title": "Öze dönüştürmeyi onayla",
+        "summary": {
+          "one": "{count} kopyayı öze dönüştürmek üzeresin:",
+          "other": "{count} kopyayı öze dönüştürmek üzeresin:"
+        },
+        "gain": "Alacakların",
+        "warning": "Bu işlem geri alınamaz.",
+        "back": "Geri",
+        "go": "Şimdi öze dönüştür"
+      },
+      "running": {
+        "title": "Öze dönüştürülüyor",
+        "progress": "{current} / {total}",
+        "current": "Şu an: {name}",
+        "stop": "Durdur",
+        "stopping": "Durduruluyor…"
+      },
+      "result": {
+        "title": "Öze dönüştürme tamamlandı",
+        "disenchanted": {
+          "one": "{count} eşya öze dönüştürüldü.",
+          "other": "{count} eşya öze dönüştürüldü."
+        },
+        "failed": {
+          "one": "{count} eşya başarısız oldu:",
+          "other": "{count} eşya başarısız oldu:"
+        },
+        "cancelled": {
+          "one": "Erken durduruldu. {count} eşyaya dokunulmadı.",
+          "other": "Erken durduruldu. {count} eşyaya dokunulmadı."
+        },
+        "gained": "Alınan",
+        "refreshFailed": "Ganimet yenilenemedi. Görmek için bu pencereyi yeniden aç.",
+        "back": "Ganimete dön",
+        "reasons": {
+          "noRecipe": "Bu eşya için öze dönüştürme tarifi yok",
+          "refused": "İstemci reddetti ({status})",
+          "network": "İstemciye ulaşılamadı"
+        }
+      }
     }
   }
 }

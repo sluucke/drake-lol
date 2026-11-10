@@ -632,6 +632,102 @@
     "hint": {
       "text": "Tip: you can drag the Drake and Dodge buttons anywhere.",
       "dismiss": "Got it"
+    },
+    "loot": {
+      "button": "Bulk disenchant",
+      "title": "Bulk disenchant",
+      "tabs": {
+        "champion": "Champions",
+        "skin": "Skins"
+      },
+      "search": "Search by name",
+      "filters": {
+        "scope": "Item type",
+        "shardsOnly": "Shards only",
+        "includePermanents": "Include permanents",
+        "rarity": "Rarity",
+        "ownedChampions": "Only champions I own",
+        "ownedSkins": "Only skins I own",
+        "legacyOnly": "Legacy only",
+        "keepOne": "Keep 1 of each"
+      },
+      "rarity": {
+        "all": "All rarities",
+        "standard": "Standard",
+        "epic": "Epic",
+        "legendary": "Legendary",
+        "mythic": "Mythic",
+        "ultimate": "Ultimate",
+        "transcendent": "Transcendent",
+        "exalted": "Exalted",
+        "other": "Other"
+      },
+      "kinds": {
+        "championShard": "Champion Shard",
+        "championPermanent": "Champion Permanent",
+        "skinShard": "Skin Shard",
+        "skinPermanent": "Skin Permanent"
+      },
+      "tile": {
+        "count": "×{amount}",
+        "legacy": "Legacy",
+        "owned": "Owned"
+      },
+      "essence": {
+        "blue": "Blue Essence",
+        "orange": "Orange Essence"
+      },
+      "selected": {
+        "one": "{count} item selected",
+        "other": "{count} items selected"
+      },
+      "selectAll": "Select all shown",
+      "clear": "Clear",
+      "disenchant": "Disenchant",
+      "empty": "Nothing matches these filters.",
+      "emptyInventory": "No champion or skin shards in your loot.",
+      "error": "Could not load your loot.",
+      "confirm": {
+        "title": "Confirm disenchant",
+        "summary": {
+          "one": "You are about to disenchant {count} copy:",
+          "other": "You are about to disenchant {count} copies:"
+        },
+        "gain": "You will receive",
+        "warning": "This cannot be undone.",
+        "back": "Back",
+        "go": "Disenchant now"
+      },
+      "running": {
+        "title": "Disenchanting",
+        "progress": "{current} of {total}",
+        "current": "Now: {name}",
+        "stop": "Stop",
+        "stopping": "Stopping…"
+      },
+      "result": {
+        "title": "Disenchant complete",
+        "disenchanted": {
+          "one": "{count} item disenchanted.",
+          "other": "{count} items disenchanted."
+        },
+        "failed": {
+          "one": "{count} item failed:",
+          "other": "{count} items failed:"
+        },
+        "cancelled": {
+          "one": "Stopped early. {count} item was left untouched.",
+          "other": "Stopped early. {count} items were left untouched."
+        },
+        "gained": "Received",
+        "refreshFailed": "Could not refresh your loot. Reopen this window to see it.",
+        "back": "Back to loot",
+        "reasons": {
+          "noRecipe": "No disenchant recipe for this item",
+          "refused": "The client refused it ({status})",
+          "network": "Could not reach the client"
+        }
+      }
     }
   }
 }

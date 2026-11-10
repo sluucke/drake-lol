@@ -5,6 +5,7 @@ import { PanelFrame } from './shell/PanelFrame';
 import { ScoutingModal } from './overlays/scouting/ScoutingModal';
 import { ScoutingToast } from './overlays/scouting/ScoutingToast';
 import { ClientDocks } from './overlays/docks/ClientDocks';
+import { LootDock } from './overlays/loot/LootDock';
 import { SocialToggle } from './overlays/docks/SocialToggle';
 import { OverlayChrome } from './overlays/streaming/OverlayChrome';
 import { MandatoryUpdate } from './shell/MandatoryUpdate';
@@ -19,6 +20,7 @@ function AppContent() {
       <ScoutingModal />
       <ScoutingToast />
       <ClientDocks />
+      <LootDock />
       <SocialToggle />
       <OverlayChrome />
       {__DRAKE_DEV__ ? <DevShowcase /> : null}

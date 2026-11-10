@@ -632,6 +632,102 @@
     "hint": {
       "text": "Dica: você pode arrastar os botões do Drake e de Dodge para onde quiser.",
       "dismiss": "Entendi"
+    },
+    "loot": {
+      "button": "Desencantar em massa",
+      "title": "Desencantar em massa",
+      "tabs": {
+        "champion": "Campeões",
+        "skin": "Skins"
+      },
+      "search": "Buscar por nome",
+      "filters": {
+        "scope": "Tipo de item",
+        "shardsOnly": "Só fragmentos",
+        "includePermanents": "Incluir permanentes",
+        "rarity": "Raridade",
+        "ownedChampions": "Só campeões que eu tenho",
+        "ownedSkins": "Só skins que eu tenho",
+        "legacyOnly": "Só Legado",
+        "keepOne": "Manter 1 de cada"
+      },
+      "rarity": {
+        "all": "Todas as raridades",
+        "standard": "Padrão",
+        "epic": "Épica",
+        "legendary": "Lendária",
+        "mythic": "Mítica",
+        "ultimate": "Suprema",
+        "transcendent": "Transcendente",
+        "exalted": "Exaltada",
+        "other": "Outra"
+      },
+      "kinds": {
+        "championShard": "Fragmento de Campeão",
+        "championPermanent": "Campeão Permanente",
+        "skinShard": "Fragmento de Skin",
+        "skinPermanent": "Skin Permanente"
+      },
+      "tile": {
+        "count": "×{amount}",
+        "legacy": "Legado",
+        "owned": "Você já tem"
+      },
+      "essence": {
+        "blue": "Essência Azul",
+        "orange": "Essência Laranja"
+      },
+      "selected": {
+        "one": "{count} item selecionado",
+        "other": "{count} itens selecionados"
+      },
+      "selectAll": "Selecionar todos exibidos",
+      "clear": "Limpar",
+      "disenchant": "Desencantar",
+      "empty": "Nada corresponde a esses filtros.",
+      "emptyInventory": "Nenhum fragmento de campeão ou de skin nos seus Espólios.",
+      "error": "Não foi possível carregar seus Espólios.",
+      "confirm": {
+        "title": "Confirmar desencantamento",
+        "summary": {
+          "one": "Você vai desencantar {count} cópia:",
+          "other": "Você vai desencantar {count} cópias:"
+        },
+        "gain": "Você vai receber",
+        "warning": "Isso não pode ser desfeito.",
+        "back": "Voltar",
+        "go": "Desencantar agora"
+      },
+      "running": {
+        "title": "Desencantando",
+        "progress": "{current} de {total}",
+        "current": "Agora: {name}",
+        "stop": "Parar",
+        "stopping": "Parando…"
+      },
+      "result": {
+        "title": "Desencantamento concluído",
+        "disenchanted": {
+          "one": "{count} item desencantado.",
+          "other": "{count} itens desencantados."
+        },
+        "failed": {
+          "one": "{count} item falhou:",
+          "other": "{count} itens falharam:"
+        },
+        "cancelled": {
+          "one": "Interrompido. {count} item ficou intacto.",
+          "other": "Interrompido. {count} itens ficaram intactos."
+        },
+        "gained": "Recebido",
+        "refreshFailed": "Não foi possível atualizar seus Espólios. Reabra esta janela para vê-los.",
+        "back": "Voltar aos Espólios",
+        "reasons": {
+          "noRecipe": "Sem receita de desencantar para este item",
+          "refused": "O cliente recusou ({status})",
+          "network": "Não foi possível falar com o cliente"
+        }
+      }
     }
   }
 }
