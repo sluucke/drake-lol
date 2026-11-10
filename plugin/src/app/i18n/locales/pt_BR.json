@@ -289,6 +289,16 @@
     "retry": "Tentar de novo"
   },
   "whatsNew": {
+    "v0_4_6": [
+      {
+        "title": "Desencantar em massa",
+        "body": "Na tela de Espólios, o novo botão acima do ícone de ajuda deixa você filtrar fragmentos de campeões e skins, ver a essência que vai ganhar, revisar a seleção e desencantar tudo de uma vez. Também funciona no modo streamer."
+      },
+      {
+        "title": "O dodge voltou a funcionar",
+        "body": "O botão de Dodge volta a tirar você da seleção de campeões. A penalidade normal de dodge continua valendo."
+      }
+    ],
     "v0_4_5": [
       {
         "title": "Atualizações obrigatórias mais tranquilas",

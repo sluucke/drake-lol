@@ -289,6 +289,16 @@
     "retry": "Try again"
   },
   "whatsNew": {
+    "v0_4_6": [
+      {
+        "title": "Bulk disenchant",
+        "body": "On the Loot screen, the new button above the help icon lets you filter champion and skin shards, see the essence you will get, review the selection and disenchant everything at once. It works in streaming mode too."
+      },
+      {
+        "title": "Dodge works again",
+        "body": "The Dodge button takes you out of champ select again. The usual dodge penalty still applies."
+      }
+    ],
     "v0_4_5": [
       {
         "title": "Smoother required updates",
