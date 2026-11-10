@@ -1,0 +1,57 @@
+import { searchChampions } from '../../features/champions';
+import { useT } from '../i18n/I18nProvider';
+import { useDrake, useDrakeStore } from '../store/StoreContext';
+import { Card } from '../ui/Card';
+import { ChampionGrid } from './champions/ChampionGrid';
+import { ChampionSearch } from './champions/ChampionSearch';
+import { PickSummary } from './champions/PickSummary';
+import { Field, ScreenHeader, SettingToggle, useSettings } from './common';
+
+export function AutoBanScreen() {
+  const t = useT();
+  const store = useDrakeStore();
+  const { values, save } = useSettings();
+  const champions = useDrake((state) => state.session.champions);
+  const query = useDrake((state) => state.ui.championQueries['auto-ban']);
+  const enabled = !!values.auto_ban;
+  const banId = Number(values.auto_ban_champion_id) || 0;
+  const ids = banId ? [banId] : [];
+  const filtered = searchChampions(champions, query);
+
+  const setQuery = (text: string) => {
+    const { championQueries } = store.getState().ui;
+    store.getState().setUi({ championQueries: { ...championQueries, 'auto-ban': text } });
+  };
+
+  return (
+    <div className="drk-screen__stack">
+      <ScreenHeader title={t('screens.autoBan.title')} subtitle={t('screens.autoBan.subtitle')} />
+      <Card>
+        <SettingToggle id="auto_ban" label={t('screens.autoBan.toggle')} help={t('screens.autoBan.toggleHelp')} />
+      </Card>
+      <Card>
+        <Field off={!enabled}>
+          <div className="drk-pick-head">
+            <span className="drk-field__label">{t('screens.autoBan.champion')}</span>
+            <span className="drk-pick-head__value">
+              {banId ? t('champions.selected', { count: 1 }) : t('champions.noneChosen')}
+            </span>
+          </div>
+          <PickSummary
+            ids={ids}
+            champions={champions}
+            emptyLabel={t('screens.autoBan.empty')}
+            onRemove={() => save({ auto_ban_champion_id: 0 })}
+          />
+          <ChampionSearch value={query} onChange={setQuery} />
+          <ChampionGrid
+            champions={filtered}
+            slots={new Map(ids.map((id) => [id, true]))}
+            onPick={(id: number) => save({ auto_ban_champion_id: banId === id ? 0 : id })}
+            emptyLabel={champions.length ? t('champions.noMatch') : t('champions.unavailable')}
+          />
+        </Field>
+      </Card>
+    </div>
+  );
+}

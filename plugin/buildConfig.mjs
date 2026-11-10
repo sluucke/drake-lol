@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-export const SOURCE_EXTENSIONS = ['.js', '.jsx', '.css', '.json', '.svg', '.png'];
+export const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.css', '.json', '.svg', '.png'];
 
 export function svgTextPlugin() {
   return {
@@ -33,12 +33,12 @@ export function cssTextPlugin() {
 
 export function esbuildOptions({ buildId, dev = false }) {
   return {
-    entryPoints: ['src/index.js'],
+    entryPoints: ['src/index.ts'],
     bundle: true,
     format: 'iife',
     target: 'chrome108',
     outfile: 'dist/index.js',
-    loader: { '.png': 'dataurl', '.jsx': 'jsx' },
+    loader: { '.png': 'dataurl' },
     jsx: 'automatic',
     minify: !dev,
     define: {
@@ -53,7 +53,7 @@ export function esbuildOptions({ buildId, dev = false }) {
 export function overlayOptions({ buildId, dev = false }) {
   return {
     ...esbuildOptions({ buildId, dev }),
-    entryPoints: ['src/overlayMain.jsx'],
+    entryPoints: ['src/overlayMain.tsx'],
     outfile: 'dist/overlay.js',
   };
 }

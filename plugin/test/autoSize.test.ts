@@ -1,0 +1,67 @@
+import { describe, it, expect } from 'vitest';
+import { fittedHeight, autoSize, markManual } from '../src/ui/autoSize';
+
+describe('fittedHeight', () => {
+  it('grows the box to whatever the content needs', () => {
+    expect(fittedHeight({ scrollHeight: 300, min: 120, max: 400 })).toBe(300);
+  });
+
+  it('never shrinks below the resting size', () => {
+
+    expect(fittedHeight({ scrollHeight: 20, min: 120, max: 400 })).toBe(120);
+  });
+
+  it('stops growing at the cap so the panel cannot outgrow the screen', () => {
+    expect(fittedHeight({ scrollHeight: 9000, min: 120, max: 400 })).toBe(400);
+  });
+});
+
+describe('autoSize', () => {
+  it('measures from scratch rather than from its own last result', () => {
+
+
+    const seen: string[] = [];
+    const el = {
+      scrollHeight: 200,
+      style: {
+        set height(v: string) {
+          seen.push(v);
+        },
+        get height() {
+          return seen[seen.length - 1];
+        },
+      },
+    };
+
+    autoSize(el as unknown as HTMLElement, { min: 120, max: 400 });
+
+    expect(seen[0]).toBe('auto');
+    expect(seen[seen.length - 1]).toBe('200px');
+  });
+
+  it('does nothing when handed no element', () => {
+    expect(() => autoSize(null, { min: 1, max: 2 })).not.toThrow();
+  });
+
+  it('stops auto-sizing once the user has dragged the grip', () => {
+
+
+    const el = { scrollHeight: 200, style: { height: '' }, dataset: { manualHeight: '1' } };
+
+    autoSize(el as unknown as HTMLElement, { min: 120, max: 400 });
+
+    expect(el.style.height).toBe('');
+  });
+});
+
+describe('markManual', () => {
+  it('marks the element so later auto-sizing backs off', () => {
+    const el: { dataset: Record<string, string> } = { dataset: {} };
+    markManual(el as unknown as HTMLElement);
+    expect(el.dataset.manualHeight).toBe('1');
+  });
+
+  it('is safe on a missing element', () => {
+    expect(() => markManual(null)).not.toThrow();
+  });
+});

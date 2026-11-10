@@ -1,4 +1,4 @@
-// Generates src/ui/assets.js: small binary assets as data: URIs.
+// Generates src/ui/assets.ts: small binary assets as data: URIs.
 //
 // They are embedded rather than shipped as files because the deploy path
 // depends on the plugin being a single file. `ensure_plugin` compares content,
@@ -42,5 +42,5 @@ for (const tier of RANK_TIERS) {
 }
 out += '};\n';
 
-writeFileSync('src/ui/assets.js', out);
-console.log('wrote src/ui/assets.js');
+writeFileSync('src/ui/assets.ts', out);
+console.log('wrote src/ui/assets.ts');

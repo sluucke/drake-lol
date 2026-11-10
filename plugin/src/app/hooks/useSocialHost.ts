@@ -1,0 +1,31 @@
+import { useEffect, useState } from 'react';
+import { watchAnchor } from '../../ui/dodgeDock';
+import { ensureToggleHost, findSocialBar, injectSocialToggleStyles } from '../../ui/socialToggle';
+import type { DomScope } from './useDockStyle';
+
+export function useSocialHost(active: boolean, { doc = document, win = window }: DomScope = {}): Element | null {
+  const [host, setHost] = useState<Element | null>(null);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    let last: Element | null = null;
+    const update = () => {
+      const bar = findSocialBar(doc);
+      if (bar) injectSocialToggleStyles(bar.ownerDocument || doc);
+      const next: Element | null = bar ? ensureToggleHost(bar) : null;
+      if (next === last) return;
+      if (last && last !== next) last.remove();
+      last = next;
+      setHost(next);
+    };
+    update();
+    const stop = watchAnchor(doc, win, update);
+    return () => {
+      stop();
+      if (last) last.remove();
+      setHost(null);
+    };
+  }, [active, doc, win]);
+
+  return host;
+}

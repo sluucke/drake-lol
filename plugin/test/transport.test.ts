@@ -1,0 +1,137 @@
+import { describe, it, expect } from 'vitest';
+import { makeTransport } from '../src/transport';
+import type { TransportOptions } from '../src/transport';
+
+type LooseTransportOptions = Omit<TransportOptions, 'fetchImpl' | 'dataStore'> & { fetchImpl?: unknown; dataStore?: unknown };
+const transport = (opts: LooseTransportOptions) => makeTransport(opts as TransportOptions);
+
+describe('transport', () => {
+  it('posts a check-in carrying the token', async () => {
+    let body: unknown;
+    const fakeFetch = async (_url: string, init: RequestInit) => {
+      body = JSON.parse(String(init.body));
+      return { ok: true, status: 204 };
+    };
+    const t = transport({ port: 48151, token: 'sekret', fetchImpl: fakeFetch, pluginBuild: 'abc' });
+    expect(await t.checkIn('Drake')).toBe(true);
+    expect(body).toEqual({ token: 'sekret', host: 'Drake', plugin_build: 'abc' });
+  });
+
+  it('adds the client region and locale once they are known', async () => {
+    const bodies: unknown[] = [];
+    const fakeFetch = async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return { ok: true, status: 204 };
+    };
+    let info: { region: string; locale: string } | null = null;
+    const t = transport({ port: 48151, token: 'sekret', fetchImpl: fakeFetch, pluginBuild: 'abc', clientInfo: () => info });
+    await t.checkIn('Drake');
+    info = { region: 'BR', locale: 'pt_BR' };
+    await t.checkIn('Drake');
+    expect(bodies[0]).toEqual({ token: 'sekret', host: 'Drake', plugin_build: 'abc' });
+    expect(bodies[1]).toEqual({ token: 'sekret', host: 'Drake', plugin_build: 'abc', region: 'BR', locale: 'pt_BR' });
+  });
+
+  it('falls back to DataStore when localhost is unreachable', async () => {
+    const store: Record<string, string> = {};
+    const t = transport({
+      port: 48151,
+      token: 'sekret',
+      fetchImpl: async () => { throw new Error('blocked'); },
+      dataStore: { set: (k: string, v: string) => { store[k] = v; } },
+    });
+    expect(await t.checkIn('Drake')).toBe(true);
+    expect(JSON.parse(store['drake_checkin']).host).toBe('Drake');
+  });
+
+  it('reports failure when both paths are unavailable', async () => {
+    const t = transport({
+      port: 48151,
+      token: 'sekret',
+      fetchImpl: async () => { throw new Error('blocked'); },
+    });
+    expect(await t.checkIn('Drake')).toBe(false);
+  });
+
+  it('does not touch DataStore when localhost succeeds', async () => {
+    let dataStoreTouched = false;
+    const t = transport({
+      port: 48151,
+      token: 'sekret',
+      fetchImpl: async () => ({ ok: true, status: 204 }),
+      dataStore: { set: () => { dataStoreTouched = true; } },
+    });
+    expect(await t.checkIn('Drake')).toBe(true);
+    expect(dataStoreTouched).toBe(false);
+  });
+
+  it('reports failure (not a fallback) when the tray rejects the token', async () => {
+    let dataStoreTouched = false;
+    const t = transport({
+      port: 48151,
+      token: 'stale',
+      fetchImpl: async () => ({ ok: false, status: 401 }),
+      dataStore: { set: () => { dataStoreTouched = true; } },
+    });
+    expect(await t.checkIn('Drake')).toBe(false);
+    expect(dataStoreTouched).toBe(false);
+  });
+
+  it('picks up the new token when the tray has restarted', async () => {
+
+
+
+
+    const sent: string[] = [];
+    const fetchImpl = async (_url: string, init: RequestInit) => {
+      const { token } = JSON.parse(String(init.body));
+      sent.push(token);
+      return token === 'fresh' ? { ok: true, status: 204 } : { ok: false, status: 401 };
+    };
+    const t = transport({
+      port: 48151,
+      token: 'stale',
+      fetchImpl,
+      reloadConfig: async () => ({ token: 'fresh', port: 48151 }),
+    });
+
+    expect(await t.checkIn('Drake')).toBe(true);
+    expect(sent).toEqual(['stale', 'fresh']);
+  });
+
+  it('keeps using the refreshed token on later beats', async () => {
+
+    const sent: string[] = [];
+    const fetchImpl = async (_url: string, init: RequestInit) => {
+      const { token } = JSON.parse(String(init.body));
+      sent.push(token);
+      return token === 'fresh' ? { ok: true, status: 204 } : { ok: false, status: 401 };
+    };
+    let reloads = 0;
+    const t = transport({
+      port: 48151,
+      token: 'stale',
+      fetchImpl,
+      reloadConfig: async () => { reloads += 1; return { token: 'fresh', port: 48151 }; },
+    });
+
+    await t.checkIn('Drake');
+    await t.checkIn('Drake');
+
+    expect(reloads).toBe(1);
+    expect(sent).toEqual(['stale', 'fresh', 'fresh']);
+  });
+
+  it('gives up after one refresh rather than retrying in a loop', async () => {
+    let reloads = 0;
+    const t = transport({
+      port: 48151,
+      token: 'stale',
+      fetchImpl: async () => ({ ok: false, status: 401 }),
+      reloadConfig: async () => { reloads += 1; return { token: 'also-wrong', port: 48151 }; },
+    });
+
+    expect(await t.checkIn('Drake')).toBe(false);
+    expect(reloads).toBe(1);
+  });
+});

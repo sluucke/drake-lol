@@ -1,0 +1,47 @@
+import { motion } from 'motion/react';
+import type { ReactNode } from 'react';
+import type { Champion } from '../../../features/champions';
+import { iconUrl } from '../../../features/champions';
+import { SFX } from '../../../ui/sfx';
+import { useSfx } from '../../hooks/useSfx';
+import { DURATION } from '../../ui/motion';
+
+export interface ChampionGridProps {
+  champions: Champion[];
+  slots: ReadonlyMap<number, number | boolean>;
+  onPick: (id: number) => void;
+  compact?: boolean;
+  emptyLabel?: ReactNode;
+}
+
+export function ChampionGrid({ champions, slots, onPick, compact = false, emptyLabel }: ChampionGridProps) {
+  const sfx = useSfx();
+  if (champions.length === 0) return <p className="drk-help">{emptyLabel}</p>;
+  return (
+    <div className={['drk-champ-grid', compact && 'is-compact'].filter(Boolean).join(' ')}>
+      {champions.map((champion) => {
+        const slot = slots.get(champion.id);
+        return (
+          <motion.button
+            key={champion.id}
+            type="button"
+            className={['drk-champ', slot && 'is-on'].filter(Boolean).join(' ')}
+            title={champion.name}
+            aria-label={champion.name}
+            aria-pressed={!!slot}
+            whileTap={{ scale: 0.94 }}
+            transition={{ duration: DURATION.fast }}
+            onMouseEnter={() => sfx.play(SFX.cardHover)}
+            onClick={() => {
+              sfx.play(SFX.card);
+              onPick(champion.id);
+            }}
+          >
+            <img src={iconUrl(champion.id)} alt="" loading="lazy" />
+            {typeof slot === 'number' && <span className="drk-champ__slot">{slot}</span>}
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
